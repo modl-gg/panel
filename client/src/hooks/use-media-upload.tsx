@@ -53,7 +53,8 @@ export function useMediaUpload() {
       formData.append(key, value.toString());
     });
 
-    const response = await fetch(`/api/panel/media/upload/${uploadType}`, {
+    const { csrfFetch } = await import('@/utils/csrf');
+    const response = await csrfFetch(`/api/panel/media/upload/${uploadType}`, {
       method: 'POST',
       body: formData,
     });
@@ -68,7 +69,8 @@ export function useMediaUpload() {
   };
 
   const deleteMedia = async (key: string): Promise<void> => {
-    const response = await fetch(`/api/panel/media/${encodeURIComponent(key)}`, {
+    const { csrfFetch } = await import('@/utils/csrf');
+    const response = await csrfFetch(`/api/panel/media/${encodeURIComponent(key)}`, {
       method: 'DELETE',
     });
 

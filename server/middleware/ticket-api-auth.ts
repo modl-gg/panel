@@ -34,9 +34,6 @@ export async function verifyTicketApiKey(req: Request, res: Response, next: Next
     const apiKeysData = await getSettingsValue(req.serverDbConnection, 'apiKeys');
     const configuredApiKey = apiKeysData?.api_key;
     
-    // Clean up duplicate logging
-    console.log(`[Ticket API Auth - ${req.serverName || 'Unknown Server'}] API Keys Data:`, apiKeysData ? 'Found' : 'Not Found');
-    console.log(`[Ticket API Auth - ${req.serverName || 'Unknown Server'}] Configured API Key:`, configuredApiKey ? 'Found' : 'Not Found');
     
     if (configuredApiKey === undefined) {
       console.warn(`[Unified API Auth - ${req.serverName || 'Unknown Server'}] API key not configured in settings.`);

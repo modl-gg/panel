@@ -120,7 +120,7 @@ export default function StaffRolesCard() {
   };
 
   const handleEditRole = (role: StaffRole) => {
-    if (role.name === 'Super Admin') {
+    if (role.id === 'super-admin') {
       toast({
         title: "Cannot Edit Super Admin Role",
         description: "Super Admin role cannot be modified.",
@@ -180,7 +180,7 @@ export default function StaffRolesCard() {
   };
 
   const handleDeleteRole = (role: StaffRole) => {
-    if (role.name === 'Super Admin') {
+    if (role.id === 'super-admin') {
       toast({
         title: "Cannot Delete Super Admin Role",
         description: "Super Admin role cannot be deleted.",
@@ -271,7 +271,7 @@ export default function StaffRolesCard() {
                       variant="outline"
                       size="sm"
                       onClick={() => handleEditRole(role)}
-                      disabled={role.name === 'Super Admin'}
+                      disabled={role.id === 'super-admin'}
                     >
                       <Edit className="h-3 w-3" />
                     </Button>
@@ -279,7 +279,7 @@ export default function StaffRolesCard() {
                       variant="outline"
                       size="sm"
                       onClick={() => handleDeleteRole(role)}
-                      disabled={role.name === 'Super Admin'}
+                      disabled={role.id === 'super-admin'}
                       className="text-destructive hover:text-destructive"
                     >
                       <Trash2 className="h-3 w-3" />

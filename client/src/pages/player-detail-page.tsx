@@ -1,54 +1,19 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useRoute, useLocation } from 'wouter';
 import { 
-  ArrowLeft, 
-  History, 
-  Link2, 
-  StickyNote, 
-  Ticket, 
-  UserRound, 
-  Shield,
-  Upload, 
-  Loader2 
+  ArrowLeft, TriangleAlert, Ban, RefreshCcw, Search, LockOpen, History, 
+  Link2, StickyNote, Ticket, UserRound, Shield, FileText, Upload, Loader2,
+  ChevronDown, ChevronRight, Settings, Plus
 } from 'lucide-react';
 import { Button } from 'modl-shared-web/components/ui/button';
 import { Badge } from 'modl-shared-web/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from 'modl-shared-web/components/ui/tabs';
-import { usePlayer, useApplyPunishment, useSettings } from '@/hooks/use-data';
+import { usePlayer, useApplyPunishment, useSettings, usePlayerTickets, usePlayerAllTickets, useModifyPunishment, useAddPunishmentNote, useLinkedAccounts, useFindLinkedAccounts } from '@/hooks/use-data';
+import { ClickablePlayer } from '@/components/ui/clickable-player';
+import { useAuth } from '@/hooks/use-auth';
 import { toast } from '@/hooks/use-toast';
-
-interface PunishmentType {
-  id: number;
-  name: string;
-  category: 'Gameplay' | 'Social' | 'Administrative';
-  isCustomizable: boolean;
-  ordinal: number;
-  durations?: {
-    low: { 
-      first: { value: number; unit: 'hours' | 'days' | 'weeks' | 'months'; banValue?: number; banUnit?: 'hours' | 'days' | 'weeks' | 'months'; };
-      medium: { value: number; unit: 'hours' | 'days' | 'weeks' | 'months'; banValue?: number; banUnit?: 'hours' | 'days' | 'weeks' | 'months'; };
-      habitual: { value: number; unit: 'hours' | 'days' | 'weeks' | 'months'; banValue?: number; banUnit?: 'hours' | 'days' | 'weeks' | 'months'; };
-    };
-    regular: {
-      first: { value: number; unit: 'hours' | 'days' | 'weeks' | 'months'; banValue?: number; banUnit?: 'hours' | 'days' | 'weeks' | 'months'; };
-      medium: { value: number; unit: 'hours' | 'days' | 'weeks' | 'months'; banValue?: number; banUnit?: 'hours' | 'days' | 'weeks' | 'months'; };
-      habitual: { value: number; unit: 'hours' | 'days' | 'weeks' | 'months'; banValue?: number; banUnit?: 'hours' | 'days' | 'weeks' | 'months'; };
-    };
-    severe: {
-      first: { value: number; unit: 'hours' | 'days' | 'weeks' | 'months'; banValue?: number; banUnit?: 'hours' | 'days' | 'weeks' | 'months'; };
-      medium: { value: number; unit: 'hours' | 'days' | 'weeks' | 'months'; banValue?: number; banUnit?: 'hours' | 'days' | 'weeks' | 'months'; };
-      habitual: { value: number; unit: 'hours' | 'days' | 'weeks' | 'months'; banValue?: number; banUnit?: 'hours' | 'days' | 'weeks' | 'months'; };
-    };
-  };
-  points?: {
-    low: number;
-    regular: number;
-    severe: number;
-  };
-  customPoints?: number; // For permanent punishments that don't use severity-based points
-  staffDescription?: string; // Description shown to staff when applying this punishment
-  playerDescription?: string; // Description shown to players (in appeals, notifications, etc.)
-}
+import PlayerPunishment, { PlayerPunishmentData } from '@/components/ui/player-punishment';
+import MediaUpload from '@/components/MediaUpload';
 
 interface PlayerInfo {
   username: string;
@@ -63,20 +28,61 @@ interface PlayerInfo {
   gameplay: string;
   punished: boolean;
   previousNames: string[];
-  warnings: Array<{ type: string; reason: string; date: string; by: string }>;
-  linkedAccounts: string[];
+  warnings: Array<{ 
+    type: string; 
+    reason: string; 
+    date: string; 
+    by: string;
+    id?: string;
+    severity?: string;
+    status?: string;
+    evidence?: (string | {text: string; issuerName: string; date: string})[];
+    notes?: Array<{text: string; issuerName: string; date: string}>;
+    attachedTicketIds?: string[];
+    active?: boolean;
+    expires?: string;
+    started?: string | Date;
+    data?: any;
+    altBlocking?: boolean;
+  }>;
+  linkedAccounts: Array<{username: string; uuid: string; statusText: string}>;
   notes: string[];
   newNote?: string;
   isAddingNote?: boolean;
+  // Punishment note/modification fields
+  isAddingPunishmentNote?: boolean;
+  punishmentNoteTarget?: string | null;
+  newPunishmentNote?: string;
+  isAddingPunishmentEvidence?: boolean;
+  punishmentEvidenceTarget?: string | null;
+  newPunishmentEvidence?: string;
+  uploadedEvidenceFile?: {
+    url: string;
+    fileName: string;
+    fileType: string;
+    fileSize: number;
+  } | null;
+  isModifyingPunishment?: boolean;
+  modifyPunishmentTarget?: string | null;
+  modifyPunishmentAction?: 'modify' | null;
+  modifyPunishmentReason?: string;
+  selectedModificationType?: 'MANUAL_DURATION_CHANGE' | 'MANUAL_PARDON' | 'SET_ALT_BLOCKING_TRUE' | 'SET_WIPING_TRUE' | 'SET_ALT_BLOCKING_FALSE' | 'SET_WIPING_FALSE' | null;
+  newDuration?: {
+    value: number;
+    unit: 'seconds' | 'minutes' | 'hours' | 'days' | 'weeks' | 'months';
+  };
+  // Punishment creation fields
   selectedPunishmentCategory?: string;
   selectedSeverity?: 'Lenient' | 'Regular' | 'Aggravated';
+  selectedOffenseLevel?: 'first' | 'medium' | 'habitual';
   duration?: {
     value: number;
-    unit: 'hours' | 'days' | 'weeks' | 'months';
+    unit: 'seconds' | 'minutes' | 'hours' | 'days' | 'weeks' | 'months';
   };
   isPermanent?: boolean;
   reason?: string;
   evidence?: string;
+  evidenceList?: string[];
   attachedReports?: string[];
   banLinkedAccounts?: boolean;
   wipeAccountAfterExpiry?: boolean;
@@ -84,142 +90,98 @@ interface PlayerInfo {
   banToLink?: string;
   staffNotes?: string;
   silentPunishment?: boolean;
+  altBlocking?: boolean;
+  statWiping?: boolean;
+}
+
+interface PunishmentType {
+  id: number;
+  name: string;
+  category: 'Gameplay' | 'Social' | 'Administrative';
+  isCustomizable: boolean;
+  ordinal: number;
+  durations?: {
+    low: { 
+      first: { value: number; unit: 'seconds' | 'minutes' | 'hours' | 'days' | 'weeks' | 'months'; banValue?: number; banUnit?: 'seconds' | 'minutes' | 'hours' | 'days' | 'weeks' | 'months'; };
+      medium: { value: number; unit: 'seconds' | 'minutes' | 'hours' | 'days' | 'weeks' | 'months'; banValue?: number; banUnit?: 'seconds' | 'minutes' | 'hours' | 'days' | 'weeks' | 'months'; };
+      habitual: { value: number; unit: 'seconds' | 'minutes' | 'hours' | 'days' | 'weeks' | 'months'; banValue?: number; banUnit?: 'seconds' | 'minutes' | 'hours' | 'days' | 'weeks' | 'months'; };
+    };
+    regular: {
+      first: { value: number; unit: 'seconds' | 'minutes' | 'hours' | 'days' | 'weeks' | 'months'; banValue?: number; banUnit?: 'seconds' | 'minutes' | 'hours' | 'days' | 'weeks' | 'months'; };
+      medium: { value: number; unit: 'seconds' | 'minutes' | 'hours' | 'days' | 'weeks' | 'months'; banValue?: number; banUnit?: 'seconds' | 'minutes' | 'hours' | 'days' | 'weeks' | 'months'; };
+      habitual: { value: number; unit: 'seconds' | 'minutes' | 'hours' | 'days' | 'weeks' | 'months'; banValue?: number; banUnit?: 'seconds' | 'minutes' | 'hours' | 'days' | 'weeks' | 'months'; };
+    };
+    severe: {
+      first: { value: number; unit: 'seconds' | 'minutes' | 'hours' | 'days' | 'weeks' | 'months'; banValue?: number; banUnit?: 'seconds' | 'minutes' | 'hours' | 'days' | 'weeks' | 'months'; };
+      medium: { value: number; unit: 'seconds' | 'minutes' | 'hours' | 'days' | 'weeks' | 'months'; banValue?: number; banUnit?: 'seconds' | 'minutes' | 'hours' | 'days' | 'weeks' | 'months'; };
+      habitual: { value: number; unit: 'seconds' | 'minutes' | 'hours' | 'days' | 'weeks' | 'months'; banValue?: number; banUnit?: 'seconds' | 'minutes' | 'hours' | 'days' | 'weeks' | 'months'; };
+    };
+  };
+  points?: {
+    low: number;
+    regular: number;
+    severe: number;
+  };
+  customPoints?: number;
+  staffDescription?: string;
+  playerDescription?: string;
+  canBeAltBlocking?: boolean;
+  canBeStatWiping?: boolean;
+  isAppealable?: boolean;
+  singleSeverityPunishment?: boolean;
+  singleSeverityDurations?: {
+    first: { value: number; unit: 'seconds' | 'minutes' | 'hours' | 'days' | 'weeks' | 'months'; type: 'mute' | 'ban'; };
+    medium: { value: number; unit: 'seconds' | 'minutes' | 'hours' | 'days' | 'weeks' | 'months'; type: 'mute' | 'ban'; };
+    habitual: { value: number; unit: 'seconds' | 'minutes' | 'hours' | 'days' | 'weeks' | 'months'; type: 'mute' | 'ban'; };
+  };
+  singleSeverityPoints?: number;
 }
 
 const PlayerDetailPage = () => {
-  const [_, params] = useRoute('/player/:uuid');
+  const [_, params] = useRoute('/panel/player/:uuid');
   const [location, navigate] = useLocation();
   const playerId = params?.uuid || '';
   
   const [activeTab, setActiveTab] = useState('history');
-  const [isApplyingPunishment, setIsApplyingPunishment] = useState(false);
   const [banSearchResults, setBanSearchResults] = useState<{id: string; player: string}[]>([]);
   const [showBanSearchResults, setShowBanSearchResults] = useState(false);
+  const [avatarError, setAvatarError] = useState(false);
+  const [avatarLoading, setAvatarLoading] = useState(true);
+  const [isApplyingPunishment, setIsApplyingPunishment] = useState(false);
+  const [expandedPunishments, setExpandedPunishments] = useState<Set<string>>(new Set());
 
-  // Initialize the applyPunishment mutation hook
+  // Get current authenticated user
+  const { user } = useAuth();
+  
+  // Initialize the mutation hooks
   const applyPunishment = useApplyPunishment();
+  const modifyPunishment = useModifyPunishment();
+  const addPunishmentNote = useAddPunishmentNote();
 
-  // Mock function to simulate ban search results
-  const searchBans = (query: string) => {
-    if (!query || query.length < 2) {
-      setBanSearchResults([]);
-      return;
-    }
+  // Use React Query hooks to fetch data
+  const { data: player, isLoading, error, refetch } = usePlayer(playerId);
+  const { data: playerTickets, isLoading: isLoadingTickets } = usePlayerAllTickets(playerId);
+  const { data: linkedAccountsData, isLoading: isLoadingLinkedAccounts, refetch: refetchLinkedAccounts } = useLinkedAccounts(playerId);
+  const findLinkedAccountsMutation = useFindLinkedAccounts();
+  const { data: settingsData, isLoading: isLoadingSettings } = useSettings();
 
-    // Simulate API call delay
-    setTimeout(() => {
-      // Mock data for demonstration
-      const results = [
-        { id: 'ban-123', player: 'MineKnight45' },
-        { id: 'ban-456', player: 'DiamondMiner99' },
-        { id: 'ban-789', player: 'CraftMaster21' },
-        { id: 'ban-012', player: 'StoneBlazer76' }
-      ].filter(item => 
-        item.id.toLowerCase().includes(query.toLowerCase()) || 
-        item.player.toLowerCase().includes(query.toLowerCase())
-      );
-
-      setBanSearchResults(results);
-      setShowBanSearchResults(results.length > 0);
-    }, 300);
-  };
-
+  // State to track if we've already triggered linked account search
+  const [hasTriggeredLinkedSearch, setHasTriggeredLinkedSearch] = useState(false);
   
-  // Handler for applying punishment
-  const handleApplyPunishment = async () => {
-    // Validate required fields
-    if (!playerInfo.selectedPunishmentCategory) {
-      toast({
-        title: "Missing information",
-        description: "Please select a punishment category",
-        variant: "destructive"
+  // Stable function to trigger linked account search
+  const triggerLinkedAccountSearch = useCallback(() => {
+    if (playerId && !hasTriggeredLinkedSearch && !findLinkedAccountsMutation.isPending) {
+      setHasTriggeredLinkedSearch(true);
+      findLinkedAccountsMutation.mutate(playerId, {
+        onError: (error) => {
+          console.error('Failed to trigger linked account search:', error);
+          setHasTriggeredLinkedSearch(false);
+        }
       });
-      return;
     }
-    
-    if (!playerInfo.reason) {
-      toast({
-        title: "Missing information",
-        description: "Please provide a reason for the punishment",
-        variant: "destructive"
-      });
-      return;
-    }
-    
-    if (!playerInfo.isPermanent && (!playerInfo.duration?.value || !playerInfo.duration?.unit)) {
-      toast({
-        title: "Invalid duration",
-        description: "Please specify a valid duration or select 'Permanent'",
-        variant: "destructive"
-      });
-      return;
-    }
-    
-    try {
-      setIsApplyingPunishment(true);
-      
-      // Prepare punishment data
-      const punishmentData = {
-        type: playerInfo.selectedPunishmentCategory,
-        severity: playerInfo.selectedSeverity || 'Regular',
-        reason: playerInfo.reason,
-        evidence: playerInfo.evidence || '',
-        notes: playerInfo.staffNotes || '',
-        permanent: playerInfo.isPermanent || false,
-        duration: playerInfo.isPermanent ? null : playerInfo.duration,
-        silent: playerInfo.silentPunishment || false,
-        banLinkedAccounts: playerInfo.banLinkedAccounts || false,
-        wipeAccountAfterExpiry: playerInfo.wipeAccountAfterExpiry || false,
-        kickSameIP: playerInfo.kickSameIP || false,
-        relatedBan: playerInfo.banToLink || null,
-        attachedReports: playerInfo.attachedReports || []
-      };
-      
-      // Call the API
-      await applyPunishment.mutateAsync({
-        uuid: playerId,
-        punishmentData
-      });
-      
-      // Refetch player data
-      refetch();
-      
-      // Show success message
-      toast({
-        title: "Punishment applied",
-        description: `Successfully applied ${playerInfo.selectedPunishmentCategory} to ${playerInfo.username || 'Unknown Player'}`
-      });
-      
-      // Reset the punishment form
-      setPlayerInfo(prev => ({
-        ...prev,
-        selectedPunishmentCategory: undefined,
-        selectedSeverity: undefined,
-        duration: undefined,
-        isPermanent: false,
-        reason: '',
-        evidence: '',
-        attachedReports: [],
-        banLinkedAccounts: false,
-        wipeAccountAfterExpiry: false,
-        kickSameIP: false,
-        banToLink: '',
-        staffNotes: '',
-        silentPunishment: false
-      }));
-      
-    } catch (error) {
-      console.error('Error applying punishment:', error);
-      toast({
-        title: "Failed to apply punishment",
-        description: error instanceof Error ? error.message : "An unknown error occurred",
-        variant: "destructive"
-      });
-    } finally {
-      setIsApplyingPunishment(false);
-    }
-  };
-  
+  }, [playerId, hasTriggeredLinkedSearch]);
+
+  // Initialize player info state
   const [playerInfo, setPlayerInfo] = useState<PlayerInfo>({
     username: 'Loading...',
     status: 'Unknown',
@@ -238,14 +200,298 @@ const PlayerDetailPage = () => {
     notes: []
   });
 
-  // Use React Query hook to fetch player data with refetch capability
-  const { data: player, isLoading, error, refetch } = usePlayer(playerId);
-  
+  // Initialize punishment types state
+  const [punishmentTypesByCategory, setPunishmentTypesByCategory] = useState<{
+    Administrative: PunishmentType[], 
+    Social: PunishmentType[], 
+    Gameplay: PunishmentType[]
+  }>({
+    Administrative: [
+      // Administrative punishment types (ordinals 0-5, not customizable) - minimal fallback
+      { id: 0, name: 'Kick', category: 'Administrative', isCustomizable: false, ordinal: 0 },
+      { id: 1, name: 'Manual Mute', category: 'Administrative', isCustomizable: false, ordinal: 1 },
+      { id: 2, name: 'Manual Ban', category: 'Administrative', isCustomizable: false, ordinal: 2 },
+      { id: 3, name: 'Security Ban', category: 'Administrative', isCustomizable: false, ordinal: 3 },
+      { id: 4, name: 'Linked Ban', category: 'Administrative', isCustomizable: false, ordinal: 4 },
+      { id: 5, name: 'Blacklist', category: 'Administrative', isCustomizable: false, ordinal: 5 }
+    ],
+    Social: [],
+    Gameplay: []
+  });
+
+  // Reset avatar state when playerId changes
+  useEffect(() => {
+    setAvatarError(false);
+    setAvatarLoading(true);
+  }, [playerId]);
+
+  // Process settings data to extract punishment types by category
+  useEffect(() => {
+    const punishmentTypesData = settingsData?.settings?.punishmentTypes;
+    if (punishmentTypesData) {
+      try {
+        // Parse punishment types if they're stored as a string
+        const typesData = typeof punishmentTypesData === 'string' 
+          ? JSON.parse(punishmentTypesData) 
+          : punishmentTypesData;
+          
+        if (Array.isArray(typesData)) {
+          // Always ensure administrative punishment types are available
+          const defaultAdminTypes: PunishmentType[] = [
+            { id: 0, name: 'Kick', category: 'Administrative' as const, isCustomizable: false, ordinal: 0 },
+            { id: 1, name: 'Manual Mute', category: 'Administrative' as const, isCustomizable: false, ordinal: 1 },
+            { id: 2, name: 'Manual Ban', category: 'Administrative' as const, isCustomizable: false, ordinal: 2 },
+            { id: 3, name: 'Security Ban', category: 'Administrative' as const, isCustomizable: false, ordinal: 3 },
+            { id: 4, name: 'Linked Ban', category: 'Administrative' as const, isCustomizable: false, ordinal: 4 },
+            { id: 5, name: 'Blacklist', category: 'Administrative' as const, isCustomizable: false, ordinal: 5 }
+          ];
+          
+          // Group punishment types by category
+          const adminFromSettings = typesData.filter(pt => pt.category === 'Administrative');
+          
+          // Merge default admin types with any additional admin types from settings
+          // Default types take precedence (to ensure they're always available)
+          const mergedAdminTypes = [...defaultAdminTypes];
+          adminFromSettings.forEach(settingsType => {
+            if (!mergedAdminTypes.find(defaultType => defaultType.name === settingsType.name)) {
+              mergedAdminTypes.push(settingsType);
+            }
+          });
+          
+          const categorized = {
+            Administrative: mergedAdminTypes.sort((a, b) => a.ordinal - b.ordinal),
+            Social: typesData.filter(pt => pt.category === 'Social').sort((a, b) => a.ordinal - b.ordinal),
+            Gameplay: typesData.filter(pt => pt.category === 'Gameplay').sort((a, b) => a.ordinal - b.ordinal)
+          };
+          
+          // Update the state with the loaded punishment types
+          setPunishmentTypesByCategory(categorized);
+        }
+      } catch (error) {
+        console.error("Error parsing punishment types:", error);
+      }
+    }
+  }, [settingsData]);
+
+  // Calculate player status based on punishments and settings
+  const calculatePlayerStatus = (punishments: any[], punishmentTypes: PunishmentType[], statusThresholds: any) => {
+    let socialPoints = 0;
+    let gameplayPoints = 0;
+
+    // Calculate points from active punishments
+    for (const punishment of punishments) {
+      // Check if punishment is effectively active (considering modifications)
+      const effectiveState = getEffectivePunishmentState(punishment);
+      const isActive = effectiveState.effectiveActive;
+      if (!isActive) continue;
+
+      // Find punishment type
+      const punishmentType = punishmentTypes.find(pt => pt.ordinal === punishment.type_ordinal);
+      if (!punishmentType) continue;
+
+      // Get points based on severity or single severity
+      let points = 0;
+      const severity = punishment.severity || punishment.data?.severity;
+      
+      if (punishmentType.customPoints !== undefined) {
+        // Custom points for permanent punishments (like Bad Skin, Bad Name)
+        points = punishmentType.customPoints;
+      } else if (punishmentType.singleSeverityPoints !== undefined) {
+        // Single severity punishment
+        points = punishmentType.singleSeverityPoints;
+      } else if (punishmentType.points && severity) {
+        // Multi-severity punishment
+        const severityLower = severity.toLowerCase();
+        if (severityLower === 'low' || severityLower === 'lenient') {
+          points = punishmentType.points.low;
+        } else if (severityLower === 'regular' || severityLower === 'medium') {
+          points = punishmentType.points.regular;
+        } else if (severityLower === 'severe' || severityLower === 'aggravated' || severityLower === 'high') {
+          points = punishmentType.points.severe;
+        }
+      }
+
+      // Add points to appropriate category
+      if (punishmentType.category === 'Social') {
+        socialPoints += points;
+      } else if (punishmentType.category === 'Gameplay') {
+        gameplayPoints += points;
+      }
+      // Administrative punishments don't contribute to status points
+    }
+
+    // Determine status based on thresholds
+    const getStatusLevel = (points: number, thresholds: { medium: number; habitual: number }) => {
+      if (points >= thresholds.habitual) {
+        return 'Habitual';
+      } else if (points >= thresholds.medium) {
+        return 'Medium';
+      } else {
+        return 'Low';
+      }
+    };
+
+    const socialStatus = getStatusLevel(socialPoints, statusThresholds?.social || { medium: 4, habitual: 8 });
+    const gameplayStatus = getStatusLevel(gameplayPoints, statusThresholds?.gameplay || { medium: 5, habitual: 10 });
+
+    return {
+      social: socialStatus,
+      gameplay: gameplayStatus,
+      socialPoints,
+      gameplayPoints
+    };
+  };
+
+  // Helper function to calculate effective punishment status and expiry based on modifications
+  const getEffectivePunishmentState = (punishment: any) => {
+    const modifications = punishment.modifications || [];
+    
+    let effectiveActive = punishment.active;
+    let effectiveExpiry = punishment.expires;
+    let effectiveDuration = punishment.duration;
+    let hasModifications = modifications.length > 0;
+    
+    // Process modifications in chronological order (oldest first)
+    const sortedModifications = [...modifications].sort((a, b) => 
+      new Date(a.issued).getTime() - new Date(b.issued).getTime()
+    );
+    
+    for (const mod of sortedModifications) {
+      switch (mod.type) {
+        case 'MANUAL_PARDON':
+        case 'APPEAL_ACCEPT':
+          effectiveActive = false;
+          effectiveExpiry = mod.issued; // Set expiry to when it was pardoned
+          break;
+        case 'MANUAL_DURATION_CHANGE':
+          if (mod.effectiveDuration !== undefined) {
+            effectiveDuration = mod.effectiveDuration;
+            // Calculate new expiry based on new duration and punishment start time
+            if (mod.effectiveDuration === 0 || mod.effectiveDuration === -1 || mod.effectiveDuration < 0) {
+              effectiveExpiry = null; // Permanent
+            } else if (punishment.issued || punishment.date) {
+              const startTime = new Date(punishment.issued || punishment.date);
+              effectiveExpiry = new Date(startTime.getTime() + mod.effectiveDuration).toISOString();
+            }
+          }
+          break;
+        // Add other modification types as needed
+      }
+    }
+    
+    return {
+      effectiveActive,
+      effectiveExpiry,
+      effectiveDuration,
+      hasModifications,
+      modifications: sortedModifications,
+      originalExpiry: punishment.expires
+    };
+  };
+
+  // Helper function to safely get data from player.data (handles both Map and plain object)
+  const getPlayerData = (player: any, key: string) => {
+    if (!player?.data) return undefined;
+    if (typeof player.data.get === 'function') {
+      return player.data.get(key);
+    }
+    return (player.data as any)[key];
+  };
+
+  // Helper function to format date with time
+  const formatDateWithTime = (date: any) => {
+    if (!date) return 'Unknown';
+    
+    const dateObj = typeof date === 'string' ? new Date(date) : date;
+    
+    // Check if the date is valid
+    if (isNaN(dateObj.getTime())) {
+      return 'Invalid Date';
+    }
+    
+    const month = (dateObj.getMonth() + 1).toString().padStart(2, '0');
+    const day = dateObj.getDate().toString().padStart(2, '0');
+    const year = dateObj.getFullYear();
+    const hours = dateObj.getHours().toString().padStart(2, '0');
+    const minutes = dateObj.getMinutes().toString().padStart(2, '0');
+    return `${month}/${day}/${year} ${hours}:${minutes}`;
+  };
+
+  // Helper function to check if a value is a valid display value for badges
+  const isValidBadgeValue = (value: any): boolean => {
+    if (!value || value === null || value === undefined) return false;
+    if (typeof value === 'number' && value === 0) return false;
+    if (typeof value !== 'string') return false;
+    const trimmed = value.trim();
+    if (trimmed.length === 0) return false;
+    if (trimmed === '0' || trimmed === 'null' || trimmed === 'undefined' || trimmed === 'false') return false;
+    return true;
+  };
+
+  // Helper function to determine if a punishment is currently active based on expiry logic
+  const isPunishmentCurrentlyActive = (warning: any, effectiveState: any) => {
+    // Check if punishment is pardoned/revoked
+    const pardonModification = effectiveState.modifications.find((mod: any) => 
+      mod.type === 'MANUAL_PARDON' || mod.type === 'APPEAL_ACCEPT'
+    );
+    
+    if (pardonModification) {
+      return false; // Pardoned punishments are always inactive
+    }
+    
+    // Check if punishment has modifications with effective expiry
+    if (effectiveState.hasModifications && effectiveState.effectiveExpiry) {
+      const expiryDate = new Date(effectiveState.effectiveExpiry);
+      if (!isNaN(expiryDate.getTime())) {
+        const now = new Date();
+        return expiryDate.getTime() > now.getTime(); // Active if expiry is in the future
+      }
+    }
+    
+    // Check original expiry for unmodified punishments
+    if (warning.expires) {
+      const expiryDate = new Date(warning.expires);
+      if (!isNaN(expiryDate.getTime())) {
+        const now = new Date();
+        return expiryDate.getTime() > now.getTime(); // Active if expiry is in the future
+      }
+    }
+    
+    // For punishments without expiry (permanent), check effective active state
+    return effectiveState.effectiveActive;
+  };
+
+  // Helper function to format duration in milliseconds to human readable
+  const formatDuration = (milliseconds: number) => {
+    if (milliseconds === 0 || milliseconds === -1 || milliseconds < 0) {
+      return 'Permanent';
+    }
+    
+    const seconds = Math.floor(milliseconds / 1000);
+    const minutes = Math.floor(seconds / 60);
+    const hours = Math.floor(minutes / 60);
+    const days = Math.floor(hours / 24);
+    const weeks = Math.floor(days / 7);
+    const months = Math.floor(days / 30);
+    
+    if (months > 0) {
+      return `${months} month${months > 1 ? 's' : ''}`;
+    } else if (weeks > 0) {
+      return `${weeks} week${weeks > 1 ? 's' : ''}`;
+    } else if (days > 0) {
+      return `${days} day${days > 1 ? 's' : ''}`;
+    } else if (hours > 0) {
+      return `${hours} hour${hours > 1 ? 's' : ''}`;
+    } else if (minutes > 0) {
+      return `${minutes} minute${minutes > 1 ? 's' : ''}`;
+    } else {
+      return `${seconds} second${seconds > 1 ? 's' : ''}`;
+    }
+  };
+
   // Load player data into state when it changes
   useEffect(() => {
     if (player) {
-      // Player data received
-      
       // Check if we're dealing with MongoDB data or the API response format
       if (player.usernames) {
         // This is MongoDB raw data that needs formatting
@@ -254,7 +500,7 @@ const PlayerDetailPage = () => {
           : 'Unknown';
         
         const firstJoined = player.usernames && player.usernames.length > 0 
-          ? new Date(player.usernames[0].date).toLocaleDateString() 
+          ? formatDateWithTime(player.usernames[0].date) 
           : 'Unknown';
         
         // Get previous usernames
@@ -271,57 +517,139 @@ const PlayerDetailPage = () => {
           ? 'Restricted' 
           : 'Active';
         
-        // Format warnings from notes
-        const warnings = player.notes ? player.notes.map((note: any) => ({
-          type: 'Warning',
-          reason: note.text,
-          date: new Date(note.date).toLocaleDateString(),
-          by: note.issuerName,
-          originalDate: note.date // Store original date for sorting
-        })) : [];
+        // Initialize warnings array
+        const warnings: any[] = [];
         
-        // Add punishments to warnings
+        // Add punishments to warnings with full details
         if (player.punishments) {
           player.punishments.forEach((punishment: any) => {
+            // Determine punishment type name from ordinal using settings data
+            const getPunishmentTypeName = (ordinal: number) => {
+              // First check all loaded punishment types from settings
+              const allTypes = [
+                ...punishmentTypesByCategory.Administrative,
+                ...punishmentTypesByCategory.Social,
+                ...punishmentTypesByCategory.Gameplay
+              ];
+              
+              const foundType = allTypes.find(type => type.ordinal === ordinal);
+              if (foundType) {
+                return foundType.name;
+              }
+              
+              // Fallback for unknown ordinals
+              return `Unknown Punishment ${ordinal}`;
+            };
+            
+            const punishmentType = getPunishmentTypeName(punishment.type_ordinal);
+            
+            // Use staff notes as the main reason text
+            let displayReason = '';
+            if (punishment.notes && punishment.notes.length > 0) {
+              // Use first note as the main reason (for both manual and automatic punishments)
+              const firstNote = punishment.notes[0];
+              displayReason = typeof firstNote === 'string' ? firstNote : firstNote.text;
+            } else {
+              // Fallback if no notes available
+              displayReason = 'No additional details';
+            }
+            
             warnings.push({
-              type: punishment.type,
-              reason: punishment.reason,
-              date: new Date(punishment.date).toLocaleDateString(),
-              by: punishment.issuerName + (punishment.expires ? ` (until ${new Date(punishment.expires).toLocaleDateString()})` : ''),
-              originalDate: punishment.date // Store original date for sorting
+              type: punishmentType,
+              reason: displayReason,
+              date: formatDateWithTime(punishment.date || punishment.issued),
+              by: punishment.issuerName,
+              // Additional punishment details
+              id: punishment.id || punishment._id,
+              severity: (() => {
+                // For linked bans (type_ordinal 4), severity should always be null
+                if (punishment.type_ordinal === 4) return null;
+                const severity = punishment.data?.severity || (punishment.data?.get ? punishment.data.get('severity') : punishment.severity);
+                return severity === 0 || severity === '0' || severity === null || severity === undefined ? null : severity;
+              })(),
+              status: (() => {
+                // For linked bans (type_ordinal 4), status should always be null
+                if (punishment.type_ordinal === 4) return null;
+                const status = punishment.data?.status || (punishment.data?.get ? punishment.data.get('status') : punishment.status);
+                return status === 0 || status === '0' || status === null || status === undefined ? null : status;
+              })(),
+              evidence: punishment.evidence || [],
+              notes: punishment.notes || [],
+              attachedTicketIds: punishment.attachedTicketIds || [],
+              active: punishment.data?.active !== false || (punishment.data?.get ? punishment.data.get('active') !== false : punishment.active),
+              modifications: punishment.modifications || [],
+              expires: punishment.expires || punishment.data?.expires || (punishment.data?.get ? punishment.data.get('expires') : null),
+              data: punishment.data || {},
+              altBlocking: punishment.data?.altBlocking || (punishment.data?.get ? punishment.data.get('altBlocking') : false),
+              started: punishment.started
             });
           });
         }
         
-        // Sort warnings by date (most recent first)
-        warnings.sort((a, b) => {
-          const dateA = new Date(a.originalDate || a.date || 0).getTime();
-          const dateB = new Date(b.originalDate || b.date || 0).getTime();
-          return dateB - dateA; // Descending order (newest first)
-        });
-        
         // Extract notes
         const notes = player.notes 
-          ? player.notes.map((note: any) => `${note.text} (Added by ${note.issuerName} on ${new Date(note.date).toLocaleDateString()})`) 
+          ? player.notes.map((note: any) => `${note.text} (Added by ${note.issuerName} on ${formatDateWithTime(note.date)})`) 
           : [];
         
-        // Extract linked accounts
-        const linkedAccounts: string[] = [];
-        if (player.discord) linkedAccounts.push(`${player.discord} (Discord)`);
-        if (player.email) linkedAccounts.push(`${player.email} (Email)`);
+        // Extract linked accounts from API data
+        const linkedAccounts: Array<{username: string; uuid: string; statusText: string}> = [];
+        
+        if (linkedAccountsData?.linkedAccounts && Array.isArray(linkedAccountsData.linkedAccounts)) {
+          linkedAccountsData.linkedAccounts.forEach((account: any) => {
+            const statusInfo = [];
+            if (account.activeBans > 0) statusInfo.push(`${account.activeBans} active ban${account.activeBans > 1 ? 's' : ''}`);
+            if (account.activeMutes > 0) statusInfo.push(`${account.activeMutes} active mute${account.activeMutes > 1 ? 's' : ''}`);
+            
+            const statusText = statusInfo.length > 0 ? ` (${statusInfo.join(', ')})` : '';
+            linkedAccounts.push({
+              username: account.username,
+              uuid: account.uuid || account._id || account.minecraftUuid,
+              statusText: statusText
+            });
+          });
+        }
+        
+        // Calculate player status using punishment points and thresholds
+        const allPunishmentTypes = [
+          ...punishmentTypesByCategory.Administrative,
+          ...punishmentTypesByCategory.Social,
+          ...punishmentTypesByCategory.Gameplay
+        ];
+        
+        // Get status thresholds from settings
+        let statusThresholds = { social: { medium: 4, habitual: 8 }, gameplay: { medium: 5, habitual: 10 } };
+        if (settingsData?.settings?.statusThresholds) {
+          try {
+            statusThresholds = settingsData.settings.statusThresholds;
+          } catch (error) {
+            console.error("Error parsing status thresholds:", error);
+          }
+        }
+        
+        const calculatedStatus = calculatePlayerStatus(player.punishments || [], allPunishmentTypes, statusThresholds);
+        
+        // Sort warnings by date (most recent first)
+        warnings.sort((a, b) => {
+          const dateA = new Date(a.date || a.issued || 0).getTime();
+          const dateB = new Date(b.date || b.issued || 0).getTime();
+          return dateB - dateA; // Descending order (newest first)
+        });
         
         setPlayerInfo(prev => ({
           ...prev,
           username: currentUsername,
-          status: status === 'Active' ? 'Online' : status,
-          region: player.region || 'Unknown',
-          country: player.country || 'Unknown',
+          status: getPlayerData(player, 'isOnline') ? 'Online' : (status === 'Active' ? 'Offline' : status),
+          region: player.latestIPData?.region || player.region || 'Unknown',
+          country: player.latestIPData?.country || player.country || 'Unknown',
           firstJoined: firstJoined,
-          lastOnline: 'Recent', // This data isn't available in our current schema
+          lastOnline: getPlayerData(player, 'isOnline') ? 'Online' : 
+            (getPlayerData(player, 'lastDisconnect') ? 
+              formatDateWithTime(getPlayerData(player, 'lastDisconnect')) : 
+              'Unknown'),
           lastServer: player.lastServer || 'Unknown',
           playtime: player.playtime ? `${player.playtime} hours` : 'Not tracked',
-          social: player.social || 'Medium',
-          gameplay: player.gameplay || 'Medium',
+          social: calculatedStatus.social,
+          gameplay: calculatedStatus.gameplay,
           punished: status !== 'Active',
           previousNames: previousNames,
           warnings: warnings,
@@ -338,64 +666,274 @@ const PlayerDetailPage = () => {
         }));
       }
     }
-  }, [player]);
+  }, [player, punishmentTypesByCategory, settingsData, linkedAccountsData]);
 
-  // Fetch punishment types from settings
-  const { data: settingsData, isLoading: isLoadingSettings } = useSettings();
-  
-  // Parse punishment types from settings
-  const [punishmentTypesByCategory, setPunishmentTypesByCategory] = useState<{
-    Administrative: PunishmentType[], 
-    Social: PunishmentType[], 
-    Gameplay: PunishmentType[]
-  }>({
-    Administrative: [],
-    Social: [],
-    Gameplay: []
-  });
-  
-  // Process settings data to extract punishment types by category
+  // Trigger linked account search when player data is loaded
   useEffect(() => {
-    if (settingsData?.settings?.punishmentTypes) {
-      try {
-        // Parse punishment types if they're stored as a string
-        const typesData = typeof settingsData.settings.punishmentTypes === 'string' 
-          ? JSON.parse(settingsData.settings.punishmentTypes) 
-          : settingsData.settings.punishmentTypes;
-          
-        if (Array.isArray(typesData)) {
-          // Group punishment types by category
-          const categorized = {
-            Administrative: typesData.filter(pt => pt.category === 'Administrative').sort((a, b) => a.ordinal - b.ordinal),
-            Social: typesData.filter(pt => pt.category === 'Social').sort((a, b) => a.ordinal - b.ordinal),
-            Gameplay: typesData.filter(pt => pt.category === 'Gameplay').sort((a, b) => a.ordinal - b.ordinal)
-          };
-          
-          // Punishment types categorized
-          
-          setPunishmentTypesByCategory(categorized);
-        }
-      } catch (error) {
-        console.error("Error parsing punishment types:", error);
-      }
+    if (player && playerId) {
+      triggerLinkedAccountSearch();
     }
-  }, [settingsData]);
+  }, [player, playerId, triggerLinkedAccountSearch]);
 
+  // Mock function to simulate ban search results
+  const searchBans = (query: string) => {
+    if (!query || query.length < 2) {
+      setBanSearchResults([]);
+      return;
+    }
+    
+    // Simulate API call delay
+    setTimeout(() => {
+      // Mock data for demonstration
+      const results = [
+        { id: 'ban-123', player: 'MineKnight45' },
+        { id: 'ban-456', player: 'DiamondMiner99' },
+        { id: 'ban-789', player: 'CraftMaster21' },
+        { id: 'ban-012', player: 'StoneBlazer76' }
+      ].filter(item => 
+        item.id.toLowerCase().includes(query.toLowerCase()) || 
+        item.player.toLowerCase().includes(query.toLowerCase())
+      );
+      
+      setBanSearchResults(results);
+      setShowBanSearchResults(results.length > 0);
+    }, 300);
+  };
+
+  // Function to handle ticket navigation
+  const handleTicketClick = (ticketId: string) => {
+    navigate(`/panel/tickets/${ticketId}`);
+  };
+
+  // Get punishment ordinal from punishment type data
+  const getPunishmentOrdinal = (punishmentName: string): number => {
+    // Search in all categories for the punishment type
+    const allTypes = [
+      ...punishmentTypesByCategory.Administrative,
+      ...punishmentTypesByCategory.Social,
+      ...punishmentTypesByCategory.Gameplay
+    ];
+    
+    const punishmentType = allTypes.find(type => type.name === punishmentName);
+    return punishmentType ? punishmentType.ordinal : -1;
+  };
+
+  // Convert duration to milliseconds
+  const durationToMilliseconds = (duration: { value: number; unit: string }) => {
+    const { value, unit } = duration;
+    
+    switch (unit) {
+      case 'seconds':
+        return value * 1000;
+      case 'minutes':
+        return value * 60 * 1000;
+      case 'hours':
+        return value * 60 * 60 * 1000;
+      case 'days':
+        return value * 24 * 60 * 60 * 1000;
+      case 'weeks':
+        return value * 7 * 24 * 60 * 60 * 1000;
+      case 'months':
+        return value * 30 * 24 * 60 * 60 * 1000; // Approximate month
+      default:
+        return 0;
+    }
+  };
+
+  // Handler for applying punishment
+  const handleApplyPunishment = async () => {
+    if (!playerInfo.selectedPunishmentCategory) {
+      toast({
+        title: "Missing information",
+        description: "Please select a punishment type",
+        variant: "destructive"
+      });
+      return;
+    }
+
+    try {
+      setIsApplyingPunishment(true);
+      
+      // Get the punishment type ordinal
+      const typeOrdinal = getPunishmentOrdinal(playerInfo.selectedPunishmentCategory);
+      if (typeOrdinal === -1) {
+        throw new Error(`Unknown punishment type: ${playerInfo.selectedPunishmentCategory}`);
+      }
+      
+      // Determine severity and status based on punishment type
+      let severity = null;
+      let status = null;
+      let data: { [key: string]: any } = {};
+      
+      // For non-administrative punishments that use severity/status
+      if (!['Kick', 'Manual Mute', 'Manual Ban', 'Security Ban', 'Linked Ban', 'Blacklist'].includes(playerInfo.selectedPunishmentCategory)) {
+        if (playerInfo.selectedSeverity) {
+          severity = playerInfo.selectedSeverity;
+        }
+        if (playerInfo.selectedOffenseLevel) {
+          status = playerInfo.selectedOffenseLevel;
+        }
+      }
+      
+      // Handle duration for manual punishments
+      if (['Manual Mute', 'Manual Ban'].includes(playerInfo.selectedPunishmentCategory)) {
+        if (playerInfo.isPermanent) {
+          data.duration = -1; // Permanent
+        } else if (playerInfo.duration) {
+          data.duration = durationToMilliseconds(playerInfo.duration);
+        }
+      }
+      
+      // Add other data fields
+      if (playerInfo.altBlocking) data.altBlocking = true;
+      if (playerInfo.statWiping) data.statWiping = true;
+      if (playerInfo.banLinkedAccounts) data.banLinkedAccounts = true;
+      if (playerInfo.wipeAccountAfterExpiry) data.wipeAccountAfterExpiry = true;
+      if (playerInfo.kickSameIP) data.kickSameIP = true;
+      if (playerInfo.silentPunishment) data.silent = true;
+      
+      // Set severity and status in data as well
+      if (severity) data.severity = severity;
+      if (status) data.status = status;
+      
+      // Prepare notes array
+      const notes: Array<{text: string; issuerName: string; date?: string}> = [];
+      
+      // For manual punishments that need a reason, make the reason the first note
+      const needsReasonAsFirstNote = ['Kick', 'Manual Mute', 'Manual Ban'].includes(playerInfo.selectedPunishmentCategory);
+      if (needsReasonAsFirstNote && playerInfo.reason?.trim()) {
+        notes.push({
+          text: playerInfo.reason.trim(),
+          issuerName: user?.username || 'Admin'
+        });
+      }
+      
+      // Add staff notes as additional notes
+      if (playerInfo.staffNotes?.trim()) {
+        notes.push({
+          text: playerInfo.staffNotes.trim(),
+          issuerName: user?.username || 'Admin'
+        });
+      }
+      
+      // Prepare attached ticket IDs
+      const attachedTicketIds: string[] = [];
+      if (playerInfo.attachedReports) {
+        playerInfo.attachedReports.forEach(report => {
+          if (report && report !== 'ticket-new') {
+            // Extract ticket ID from format like "ticket-123"
+            const ticketMatch = report.match(/ticket-(\w+)/);
+            if (ticketMatch) {
+              attachedTicketIds.push(ticketMatch[1]);
+            }
+          }
+        });
+      }
+      
+      // Prepare evidence array
+      const evidence = playerInfo.evidenceList?.filter(e => e.trim()).map(e => e.trim()) || [];
+      
+      // Prepare punishment data in the format expected by the server
+      const punishmentData: { [key: string]: any } = {
+        issuerName: user?.username || 'Admin',
+        type_ordinal: typeOrdinal,
+        notes: notes,
+        evidence: evidence,
+        attachedTicketIds: attachedTicketIds,
+        severity: severity,
+        status: status,
+        data: data
+      };
+      
+      // Call the API
+      await applyPunishment.mutateAsync({
+        uuid: playerId,
+        punishmentData
+      });
+      
+      // Refetch player data
+      refetch();
+      
+      // Show success message
+      toast({
+        title: "Punishment applied",
+        description: `Successfully applied ${playerInfo.selectedPunishmentCategory} to ${playerInfo.username}`
+      });
+      
+      // Reset the punishment form
+      setPlayerInfo(prev => ({
+        ...prev,
+        selectedPunishmentCategory: undefined,
+        selectedSeverity: undefined,
+        selectedOffenseLevel: undefined,
+        duration: undefined,
+        isPermanent: false,
+        reason: '',
+        evidence: '',
+        evidenceList: [],
+        attachedReports: [],
+        banLinkedAccounts: false,
+        wipeAccountAfterExpiry: false,
+        kickSameIP: false,
+        banToLink: '',
+        staffNotes: '',
+        silentPunishment: false,
+        altBlocking: false,
+        statWiping: false
+      }));
+      
+    } catch (error) {
+      console.error('Error applying punishment:', error);
+      toast({
+        title: "Failed to apply punishment",
+        description: error instanceof Error ? error.message : "An unknown error occurred",
+        variant: "destructive"
+      });
+    } finally {
+      setIsApplyingPunishment(false);
+    }
+  };
+
+  // Show loading state
   if (isLoading || isLoadingSettings) {
     return (
-      <div className="container py-8 flex flex-col items-center justify-center min-h-[50vh]">
-        <Loader2 className="h-10 w-10 animate-spin text-primary mb-4" />
-        <p className="text-muted-foreground">Loading player data...</p>
+      <div className="w-full px-4 py-4 pb-20">
+        <div className="flex items-center mb-4">
+          <Button 
+            variant="ghost" 
+            size="icon" 
+            onClick={() => navigate('/panel/lookup')}
+            className="mr-2"
+          >
+            <ArrowLeft className="h-5 w-5" />
+          </Button>
+          <h1 className="text-2xl font-bold">Loading Player...</h1>
+        </div>
+        <div className="flex items-center justify-center h-64">
+          <Loader2 className="h-8 w-8 animate-spin text-primary" />
+        </div>
       </div>
     );
   }
 
+  // Show error state
   if (error || !player) {
     return (
-      <div className="container py-8 flex flex-col items-center justify-center min-h-[50vh]">
-        <div className="text-center space-y-4">
-          <p className="text-destructive font-medium">Could not find player data.</p>
-          <Button onClick={() => navigate("/lookup")}>Return to Lookup</Button>
+      <div className="w-full px-4 py-4 pb-20">
+        <div className="flex items-center mb-4">
+          <Button 
+            variant="ghost" 
+            size="icon" 
+            onClick={() => navigate('/panel/lookup')}
+            className="mr-2"
+          >
+            <ArrowLeft className="h-5 w-5" />
+          </Button>
+          <h1 className="text-2xl font-bold">Player Not Found</h1>
+        </div>
+        <div className="flex flex-col items-center justify-center h-64">
+          <p className="text-destructive">Could not find player data.</p>
+          <Button onClick={() => navigate("/panel/lookup")} className="mt-4">Return to Lookup</Button>
         </div>
       </div>
     );
@@ -407,7 +945,7 @@ const PlayerDetailPage = () => {
         <Button 
           variant="ghost" 
           size="icon" 
-          onClick={() => navigate('/lookup')}
+          onClick={() => navigate('/panel/lookup')}
           className="mr-2"
         >
           <ArrowLeft className="h-5 w-5" />
@@ -416,72 +954,103 @@ const PlayerDetailPage = () => {
       </div>
 
       <div className="space-y-4">
-        <div className="bg-background-lighter p-4 rounded-lg border border-border">
-          <div className="flex items-start gap-4">
-            <div className="h-16 w-16 bg-muted rounded-lg flex items-center justify-center">
-              <span className="text-2xl font-bold text-primary">{playerInfo.username.substring(0, 2)}</span>
-            </div>
-            <div className="flex-1 min-w-0">
-              <h5 className="text-lg font-medium">{playerInfo.username}</h5>
-              <div className="flex flex-wrap gap-2 mt-1">
-                <Badge variant="outline" className={playerInfo.status === 'Online' ? 
-                  "bg-success/10 text-success border-success/20" : 
-                  "bg-muted/50 text-muted-foreground border-muted/30"
-                }>
-                  {playerInfo.status === 'Online' ? 
-                    "Online" : 
-                    "Offline"
-                  }
-                </Badge>
-                <Badge variant="outline" className={
-                  playerInfo.social.toLowerCase() === 'low' ? 
-                    "bg-success/10 text-success border-success/20" : 
-                  playerInfo.social.toLowerCase() === 'medium' ? 
-                    "bg-warning/10 text-warning border-warning/20" : 
-                    "bg-destructive/10 text-destructive border-destructive/20"
-                }>
-                  Social: {playerInfo.social.toLowerCase() === 'low' ? 'lenient' : playerInfo.social}
-                </Badge>
-                <Badge variant="outline" className={
-                  playerInfo.gameplay.toLowerCase() === 'low' ? 
-                    "bg-success/10 text-success border-success/20" : 
-                  playerInfo.gameplay.toLowerCase() === 'medium' ? 
-                    "bg-warning/10 text-warning border-warning/20" : 
-                    "bg-destructive/10 text-destructive border-destructive/20"
-                }>
-                  Gameplay: {playerInfo.gameplay.toLowerCase() === 'low' ? 'lenient' : playerInfo.gameplay}
-                </Badge>
-                {playerInfo.punished && (
-                  <Badge variant="outline" className="bg-destructive/10 text-destructive border-destructive/20">
-                    Currently Punished
-                  </Badge>
+        <div className="pt-2">
+          <div className="bg-background-lighter p-4 rounded-lg">
+            <div className="flex items-start gap-4">
+              <div className="relative h-16 w-16 bg-muted rounded-lg flex items-center justify-center overflow-hidden">
+                {playerId && !avatarError ? (
+                  <>
+                    <img 
+                      src={`/api/panel/players/avatar/${playerId}?size=64&overlay=true`}
+                      alt={`${playerInfo.username || 'Player'} Avatar`}
+                      className={`w-full h-full object-cover transition-opacity duration-200 ${avatarLoading ? 'opacity-0' : 'opacity-100'}`}
+                      onError={() => {
+                        setAvatarError(true);
+                        setAvatarLoading(false);
+                      }}
+                      onLoad={() => {
+                        setAvatarError(false);
+                        setAvatarLoading(false);
+                      }}
+                    />
+                    {avatarLoading && (
+                      <div className="absolute inset-0 flex items-center justify-center">
+                        <span className="text-2xl font-bold text-primary">{playerInfo.username?.substring(0, 2) || '??'}</span>
+                      </div>
+                    )}
+                  </>
+                ) : (
+                  <span className="text-2xl font-bold text-primary">{playerInfo.username?.substring(0, 2) || '??'}</span>
                 )}
               </div>
-              
-              <div className="grid grid-cols-2 gap-x-4 gap-y-2 mt-4 text-sm">
-                <div>
-                  <span className="text-muted-foreground">Region:</span>
-                  <span className="ml-1">{playerInfo.region}</span>
+              <div className="flex-1 min-w-0">
+                <h5 className="text-lg font-medium">{playerInfo.username || 'Unknown'}</h5>
+                <div className="flex flex-wrap gap-2 mt-1">
+                  <Badge variant="outline" className={playerInfo.status === 'Online' ? 
+                    "bg-success/10 text-success border-success/20" : 
+                    "bg-muted/50 text-muted-foreground border-muted/30"
+                  }>
+                    {playerInfo.status === 'Online' ? 
+                      "Online" : 
+                      "Offline"
+                    }
+                  </Badge>
+                  <Badge variant="outline" className={
+                    playerInfo.social.toLowerCase() === 'low' ? 
+                      "bg-success/10 text-success border-success/20" : 
+                    playerInfo.social.toLowerCase() === 'medium' ? 
+                      "bg-warning/10 text-warning border-warning/20" : 
+                      "bg-destructive/10 text-destructive border-destructive/20"
+                  }>
+                    Social: {playerInfo.social.toLowerCase()}
+                  </Badge>
+                  <Badge variant="outline" className={
+                    playerInfo.gameplay.toLowerCase() === 'low' ? 
+                      "bg-success/10 text-success border-success/20" : 
+                    playerInfo.gameplay.toLowerCase() === 'medium' ? 
+                      "bg-warning/10 text-warning border-warning/20" : 
+                      "bg-destructive/10 text-destructive border-destructive/20"
+                  }>
+                    Gameplay: {playerInfo.gameplay.toLowerCase()}
+                  </Badge>
+                  {playerInfo.punished && (
+                    <Badge variant="outline" className="bg-destructive/10 text-destructive border-destructive/20">
+                      Currently Punished
+                    </Badge>
+                  )}
                 </div>
-                <div>
-                  <span className="text-muted-foreground">Country:</span>
-                  <span className="ml-1">{playerInfo.country}</span>
-                </div>
-                <div>
-                  <span className="text-muted-foreground">First Join:</span>
-                  <span className="ml-1">{playerInfo.firstJoined}</span>
-                </div>
-                <div>
-                  <span className="text-muted-foreground">Last Join:</span>
-                  <span className="ml-1">{playerInfo.lastOnline}</span>
-                </div>
-                <div>
-                  <span className="text-muted-foreground">Playtime:</span>
-                  <span className="ml-1">{playerInfo.playtime}</span>
-                </div>
-                <div>
-                  <span className="text-muted-foreground">Last Server:</span>
-                  <span className="ml-1">{playerInfo.lastServer}</span>
+                
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-x-4 gap-y-2 mt-4 text-sm">
+                  <div>
+                    <span className="text-muted-foreground">Region:</span>
+                    <span className="ml-1">{playerInfo.region}</span>
+                    {playerInfo.region && playerInfo.region !== 'Unknown' && (
+                      <span className="text-xs text-muted-foreground ml-1">(from latest IP)</span>
+                    )}
+                  </div>
+                  <div>
+                    <span className="text-muted-foreground">Country:</span>
+                    <span className="ml-1">{playerInfo.country}</span>
+                    {playerInfo.country && playerInfo.country !== 'Unknown' && (
+                      <span className="text-xs text-muted-foreground ml-1">(from latest IP)</span>
+                    )}
+                  </div>
+                  <div>
+                    <span className="text-muted-foreground">First Join:</span>
+                    <span className="ml-1">{playerInfo.firstJoined}</span>
+                  </div>
+                  <div>
+                    <span className="text-muted-foreground">Last Join:</span>
+                    <span className="ml-1">{playerInfo.lastOnline}</span>
+                  </div>
+                  <div>
+                    <span className="text-muted-foreground">Playtime:</span>
+                    <span className="ml-1">{playerInfo.playtime}</span>
+                  </div>
+                  <div>
+                    <span className="text-muted-foreground">Last Server:</span>
+                    <span className="ml-1">{playerInfo.lastServer}</span>
+                  </div>
                 </div>
               </div>
             </div>
@@ -491,27 +1060,27 @@ const PlayerDetailPage = () => {
         <Tabs defaultValue="history" className="w-full" onValueChange={setActiveTab}>
           <TabsList className="grid grid-cols-6 gap-1 px-1">
             <TabsTrigger value="history" className="text-xs py-2">
-              <History className="h-3.5 w-3.5 mr-1.5" />
+              <History className="h-3.5 w-3.5 mr-1.5 hidden md:block" />
               History
             </TabsTrigger>
             <TabsTrigger value="linked" className="text-xs py-2">
-              <Link2 className="h-3.5 w-3.5 mr-1.5" />
-              Linked
+              <Link2 className="h-3.5 w-3.5 mr-1.5 flex-shrink-0 hidden md:block" />
+              Connected
             </TabsTrigger>
             <TabsTrigger value="notes" className="text-xs py-2">
-              <StickyNote className="h-3.5 w-3.5 mr-1.5" />
+              <StickyNote className="h-3.5 w-3.5 mr-1.5 hidden md:block" />
               Notes
             </TabsTrigger>
             <TabsTrigger value="tickets" className="text-xs py-2">
-              <Ticket className="h-3.5 w-3.5 mr-1.5" />
+              <Ticket className="h-3.5 w-3.5 mr-1.5 hidden md:block" />
               Tickets
             </TabsTrigger>
             <TabsTrigger value="names" className="text-xs py-2">
-              <UserRound className="h-3.5 w-3.5 mr-1.5" />
+              <UserRound className="h-3.5 w-3.5 mr-1.5 hidden md:block" />
               Names
             </TabsTrigger>
             <TabsTrigger value="punishment" className="text-xs py-2">
-              <Shield className="h-3.5 w-3.5 mr-1.5" />
+              <Shield className="h-3.5 w-3.5 mr-1.5 hidden md:block" />
               Punish
             </TabsTrigger>
           </TabsList>
@@ -519,23 +1088,755 @@ const PlayerDetailPage = () => {
           <TabsContent value="history" className="space-y-2 mx-1 mt-3">
             <h4 className="font-medium">Player History</h4>
             <div className="space-y-2">
-              {playerInfo.warnings.length > 0 ? playerInfo.warnings.map((warning, index) => (
-                <div 
-                  key={index} 
-                  className="bg-warning/10 border-l-4 border-warning p-3 rounded-r-lg"
-                >
-                  <div className="flex justify-between items-start">
-                    <div>
-                      <Badge variant="outline" className="bg-warning/10 text-warning border-warning/20">
-                        {warning.type}
-                      </Badge>
-                      <p className="text-sm mt-1">{warning.reason}</p>
+              {playerInfo.warnings.length > 0 ? playerInfo.warnings.map((warning, index) => {
+                const isExpanded = expandedPunishments.has(warning.id || `warning-${index}`);
+                const isPunishment = warning.id && (
+                  warning.severity || 
+                  warning.status || 
+                  warning.evidence?.length || 
+                  warning.notes?.length ||
+                  warning.type === 'Linked Ban' ||
+                  (warning.type && ['Kick', 'Manual Mute', 'Manual Ban', 'Security Ban', 'Blacklist'].includes(warning.type))
+                );
+                
+                // Calculate effective status and expiry based on modifications
+                const effectiveState = getEffectivePunishmentState(warning);
+                
+                return (
+                  <div 
+                    key={warning.id || `warning-${index}`} 
+                    data-punishment-id={warning.id}
+                    className={`${
+                      isPunishmentCurrentlyActive(warning, effectiveState) ? 'bg-muted/30 border-l-4 border-red-500' : 
+                      'bg-muted/30'
+                    } p-3 rounded-lg transition-all duration-300`}
+                  >
+                    <div className="flex justify-between items-start">
+                      <div className="flex-1">
+                        <div className="flex items-center gap-2 mb-1">
+                          {/* Show punishment status: Active, Inactive, or Unstarted */}
+                          {isPunishment && (() => {
+                            // Check if punishment is unstarted (started field is null/undefined)
+                            if (!warning.started) {
+                              return (
+                                <Badge variant="outline" className="text-xs bg-yellow-100 text-yellow-800 border-yellow-300">
+                                  Unstarted
+                                </Badge>
+                              );
+                            }
+                            
+                            // Check if punishment is inactive (based on effective state)
+                            const effectiveState = getEffectivePunishmentState(warning);
+                            const isInactive = !effectiveState.effectiveActive;
+                            
+                            if (isInactive) {
+                              return (
+                                <Badge variant="outline" className="text-xs bg-gray-100 text-gray-800 border-gray-300">
+                                  Inactive
+                                </Badge>
+                              );
+                            }
+                            
+                            // Punishment is active
+                            return (
+                              <Badge variant="outline" className="text-xs bg-green-100 text-green-800 border-green-300">
+                                Active
+                              </Badge>
+                            );
+                          })()}
+                          <Badge variant="outline" className="bg-gray-50 text-gray-900 border-gray-300">
+                            {warning.type}
+                          </Badge>
+                          {warning.altBlocking && (
+                            <Badge variant="outline" className="text-xs bg-orange-100 text-orange-800 border-orange-200">
+                              Alt-blocking
+                            </Badge>
+                          )}
+                          {isValidBadgeValue(warning.severity) && (
+                            <Badge variant="outline" className={`text-xs ${
+                              (warning.severity && warning.severity.toLowerCase() === 'low') || (warning.severity && warning.severity.toLowerCase() === 'lenient') ? 
+                                'bg-green-100 text-green-800 border-green-300' :
+                              (warning.severity && warning.severity.toLowerCase() === 'regular') || (warning.severity && warning.severity.toLowerCase() === 'medium') ?
+                                'bg-orange-100 text-orange-800 border-orange-300' :
+                                'bg-red-100 text-red-800 border-red-300'
+                            }`}>
+                              {warning.severity}
+                            </Badge>
+                          )}
+                          {isValidBadgeValue(warning.status) && (
+                            <Badge variant="outline" className={`text-xs ${
+                              (warning.status && warning.status.toLowerCase() === 'low') || (warning.status && warning.status.toLowerCase() === 'first') ? 
+                                'bg-green-100 text-green-800 border-green-300' :
+                              warning.status && warning.status.toLowerCase() === 'medium' ?
+                                'bg-orange-100 text-orange-800 border-orange-300' :
+                                'bg-red-100 text-red-800 border-red-300'
+                            }`}>
+                              {warning.status}
+                            </Badge>
+                          )}
+                        </div>
+                        <div className="text-sm mt-1 space-y-1">
+                          <p>{warning.reason}</p>
+                          
+                          {/* Show expiry/duration information */}
+                          <div className="text-xs text-muted-foreground">
+                            {warning.date} by {warning.by}
+                            {warning.expires && (
+                              <span className="ml-2">
+                                • Expires: {formatDateWithTime(warning.expires)}
+                              </span>
+                            )}
+                          </div>
+                        </div>
+                      </div>
+                      
+                      {/* Expand/Collapse button for punishments with additional details */}
+                      {isPunishment && (warning.evidence?.length || warning.notes?.length || warning.attachedTicketIds?.length || effectiveState.hasModifications) && (
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          className="p-1 h-6 w-6"
+                          onClick={() => {
+                            const id = warning.id || `warning-${index}`;
+                            setExpandedPunishments(prev => {
+                              const newSet = new Set(prev);
+                              if (newSet.has(id)) {
+                                newSet.delete(id);
+                              } else {
+                                newSet.add(id);
+                              }
+                              return newSet;
+                            });
+                          }}
+                        >
+                          {isExpanded ? (
+                            <ChevronDown className="h-4 w-4" />
+                          ) : (
+                            <ChevronRight className="h-4 w-4" />
+                          )}
+                        </Button>
+                      )}
                     </div>
-                    <span className="text-xs text-muted-foreground">{warning.date}</span>
+                    
+                    {/* Expanded details */}
+                    {isExpanded && isPunishment && (
+                      <div className="mt-3 pt-3 border-t border-border/30 space-y-3">
+                        {/* Evidence */}
+                        <div>
+                          <div className="flex items-center justify-between mb-1">
+                            <p className="text-xs font-medium text-muted-foreground">Evidence:</p>
+                          </div>
+                          {warning.evidence && warning.evidence.length > 0 ? (
+                            <ul className="text-xs space-y-2">
+                              {warning.evidence.map((evidenceItem, idx) => {
+                                // Handle both legacy string format and new object format
+                                let evidenceText = '';
+                                let issuerInfo = '';
+                                let evidenceType = 'text';
+                                let fileUrl = '';
+                                let fileName = '';
+                                let fileType = '';
+                                
+                                if (typeof evidenceItem === 'string') {
+                                  // Legacy string format
+                                  evidenceText = evidenceItem;
+                                  issuerInfo = 'By: System on Unknown';
+                                  evidenceType = evidenceItem.match(/^https?:\/\//) ? 'url' : 'text';
+                                } else if (typeof evidenceItem === 'object' && evidenceItem.text) {
+                                  // New object format
+                                  evidenceText = evidenceItem.text;
+                                  const issuer = evidenceItem.issuerName || 'System';
+                                  const date = evidenceItem.date ? formatDateWithTime(evidenceItem.date) : 'Unknown';
+                                  issuerInfo = `By: ${issuer} on ${date}`;
+                                  evidenceType = evidenceItem.type || 'text';
+                                  fileUrl = evidenceItem.fileUrl || '';
+                                  fileName = evidenceItem.fileName || '';
+                                  fileType = evidenceItem.fileType || '';
+                                }
+                                
+                                // Helper function to detect media type from URL
+                                const getMediaType = (url: string) => {
+                                  if (url.match(/\.(jpeg|jpg|gif|png|webp)$/i)) {
+                                    return 'image';
+                                  } else if (url.match(/\.(mp4|webm|ogg)$/i)) {
+                                    return 'video';
+                                  } else if (url.match(/^https?:\/\//)) {
+                                    return 'link';
+                                  }
+                                  return 'link';
+                                };
+                                
+                                // For file evidence, use the file URL for media detection
+                                const displayUrl = evidenceType === 'file' ? fileUrl : evidenceText;
+                                const mediaType = (evidenceType === 'url' || evidenceType === 'file') ? getMediaType(displayUrl) : 'text';
+                                
+                                return (
+                                  <li key={idx} className="bg-muted/20 p-2 rounded text-xs border-l-2 border-blue-500">
+                                    <div className="flex items-start">
+                                      <FileText className="h-3 w-3 mr-2 mt-0.5 text-muted-foreground flex-shrink-0" />
+                                      <div className="flex-1 min-w-0">
+                                        {evidenceType === 'file' ? (
+                                          <div className="space-y-2">
+                                            <div className="flex items-center gap-2">
+                                              <span className="font-medium">File:</span>
+                                              <a 
+                                                href={fileUrl} 
+                                                target="_blank" 
+                                                rel="noopener noreferrer"
+                                                className="text-blue-600 hover:text-blue-800 underline flex items-center gap-1"
+                                              >
+                                                <Upload className="h-3 w-3" />
+                                                {fileName || 'Unknown file'}
+                                              </a>
+                                            </div>
+                                            {evidenceText && evidenceText !== fileName && (
+                                              <div className="text-muted-foreground">{evidenceText}</div>
+                                            )}
+                                            {mediaType === 'image' && (
+                                              <img 
+                                                src={fileUrl} 
+                                                alt="Evidence" 
+                                                className="max-w-full max-h-48 rounded border cursor-pointer"
+                                                style={{ maxWidth: '300px' }}
+                                                onClick={() => window.open(fileUrl, '_blank')}
+                                              />
+                                            )}
+                                            {mediaType === 'video' && (
+                                              <video 
+                                                src={fileUrl} 
+                                                controls 
+                                                className="max-w-full max-h-48 rounded border"
+                                                style={{ maxWidth: '300px' }}
+                                              />
+                                            )}
+                                          </div>
+                                        ) : mediaType === 'image' ? (
+                                          <img 
+                                            src={evidenceText} 
+                                            alt="Evidence" 
+                                            className="max-w-full max-h-48 rounded border"
+                                            style={{ maxWidth: '300px' }}
+                                          />
+                                        ) : mediaType === 'video' ? (
+                                          <video 
+                                            src={evidenceText} 
+                                            controls 
+                                            className="max-w-full max-h-48 rounded border"
+                                            style={{ maxWidth: '300px' }}
+                                          />
+                                        ) : evidenceType === 'url' ? (
+                                          <a 
+                                            href={evidenceText} 
+                                            target="_blank" 
+                                            rel="noopener noreferrer"
+                                            className="text-blue-600 hover:text-blue-800 underline break-all"
+                                          >
+                                            {evidenceText}
+                                          </a>
+                                        ) : (
+                                          <span className="break-all">{evidenceText}</span>
+                                        )}
+                                        <p className="text-muted-foreground text-xs mt-1">
+                                          {issuerInfo}
+                                        </p>
+                                      </div>
+                                    </div>
+                                  </li>
+                                );
+                              })}
+                            </ul>
+                          ) : (
+                            <p className="text-xs text-muted-foreground">No evidence added</p>
+                          )}
+                        </div>
+                        
+                        {/* Staff Notes */}
+                        {warning.notes && warning.notes.length > 0 && (
+                          <div>
+                            <p className="text-xs font-medium text-muted-foreground mb-1">Staff Notes:</p>
+                            <ul className="text-xs space-y-1">
+                              {warning.notes.map((note, idx) => {
+                                // For manual punishments, skip the first note as it's displayed as the reason
+                                const isManualPunishment = ['Kick', 'Manual Mute', 'Manual Ban'].includes(warning.type);
+                                if (isManualPunishment && idx === 0) {
+                                  return null; // Skip first note for manual punishments
+                                }
+                                
+                                const noteText = typeof note === 'string' ? note : note.text;
+                                const noteIssuer = typeof note === 'string' ? 'Unknown' : note.issuerName;
+                                const noteDate = typeof note === 'string' ? 'Unknown' : formatDateWithTime(note.date);
+                                
+                                return (
+                                  <li key={idx} className="bg-muted/20 p-2 rounded text-xs">
+                                    <p className="mb-1">{noteText}</p>
+                                    <p className="text-muted-foreground text-xs">
+                                      By: {noteIssuer} on {noteDate}
+                                    </p>
+                                  </li>
+                                );
+                              }).filter(Boolean)}
+                            </ul>
+                          </div>
+                        )}
+                        
+                        {/* Attached Tickets */}
+                        {warning.attachedTicketIds && warning.attachedTicketIds.length > 0 && (
+                          <div>
+                            <p className="text-xs font-medium text-muted-foreground mb-1">Attached Tickets:</p>
+                            <div className="flex flex-wrap gap-1">
+                              {warning.attachedTicketIds.map((ticketId, idx) => (
+                                <Button
+                                  key={idx}
+                                  variant="outline"
+                                  size="sm"
+                                  className="h-6 px-2 text-xs"
+                                  onClick={() => {
+                                    // Navigate to ticket detail page
+                                    const urlSafeTicketId = ticketId.replace('#', 'ID-');
+                                    navigate(`/panel/tickets/${urlSafeTicketId}`);
+                                  }}
+                                >
+                                  <Ticket className="h-3 w-3 mr-1" />
+                                  {ticketId}
+                                </Button>
+                              ))}
+                            </div>
+                          </div>
+                        )}
+                        
+                        {/* Modification History */}
+                        {effectiveState.hasModifications && (
+                          <div>
+                            <p className="text-xs font-medium text-muted-foreground mb-1">Modification History:</p>
+                            <div className="space-y-1">
+                              {effectiveState.modifications.map((mod: any, idx: number) => (
+                                <div key={idx} className="bg-muted/20 p-2 rounded text-xs border-l-2 border-blue-500">
+                                  <div className="flex justify-between items-start mb-1">
+                                    <Badge variant="outline" className="text-xs bg-blue-500/10 text-blue-700 border-blue-500/30">
+                                      {mod.type.replace(/_/g, ' ').toLowerCase().replace(/\b\w/g, (l: string) => l.toUpperCase())}
+                                    </Badge>
+                                    <span className="text-muted-foreground text-xs">
+                                      {formatDateWithTime(mod.issued)}
+                                    </span>
+                                  </div>
+                                  {mod.reason && (
+                                    <p className="mb-1">{mod.reason}</p>
+                                  )}
+                                  {mod.effectiveDuration !== undefined && (
+                                    <p className="text-muted-foreground">
+                                      New duration: {(mod.effectiveDuration === 0 || mod.effectiveDuration === -1 || mod.effectiveDuration < 0) ? 'Permanent' : formatDuration(mod.effectiveDuration)}
+                                    </p>
+                                  )}
+                                  <p className="text-muted-foreground text-xs">
+                                    By: {mod.issuerName}
+                                  </p>
+                                </div>
+                              ))}
+                            </div>
+                          </div>
+                        )}
+                        
+                        {/* Action buttons - only show for punishments with IDs */}
+                        {warning.id && (
+                          <div className="flex gap-2 pt-2 border-t border-border/30">
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              className="text-xs h-7"
+                              onClick={() => {
+                                const id = warning.id || `warning-${index}`;
+                                setPlayerInfo(prev => ({
+                                  ...prev,
+                                  isAddingPunishmentNote: true,
+                                  punishmentNoteTarget: id,
+                                  newPunishmentNote: ''
+                                }));
+                              }}
+                            >
+                              <StickyNote className="h-3 w-3 mr-1" />
+                              Add Note
+                            </Button>
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              className="text-xs h-7"
+                              onClick={() => {
+                                const id = warning.id || `warning-${index}`;
+                                setPlayerInfo(prev => ({
+                                  ...prev,
+                                  isAddingPunishmentEvidence: true,
+                                  punishmentEvidenceTarget: id,
+                                  newPunishmentEvidence: ''
+                                }));
+                              }}
+                            >
+                              <FileText className="h-3 w-3 mr-1" />
+                              Add Evidence
+                            </Button>
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              className="text-xs h-7"
+                              onClick={() => {
+                                const id = warning.id || `warning-${index}`;
+                                setPlayerInfo(prev => ({
+                                  ...prev,
+                                  isModifyingPunishment: true,
+                                  modifyPunishmentTarget: id,
+                                  modifyPunishmentAction: 'modify'
+                                }));
+                              }}
+                            >
+                              <Settings className="h-3 w-3 mr-1" />
+                              Modify
+                            </Button>
+                          </div>
+                        )}
+                        
+                        {/* Add Note Form */}
+                        {warning.id && playerInfo.isAddingPunishmentNote && playerInfo.punishmentNoteTarget === (warning.id || `warning-${index}`) && (
+                          <div className="mt-3 p-3 bg-muted/20 rounded-lg border">
+                            <p className="text-xs font-medium mb-2">Add Note to Punishment</p>
+                            <textarea
+                              className="w-full rounded-md border border-border bg-background px-3 py-2 text-sm h-16 resize-none"
+                              placeholder="Enter your note here..."
+                              value={playerInfo.newPunishmentNote || ''}
+                              onChange={(e) => setPlayerInfo(prev => ({...prev, newPunishmentNote: e.target.value}))}
+                            />
+                            <div className="flex justify-end gap-2 mt-2">
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                onClick={() => setPlayerInfo(prev => ({
+                                  ...prev,
+                                  isAddingPunishmentNote: false,
+                                  punishmentNoteTarget: null,
+                                  newPunishmentNote: ''
+                                }))}
+                              >
+                                Cancel
+                              </Button>
+                              <Button
+                                size="sm"
+                                disabled={!playerInfo.newPunishmentNote?.trim()}
+                                onClick={async () => {
+                                  if (!playerInfo.newPunishmentNote?.trim()) return;
+                                  
+                                  try {
+                                    await addPunishmentNote.mutateAsync({
+                                      uuid: playerId,
+                                      punishmentId: warning.id!,
+                                      noteText: playerInfo.newPunishmentNote
+                                    });
+                                    
+                                    toast({
+                                      title: "Note added",
+                                      description: "Punishment note has been added successfully"
+                                    });
+                                    
+                                    // Reset form and refetch
+                                    setPlayerInfo(prev => ({
+                                      ...prev,
+                                      isAddingPunishmentNote: false,
+                                      punishmentNoteTarget: null,
+                                      newPunishmentNote: ''
+                                    }));
+                                    
+                                    refetch();
+                                  } catch (error) {
+                                    toast({
+                                      title: "Failed to add note",
+                                      description: error instanceof Error ? error.message : "An error occurred",
+                                      variant: "destructive"
+                                    });
+                                  }
+                                }}
+                              >
+                                Add Note
+                              </Button>
+                            </div>
+                          </div>
+                        )}
+                        
+                        {/* Add Evidence Form */}
+                        {warning.id && playerInfo.isAddingPunishmentEvidence && playerInfo.punishmentEvidenceTarget === (warning.id || `warning-${index}`) && (
+                          <div className="mt-3 p-3 bg-muted/20 rounded-lg border">
+                            <p className="text-xs font-medium mb-2">Add Evidence to Punishment</p>
+                            <div className="flex items-center space-x-2">
+                              <textarea
+                                className={`flex-1 rounded-md border border-border px-3 py-2 text-sm h-10 resize-none ${
+                                  playerInfo.uploadedEvidenceFile ? 'bg-muted text-muted-foreground' : 'bg-background'
+                                }`}
+                                placeholder="Enter evidence URL or description..."
+                                value={playerInfo.uploadedEvidenceFile ? `📁 ${playerInfo.uploadedEvidenceFile.fileName}` : (playerInfo.newPunishmentEvidence || '')}
+                                onChange={(e) => {
+                                  if (playerInfo.uploadedEvidenceFile) return; // Don't allow editing if file uploaded
+                                  setPlayerInfo(prev => ({...prev, newPunishmentEvidence: e.target.value}));
+                                }}
+                                readOnly={!!playerInfo.uploadedEvidenceFile}
+                              />
+                              
+                              <MediaUpload
+                                uploadType="evidence"
+                                onUploadComplete={(result, file) => {
+                                  setPlayerInfo(prev => ({
+                                    ...prev,
+                                    uploadedEvidenceFile: {
+                                      url: result.url,
+                                      fileName: file?.name || 'Unknown file',
+                                      fileType: file?.type || 'application/octet-stream',
+                                      fileSize: file?.size || 0
+                                    }
+                                  }));
+                                }}
+                                metadata={{
+                                  playerId: playerId,
+                                  category: 'punishment'
+                                }}
+                                variant="button-only"
+                                maxFiles={1}
+                              />
+                            </div>
+                            <div className="flex justify-end gap-2 mt-2">
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                onClick={() => setPlayerInfo(prev => ({
+                                  ...prev,
+                                  isAddingPunishmentEvidence: false,
+                                  punishmentEvidenceTarget: null,
+                                  newPunishmentEvidence: '',
+                                  uploadedEvidenceFile: null
+                                }))}
+                              >
+                                Cancel
+                              </Button>
+                              <Button
+                                size="sm"
+                                disabled={!playerInfo.newPunishmentEvidence?.trim() && !playerInfo.uploadedEvidenceFile}
+                                onClick={async () => {
+                                  if (!playerInfo.newPunishmentEvidence?.trim() && !playerInfo.uploadedEvidenceFile) return;
+                                  
+                                  try {
+                                    // Prepare evidence data based on whether it's a file or text
+                                    let evidenceData: any;
+                                    
+                                    if (playerInfo.uploadedEvidenceFile) {
+                                      // File evidence
+                                      evidenceData = {
+                                        text: playerInfo.uploadedEvidenceFile.fileName,
+                                        issuerName: user?.username || 'Admin',
+                                        date: new Date().toISOString(),
+                                        type: 'file',
+                                        fileUrl: playerInfo.uploadedEvidenceFile.url,
+                                        fileName: playerInfo.uploadedEvidenceFile.fileName,
+                                        fileType: playerInfo.uploadedEvidenceFile.fileType,
+                                        fileSize: playerInfo.uploadedEvidenceFile.fileSize
+                                      };
+                                    } else {
+                                      // Text evidence
+                                      evidenceData = {
+                                        text: playerInfo.newPunishmentEvidence.trim(),
+                                        issuerName: user?.username || 'Admin',
+                                        date: new Date().toISOString()
+                                      };
+                                    }
+                                    
+                                    const { csrfFetch } = await import('@/utils/csrf');
+                                    const response = await csrfFetch(`/api/panel/players/${playerId}/punishments/${warning.id}/evidence`, {
+                                      method: 'POST',
+                                      headers: {
+                                        'Content-Type': 'application/json',
+                                      },
+                                      body: JSON.stringify(evidenceData)
+                                    });
+                                    
+                                    if (!response.ok) {
+                                      throw new Error('Failed to add evidence');
+                                    }
+                                    
+                                    toast({
+                                      title: "Evidence added",
+                                      description: "Evidence has been added to the punishment successfully"
+                                    });
+                                    
+                                    // Reset form and refetch data
+                                    setPlayerInfo(prev => ({
+                                      ...prev,
+                                      isAddingPunishmentEvidence: false,
+                                      punishmentEvidenceTarget: null,
+                                      newPunishmentEvidence: '',
+                                      uploadedEvidenceFile: null
+                                    }));
+                                    
+                                    refetch();
+                                  } catch (error) {
+                                    console.error('Error adding evidence to punishment:', error);
+                                    toast({
+                                      title: "Failed to add evidence",
+                                      description: error instanceof Error ? error.message : "An unknown error occurred",
+                                      variant: "destructive"
+                                    });
+                                  }
+                                }}
+                              >
+                                Add Evidence
+                              </Button>
+                            </div>
+                          </div>
+                        )}
+                        
+                        {/* Modify Punishment Form */}
+                        {warning.id && playerInfo.isModifyingPunishment && playerInfo.modifyPunishmentTarget === (warning.id || `warning-${index}`) && (
+                          <div className="mt-3 p-3 bg-muted/20 rounded-lg border">
+                            <p className="text-xs font-medium mb-2">Modify Punishment</p>
+                            
+                            <div className="space-y-2 mb-3">
+                              <div>
+                                <label className="text-xs text-muted-foreground">Modification Type</label>
+                                <select
+                                  className="w-full rounded-md border border-border bg-background px-2 py-1 text-sm"
+                                  value={playerInfo.selectedModificationType || ''}
+                                  onChange={(e) => setPlayerInfo(prev => ({
+                                    ...prev,
+                                    selectedModificationType: e.target.value as any
+                                  }))}
+                                >
+                                  <option value="">Select modification type...</option>
+                                  <option value="MANUAL_DURATION_CHANGE">Change Duration</option>
+                                  <option value="MANUAL_PARDON">Pardon</option>
+                                  <option value="SET_ALT_BLOCKING_TRUE">Enable Alt Blocking</option>
+                                  <option value="SET_ALT_BLOCKING_FALSE">Disable Alt Blocking</option>
+                                  <option value="SET_WIPING_TRUE">Enable Wiping</option>
+                                  <option value="SET_WIPING_FALSE">Disable Wiping</option>
+                                </select>
+                              </div>
+                              
+                              {playerInfo.selectedModificationType === 'MANUAL_DURATION_CHANGE' && (
+                                <div>
+                                  <label className="text-xs font-medium text-muted-foreground mb-1 block">New Duration</label>
+                                  <div className="grid grid-cols-2 gap-2">
+                                    <input 
+                                      type="number" 
+                                      placeholder="Duration" 
+                                      className="rounded-md border border-border bg-background px-3 py-1.5 text-sm"
+                                      value={playerInfo.newDuration?.value || ''}
+                                      onChange={(e) => setPlayerInfo(prev => ({
+                                        ...prev, 
+                                        newDuration: {
+                                          value: parseInt(e.target.value) || 0,
+                                          unit: prev.newDuration?.unit || 'hours'
+                                        }
+                                      }))}
+                                      min={1}
+                                    />
+                                    <select 
+                                      className="rounded-md border border-border bg-background px-3 py-1.5 text-sm"
+                                      value={playerInfo.newDuration?.unit || 'hours'}
+                                      onChange={(e) => setPlayerInfo(prev => ({
+                                        ...prev, 
+                                        newDuration: {
+                                          value: prev.newDuration?.value || 1,
+                                          unit: e.target.value as any
+                                        }
+                                      }))}
+                                    >
+                                      <option value="seconds">Seconds</option>
+                                      <option value="minutes">Minutes</option>
+                                      <option value="hours">Hours</option>
+                                      <option value="days">Days</option>
+                                      <option value="weeks">Weeks</option>
+                                      <option value="months">Months</option>
+                                    </select>
+                                  </div>
+                                </div>
+                              )}
+                              
+                              <div>
+                                <label className="text-xs font-medium text-muted-foreground mb-1 block">Reason</label>
+                                <textarea
+                                  className="w-full rounded-md border border-border bg-background px-3 py-2 text-sm h-16 resize-none"
+                                  placeholder="Enter reason for modification..."
+                                  value={playerInfo.modifyPunishmentReason || ''}
+                                  onChange={(e) => setPlayerInfo(prev => ({...prev, modifyPunishmentReason: e.target.value}))}
+                                />
+                              </div>
+                            </div>
+                            
+                            <div className="flex justify-end gap-2 mt-3">
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                onClick={() => setPlayerInfo(prev => ({
+                                  ...prev,
+                                  isModifyingPunishment: false,
+                                  modifyPunishmentTarget: null,
+                                  modifyPunishmentAction: null,
+                                  selectedModificationType: null,
+                                  modifyPunishmentReason: '',
+                                  newDuration: undefined
+                                }))}
+                              >
+                                Cancel
+                              </Button>
+                              <Button
+                                size="sm"
+                                disabled={!playerInfo.selectedModificationType || !playerInfo.modifyPunishmentReason?.trim()}
+                                onClick={async () => {
+                                  if (!playerInfo.selectedModificationType || !playerInfo.modifyPunishmentReason?.trim()) return;
+                                  
+                                  try {
+                                    const modificationData: any = {
+                                      punishmentId: warning.id!,
+                                      modificationType: playerInfo.selectedModificationType,
+                                      reason: playerInfo.modifyPunishmentReason
+                                    };
+                                    
+                                    if (playerInfo.selectedModificationType === 'MANUAL_DURATION_CHANGE' && playerInfo.newDuration) {
+                                      modificationData.newDuration = durationToMilliseconds(playerInfo.newDuration);
+                                    }
+                                    
+                                    await modifyPunishment.mutateAsync({
+                                      uuid: playerId,
+                                      ...modificationData
+                                    });
+                                    
+                                    toast({
+                                      title: "Punishment modified",
+                                      description: "Punishment has been modified successfully"
+                                    });
+                                    
+                                    // Reset form and refetch
+                                    setPlayerInfo(prev => ({
+                                      ...prev,
+                                      isModifyingPunishment: false,
+                                      modifyPunishmentTarget: null,
+                                      modifyPunishmentAction: null,
+                                      selectedModificationType: null,
+                                      modifyPunishmentReason: '',
+                                      newDuration: undefined
+                                    }));
+                                    
+                                    refetch();
+                                  } catch (error) {
+                                    toast({
+                                      title: "Failed to modify punishment",
+                                      description: error instanceof Error ? error.message : "An error occurred",
+                                      variant: "destructive"
+                                    });
+                                  }
+                                }}
+                              >
+                                Apply Modification
+                              </Button>
+                            </div>
+                          </div>
+                        )}
+                      </div>
+                    )}
                   </div>
-                  <p className="text-xs text-muted-foreground mt-1">By: {warning.by}</p>
-                </div>
-              )) : (
+                );
+              }) : (
                 <div className="bg-muted/30 p-3 rounded-lg">
                   <p className="text-sm">No moderation history found for this player.</p>
                 </div>
@@ -544,20 +1845,99 @@ const PlayerDetailPage = () => {
           </TabsContent>
           
           <TabsContent value="linked" className="space-y-2 mx-1 mt-3">
-            <h4 className="font-medium">Linked Accounts</h4>
-            <div className="bg-muted/30 p-3 rounded-lg">
-              <ul className="space-y-2">
-                {playerInfo.linkedAccounts.length > 0 ? (
-                  playerInfo.linkedAccounts.map((account, idx) => (
-                    <li key={idx} className="text-sm flex items-center">
-                      <Link2 className="h-3.5 w-3.5 mr-2 text-muted-foreground" />
-                      {account}
-                    </li>
-                  ))
+            <div className="flex items-center justify-between">
+              <h4 className="font-medium">Linked Accounts</h4>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => {
+                  setHasTriggeredLinkedSearch(false);
+                  triggerLinkedAccountSearch();
+                  refetchLinkedAccounts();
+                }}
+                disabled={findLinkedAccountsMutation.isPending || isLoadingLinkedAccounts}
+                className="text-xs h-7 px-2"
+              >
+                {findLinkedAccountsMutation.isPending || isLoadingLinkedAccounts ? (
+                  <>
+                    <Loader2 className="h-3 w-3 mr-1 animate-spin" />
+                    Searching...
+                  </>
                 ) : (
-                  <li className="text-sm text-muted-foreground">No linked accounts found.</li>
+                  <>
+                    <RefreshCcw className="h-3 w-3 mr-1" />
+                    Refresh Search
+                  </>
                 )}
-              </ul>
+              </Button>
+            </div>
+            <div className="bg-muted/30 p-3 rounded-lg">
+              {isLoadingLinkedAccounts ? (
+                <div className="flex items-center justify-center py-4">
+                  <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                  <span className="text-sm text-muted-foreground">Loading linked accounts...</span>
+                </div>
+              ) : (
+                <ul className="space-y-2">
+                  {playerInfo.linkedAccounts && playerInfo.linkedAccounts.length > 0 ? (
+                    playerInfo.linkedAccounts.map((account, idx) => (
+                      <li key={idx} className="text-sm flex items-center justify-between">
+                        <div className="flex items-center">
+                          <Link2 className="h-3.5 w-3.5 mr-2 text-muted-foreground" />
+                          <span className="font-medium">{account.username}</span>
+                          {account.statusText && (
+                            <span className="text-muted-foreground ml-1">{account.statusText}</span>
+                          )}
+                        </div>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          className="text-xs h-6 px-2"
+                          onClick={() => {
+                            // Navigate to the linked account's player page using UUID
+                            const uuid = account.uuid || account._id;
+                            if (uuid) {
+                              navigate(`/panel/player/${uuid}`);
+                            } else {
+                              console.warn('No UUID found for linked account:', account);
+                              toast({
+                                title: "Navigation Error",
+                                description: "Unable to navigate to linked account - no UUID found",
+                                variant: "destructive"
+                              });
+                            }
+                          }}
+                          disabled={!account.uuid && !account._id}
+                        >
+                          <Search className="h-3 w-3 mr-1" />
+                          View
+                        </Button>
+                      </li>
+                    ))
+                  ) : (
+                    <li className="text-sm text-muted-foreground text-center py-2">
+                      {findLinkedAccountsMutation.isPending ? 
+                        'Searching for linked accounts...' : 
+                        'No linked accounts found.'
+                      }
+                    </li>
+                  )}
+                </ul>
+              )}
+              
+              {linkedAccountsData?.searchStatus && (
+                <div className="mt-3 pt-3 border-t border-border">
+                  <div className="text-xs text-muted-foreground">
+                    <p>Search Status: {linkedAccountsData.searchStatus}</p>
+                    {linkedAccountsData.lastSearched && (
+                      <p>Last Searched: {formatDateWithTime(linkedAccountsData.lastSearched)}</p>
+                    )}
+                    {linkedAccountsData.totalFound !== undefined && (
+                      <p>Total Found: {linkedAccountsData.totalFound}</p>
+                    )}
+                  </div>
+                </div>
+              )}
             </div>
           </TabsContent>
           
@@ -599,14 +1979,20 @@ const PlayerDetailPage = () => {
                     </Button>
                     <Button 
                       size="sm"
+                      disabled={!playerInfo.newNote?.trim()}
                       onClick={() => {
+                        if (!playerInfo.newNote?.trim()) return;
                         // Add the note
                         setPlayerInfo(prev => ({
                           ...prev,
-                          notes: [...prev.notes, `${prev.newNote} (Added by Staff on ${new Date().toLocaleDateString()})`],
+                          notes: [...prev.notes, `${prev.newNote} (Added by ${user?.username || 'Staff'} on ${formatDateWithTime(new Date())})`],
                           isAddingNote: false,
                           newNote: ''
                         }));
+                        toast({
+                          title: "Note added",
+                          description: "Staff note has been added successfully"
+                        });
                       }}
                     >
                       Add Note
@@ -631,8 +2017,58 @@ const PlayerDetailPage = () => {
           
           <TabsContent value="tickets" className="space-y-2 mx-1 mt-3">
             <h4 className="font-medium">Player Tickets</h4>
-            <div className="bg-muted/30 p-3 rounded-lg">
-              <p className="text-sm">No tickets found for this player.</p>
+            <div className="space-y-2">
+              {isLoadingTickets ? (
+                <div className="bg-muted/30 p-3 rounded-lg flex items-center justify-center">
+                  <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                  <span className="text-sm">Loading tickets...</span>
+                </div>
+              ) : playerTickets && playerTickets.length > 0 ? (
+                playerTickets.map((ticket: any) => (
+                  <div 
+                    key={ticket._id} 
+                    className="bg-muted/30 p-3 rounded-lg hover:bg-muted/40 transition-colors cursor-pointer"
+                    onClick={() => handleTicketClick(ticket._id)}
+                  >
+                    <div className="flex justify-between items-start">
+                      <div className="flex-1">
+                        <div className="flex items-center gap-2 mb-1">
+                          <Badge variant="outline" className={`text-xs ${
+                            ticket.status === 'open' ? 'bg-green-100 text-green-800 border-green-300' :
+                            ticket.status === 'in_progress' ? 'bg-blue-100 text-blue-800 border-blue-300' :
+                            ticket.status === 'resolved' ? 'bg-gray-100 text-gray-800 border-gray-300' :
+                            'bg-red-100 text-red-800 border-red-300'
+                          }`}>
+                            {ticket.status?.replace('_', ' ').toUpperCase() || 'UNKNOWN'}
+                          </Badge>
+                          <Badge variant="outline" className="text-xs bg-blue-50 text-blue-900 border-blue-200">
+                            {ticket.category || 'General'}
+                          </Badge>
+                        </div>
+                        <div className="text-sm">
+                          <p className="font-medium">{ticket.subject || 'No subject'}</p>
+                          <p className="text-muted-foreground mt-1 line-clamp-2">
+                            {ticket.description || ticket.message || 'No description available'}
+                          </p>
+                        </div>
+                        <div className="text-xs text-muted-foreground mt-2">
+                          Created: {ticket.createdAt ? formatDateWithTime(ticket.createdAt) : 'Unknown'} 
+                          {ticket.assignedTo && ` • Assigned to: ${ticket.assignedTo}`}
+                        </div>
+                      </div>
+                      <div className="ml-2">
+                        <Badge variant="outline" className="text-xs">
+                          #{ticket._id.slice(-6)}
+                        </Badge>
+                      </div>
+                    </div>
+                  </div>
+                ))
+              ) : (
+                <div className="bg-muted/30 p-3 rounded-lg">
+                  <p className="text-sm text-muted-foreground">No tickets found for this player.</p>
+                </div>
+              )}
             </div>
           </TabsContent>
           
@@ -656,1119 +2092,57 @@ const PlayerDetailPage = () => {
           
           <TabsContent value="punishment" className="space-y-3 mx-1 mt-3">
             <h4 className="font-medium">Create Punishment</h4>
-            <div className="bg-muted/30 p-4 rounded-lg space-y-4">
-              {!playerInfo.selectedPunishmentCategory ? (
-      <div className="space-y-3">
-        {/* Administrative Punishment Types */}
-        <div className="space-y-1">
-          <label className="text-xs font-medium text-muted-foreground">Administrative Actions</label>
-          <div className="grid grid-cols-3 gap-2">
-            {punishmentTypesByCategory.Administrative.length > 0 ? punishmentTypesByCategory.Administrative.map(type => (
-              <Button 
-                key={type.id}
-                variant="outline" 
-                size="sm" 
-                className={`py-1 text-xs ${type.name === 'Kick' && playerInfo.status !== 'Online' ? 'opacity-50 cursor-not-allowed' : ''}`}
-                onClick={() => {
-                  if (type.name === 'Kick' && playerInfo.status !== 'Online') {
-                    // Prevent kick for offline players
-                    return;
-                  }
-                  setPlayerInfo(prev => ({
-                    ...prev, 
-                    selectedPunishmentCategory: type.name
-                  }))
-                }}
-                title={type.name === 'Kick' && playerInfo.status !== 'Online' ? 'Player must be online to kick' : ''}
-              >
-                {type.name}
-              </Button>
-            )) : (
-              <div className="col-span-3 text-xs text-muted-foreground p-2 border border-dashed rounded">
-                {isLoadingSettings ? 'Loading punishment types...' : 'No administrative punishment types configured'}
-              </div>
-            )}
-          </div>
-        </div>
-
-        {/* Social Punishment Types */}
-        <div className="space-y-1">
-          <label className="text-xs font-medium text-muted-foreground">Chat & Social</label>
-          <div className="grid grid-cols-3 gap-2">
-            {punishmentTypesByCategory.Social.length > 0 ? punishmentTypesByCategory.Social.map(type => (
-              <Button 
-                key={type.id}
-                variant="outline" 
-                size="sm" 
-                className="py-1 text-xs" 
-                onClick={() => setPlayerInfo(prev => ({
-                  ...prev, 
-                  selectedPunishmentCategory: type.name
-                }))
-                }
-              >
-                {type.name}
-              </Button>
-            )) : (
-              <div className="col-span-3 text-xs text-muted-foreground p-2 border border-dashed rounded">
-                {isLoadingSettings ? 'Loading punishment types...' : 'No social punishment types configured'}
-              </div>
-            )}
-          </div>
-        </div>
-
-        {/* Gameplay Punishment Types */}
-        <div className="space-y-1">
-          <label className="text-xs font-medium text-muted-foreground">Game & Account</label>
-          <div className="grid grid-cols-3 gap-2">
-            {punishmentTypesByCategory.Gameplay.length > 0 ? punishmentTypesByCategory.Gameplay.map(type => (
-              <Button 
-                key={type.id}
-                variant="outline" 
-                size="sm" 
-                className="py-1 text-xs" 
-                onClick={() => setPlayerInfo(prev => ({
-                  ...prev, 
-                  selectedPunishmentCategory: type.name
-                }))
-                }
-              >
-                {type.name}
-              </Button>
-            )) : (
-              <div className="col-span-3 text-xs text-muted-foreground p-2 border border-dashed rounded">
-                {isLoadingSettings ? 'Loading punishment types...' : 'No gameplay punishment types configured'}
-              </div>
-            )}
-          </div>
-        </div>
-      </div>
-              ) : (
-      <div className="space-y-4">
-        <div className="flex items-center">
-          <Button 
-            variant="ghost" 
-            size="sm" 
-            className="p-0 h-8 w-8 mr-2" 
-            onClick={() => setPlayerInfo(prev => ({
-              ...prev, 
-              selectedPunishmentCategory: undefined, 
-              selectedSeverity: undefined,
-              duration: undefined,
-              reason: undefined,
-              evidence: undefined,
-              attachedReports: undefined,
-              banLinkedAccounts: undefined,
-              wipeAccountAfterExpiry: undefined,
-              kickSameIP: undefined,
-              banToLink: undefined,
-              staffNotes: undefined,
-              silentPunishment: undefined
-            }))}
-          >
-            <svg width="15" height="15" viewBox="0 0 15 15" fill="none" xmlns="http://www.w3.org/2000/svg" className="h-4 w-4">
-              <path d="M6.85355 3.14645C7.04882 3.34171 7.04882 3.65829 6.85355 3.85355L3.70711 7H12.5C12.7761 7 13 7.22386 13 7.5C13 7.77614 12.7761 8 12.5 8H3.70711L6.85355 11.1464C7.04882 11.3417 7.04882 11.6583 6.85355 11.8536C6.65829 12.0488 6.34171 12.0488 6.14645 11.8536L2.14645 7.85355C1.95118 7.65829 1.95118 7.34171 2.14645 7.14645L6.14645 3.14645C6.34171 2.95118 6.65829 2.95118 6.85355 3.14645Z" fill="currentColor" fillRule="evenodd" clipRule="evenodd"></path>
-            </svg>
-          </Button>
-          <h3 className="text-sm font-medium">{playerInfo.selectedPunishmentCategory}</h3>
-        </div>
-
-        {/* Kick */}
-        {playerInfo.selectedPunishmentCategory === 'Kick' && (
-          <>
-            <div className="space-y-2">
-              <label className="text-sm font-medium">Reason (shown to player)</label>
-              <textarea 
-                className={`w-full rounded-md border border-border bg-background px-3 py-2 text-sm h-16 ${playerInfo.status !== 'Online' ? 'opacity-50' : ''}`}
-                placeholder="Enter reason for kick"
-                disabled={playerInfo.status !== 'Online'}
-                value={playerInfo.reason || ''}
-                onChange={(e) => setPlayerInfo(prev => ({...prev, reason: e.target.value}))}
-              ></textarea>
-            </div>
-
-            <div className="space-y-2">
-              <div className="flex items-center">
-                <input 
-                  type="checkbox" 
-                  id="kick-same-ip" 
-                  className="rounded mr-2"
-                  disabled={playerInfo.status !== 'Online'} 
-                  checked={!!playerInfo.kickSameIP}
-                  onChange={(e) => setPlayerInfo(prev => ({...prev, kickSameIP: e.target.checked}))}
-                />
-                <label htmlFor="kick-same-ip" className={`text-sm ${playerInfo.status !== 'Online' ? 'opacity-50' : ''}`}>
-                  Kick Same IP
-                </label>
-              </div>
-            </div>
-
-            {playerInfo.status !== 'Online' && (
-              <div className="bg-warning/10 p-3 rounded-lg text-sm text-warning">
-                Player is not currently online. Kick action is only available for online players.
-              </div>
-            )}
-          </>
-        )}
-
-        {/* Manual Mute */}
-        {playerInfo.selectedPunishmentCategory === 'Manual Mute' && (
-          <>
-            <div className="space-y-2">
-              <div className="flex items-center justify-between mb-2">
-                <label className="text-sm font-medium">Duration</label>
-                <div className="flex items-center">
-                  <input 
-                    type="checkbox" 
-                    id="permanent-mute" 
-                    className="rounded mr-2"
-                    checked={!!playerInfo.isPermanent}
-                    onChange={(e) => {
-                      const isPermanent = e.target.checked;
-                      setPlayerInfo(prev => ({
-                        ...prev, 
-                        isPermanent,
-                        duration: !isPermanent ? {
-                          value: prev.duration?.value || 24,
-                          unit: prev.duration?.unit || 'hours'
-                        } : undefined
-                      }));
-                    }}
-                  />
-                  <label htmlFor="permanent-mute" className="text-sm">Permanent</label>
-                </div>
-              </div>
-
-              {!playerInfo.isPermanent && (
-                <div className="flex gap-2">
-                  <input 
-                    type="number" 
-                    placeholder="Duration" 
-                    className="flex-1 rounded-md border border-border bg-background px-3 py-1.5 text-sm"
-                    value={playerInfo.duration?.value || ''}
-                    onChange={(e) => setPlayerInfo(prev => ({
-                      ...prev, 
-                      duration: {
-                        value: parseInt(e.target.value) || 0,
-                        unit: prev.duration?.unit || 'hours'
-                      }
-                    }))}
-                    min={1}
-                  />
-                  <select 
-                    className="w-24 rounded-md border border-border bg-background px-3 py-1.5 text-sm"
-                    value={playerInfo.duration?.unit || 'hours'}
-                    onChange={(e) => setPlayerInfo(prev => ({
-                      ...prev, 
-                      duration: {
-                        value: prev.duration?.value || 1,
-                        unit: e.target.value as 'hours' | 'days' | 'weeks' | 'months'
-                      }
-                    }))}
-                  >
-                    <option value="hours">Hours</option>
-                    <option value="days">Days</option>
-                    <option value="weeks">Weeks</option>
-                    <option value="months">Months</option>
-                  </select>
-                </div>
-              )}
-            </div>
-
-            <div className="space-y-2">
-              <label className="text-sm font-medium">Reason (shown to player)</label>
-              <textarea 
-                className="w-full rounded-md border border-border bg-background px-3 py-2 text-sm h-16"
-                placeholder="Enter reason for mute"
-                value={playerInfo.reason || ''}
-                onChange={(e) => setPlayerInfo(prev => ({...prev, reason: e.target.value}))}
-              ></textarea>
-            </div>
-
-            <div className="space-y-2">
-              <label className="text-sm font-medium">Evidence</label>
-              <div className="flex gap-2">
-                <input 
-                  type="text" 
-                  className="flex-1 rounded-md border border-border bg-background px-3 py-1.5 text-sm" 
-                  placeholder="URLs, screenshots, or text evidence"
-                  value={playerInfo.evidence || ''}
-                  onChange={(e) => setPlayerInfo(prev => ({...prev, evidence: e.target.value}))}
-                />
-                <Button variant="outline" size="sm" className="whitespace-nowrap">
-                  <Upload className="h-3.5 w-3.5 mr-1" />
-                  Upload
-                </Button>
-              </div>
-            </div>
-
-            <div className="space-y-2">
-              <div className="flex items-center justify-between mb-2">
-                <label className="text-sm font-medium">Attach Reports</label>
-                <Button 
-                  variant="ghost" 
-                  size="sm" 
-                  onClick={() => setPlayerInfo(prev => ({
-                    ...prev, 
-                    attachedReports: [...(prev.attachedReports || []), 'ticket-new']
-                  }))}
-                  className="text-xs h-7 px-2"
-                >
-                  + Add
-                </Button>
-              </div>
-              <div className="space-y-2">
-                {(playerInfo.attachedReports || []).map((report, index) => (
-                  <div key={index} className="flex gap-2 items-center">
-                    <select 
-                      className="flex-1 rounded-md border border-border bg-background px-3 py-1.5 text-sm"
-                      value={report}
-                      onChange={(e) => {
-                        const newReports = [...(playerInfo.attachedReports || [])];
-                        newReports[index] = e.target.value;
-                        setPlayerInfo(prev => ({...prev, attachedReports: newReports}));
-                      }}
-                    >
-                      <option value="">Select a report</option>
-                      <option value="ticket-123">Ticket #123 - Chat Report</option>
-                      <option value="ticket-456">Ticket #456 - Chat Report</option>
-                    </select>
-                    <Button 
-                      variant="ghost" 
-                      size="sm" 
-                      className="p-0 h-8 w-8 text-destructive"
-                      onClick={() => {
-                        const newReports = [...(playerInfo.attachedReports || [])];
-                        newReports.splice(index, 1);
-                        setPlayerInfo(prev => ({...prev, attachedReports: newReports}));
-                      }}
-                    >
-                      <svg width="15" height="15" viewBox="0 0 15 15" fill="none" xmlns="http://www.w3.org/2000/svg" className="h-4 w-4">
-                        <path d="M11.7816 4.03157C12.0062 3.80702 12.0062 3.44295 11.7816 3.2184C11.5571 2.99385 11.193 2.99385 10.9685 3.2184L7.50005 6.68682L4.03164 3.2184C3.80708 2.99385 3.44301 2.99385 3.21846 3.2184C2.99391 3.44295 2.99391 3.80702 3.21846 4.03157L6.68688 7.49999L3.21846 10.9684C2.99391 11.193 2.99391 11.557 3.21846 11.7816C3.44301 12.0061 3.80708 12.0061 4.03164 11.7816L7.50005 8.31316L10.9685 11.7816C11.193 12.0061 11.5571 12.0061 11.7816 11.7816C12.0062 11.557 12.0062 11.193 11.7816 10.9684L8.31322 7.49999L11.7816 4.03157Z" fill="currentColor" fillRule="evenodd" clipRule="evenodd"></path>
-                      </svg>
-                    </Button>
-                  </div>
-                ))}
-              </div>
-            </div>
-          </>
-        )}
-
-        {/* Manual Ban */}
-        {playerInfo.selectedPunishmentCategory === 'Manual Ban' && (
-          <>
-            <div className="space-y-2">
-              <div className="flex items-center justify-between mb-2">
-                <label className="text-sm font-medium">Duration</label>
-                <div className="flex items-center">
-                  <input 
-                    type="checkbox" 
-                    id="permanent-ban" 
-                    className="rounded mr-2"
-                    checked={!!playerInfo.isPermanent}
-                    onChange={(e) => {
-                      const isPermanent = e.target.checked;
-                      setPlayerInfo(prev => ({
-                        ...prev, 
-                        isPermanent,
-                        duration: !isPermanent ? {
-                          value: prev.duration?.value || 24,
-                          unit: prev.duration?.unit || 'hours'
-                        } : undefined
-                      }));
-                    }}
-                  />
-                  <label htmlFor="permanent-ban" className="text-sm">Permanent</label>
-                </div>
-              </div>
-
-              {!playerInfo.isPermanent && (
-                <div className="flex gap-2">
-                  <input 
-                    type="number" 
-                    placeholder="Duration" 
-                    className="flex-1 rounded-md border border-border bg-background px-3 py-1.5 text-sm"
-                    value={playerInfo.duration?.value || ''}
-                    onChange={(e) => setPlayerInfo(prev => ({
-                      ...prev, 
-                      duration: {
-                        value: parseInt(e.target.value) || 0,
-                        unit: prev.duration?.unit || 'hours'
-                      }
-                    }))}
-                    min={1}
-                  />
-                  <select 
-                    className="w-24 rounded-md border border-border bg-background px-3 py-1.5 text-sm"
-                    value={playerInfo.duration?.unit || 'hours'}
-                    onChange={(e) => setPlayerInfo(prev => ({
-                      ...prev, 
-                      duration: {
-                        value: prev.duration?.value || 1,
-                        unit: e.target.value as 'hours' | 'days' | 'weeks' | 'months'
-                      }
-                    }))}
-                  >
-                    <option value="hours">Hours</option>
-                    <option value="days">Days</option>
-                    <option value="weeks">Weeks</option>
-                    <option value="months">Months</option>
-                  </select>
-                </div>
-              )}
-            </div>
-
-            <div className="space-y-2">
-              <label className="text-sm font-medium">Reason (shown to player)</label>
-              <textarea 
-                className="w-full rounded-md border border-border bg-background px-3 py-2 text-sm h-16"
-                placeholder="Enter reason for ban"
-                value={playerInfo.reason || ''}
-                onChange={(e) => setPlayerInfo(prev => ({...prev, reason: e.target.value}))}
-              ></textarea>
-            </div>
-
-            <div className="space-y-2">
-              <label className="text-sm font-medium">Evidence</label>
-              <div className="flex gap-2">
-                <input 
-                  type="text" 
-                  className="flex-1 rounded-md border border-border bg-background px-3 py-1.5 text-sm" 
-                  placeholder="URLs, screenshots, or text evidence"
-                  value={playerInfo.evidence || ''}
-                  onChange={(e) => setPlayerInfo(prev => ({...prev, evidence: e.target.value}))}
-                />
-                <Button variant="outline" size="sm" className="whitespace-nowrap">
-                  <Upload className="h-3.5 w-3.5 mr-1" />
-                  Upload
-                </Button>
-              </div>
-            </div>
-
-            <div className="space-y-2">
-              <div className="flex items-center justify-between mb-2">
-                <label className="text-sm font-medium">Attach Reports</label>
-                <Button 
-                  variant="ghost" 
-                  size="sm" 
-                  onClick={() => setPlayerInfo(prev => ({
-                    ...prev, 
-                    attachedReports: [...(prev.attachedReports || []), 'ticket-new']
-                  }))}
-                  className="text-xs h-7 px-2"
-                >
-                  + Add
-                </Button>
-              </div>
-              <div className="space-y-2">
-                {(playerInfo.attachedReports || []).map((report, index) => (
-                  <div key={index} className="flex gap-2 items-center">
-                    <select 
-                      className="flex-1 rounded-md border border-border bg-background px-3 py-1.5 text-sm"
-                      value={report}
-                      onChange={(e) => {
-                        const newReports = [...(playerInfo.attachedReports || [])];
-                        newReports[index] = e.target.value;
-                        setPlayerInfo(prev => ({...prev, attachedReports: newReports}));
-                      }}
-                    >
-                      <option value="">Select a report</option>
-                      <option value="ticket-123">Ticket #123 - Chat Report</option>
-                      <option value="ticket-456">Ticket #456 - Player Report</option>
-                      <option value="ticket-789">Ticket #789 - Player Report</option>
-                    </select>
-                    <Button 
-                      variant="ghost" 
-                      size="sm" 
-                      className="p-0 h-8 w-8 text-destructive"
-                      onClick={() => {
-                        const newReports = [...(playerInfo.attachedReports || [])];
-                        newReports.splice(index, 1);
-                        setPlayerInfo(prev => ({...prev, attachedReports: newReports}));
-                      }}
-                    >
-                      <svg width="15" height="15" viewBox="0 0 15 15" fill="none" xmlns="http://www.w3.org/2000/svg" className="h-4 w-4">
-                        <path d="M11.7816 4.03157C12.0062 3.80702 12.0062 3.44295 11.7816 3.2184C11.5571 2.99385 11.193 2.99385 10.9685 3.2184L7.50005 6.68682L4.03164 3.2184C3.80708 2.99385 3.44301 2.99385 3.21846 3.2184C2.99391 3.44295 2.99391 3.80702 3.21846 4.03157L6.68688 7.49999L3.21846 10.9684C2.99391 11.193 2.99391 11.557 3.21846 11.7816C3.44301 12.0061 3.80708 12.0061 4.03164 11.7816L7.50005 8.31316L10.9685 11.7816C11.193 12.0061 11.5571 12.0061 11.7816 11.7816C12.0062 11.557 12.0062 11.193 11.7816 10.9684L8.31322 7.49999L11.7816 4.03157Z" fill="currentColor" fillRule="evenodd" clipRule="evenodd"></path>
-                      </svg>
-                    </Button>
-                  </div>
-                ))}
-              </div>
-            </div>
-
-            <div className="space-y-2">
-              <div className="flex items-center">
-                <input 
-                  type="checkbox" 
-                  id="ban-linked" 
-                  className="rounded mr-2"
-                  checked={!!playerInfo.banLinkedAccounts}
-                  onChange={(e) => setPlayerInfo(prev => ({...prev, banLinkedAccounts: e.target.checked}))}
-                />
-                <label htmlFor="ban-linked" className="text-sm">Ban Linked Accounts</label>
-              </div>
-
-              <div className="flex items-center">
-                <input 
-                  type="checkbox" 
-                  id="wipe-account" 
-                  className="rounded mr-2"
-                  checked={!!playerInfo.wipeAccountAfterExpiry}
-                  onChange={(e) => setPlayerInfo(prev => ({...prev, wipeAccountAfterExpiry: e.target.checked}))}
-                />
-                <label htmlFor="wipe-account" className="text-sm">Wipe Account After Expiry</label>
-              </div>
-            </div>
-          </>
-        )}
-
-        {/* Security Ban, Bad Skin, Bad Name */}
-        {(playerInfo.selectedPunishmentCategory === 'Security Ban' || 
-          playerInfo.selectedPunishmentCategory === 'Bad Skin' || 
-          playerInfo.selectedPunishmentCategory === 'Bad Name') && (
-          <>
-            <div className="space-y-2">
-              <label className="text-sm font-medium">Evidence</label>
-              <div className="flex gap-2">
-                <input 
-                  type="text" 
-                  className="flex-1 rounded-md border border-border bg-background px-3 py-1.5 text-sm" 
-                  placeholder="URLs, screenshots, or text evidence"
-                  value={playerInfo.evidence || ''}
-                  onChange={(e) => setPlayerInfo(prev => ({...prev, evidence: e.target.value}))}
-                />
-                <Button variant="outline" size="sm" className="whitespace-nowrap">
-                  <Upload className="h-3.5 w-3.5 mr-1" />
-                  Upload
-                </Button>
-              </div>
-            </div>
-
-            <div className="space-y-2">
-              <div className="flex items-center justify-between mb-2">
-                <label className="text-sm font-medium">Attach Reports</label>
-                <Button 
-                  variant="ghost" 
-                  size="sm" 
-                  onClick={() => setPlayerInfo(prev => ({
-                    ...prev, 
-                    attachedReports: [...(prev.attachedReports || []), 'ticket-new']
-                  }))}
-                  className="text-xs h-7 px-2"
-                >
-                  + Add
-                </Button>
-              </div>
-              <div className="space-y-2">
-                {(playerInfo.attachedReports || []).map((report, index) => (
-                  <div key={index} className="flex gap-2 items-center">
-                    <select 
-                      className="flex-1 rounded-md border border-border bg-background px-3 py-1.5 text-sm"
-                      value={report}
-                      onChange={(e) => {
-                        const newReports = [...(playerInfo.attachedReports || [])];
-                        newReports[index] = e.target.value;
-                        setPlayerInfo(prev => ({...prev, attachedReports: newReports}));
-                      }}
-                    >
-                      <option value="">Select a report</option>
-                      <option value="ticket-123">Ticket #123 - Chat Report</option>
-                      <option value="ticket-456">Ticket #456 - Player Report</option>
-                    </select>
-                    <Button 
-                      variant="ghost" 
-                      size="sm" 
-                      className="p-0 h-8 w-8 text-destructive"
-                      onClick={() => {
-                        const newReports = [...(playerInfo.attachedReports || [])];
-                        newReports.splice(index, 1);
-                        setPlayerInfo(prev => ({...prev, attachedReports: newReports}));
-                      }}
-                    >
-                      <svg width="15" height="15" viewBox="0 0 15 15" fill="none" xmlns="http://www.w3.org/2000/svg" className="h-4 w-4">
-                        <path d="M11.7816 4.03157C12.0062 3.80702 12.0062 3.44295 11.7816 3.2184C11.5571 2.99385 11.193 2.99385 10.9685 3.2184L7.50005 6.68682L4.03164 3.2184C3.80708 2.99385 3.44301 2.99385 3.21846 3.2184C2.99391 3.44295 2.99391 3.80702 3.21846 4.03157L6.68688 7.49999L3.21846 10.9684C2.99391 11.193 2.99391 11.557 3.21846 11.7816C3.44301 12.0061 3.80708 12.0061 4.03164 11.7816L7.50005 8.31316L10.9685 11.7816C11.193 12.0061 11.5571 12.0061 11.7816 11.7816C12.0062 11.557 12.0062 11.193 11.7816 10.9684L8.31322 7.49999L11.7816 4.03157Z" fill="currentColor" fillRule="evenodd" clipRule="evenodd"></path>
-                      </svg>
-                    </Button>
-                  </div>
-                ))}
-              </div>
-            </div>
-          </>
-        )}
-
-        {/* Linked Ban */}
-        {playerInfo.selectedPunishmentCategory === 'Linked Ban' && (
-          <>
-            <div className="space-y-2">
-              <label className="text-sm font-medium">Ban to Link</label>
-              <div className="relative">
-                <input 
-                  type="text" 
-                  className="w-full rounded-md border border-border bg-background px-3 py-1.5 text-sm" 
-                  placeholder="Search by username or ban-id"
-                  value={playerInfo.banToLink || ''}
-                  onChange={(e) => {
-                    const value = e.target.value;
-                    setPlayerInfo(prev => ({...prev, banToLink: value}));
-                    searchBans(value);
-                  }}
-                  onFocus={() => {
-                    if (playerInfo.banToLink) {
-                      searchBans(playerInfo.banToLink);
-                    }
-                  }}
-                  onBlur={() => {
-                    // Delay hiding to allow for click on the dropdown items
-                    setTimeout(() => setShowBanSearchResults(false), 200);
-                  }}
-                />
-
-                {showBanSearchResults && (
-                  <div className="absolute left-0 right-0 top-full mt-1 z-10 bg-background rounded-md border border-border shadow-md max-h-40 overflow-y-auto">
-                    {banSearchResults.map((result) => (
-                      <div 
-                        key={result.id}
-                        className="px-3 py-2 text-sm hover:bg-accent cursor-pointer"
-                        onClick={() => {
-                          setPlayerInfo(prev => ({...prev, banToLink: `${result.id} (${result.player})`}));
-                          setShowBanSearchResults(false);
-                        }}
-                      >
-                        <div className="font-medium">{result.id}</div>
-                        <div className="text-xs text-muted-foreground">{result.player}</div>
-                      </div>
-                    ))}
-                  </div>
-                )}
-              </div>
-            </div>
-
-            <div className="space-y-2">
-              <label className="text-sm font-medium">Evidence</label>
-              <div className="flex gap-2">
-                <input 
-                  type="text" 
-                  className="flex-1 rounded-md border border-border bg-background px-3 py-1.5 text-sm" 
-                  placeholder="URLs, screenshots, or text evidence"
-                  value={playerInfo.evidence || ''}
-                  onChange={(e) => setPlayerInfo(prev => ({...prev, evidence: e.target.value}))}
-                />
-                <Button variant="outline" size="sm" className="whitespace-nowrap">
-                  <Upload className="h-3.5 w-3.5 mr-1" />
-                  Upload
-                </Button>
-              </div>
-            </div>
-
-            <div className="space-y-2">
-              <div className="flex items-center justify-between mb-2">
-                <label className="text-sm font-medium">Attach Reports</label>
-                <Button 
-                  variant="ghost" 
-                  size="sm" 
-                  onClick={() => setPlayerInfo(prev => ({
-                    ...prev, 
-                    attachedReports: [...(prev.attachedReports || []), 'ticket-new']
-                  }))}
-                  className="text-xs h-7 px-2"
-                >
-                  + Add
-                </Button>
-              </div>
-              <div className="space-y-2">
-                {(playerInfo.attachedReports || []).map((report, index) => (
-                  <div key={index} className="flex gap-2 items-center">
-                    <select 
-                      className="flex-1 rounded-md border border-border bg-background px-3 py-1.5 text-sm"
-                      value={report}
-                      onChange={(e) => {
-                        const newReports = [...(playerInfo.attachedReports || [])];
-                        newReports[index] = e.target.value;
-                        setPlayerInfo(prev => ({...prev, attachedReports: newReports}));
-                      }}
-                    >
-                      <option value="">Select a report</option>
-                      <option value="ticket-123">Ticket #123 - Chat Report</option>
-                      <option value="ticket-456">Ticket #456 - Player Report</option>
-                    </select>
-                    <Button 
-                      variant="ghost" 
-                      size="sm" 
-                      className="p-0 h-8 w-8 text-destructive"
-                      onClick={() => {
-                        const newReports = [...(playerInfo.attachedReports || [])];
-                        newReports.splice(index, 1);
-                        setPlayerInfo(prev => ({...prev, attachedReports: newReports}));
-                      }}
-                    >
-                      <svg width="15" height="15" viewBox="0 0 15 15" fill="none" xmlns="http://www.w3.org/2000/svg" className="h-4 w-4">
-                        <path d="M11.7816 4.03157C12.0062 3.80702 12.0062 3.44295 11.7816 3.2184C11.5571 2.99385 11.193 2.99385 10.9685 3.2184L7.50005 6.68682L4.03164 3.2184C3.80708 2.99385 3.44301 2.99385 3.21846 3.2184C2.99391 3.44295 2.99391 3.80702 3.21846 4.03157L6.68688 7.49999L3.21846 10.9684C2.99391 11.193 2.99391 11.557 3.21846 11.7816C3.44301 12.0061 3.80708 12.0061 4.03164 11.7816L7.50005 8.31316L10.9685 11.7816C11.193 12.0061 11.5571 12.0061 11.7816 11.7816C12.0062 11.557 12.0062 11.193 11.7816 10.9684L8.31322 7.49999L11.7816 4.03157Z" fill="currentColor" fillRule="evenodd" clipRule="evenodd"></path>
-                      </svg>
-                    </Button>
-                  </div>
-                ))}
-              </div>
-            </div>
-          </>
-        )}
-
-        {/* Blacklist */}
-        {playerInfo.selectedPunishmentCategory === 'Blacklist' && (
-          <>
-            <div className="space-y-2">
-              <label className="text-sm font-medium">Reason (shown to player)</label>
-              <textarea 
-                className="w-full rounded-md border border-border bg-background px-3 py-2 text-sm h-16"
-                placeholder="Enter reason for blacklist"
-                value={playerInfo.reason || ''}
-                onChange={(e) => setPlayerInfo(prev => ({...prev, reason: e.target.value}))}
-              ></textarea>
-            </div>
-
-            <div className="space-y-2">
-              <label className="text-sm font-medium">Evidence</label>
-              <div className="flex gap-2">
-                <input 
-                  type="text" 
-                  className="flex-1 rounded-md border border-border bg-background px-3 py-1.5 text-sm" 
-                  placeholder="URLs, screenshots, or text evidence"
-                  value={playerInfo.evidence || ''}
-                  onChange={(e) => setPlayerInfo(prev => ({...prev, evidence: e.target.value}))}
-                />
-                <Button variant="outline" size="sm" className="whitespace-nowrap">
-                  <Upload className="h-3.5 w-3.5 mr-1" />
-                  Upload
-                </Button>
-              </div>
-            </div>
-
-            <div className="space-y-2">
-              <div className="flex items-center justify-between mb-2">
-                <label className="text-sm font-medium">Attach Reports</label>
-                <Button 
-                  variant="ghost" 
-                  size="sm" 
-                  onClick={() => setPlayerInfo(prev => ({
-                    ...prev, 
-                    attachedReports: [...(prev.attachedReports || []), 'ticket-new']
-                  }))}
-                  className="text-xs h-7 px-2"
-                >
-                  + Add
-                </Button>
-              </div>
-              <div className="space-y-2">
-                {(playerInfo.attachedReports || []).map((report, index) => (
-                  <div key={index} className="flex gap-2 items-center">
-                    <select 
-                      className="flex-1 rounded-md border border-border bg-background px-3 py-1.5 text-sm"
-                      value={report}
-                      onChange={(e) => {
-                        const newReports = [...(playerInfo.attachedReports || [])];
-                        newReports[index] = e.target.value;
-                        setPlayerInfo(prev => ({...prev, attachedReports: newReports}));
-                      }}
-                    >
-                      <option value="">Select a report</option>
-                      <option value="ticket-123">Ticket #123 - Chat Report</option>
-                      <option value="ticket-456">Ticket #456 - Player Report</option>
-                    </select>
-                    <Button 
-                      variant="ghost" 
-                      size="sm" 
-                      className="p-0 h-8 w-8 text-destructive"
-                      onClick={() => {
-                        const newReports = [...(playerInfo.attachedReports || [])];
-                        newReports.splice(index, 1);
-                        setPlayerInfo(prev => ({...prev, attachedReports: newReports}));
-                      }}
-                    >
-                      <svg width="15" height="15" viewBox="0 0 15 15" fill="none" xmlns="http://www.w3.org/2000/svg" className="h-4 w-4">
-                        <path d="M11.7816 4.03157C12.0062 3.80702 12.0062 3.44295 11.7816 3.2184C11.5571 2.99385 11.193 2.99385 10.9685 3.2184L7.50005 6.68682L4.03164 3.2184C3.80708 2.99385 3.44301 2.99385 3.21846 3.2184C2.99391 3.44295 2.99391 3.80702 3.21846 4.03157L6.68688 7.49999L3.21846 10.9684C2.99391 11.193 2.99391 11.557 3.21846 11.7816C3.44301 12.0061 3.80708 12.0061 4.03164 11.7816L7.50005 8.31316L10.9685 11.7816C11.193 12.0061 11.5571 12.0061 11.7816 11.7816C12.0062 11.557 12.0062 11.193 11.7816 10.9684L8.31322 7.49999L11.7816 4.03157Z" fill="currentColor" fillRule="evenodd" clipRule="evenodd"></path>
-                      </svg>
-                    </Button>
-                  </div>
-                ))}
-              </div>
-            </div>
-
-            <div className="space-y-2">
-              <div className="flex items-center">
-                <input 
-                  type="checkbox" 
-                  id="ban-linked" 
-                  className="rounded mr-2"
-                  checked={!!playerInfo.banLinkedAccounts}
-                  onChange={(e) => setPlayerInfo(prev => ({...prev, banLinkedAccounts: e.target.checked}))}
-                />
-                <label htmlFor="ban-linked" className="text-sm">Ban Linked Accounts</label>
-              </div>
-            </div>
-          </>
-        )}
-
-        {/* Chat Abuse, Anti Social */}
-        {(playerInfo.selectedPunishmentCategory === 'Chat Abuse' || 
-          playerInfo.selectedPunishmentCategory === 'Anti Social') && (
-          <>
-            <div className="space-y-2">
-              <label className="text-sm font-medium">Severity</label>
-              <div className="flex gap-2">
-                <Button 
-                  variant="outline" 
-                  size="sm" 
-                  className={`flex-1 ${playerInfo.selectedSeverity === 'Lenient' ? 'bg-primary/20 border-primary/40' : ''}`}
-                  onClick={() => setPlayerInfo(prev => ({...prev, selectedSeverity: 'Lenient'}))}
-                >
-                  Lenient
-                </Button>
-                <Button 
-                  variant="outline" 
-                  size="sm" 
-                  className={`flex-1 ${playerInfo.selectedSeverity === 'Regular' ? 'bg-primary/20 border-primary/40' : ''}`}
-                  onClick={() => setPlayerInfo(prev => ({...prev, selectedSeverity: 'Regular'}))}
-                >
-                  Regular
-                </Button>
-                <Button 
-                  variant="outline" 
-                  size="sm" 
-                  className={`flex-1 ${playerInfo.selectedSeverity === 'Aggravated' ? 'bg-primary/20 border-primary/40' : ''}`}
-                  onClick={() => setPlayerInfo(prev => ({...prev, selectedSeverity: 'Aggravated'}))}
-                >
-                  Aggravated
-                </Button>
-              </div>
-            </div>
-
-            <div className="space-y-2">
-              <label className="text-sm font-medium">Evidence</label>
-              <div className="flex gap-2">
-                <input 
-                  type="text" 
-                  className="flex-1 rounded-md border border-border bg-background px-3 py-1.5 text-sm" 
-                  placeholder="URLs, screenshots, or text evidence"
-                  value={playerInfo.evidence || ''}
-                  onChange={(e) => setPlayerInfo(prev => ({...prev, evidence: e.target.value}))}
-                />
-                <Button variant="outline" size="sm" className="whitespace-nowrap">
-                  <Upload className="h-3.5 w-3.5 mr-1" />
-                  Upload
-                </Button>
-              </div>
-            </div>
-
-            <div className="space-y-2">
-              <div className="flex items-center justify-between mb-2">
-                <label className="text-sm font-medium">Attach Reports</label>
-                <Button 
-                  variant="ghost" 
-                  size="sm" 
-                  onClick={() => setPlayerInfo(prev => ({
-                    ...prev, 
-                    attachedReports: [...(prev.attachedReports || []), 'ticket-new']
-                  }))}
-                  className="text-xs h-7 px-2"
-                >
-                  + Add
-                </Button>
-              </div>
-              <div className="space-y-2">
-                {(playerInfo.attachedReports || []).map((report, index) => (
-                  <div key={index} className="flex gap-2 items-center">
-                    <select 
-                      className="flex-1 rounded-md border border-border bg-background px-3 py-1.5 text-sm"
-                      value={report}
-                      onChange={(e) => {
-                        const newReports = [...(playerInfo.attachedReports || [])];
-                        newReports[index] = e.target.value;
-                        setPlayerInfo(prev => ({...prev, attachedReports: newReports}));
-                      }}
-                    >
-                      <option value="">Select a report</option>
-                      <option value="ticket-123">Ticket #123 - Chat Report</option>
-                      <option value="ticket-456">Ticket #456 - Chat Report</option>
-                    </select>
-                    <Button 
-                      variant="ghost" 
-                      size="sm" 
-                      className="p-0 h-8 w-8 text-destructive"
-                      onClick={() => {
-                        const newReports = [...(playerInfo.attachedReports || [])];
-                        newReports.splice(index, 1);
-                        setPlayerInfo(prev => ({...prev, attachedReports: newReports}));
-                      }}
-                    >
-                      <svg width="15" height="15" viewBox="0 0 15 15" fill="none" xmlns="http://www.w3.org/2000/svg" className="h-4 w-4">
-                        <path d="M11.7816 4.03157C12.0062 3.80702 12.0062 3.44295 11.7816 3.2184C11.5571 2.99385 11.193 2.99385 10.9685 3.2184L7.50005 6.68682L4.03164 3.2184C3.80708 2.99385 3.44301 2.99385 3.21846 3.2184C2.99391 3.44295 2.99391 3.80702 3.21846 4.03157L6.68688 7.49999L3.21846 10.9684C2.99391 11.193 2.99391 11.557 3.21846 11.7816C3.44301 12.0061 3.80708 12.0061 4.03164 11.7816L7.50005 8.31316L10.9685 11.7816C11.193 12.0061 11.5571 12.0061 11.7816 11.7816C12.0062 11.557 12.0062 11.193 11.7816 10.9684L8.31322 7.49999L11.7816 4.03157Z" fill="currentColor" fillRule="evenodd" clipRule="evenodd"></path>
-                      </svg>
-                    </Button>
-                  </div>
-                ))}
-              </div>
-            </div>
-          </>
-        )}
-
-        {/* Targeting, Bad Content */}
-        {(playerInfo.selectedPunishmentCategory === 'Targeting' || 
-          playerInfo.selectedPunishmentCategory === 'Bad Content') && (
-          <>
-            <div className="space-y-2">
-              <label className="text-sm font-medium">Severity</label>
-              <div className="flex gap-2">
-                <Button 
-                  variant="outline" 
-                  size="sm" 
-                  className={`flex-1 ${playerInfo.selectedSeverity === 'Lenient' ? 'bg-primary/20 border-primary/40' : ''}`}
-                  onClick={() => setPlayerInfo(prev => ({...prev, selectedSeverity: 'Lenient'}))}
-                >
-                  Lenient
-                </Button>
-                <Button 
-                  variant="outline" 
-                  size="sm" 
-                  className={`flex-1 ${playerInfo.selectedSeverity === 'Regular' ? 'bg-primary/20 border-primary/40' : ''}`}
-                  onClick={() => setPlayerInfo(prev => ({...prev, selectedSeverity: 'Regular'}))}
-                >
-                  Regular
-                </Button>
-                <Button 
-                  variant="outline" 
-                  size="sm" 
-                  className={`flex-1 ${playerInfo.selectedSeverity === 'Aggravated' ? 'bg-primary/20 border-primary/40' : ''}`}
-                  onClick={() => setPlayerInfo(prev => ({...prev, selectedSeverity: 'Aggravated'}))}
-                >
-                  Aggravated
-                </Button>
-              </div>
-            </div>
-
-            <div className="space-y-2">
-              <label className="text-sm font-medium">Evidence</label>
-              <div className="flex gap-2">
-                <input 
-                  type="text" 
-                  className="flex-1 rounded-md border border-border bg-background px-3 py-1.5 text-sm" 
-                  placeholder="URLs, screenshots, or text evidence"
-                  value={playerInfo.evidence || ''}
-                  onChange={(e) => setPlayerInfo(prev => ({...prev, evidence: e.target.value}))}
-                />
-                <Button variant="outline" size="sm" className="whitespace-nowrap">
-                  <Upload className="h-3.5 w-3.5 mr-1" />
-                  Upload
-                </Button>
-              </div>
-            </div>
-
-            <div className="space-y-2">
-              <div className="flex items-center justify-between mb-2">
-                <label className="text-sm font-medium">Attach Reports</label>
-                <Button 
-                  variant="ghost" 
-                  size="sm" 
-                  onClick={() => setPlayerInfo(prev => ({
-                    ...prev, 
-                    attachedReports: [...(prev.attachedReports || []), 'ticket-new']
-                  }))}
-                  className="text-xs h-7 px-2"
-                >
-                  + Add
-                </Button>
-              </div>
-              <div className="space-y-2">
-                {(playerInfo.attachedReports || []).map((report, index) => (
-                  <div key={index} className="flex gap-2 items-center">
-                    <select 
-                      className="flex-1 rounded-md border border-border bg-background px-3 py-1.5 text-sm"
-                      value={report}
-                      onChange={(e) => {
-                        const newReports = [...(playerInfo.attachedReports || [])];
-                        newReports[index] = e.target.value;
-                        setPlayerInfo(prev => ({...prev, attachedReports: newReports}));
-                      }}
-                    >
-                      <option value="">Select a report</option>
-                      <option value="ticket-123">Ticket #123 - Chat Report</option>
-                      <option value="ticket-456">Ticket #456 - Player Report</option>
-                    </select>
-                    <Button 
-                      variant="ghost" 
-                      size="sm" 
-                      className="p-0 h-8 w-8 text-destructive"
-                      onClick={() => {
-                        const newReports = [...(playerInfo.attachedReports || [])];
-                        newReports.splice(index, 1);
-                        setPlayerInfo(prev => ({...prev, attachedReports: newReports}));
-                      }}
-                    >
-                      <svg width="15" height="15" viewBox="0 0 15 15" fill="none" xmlns="http://www.w3.org/2000/svg" className="h-4 w-4">
-                        <path d="M11.7816 4.03157C12.0062 3.80702 12.0062 3.44295 11.7816 3.2184C11.5571 2.99385 11.193 2.99385 10.9685 3.2184L7.50005 6.68682L4.03164 3.2184C3.80708 2.99385 3.44301 2.99385 3.21846 3.2184C2.99391 3.44295 2.99391 3.80702 3.21846 4.03157L6.68688 7.49999L3.21846 10.9684C2.99391 11.193 2.99391 11.557 3.21846 11.7816C3.44301 12.0061 3.80708 12.0061 4.03164 11.7816L7.50005 8.31316L10.9685 11.7816C11.193 12.0061 11.5571 12.0061 11.7816 11.7816C12.0062 11.557 12.0062 11.193 11.7816 10.9684L8.31322 7.49999L11.7816 4.03157Z" fill="currentColor" fillRule="evenodd" clipRule="evenodd"></path>
-                      </svg>
-                    </Button>
-                  </div>
-                ))}
-              </div>
-            </div>
-          </>
-        )}
-
-        {/* Team Abuse, Game Abuse, Cheating, Game Trading, Account Abuse, Systems Abuse */}
-        {(playerInfo.selectedPunishmentCategory === 'Team Abuse' || 
-          playerInfo.selectedPunishmentCategory === 'Game Abuse' || 
-          playerInfo.selectedPunishmentCategory === 'Cheating' ||
-          playerInfo.selectedPunishmentCategory === 'Game Trading' ||
-          playerInfo.selectedPunishmentCategory === 'Account Abuse' ||
-          playerInfo.selectedPunishmentCategory === 'Systems Abuse') && (
-          <>
-            <div className="space-y-2">
-              <label className="text-sm font-medium">Severity</label>
-              <div className="flex gap-2">
-                <Button 
-                  variant="outline" 
-                  size="sm" 
-                  className={`flex-1 ${playerInfo.selectedSeverity === 'Lenient' ? 'bg-primary/20 border-primary/40' : ''}`}
-                  onClick={() => setPlayerInfo(prev => ({...prev, selectedSeverity: 'Lenient'}))}
-                >
-                  Lenient
-                </Button>
-                <Button 
-                  variant="outline" 
-                  size="sm" 
-                  className={`flex-1 ${playerInfo.selectedSeverity === 'Regular' ? 'bg-primary/20 border-primary/40' : ''}`}
-                  onClick={() => setPlayerInfo(prev => ({...prev, selectedSeverity: 'Regular'}))}
-                >
-                  Regular
-                </Button>
-                <Button 
-                  variant="outline" 
-                  size="sm" 
-                  className={`flex-1 ${playerInfo.selectedSeverity === 'Aggravated' ? 'bg-primary/20 border-primary/40' : ''}`}
-                  onClick={() => setPlayerInfo(prev => ({...prev, selectedSeverity: 'Aggravated'}))}
-                >
-                  Aggravated
-                </Button>
-              </div>
-            </div>
-
-            <div className="space-y-2">
-              <label className="text-sm font-medium">Evidence</label>
-              <div className="flex gap-2">
-                <input 
-                  type="text" 
-                  className="flex-1 rounded-md border border-border bg-background px-3 py-1.5 text-sm" 
-                  placeholder="URLs, screenshots, or text evidence"
-                  value={playerInfo.evidence || ''}
-                  onChange={(e) => setPlayerInfo(prev => ({...prev, evidence: e.target.value}))}
-                />
-                <Button variant="outline" size="sm" className="whitespace-nowrap">
-                  <Upload className="h-3.5 w-3.5 mr-1" />
-                  Upload
-                </Button>
-              </div>
-            </div>
-
-            <div className="space-y-2">
-              <div className="flex items-center justify-between mb-2">
-                <label className="text-sm font-medium">Attach Reports</label>
-                <Button 
-                  variant="ghost" 
-                  size="sm" 
-                  onClick={() => setPlayerInfo(prev => ({
-                    ...prev, 
-                    attachedReports: [...(prev.attachedReports || []), 'ticket-new']
-                  }))}
-                  className="text-xs h-7 px-2"
-                >
-                  + Add
-                </Button>
-              </div>
-              <div className="space-y-2">
-                {(playerInfo.attachedReports || []).map((report, index) => (
-                  <div key={index} className="flex gap-2 items-center">
-                    <select 
-                      className="flex-1 rounded-md border border-border bg-background px-3 py-1.5 text-sm"
-                      value={report}
-                      onChange={(e) => {
-                        const newReports = [...(playerInfo.attachedReports || [])];
-                        newReports[index] = e.target.value;
-                        setPlayerInfo(prev => ({...prev, attachedReports: newReports}));
-                      }}
-                    >
-                      <option value="">Select a report</option>
-                      <option value="ticket-123">Ticket #123 - Chat Report</option>
-                      <option value="ticket-456">Ticket #456 - Player Report</option>
-                    </select>
-                    <Button 
-                      variant="ghost" 
-                      size="sm" 
-                      className="p-0 h-8 w-8 text-destructive"
-                      onClick={() => {
-                        const newReports = [...(playerInfo.attachedReports || [])];
-                        newReports.splice(index, 1);
-                        setPlayerInfo(prev => ({...prev, attachedReports: newReports}));
-                      }}
-                    >
-                      <svg width="15" height="15" viewBox="0 0 15 15" fill="none" xmlns="http://www.w3.org/2000/svg" className="h-4 w-4">
-                        <path d="M11.7816 4.03157C12.0062 3.80702 12.0062 3.44295 11.7816 3.2184C11.5571 2.99385 11.193 2.99385 10.9685 3.2184L7.50005 6.68682L4.03164 3.2184C3.80708 2.99385 3.44301 2.99385 3.21846 3.2184C2.99391 3.44295 2.99391 3.80702 3.21846 4.03157L6.68688 7.49999L3.21846 10.9684C2.99391 11.193 2.99391 11.557 3.21846 11.7816C3.44301 12.0061 3.80708 12.0061 4.03164 11.7816L7.50005 8.31316L10.9685 11.7816C11.193 12.0061 11.5571 12.0061 11.7816 11.7816C12.0062 11.557 12.0062 11.193 11.7816 10.9684L8.31322 7.49999L11.7816 4.03157Z" fill="currentColor" fillRule="evenodd" clipRule="evenodd"></path>
-                      </svg>
-                    </Button>
-                  </div>
-                ))}
-              </div>
-            </div>
-          </>
-        )}
-
-        {/* Common fields for all punishment types */}
-        {playerInfo.selectedPunishmentCategory && (
-          <>
-            <div className="space-y-2">
-              <label className="text-sm font-medium">Notes (staff use only)</label>
-              <textarea 
-                className="w-full rounded-md border border-border bg-background px-3 py-2 text-sm h-16"
-                placeholder="Internal notes visible only to staff"
-                value={playerInfo.staffNotes || ''}
-                onChange={(e) => setPlayerInfo(prev => ({...prev, staffNotes: e.target.value}))}
-              ></textarea>
-            </div>
-
-            <div className="space-y-2">
-              <div className="flex items-center">
-                <input 
-                  type="checkbox" 
-                  id="silent" 
-                  className="rounded mr-2"
-                  checked={!!playerInfo.silentPunishment}
-                  onChange={(e) => setPlayerInfo(prev => ({...prev, silentPunishment: e.target.checked}))}
-                />
-                <label htmlFor="silent" className="text-sm">Silent (No Notification)</label>
-              </div>
-            </div>
-
-            <div className="pt-2">
-              <Button 
-                className="w-full" 
-                onClick={handleApplyPunishment}
-                disabled={isApplyingPunishment}
-              >
-                {isApplyingPunishment ? (
-                  <>
-                    <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                    Applying...
-                  </>
-                ) : (
-                  <>Apply Punishment</>
-                )}
-              </Button>
-            </div>
-          </>
-              )}
-            </div>
-      )}
-            </div>
-            </TabsContent>
-          </Tabs>
+            <PlayerPunishment
+              playerId={playerId}
+              playerName={playerInfo.username}
+              playerStatus={playerInfo.status}
+              data={{
+                selectedPunishmentCategory: playerInfo.selectedPunishmentCategory,
+                selectedSeverity: playerInfo.selectedSeverity,
+                selectedOffenseLevel: playerInfo.selectedOffenseLevel,
+                duration: playerInfo.duration,
+                isPermanent: playerInfo.isPermanent,
+                reason: playerInfo.reason,
+                evidence: playerInfo.evidenceList || [],
+                staffNotes: playerInfo.staffNotes,
+                altBlocking: playerInfo.altBlocking,
+                statWiping: playerInfo.statWiping,
+                silentPunishment: playerInfo.silentPunishment,
+                kickSameIP: playerInfo.kickSameIP,
+                attachReports: playerInfo.attachedReports,
+                banToLink: playerInfo.banToLink,
+                banLinkedAccounts: playerInfo.banLinkedAccounts
+              }}
+              onChange={(data) => {
+                setPlayerInfo(prev => ({
+                  ...prev,
+                  selectedPunishmentCategory: data.selectedPunishmentCategory,
+                  selectedSeverity: data.selectedSeverity,
+                  selectedOffenseLevel: data.selectedOffenseLevel,
+                  duration: data.duration,
+                  isPermanent: data.isPermanent,
+                  reason: data.reason,
+                  evidenceList: data.evidence,
+                  staffNotes: data.staffNotes,
+                  altBlocking: data.altBlocking,
+                  statWiping: data.statWiping,
+                  silentPunishment: data.silentPunishment,
+                  kickSameIP: data.kickSameIP,
+                  attachedReports: data.attachReports,
+                  banToLink: data.banToLink,
+                  banLinkedAccounts: data.banLinkedAccounts
+                }));
+              }}
+              onApply={async (data) => {
+                // Use the existing handleApplyPunishment logic
+                await handleApplyPunishment();
+              }}
+              punishmentTypesByCategory={punishmentTypesByCategory}
+              isLoading={isApplyingPunishment}
+              compact={false}
+            />
+          </TabsContent>
+        </Tabs>
       </div>
     </div>
   );

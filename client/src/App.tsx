@@ -8,6 +8,7 @@ import MobileNavbar from "@/components/layout/MobileNavbar";
 import { SidebarProvider } from "@/hooks/use-sidebar";
 import { DashboardProvider } from "@/contexts/DashboardContext";
 import { AuthProvider, useAuth } from "@/hooks/use-auth";
+import { usePermissions } from "@/hooks/use-permissions";
 import { ProtectedRoute, AuthRoute } from "@/lib/protected-route";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { useDocumentTitle } from "@/hooks/use-document-title";
@@ -54,11 +55,11 @@ function Router() {
     return (
       <main className="h-full bg-background"> {/* Basic wrapper for public pages */}
         <Switch>
-          <Route path="/knowledgebase" component={KnowledgebasePage} />
-          <Route path="/:articleSlug" component={ArticleDetailPage} />
           <Route path="/" component={HomePage} />
-          {/* Fallback for unmatched public routes, ensure it's placed after specific public routes */}
-          {/* <Route component={NotFound} />  Consider if a global NotFound is better */}
+          <Route path="/knowledgebase" component={KnowledgebasePage} />
+          <Route path="/article/:articleSlug" component={ArticleDetailPage} />
+          {/* Fallback for unmatched public routes */}
+          <Route component={NotFound} />
         </Switch>
       </main>
     );
@@ -105,7 +106,7 @@ function Router() {
             <Route path="/rate-limit" component={RateLimitPage} />
             {/* Public KB routes for mobile, if accessed directly and not caught by earlier block */}
             <Route path="/knowledgebase" component={KnowledgebasePage} />
-            <Route path="/:articleSlug" component={ArticleDetailPage} />
+            <Route path="/article/:articleSlug" component={ArticleDetailPage} />
             <Route path="/" component={HomePage} />
             <Route component={NotFound} />
           </Switch>
@@ -122,7 +123,8 @@ function Router() {
       <main className={`flex-1 ${location.startsWith("/panel") ? 'pl-24' : ''} overflow-y-auto bg-background transition-all duration-300 ease-in-out scrollbar`}>
         <Switch>
           <ProtectedRoute path="/panel" component={Home} />
-          <ProtectedRoute path="/panel/lookup" component={Lookup} />
+          <ProtectedRoute path="/panel/lookup" component={LookupPage} />
+          <ProtectedRoute path="/panel/player/:uuid" component={PlayerDetailPage} />
           <ProtectedRoute path="/panel/tickets" component={Tickets} />
           <ProtectedRoute path="/panel/tickets/:id" component={TicketDetail} />
           <ProtectedRoute path="/panel/audit" component={Audit} />
@@ -138,7 +140,7 @@ function Router() {
           <Route path="/rate-limit" component={RateLimitPage} />
           {/* Public KB routes for desktop, if accessed directly and not caught by earlier block */}
           <Route path="/knowledgebase" component={KnowledgebasePage} />
-          <Route path="/:articleSlug" component={ArticleDetailPage} />
+          <Route path="/article/:articleSlug" component={ArticleDetailPage} />
           <Route path="/" component={HomePage} />
           <Route component={NotFound} />
         </Switch>
@@ -154,6 +156,11 @@ function AppContent() {
 
   useDocumentTitle();
   useProvisioningStatusCheck();
+  
+  // Must call hooks before any conditional returns to maintain hook order
+  const { hasPermission } = usePermissions();
+  // Safe permission check - returns false if user is not loaded yet
+  const isAdmin = user ? hasPermission('admin.settings.view') : false;
   
   useEffect(() => {
     const hasSeenModal = localStorage.getItem("hasSeenWelcomeModal");
@@ -187,8 +194,6 @@ function AppContent() {
       </div>
     );
   }
-
-  const isAdmin = user?.role === 'Super Admin' || user?.role === 'Admin';
 
   if (maintenanceMode && !isAdmin) {
     return <MaintenancePage message={maintenanceMessage} />;

@@ -13,6 +13,7 @@ import type { GenerateAuthenticationOptionsOpts } from '@simplewebauthn/server';
 import type { AuthenticatorTransport } from '@simplewebauthn/types';
 import { strictRateLimit, authRateLimit } from '../middleware/rate-limiter';
 import { getModlServersModel } from '../db/connectionManager';
+import { isAuthenticated } from '../middleware/auth-middleware';
 
 
 const rpID = process.env.APP_DOMAIN || 'localhost';
@@ -532,8 +533,9 @@ router.patch('/profile', async (req: Request, res: Response) => {
       return res.status(401).json({ message: 'Not authenticated' });
     }    const { username } = req.body;
 
-    // If this is a Super Admin (identified by email as userId), update session only
-    if (session.role === 'Super Admin') {
+    // If this is the server admin (identified by admin email), update session only
+    const adminEmail = req.modlServer?.adminEmail?.toLowerCase();
+    if (adminEmail && session.userId?.toLowerCase() === adminEmail) {
       if (username !== undefined) {
         session.username = username;
       }
@@ -616,8 +618,11 @@ router.get('/session', async (req: Request, res: Response) => {
       email: session.email,
       username: session.username,
       role: session.role
-    });    // If this is a Super Admin (identified by email as userId), return admin data
-    if (session.role === 'Super Admin') {
+    });    
+    
+    // If this is the server admin (identified by admin email), return admin data
+    const adminEmail = req.modlServer?.adminEmail?.toLowerCase();
+    if (adminEmail && session.userId?.toLowerCase() === adminEmail) {
       const user = {
         _id: session.userId,
         email: session.email,
@@ -661,6 +666,23 @@ router.get('/session', async (req: Request, res: Response) => {
       isAuthenticated: false, 
       user: null 
     });
+  }
+});
+
+// Get current user's permissions
+router.get('/permissions', isAuthenticated, async (req: Request, res: Response) => {
+  try {
+    if (!req.currentUser || !req.currentUser.role) {
+      return res.status(401).json({ error: 'Not authenticated' });
+    }
+
+    const { getUserPermissions } = await import('../middleware/permission-middleware');
+    const permissions = await getUserPermissions(req, req.currentUser.role);
+    
+    res.json(permissions);
+  } catch (error) {
+    console.error('Error fetching user permissions:', error);
+    res.status(500).json({ error: 'Failed to fetch permissions' });
   }
 });
 

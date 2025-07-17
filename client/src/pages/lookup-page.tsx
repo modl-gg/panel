@@ -3,16 +3,19 @@ import { useLocation } from 'wouter';
 import { Search, ChevronRight, X, Loader2 } from 'lucide-react';
 import { Input } from 'modl-shared-web/components/ui/input';
 import { Button } from 'modl-shared-web/components/ui/button';
-import { Avatar } from 'modl-shared-web/components/ui/avatar';
-import { Badge } from 'modl-shared-web/components/ui/badge';
-import { Separator } from 'modl-shared-web/components/ui/separator';
 import { usePlayers } from '@/hooks/use-data';
 
 interface Player {
   username?: string;
   uuid: string;
-  lastOnline: string;
-  status: 'Active' | 'Warned' | 'Banned';
+  minecraftUuid?: string;
+  lastOnline?: string;
+  lastLogin?: Date | string;
+  lastSeen?: Date | string;
+  lastDisconnect?: Date | string;
+  status: string;
+  data?: any;
+  isOnline?: boolean;
 }
 
 const LookupPage = () => {
@@ -23,6 +26,9 @@ const LookupPage = () => {
   
   // Use Query for fetching players
   const { data: players, isLoading, refetch } = usePlayers();
+  
+  // Get recent searches from localStorage sorted by timestamp
+  const [recentSearches, setRecentSearches] = useState<Array<{player: Player, timestamp: number}>>([]);
 
   // Fetch players on initial load
   useEffect(() => {
@@ -30,16 +36,16 @@ const LookupPage = () => {
       refetch();
     }
     
-    // Load search history from local storage
-    const savedHistory = localStorage.getItem('searchHistory');
-    if (savedHistory) {
+    // Load recent searches from local storage
+    const savedSearches = localStorage.getItem('recentPlayerSearches');
+    if (savedSearches) {
       try {
-        const parsed = JSON.parse(savedHistory);
-        if (Array.isArray(parsed) && parsed.length > 0) {
-          setSearchHistory(parsed.slice(0, 5)); // Keep only the most recent 5
+        const parsed = JSON.parse(savedSearches);
+        if (Array.isArray(parsed)) {
+          setRecentSearches(parsed);
         }
       } catch (e) {
-        console.error('Failed to parse search history:', e);
+        console.error('Failed to parse recent searches:', e);
       }
     }
   }, [players, isLoading, refetch]);
@@ -51,20 +57,33 @@ const LookupPage = () => {
       )
     : [];
 
+  // Get player UUID (handling both uuid and minecraftUuid fields)
+  const getPlayerUuid = (player: Player) => {
+    return player.minecraftUuid || player.uuid;
+  };
+  
+  // Check if player is online
+  const isPlayerOnline = (player: Player) => {
+    if (player.isOnline !== undefined) return player.isOnline;
+    if (player.data?.isOnline !== undefined) return player.data.isOnline;
+    return player.status === 'Online';
+  };
+  
   // Handle player selection
   const handlePlayerSelect = (player: Player) => {
-    // Add to search history if not already there
-    const historyExists = searchHistory.some(p => p.uuid === player.uuid);
-    if (!historyExists) {
-      const newHistory = [player, ...searchHistory].slice(0, 5);
-      setSearchHistory(newHistory);
-      
-      // Save to local storage
-      localStorage.setItem('searchHistory', JSON.stringify(newHistory));
-    }
+    const uuid = getPlayerUuid(player);
+    
+    // Update recent searches
+    const timestamp = Date.now();
+    const existing = recentSearches.filter(s => getPlayerUuid(s.player) !== uuid);
+    const newSearches = [{player, timestamp}, ...existing].slice(0, 10);
+    setRecentSearches(newSearches);
+    
+    // Save to local storage
+    localStorage.setItem('recentPlayerSearches', JSON.stringify(newSearches));
     
     // Navigate to player detail page
-    navigate(`/player/${player.uuid}`);
+    navigate(`/panel/player/${uuid}`);
   };
 
   // Handle clearing search
@@ -73,11 +92,11 @@ const LookupPage = () => {
   };
 
   return (
-    <div className="w-full px-4 py-4">
-      <h1 className="text-2xl font-bold mb-4">Player Lookup</h1>
+    <div className="transition-all duration-300 bg-background/50 border rounded-xl shadow-sm md:p-8 md:my-8 md:mx-8 p-4 my-0 mx-0 mb-20">
+      <h1 className="text-2xl font-bold mb-6">Player Lookup</h1>
       
-      <div className="flex items-center relative mb-6">
-        <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+      <div className="relative mb-6">
+        <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none z-10">
           <Search className="h-4 w-4 text-muted-foreground" />
         </div>
         
@@ -87,6 +106,8 @@ const LookupPage = () => {
           className="pl-10 pr-10"
           value={searchQuery}
           onChange={(e) => setSearchQuery(e.target.value)}
+          autoCorrect="off"
+          autoCapitalize="off"
         />
         
         {searchQuery && (
@@ -108,34 +129,40 @@ const LookupPage = () => {
           <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
         </div>
       ) : searchQuery ? (
-        <div className="space-y-1">
-          <h2 className="text-sm font-medium text-muted-foreground mb-2">Search Results</h2>
+        <div className="space-y-3">
+          <h2 className="text-sm font-medium text-muted-foreground mb-4">Search Results</h2>
           
           {filteredPlayers.length > 0 ? (
             filteredPlayers.map((player: Player) => (
               <div 
-                key={player.uuid}
-                className="flex items-center justify-between p-3 bg-card rounded-lg hover:bg-card/80 cursor-pointer"
+                key={getPlayerUuid(player)}
+                className="flex items-center justify-between p-4 bg-background border rounded-lg hover:bg-muted/50 cursor-pointer transition-colors"
                 onClick={() => handlePlayerSelect(player)}
               >
                 <div className="flex items-center">
-                  <Avatar className="mr-3 h-9 w-9">
-                    <div className="bg-primary/10 flex items-center justify-center h-full rounded-full">
-                      <span className="text-sm font-medium text-primary">
-                        {player.username?.substring(0, 2) || '??'}
-                      </span>
-                    </div>
-                  </Avatar>
+                  <div className="relative h-10 w-10 bg-muted rounded-lg flex items-center justify-center overflow-hidden mr-3">
+                    <img 
+                      src={`/api/panel/players/avatar/${getPlayerUuid(player)}?size=40&overlay=true`}
+                      alt={`${player.username || 'Player'} Avatar`}
+                      className="w-full h-full object-cover"
+                      onError={(e) => {
+                        e.currentTarget.style.display = 'none';
+                        e.currentTarget.nextElementSibling?.classList.remove('hidden');
+                      }}
+                    />
+                    <span className="hidden text-sm font-bold text-primary">
+                      {player.username?.substring(0, 2).toUpperCase() || '??'}
+                    </span>
+                  </div>
                   <div>
                     <p className="font-medium text-sm">{player.username || 'Unknown'}</p>
-                    <p className="text-xs text-muted-foreground">Last seen: {player.lastOnline}</p>
+                    <p className="text-xs text-muted-foreground">
+                      {isPlayerOnline(player) ? 'Online' : 'Offline'}
+                    </p>
                   </div>
                 </div>
                 
-                <div className="flex items-center gap-2">
-                  <StatusBadge status={player.status} />
-                  <ChevronRight className="h-4 w-4 text-muted-foreground" />
-                </div>
+                <ChevronRight className="h-4 w-4 text-muted-foreground" />
               </div>
             ))
           ) : (
@@ -146,110 +173,51 @@ const LookupPage = () => {
         </div>
       ) : (
         <div>
-          {searchHistory.length > 0 && (
-            <div className="space-y-1 mb-6">
-              <h2 className="text-sm font-medium text-muted-foreground mb-2">Recent Lookups</h2>
+          {recentSearches.length > 0 && (
+            <div className="space-y-3">
+              <h2 className="text-sm font-medium text-muted-foreground mb-4">Recent Lookups</h2>
               
-              {searchHistory.map((player) => (
+              {recentSearches
+                .sort((a, b) => b.timestamp - a.timestamp)
+                .slice(0, 5)
+                .map(({player}) => (
                 <div 
-                  key={player.uuid}
-                  className="flex items-center justify-between p-3 bg-card rounded-lg hover:bg-card/80 cursor-pointer"
+                  key={getPlayerUuid(player)}
+                  className="flex items-center justify-between p-4 bg-background border rounded-lg hover:bg-muted/50 cursor-pointer transition-colors"
                   onClick={() => handlePlayerSelect(player)}
                 >
                   <div className="flex items-center">
-                    <Avatar className="mr-3 h-9 w-9">
-                      <div className="bg-primary/10 flex items-center justify-center h-full rounded-full">
-                        <span className="text-sm font-medium text-primary">
-                          {player.username?.substring(0, 2) || '??'}
-                        </span>
-                      </div>
-                    </Avatar>
+                    <div className="relative h-10 w-10 bg-muted rounded-lg flex items-center justify-center overflow-hidden mr-3">
+                      <img 
+                        src={`/api/panel/players/avatar/${getPlayerUuid(player)}?size=40&overlay=true`}
+                        alt={`${player.username || 'Player'} Avatar`}
+                        className="w-full h-full object-cover"
+                        onError={(e) => {
+                          e.currentTarget.style.display = 'none';
+                          e.currentTarget.nextElementSibling?.classList.remove('hidden');
+                        }}
+                      />
+                      <span className="hidden text-sm font-bold text-primary">
+                        {player.username?.substring(0, 2).toUpperCase() || '??'}
+                      </span>
+                    </div>
                     <div>
                       <p className="font-medium text-sm">{player.username || 'Unknown'}</p>
-                      <p className="text-xs text-muted-foreground">Last seen: {player.lastOnline}</p>
+                      <p className="text-xs text-muted-foreground">
+                        {isPlayerOnline(player) ? 'Online' : 'Offline'}
+                      </p>
                     </div>
                   </div>
                   
-                  <div className="flex items-center gap-2">
-                    <StatusBadge status={player.status} />
-                    <ChevronRight className="h-4 w-4 text-muted-foreground" />
-                  </div>
+                  <ChevronRight className="h-4 w-4 text-muted-foreground" />
                 </div>
               ))}
             </div>
           )}
-          
-          <div className="space-y-1">
-            <h2 className="text-sm font-medium text-muted-foreground mb-2">All Players</h2>
-            {players && players.length > 0 ? (
-              players.slice(0, 15).map((player: Player) => (
-                <div 
-                  key={player.uuid}
-                  className="flex items-center justify-between p-3 bg-card rounded-lg hover:bg-card/80 cursor-pointer"
-                  onClick={() => handlePlayerSelect(player)}
-                >
-                  <div className="flex items-center">
-                    <Avatar className="mr-3 h-9 w-9">
-                      <div className="bg-primary/10 flex items-center justify-center h-full rounded-full">
-                        <span className="text-sm font-medium text-primary">
-                          {player.username?.substring(0, 2) || '??'}
-                        </span>
-                      </div>
-                    </Avatar>
-                    <div>
-                      <p className="font-medium text-sm">{player.username || 'Unknown'}</p>
-                      <p className="text-xs text-muted-foreground">Last seen: {player.lastOnline}</p>
-                    </div>
-                  </div>
-                  
-                  <div className="flex items-center gap-2">
-                    <StatusBadge status={player.status} />
-                    <ChevronRight className="h-4 w-4 text-muted-foreground" />
-                  </div>
-                </div>
-              ))
-            ) : (
-              <div className="text-center py-6">
-                <p className="text-muted-foreground">No players found</p>
-              </div>
-            )}
-            
-            {players && players.length > 15 && (
-              <div className="text-center py-2">
-                <p className="text-xs text-muted-foreground">Showing 15 of {players.length} players. Use search to find more.</p>
-              </div>
-            )}
-          </div>
         </div>
       )}
     </div>
   );
-};
-
-// Helper component for rendering status badges
-const StatusBadge = ({ status }: { status: 'Active' | 'Warned' | 'Banned' }) => {
-  switch (status) {
-    case 'Active':
-      return (
-        <Badge variant="outline" className="bg-success/10 text-success border-success/20">
-          Active
-        </Badge>
-      );
-    case 'Warned':
-      return (
-        <Badge variant="outline" className="bg-warning/10 text-warning border-warning/20">
-          Warned
-        </Badge>
-      );
-    case 'Banned':
-      return (
-        <Badge variant="outline" className="bg-destructive/10 text-destructive border-destructive/20">
-          Banned
-        </Badge>
-      );
-    default:
-      return null;
-  }
 };
 
 export default LookupPage;

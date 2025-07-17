@@ -20,7 +20,7 @@ interface ArticleDetail {
 }
 
 const ArticleDetailPage: React.FC = () => {
-  const [, params] = useRoute("/:articleSlug");
+  const [, params] = useRoute("/article/:articleSlug");
   const articleSlug = params?.articleSlug;
   const [article, setArticle] = useState<ArticleDetail | null>(null);
   const [isLoading, setIsLoading] = useState(true);

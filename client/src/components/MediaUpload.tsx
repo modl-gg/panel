@@ -108,7 +108,8 @@ export function MediaUpload({
     });
 
     try {
-      const response = await fetch(`/api/panel/media/upload/${uploadType}`, {
+      const { csrfFetch } = await import('@/utils/csrf');
+      const response = await csrfFetch(`/api/panel/media/upload/${uploadType}`, {
         method: 'POST',
         body: formData,
       });

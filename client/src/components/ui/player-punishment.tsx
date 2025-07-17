@@ -293,7 +293,7 @@ const PlayerPunishment: React.FC<PlayerPunishmentProps> = ({
   const renderCategoryGrid = (types: any[], title: string) => (
     <div className="space-y-1">
       <label className="text-xs font-medium text-muted-foreground">{title}</label>
-      <div className="grid grid-cols-6 gap-2">
+      <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-2">
         {types.length > 0 ? types.map(type => (
           <Button 
             key={type.id}
@@ -306,7 +306,7 @@ const PlayerPunishment: React.FC<PlayerPunishmentProps> = ({
             {type.name}
           </Button>
         )) : (
-          <div className="col-span-6 text-xs text-muted-foreground p-2 border border-dashed rounded">
+          <div className="col-span-2 sm:col-span-3 md:col-span-4 lg:col-span-6 text-xs text-muted-foreground p-2 border border-dashed rounded">
             {isLoading ? `Loading ${title.toLowerCase()} punishment types...` : `No ${title.toLowerCase()} punishment types configured`}
           </div>
         )}

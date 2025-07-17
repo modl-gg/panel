@@ -40,9 +40,6 @@ export async function verifyMinecraftApiKey(req: Request, res: Response, next: N
     const apiKeysData = await getSettingsValue(req.serverDbConnection, 'apiKeys');
     const configuredApiKey = apiKeysData?.api_key;
     
-    // Clean up duplicate logging
-    console.log(`[Unified API Auth - ${req.serverName || 'Unknown Server'}] API Keys Data:`, apiKeysData ? 'Found' : 'Not Found');
-    console.log(`[Unified API Auth - ${req.serverName || 'Unknown Server'}] Configured API Key:`, configuredApiKey ? 'Found' : 'Not Found');
     
     if (configuredApiKey === undefined || configuredApiKey === null) {
       console.warn(`[Unified API Auth - ${req.serverName || 'Unknown Server'}] API key not configured in settings. Please generate an API key in the admin panel.`);

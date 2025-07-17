@@ -146,7 +146,8 @@ async function getUserPermissions(req: Request, userRole: string): Promise<strin
 
   // Check if user has a custom role
   try {
-    const StaffRoles = req.serverDbConnection.model('StaffRole');
+    const { getStaffRoleModel } = await import('../utils/schema-utils');
+    const StaffRoles = getStaffRoleModel(req.serverDbConnection);
     const customRole = await StaffRoles.findOne({ name: userRole });
     
     if (customRole) {
@@ -1344,19 +1345,64 @@ export function setupMinecraftRoutes(app: Express): void {
         contentString += `**Chat Messages:**\n`;
         try {
           const messages = Array.isArray(chatMessages) ? chatMessages : [];
+          
           messages.forEach((msg: any) => {
-            if (typeof msg === 'object' && msg.username && msg.message) {
-              const timestamp = msg.timestamp ? new Date(msg.timestamp).toLocaleString() : 'Unknown time';
-              const username = msg.username;
-              const message = msg.message;
-              contentString += `\`[${timestamp}]\` **${username}**: ${message}\n`;
-            } else if (typeof msg === 'string') {
-              contentString += `${msg}\n`;
+            // Check if msg is a JSON string that needs parsing
+            let parsedMsg = msg;
+            if (typeof msg === 'string') {
+              try {
+                parsedMsg = JSON.parse(msg);
+              } catch (e) {
+                // Not valid JSON, treat as plain string
+                contentString += `${msg}\n`;
+                return;
+              }
+            }
+            
+            // Handle different possible message formats
+            if (typeof parsedMsg === 'object' && parsedMsg !== null) {
+              // Format 1: { username, message, timestamp }
+              if (parsedMsg.username && parsedMsg.message) {
+                const timestamp = parsedMsg.timestamp ? new Date(parsedMsg.timestamp).toLocaleString() : 'Unknown time';
+                const username = parsedMsg.username;
+                const message = parsedMsg.message;
+                contentString += `\`[${timestamp}]\` **${username}**: ${message}\n`;
+              }
+              // Format 2: { player, text, time } (alternative format)
+              else if (parsedMsg.player && parsedMsg.text) {
+                const timestamp = parsedMsg.time ? new Date(parsedMsg.time).toLocaleString() : 'Unknown time';
+                const username = parsedMsg.player;
+                const message = parsedMsg.text;
+                contentString += `\`[${timestamp}]\` **${username}**: ${message}\n`;
+              }
+              // Format 3: { name, content, date } (another alternative)
+              else if (parsedMsg.name && parsedMsg.content) {
+                const timestamp = parsedMsg.date ? new Date(parsedMsg.date).toLocaleString() : 'Unknown time';
+                const username = parsedMsg.name;
+                const message = parsedMsg.content;
+                contentString += `\`[${timestamp}]\` **${username}**: ${message}\n`;
+              }
+              // Format 4: Object with unknown structure - try to extract useful info
+              else {
+                // Look for any property that might be a username
+                const usernameField = parsedMsg.username || parsedMsg.player || parsedMsg.name || parsedMsg.user || 'Unknown';
+                // Look for any property that might be a message
+                const messageField = parsedMsg.message || parsedMsg.text || parsedMsg.content || parsedMsg.msg || JSON.stringify(parsedMsg);
+                // Look for any property that might be a timestamp
+                const timestampField = parsedMsg.timestamp || parsedMsg.time || parsedMsg.date || parsedMsg.when;
+                const timestamp = timestampField ? new Date(timestampField).toLocaleString() : 'Unknown time';
+                
+                contentString += `\`[${timestamp}]\` **${usernameField}**: ${messageField}\n`;
+              }
+            } else {
+              // Fallback for any other format
+              contentString += `${JSON.stringify(parsedMsg)}\n`;
             }
           });
         } catch (error) {
-          // Fallback to basic format if parsing fails
-          contentString += `${chatMessages.join('\n')}\n`;
+          console.error('Error processing chat messages:', error);
+          // Fallback to JSON format if all parsing fails
+          contentString += `${JSON.stringify(chatMessages, null, 2)}\n`;
         }
         contentString += `\n`;
       }

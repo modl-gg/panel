@@ -1,8 +1,8 @@
 import express, { Request, Response, NextFunction } from 'express';
 import { Connection, Document as MongooseDocument, HydratedDocument, Schema } from 'mongoose';
 import { isAuthenticated } from '../middleware/auth-middleware';
-import { checkPermission } from '../middleware/permission-middleware';
-import { checkRole } from '../middleware/role-middleware';
+// Note: Permission functions will be imported dynamically to avoid circular dependency issues
+// Note: checkRole replaced with permission-based checks
 import domainRoutes from './domain-routes';
 import PunishmentService from '../services/punishment-service';
 import multer from 'multer';
@@ -2467,7 +2467,29 @@ async function cleanupOrphanedAIPunishmentConfigsHelper(dbConnection: Connection
   }
 }
 
-router.get('/', checkPermission('admin.settings.view'), async (req: Request, res: Response) => {
+// Helper function to check permissions
+async function checkRoutePermission(req: Request, res: Response, permission: string): Promise<boolean> {
+  try {
+    const { hasPermission } = await import('../middleware/permission-middleware');
+    const hasRequiredPermission = await hasPermission(req, permission);
+    
+    if (!hasRequiredPermission) {
+      res.status(403).json({ 
+        message: 'Forbidden: You do not have the required permissions.',
+        required: [permission]
+      });
+      return false;
+    }
+    return true;
+  } catch (error) {
+    console.error('Error checking permissions:', error);
+    res.status(500).json({ message: 'Internal server error while checking permissions.' });
+    return false;
+  }
+}
+
+router.get('/', async (req: Request, res: Response) => {
+  if (!(await checkRoutePermission(req, res, 'admin.settings.view'))) return;
   try {
     const models = getSettingsModels(req.serverDbConnection!);
     
@@ -2490,7 +2512,8 @@ router.get('/', checkPermission('admin.settings.view'), async (req: Request, res
   }
 });
 
-router.patch('/', checkPermission('admin.settings.modify'), async (req: Request, res: Response) => {
+router.patch('/', async (req: Request, res: Response) => {
+  if (!(await checkRoutePermission(req, res, 'admin.settings.modify'))) return;
   try {
     // Update settings documents
     await updateSettings(req.serverDbConnection!, req.body);
@@ -2508,7 +2531,8 @@ router.patch('/', checkPermission('admin.settings.modify'), async (req: Request,
   }
 });
 
-router.post('/reset', checkPermission('admin.settings.modify'), async (req: Request, res: Response) => {
+router.post('/reset', async (req: Request, res: Response) => {
+  if (!(await checkRoutePermission(req, res, 'admin.settings.modify'))) return;
   try {
     const models = getSettingsModels(req.serverDbConnection!);
     
@@ -2531,7 +2555,8 @@ router.post('/reset', checkPermission('admin.settings.modify'), async (req: Requ
 });
 
 // Migration endpoint to fix ticketForms format
-router.post('/migrate-ticket-forms', checkPermission('admin.settings.modify'), async (req: Request, res: Response) => {
+router.post('/migrate-ticket-forms', async (req: Request, res: Response) => {
+  if (!(await checkRoutePermission(req, res, 'admin.settings.modify'))) return;
   try {
     await migrateTicketForms(req.serverDbConnection!);
     res.json({ success: true, message: 'Ticket forms migration completed successfully' });
@@ -2544,7 +2569,8 @@ router.post('/migrate-ticket-forms', checkPermission('admin.settings.modify'), a
 // Unified API Key Management Routes - Moved before generic /:key route to prevent interception
 
 // Get current unified API key (masked for security)
-router.get('/api-key', checkPermission('admin.settings.view'), async (req: Request, res: Response) => {
+router.get('/api-key', async (req: Request, res: Response) => {
+  if (!(await checkRoutePermission(req, res, 'admin.settings.view'))) return;
   try {
     console.log('[Unified API Key GET] Request received');
     console.log('[Unified API Key GET] Server name:', req.serverName);
@@ -2582,7 +2608,8 @@ router.get('/api-key', checkPermission('admin.settings.view'), async (req: Reque
 });
 
 // Generate new unified API key
-router.post('/api-key/generate', checkPermission('admin.settings.modify'), async (req: Request, res: Response) => {
+router.post('/api-key/generate', async (req: Request, res: Response) => {
+  if (!(await checkRoutePermission(req, res, 'admin.settings.modify'))) return;
   try {
     console.log('[Unified API Key GENERATE] Request received');
     console.log('[Unified API Key GENERATE] Server name:', req.serverName);
@@ -2625,7 +2652,8 @@ router.post('/api-key/generate', checkPermission('admin.settings.modify'), async
 });
 
 // Get full unified API key (for revealing/copying)
-router.get('/api-key/reveal', checkPermission('admin.settings.view'), async (req: Request, res: Response) => {
+router.get('/api-key/reveal', async (req: Request, res: Response) => {
+  if (!(await checkRoutePermission(req, res, 'admin.settings.view'))) return;
   try {
     console.log('[Unified API Key REVEAL] Request received');
     console.log('[Unified API Key REVEAL] Server name:', req.serverName);
@@ -2650,7 +2678,8 @@ router.get('/api-key/reveal', checkPermission('admin.settings.view'), async (req
 });
 
 // Revoke unified API key
-router.delete('/api-key', checkPermission('admin.settings.modify'), async (req: Request, res: Response) => {
+router.delete('/api-key', async (req: Request, res: Response) => {
+  if (!(await checkRoutePermission(req, res, 'admin.settings.modify'))) return;
   try {
     const Settings = req.serverDbConnection!.model('Settings');
     
@@ -2677,7 +2706,8 @@ router.delete('/api-key', checkPermission('admin.settings.modify'), async (req: 
 // Legacy API Key Management Routes (for backward compatibility)
 
 // Get current ticket API key (masked for security)
-router.get('/ticket-api-key', checkPermission('admin.settings.view'), async (req: Request, res: Response) => {
+router.get('/ticket-api-key', async (req: Request, res: Response) => {
+  if (!(await checkRoutePermission(req, res, 'admin.settings.view'))) return;
   try {
     console.log('[Ticket API Key GET] Request received');
     console.log('[Ticket API Key GET] Server name:', req.serverName);
@@ -2723,7 +2753,8 @@ router.get('/ticket-api-key', checkPermission('admin.settings.view'), async (req
 });
 
 // Generate new ticket API key
-router.post('/ticket-api-key/generate', checkPermission('admin.settings.modify'), async (req: Request, res: Response) => {
+router.post('/ticket-api-key/generate', async (req: Request, res: Response) => {
+  if (!(await checkRoutePermission(req, res, 'admin.settings.modify'))) return;
   try {
     console.log('[Ticket API Key GENERATE] Request received');
     console.log('[Ticket API Key GENERATE] Server name:', req.serverName);
@@ -2771,7 +2802,8 @@ router.post('/ticket-api-key/generate', checkPermission('admin.settings.modify')
 });
 
 // Revoke ticket API key
-router.delete('/ticket-api-key', checkPermission('admin.settings.modify'), async (req: Request, res: Response) => {
+router.delete('/ticket-api-key', async (req: Request, res: Response) => {
+  if (!(await checkRoutePermission(req, res, 'admin.settings.modify'))) return;
   try {
     const Settings = req.serverDbConnection!.model<ISettingsDocument>('Settings');
     const settingsDoc = await Settings.findOne({});
@@ -2796,7 +2828,8 @@ router.delete('/ticket-api-key', checkPermission('admin.settings.modify'), async
 // Minecraft API Key Management Routes
 
 // Get current minecraft API key (masked for security)
-router.get('/minecraft-api-key', checkPermission('admin.settings.view'), async (req: Request, res: Response) => {
+router.get('/minecraft-api-key', async (req: Request, res: Response) => {
+  if (!(await checkRoutePermission(req, res, 'admin.settings.view'))) return;
   try {
     const Settings = req.serverDbConnection!.model<ISettingsDocument>('Settings');
     const settingsDoc = await Settings.findOne({});
@@ -2830,7 +2863,8 @@ router.get('/minecraft-api-key', checkPermission('admin.settings.view'), async (
 });
 
 // Generate new minecraft API key
-router.post('/minecraft-api-key/generate', checkPermission('admin.settings.modify'), async (req: Request, res: Response) => {
+router.post('/minecraft-api-key/generate', async (req: Request, res: Response) => {
+  if (!(await checkRoutePermission(req, res, 'admin.settings.modify'))) return;
   try {
     const Settings = req.serverDbConnection!.model('Settings');
     
@@ -2866,7 +2900,8 @@ router.post('/minecraft-api-key/generate', checkPermission('admin.settings.modif
 });
 
 // Revoke minecraft API key
-router.delete('/minecraft-api-key', checkPermission('admin.settings.modify'), async (req: Request, res: Response) => {
+router.delete('/minecraft-api-key', async (req: Request, res: Response) => {
+  if (!(await checkRoutePermission(req, res, 'admin.settings.modify'))) return;
   try {
     const Settings = req.serverDbConnection!.model<ISettingsDocument>('Settings');
     const settingsDoc = await Settings.findOne({});
@@ -2889,7 +2924,8 @@ router.delete('/minecraft-api-key', checkPermission('admin.settings.modify'), as
 });
 
 // Get AI punishment types (combines existing punishment types with AI configs)
-router.get('/ai-punishment-types', checkPermission('admin.settings.view'), async (req: Request, res: Response) => {
+router.get('/ai-punishment-types', async (req: Request, res: Response) => {
+  if (!(await checkRoutePermission(req, res, 'admin.settings.view'))) return;
   try {
     if (!req.serverDbConnection) {
       return res.status(500).json({ error: 'Database connection not available' });
@@ -2931,7 +2967,8 @@ router.get('/ai-punishment-types', checkPermission('admin.settings.view'), async
 });
 
 // Add/Enable AI punishment type
-router.post('/ai-punishment-types', checkPermission('admin.settings.modify'), async (req: Request, res: Response) => {
+router.post('/ai-punishment-types', async (req: Request, res: Response) => {
+  if (!(await checkRoutePermission(req, res, 'admin.settings.modify'))) return;
   try {
     if (!req.serverDbConnection) {
       return res.status(500).json({ error: 'Database connection not available' });
@@ -3001,7 +3038,8 @@ router.post('/ai-punishment-types', checkPermission('admin.settings.modify'), as
 });
 
 // Update AI punishment type configuration - ADMIN ONLY
-router.put('/ai-punishment-types/:id', isAuthenticated, checkRole(['Super Admin', 'Admin']), async (req: Request, res: Response) => {
+router.put('/ai-punishment-types/:id', isAuthenticated, async (req: Request, res: Response) => {
+  if (!(await checkRoutePermission(req, res, 'admin.settings.modify'))) return;
   try {
     if (!req.serverDbConnection) {
       return res.status(500).json({ error: 'Database connection not available' });
@@ -3085,7 +3123,8 @@ router.put('/ai-punishment-types/:id', isAuthenticated, checkRole(['Super Admin'
 });
 
 // Remove/Disable AI punishment type - ADMIN ONLY
-router.delete('/ai-punishment-types/:id', isAuthenticated, checkRole(['Super Admin', 'Admin']), async (req: Request, res: Response) => {
+router.delete('/ai-punishment-types/:id', isAuthenticated, async (req: Request, res: Response) => {
+  if (!(await checkRoutePermission(req, res, 'admin.settings.modify'))) return;
   try {
     if (!req.serverDbConnection) {
       return res.status(500).json({ error: 'Database connection not available' });
@@ -3134,7 +3173,8 @@ router.delete('/ai-punishment-types/:id', isAuthenticated, checkRole(['Super Adm
 });
 
 // Debug route to test if settings routes are working - ADMIN ONLY
-router.get('/debug', isAuthenticated, checkRole(['Super Admin']), async (req: Request, res: Response) => {
+router.get('/debug', isAuthenticated, async (req: Request, res: Response) => {
+  if (!(await checkRoutePermission(req, res, 'admin.settings.modify'))) return;
   try {
     const models = getSettingsModels(req.serverDbConnection!);
     
@@ -3161,7 +3201,8 @@ router.get('/debug', isAuthenticated, checkRole(['Super Admin']), async (req: Re
 });
 
 // Get available punishment types for adding to AI (excludes already enabled ones)
-router.get('/available-punishment-types', checkPermission('admin.settings.view'), async (req: Request, res: Response) => {
+router.get('/available-punishment-types', async (req: Request, res: Response) => {
+  if (!(await checkRoutePermission(req, res, 'admin.settings.view'))) return;
   try {
     if (!req.serverDbConnection) {
       return res.status(500).json({ error: 'Database connection not available' });
@@ -3193,7 +3234,8 @@ router.get('/available-punishment-types', checkPermission('admin.settings.view')
 });
 
 // Get AI moderation settings
-router.get('/ai-moderation-settings', checkPermission('admin.settings.view'), async (req: Request, res: Response) => {
+router.get('/ai-moderation-settings', async (req: Request, res: Response) => {
+  if (!(await checkRoutePermission(req, res, 'admin.settings.view'))) return;
   try {
     if (!req.serverDbConnection) {
       return res.status(500).json({ error: 'Database connection not available' });
@@ -3290,12 +3332,18 @@ router.post('/cleanup-ai-configs', async (req: Request, res: Response) => {
 
 // Apply AI-suggested punishment to a player
 router.post('/ai-apply-punishment/:ticketId', async (req: Request, res: Response) => {
+  const { ticketId } = req.params;
+  let playerIdentifier;
+  let aiAnalysis;
+  
   try {
+    console.log(`[AI Apply] Starting AI punishment application for ticket ${ticketId}`);
+    console.log(`[AI Apply] Database connection available: ${!!req.serverDbConnection}`);
+    
     if (!req.serverDbConnection) {
+      console.error(`[AI Apply] No database connection available`);
       return res.status(500).json({ error: 'Database connection not available' });
     }
-
-    const { ticketId } = req.params;
     
     // Get staff information from session (more secure than request body)
     if (!req.currentUser) {
@@ -3313,7 +3361,9 @@ router.post('/ai-apply-punishment/:ticketId', async (req: Request, res: Response
       return res.status(404).json({ error: 'Ticket not found' });
     }
 
-    const aiAnalysis = ticket.data?.get ? ticket.data.get('aiAnalysis') : ticket.data?.aiAnalysis;
+    aiAnalysis = ticket.data?.get ? ticket.data.get('aiAnalysis') : ticket.data?.aiAnalysis;
+    console.log(`[AI Apply] Found AI analysis for ticket ${ticketId}:`, JSON.stringify(aiAnalysis, null, 2));
+    
     if (!aiAnalysis || !aiAnalysis.suggestedAction) {
       return res.status(400).json({ error: 'No AI suggestion found for this ticket' });
     }
@@ -3325,7 +3375,7 @@ router.post('/ai-apply-punishment/:ticketId', async (req: Request, res: Response
     // Get the reported player identifier (prefer UUID, fallback to name)
     const reportedPlayerUuid = ticket.reportedPlayerUuid || ticket.data?.get?.('reportedPlayerUuid') || ticket.data?.reportedPlayerUuid;
     const reportedPlayer = ticket.reportedPlayer || ticket.data?.get?.('reportedPlayer') || ticket.data?.reportedPlayer;
-    const playerIdentifier = reportedPlayerUuid || reportedPlayer;
+    playerIdentifier = reportedPlayerUuid || reportedPlayer;
 
     if (!playerIdentifier) {
       return res.status(400).json({ error: 'No reported player found for this ticket' });
@@ -3333,9 +3383,21 @@ router.post('/ai-apply-punishment/:ticketId', async (req: Request, res: Response
 
     // Initialize punishment service and apply the punishment
     const punishmentService = new PunishmentService(req.serverDbConnection);
+    
+    // Ensure punishment type ID is a number
+    const punishmentTypeId = typeof aiAnalysis.suggestedAction.punishmentTypeId === 'string' 
+      ? parseInt(aiAnalysis.suggestedAction.punishmentTypeId) 
+      : aiAnalysis.suggestedAction.punishmentTypeId;
+    
+    if (isNaN(punishmentTypeId)) {
+      return res.status(400).json({ 
+        error: `Invalid punishment type ID: ${aiAnalysis.suggestedAction.punishmentTypeId}` 
+      });
+    }
+    
     const punishmentResult = await punishmentService.applyPunishment(
       playerIdentifier,
-      aiAnalysis.suggestedAction.punishmentTypeId,
+      punishmentTypeId,
       aiAnalysis.suggestedAction.severity,
       `AI-suggested moderation (applied by ${staffName}) - ${aiAnalysis.analysis}`,
       ticketId,
@@ -3349,14 +3411,62 @@ router.post('/ai-apply-punishment/:ticketId', async (req: Request, res: Response
     }
 
     // Update the AI analysis to mark it as manually applied
-    aiAnalysis.wasAppliedAutomatically = true; // Mark as applied (even though manually)
-    aiAnalysis.appliedBy = staffName;
-    aiAnalysis.appliedByRole = staffRole;
-    aiAnalysis.appliedAt = new Date();
-    aiAnalysis.appliedPunishmentId = punishmentResult.punishmentId;
+    console.log(`[AI Apply] Updating AI analysis for ticket ${ticketId}: wasAppliedAutomatically=true`);
+    console.log(`[AI Apply] AI analysis before update:`, JSON.stringify(aiAnalysis, null, 2));
+    
+    // Create a new object to ensure MongoDB detects the change
+    const updatedAiAnalysis = {
+      ...aiAnalysis,
+      wasAppliedAutomatically: true, // Mark as applied (even though manually)
+      appliedBy: staffName,
+      appliedByRole: staffRole,
+      appliedAt: new Date(),
+      appliedPunishmentId: punishmentResult.punishmentId
+    };
 
-    ticket.data.set('aiAnalysis', aiAnalysis);
+    console.log(`[AI Apply] Updated AI analysis:`, JSON.stringify(updatedAiAnalysis, null, 2));
+    
+    ticket.data.set('aiAnalysis', updatedAiAnalysis);
+    ticket.markModified('data');
+    
+    // Create an "Accept Report" reply to replace the AI suggestion
+    const acceptReply = {
+      name: staffName,
+      content: `This report has been reviewed and accepted. A ${aiAnalysis.suggestedAction.severity} severity punishment has been applied to the reported player.`,
+      type: 'public',
+      staff: true,
+      action: 'Accept Report',
+      created: new Date()
+    };
+    
+    // Add the reply to the ticket
+    console.log(`[AI Apply] Adding Accept Report reply to ticket ${ticketId}`);
+    ticket.replies.push(acceptReply);
+    
+    // Add staff note with AI analysis details
+    const staffNote = {
+      content: `AI Analysis: ${aiAnalysis.analysis}\n\nPunishment Applied: ${punishmentResult.punishmentId}\nApplied by: ${staffName} (${staffRole})\nSeverity: ${aiAnalysis.suggestedAction.severity}`,
+      author: staffName,
+      createdBy: staffName,
+      createdAt: new Date(),
+      type: 'ai_analysis'
+    };
+    
+    if (!ticket.notes) {
+      ticket.notes = [];
+    }
+    console.log(`[AI Apply] Adding staff note to ticket ${ticketId}`);
+    ticket.notes.push(staffNote);
+    
+    console.log(`[AI Apply] Saving ticket ${ticketId} with ${ticket.replies.length} replies and ${ticket.notes.length} notes`);
     await ticket.save();
+    
+    console.log(`[AI Apply] Successfully updated ticket ${ticketId}`);
+    
+    // Verify the changes were saved
+    const verifyTicket = await TicketModel.findById(ticketId);
+    const verifyAiAnalysis = verifyTicket.data?.get ? verifyTicket.data.get('aiAnalysis') : verifyTicket.data?.aiAnalysis;
+    console.log(`[AI Apply] Verification - wasAppliedAutomatically: ${verifyAiAnalysis?.wasAppliedAutomatically}, replies: ${verifyTicket.replies.length}, notes: ${verifyTicket.notes.length}`);
 
     console.log(`[AI Moderation] Manual punishment application approved for ticket ${ticketId} by ${staffName} (${staffRole}), punishment ID: ${punishmentResult.punishmentId}`);
 
@@ -3364,6 +3474,7 @@ router.post('/ai-apply-punishment/:ticketId', async (req: Request, res: Response
       success: true, 
       message: 'AI-suggested punishment applied successfully',
       punishmentId: punishmentResult.punishmentId,
+      replyAdded: true,
       punishmentData: {
         punishmentTypeId: aiAnalysis.suggestedAction.punishmentTypeId,
         severity: aiAnalysis.suggestedAction.severity,
@@ -3375,14 +3486,29 @@ router.post('/ai-apply-punishment/:ticketId', async (req: Request, res: Response
     });
   } catch (error) {
     console.error('Error applying AI-suggested punishment:', error);
-    res.status(500).json({ error: 'Internal server error' });
+    console.error('Error details:', {
+      message: error.message,
+      stack: error.stack,
+      ticketId,
+      playerIdentifier,
+      punishmentTypeId: aiAnalysis?.suggestedAction?.punishmentTypeId,
+      severity: aiAnalysis?.suggestedAction?.severity
+    });
+    res.status(500).json({ 
+      error: 'Internal server error', 
+      details: error.message 
+    });
   }
 });
 
 // Dismiss AI suggestion for a ticket
 router.post('/ai-dismiss-suggestion/:ticketId', async (req: Request, res: Response) => {
   try {
+    console.log(`[AI Dismiss] Starting AI suggestion dismissal for ticket ${req.params.ticketId}`);
+    console.log(`[AI Dismiss] Database connection available: ${!!req.serverDbConnection}`);
+    
     if (!req.serverDbConnection) {
+      console.error(`[AI Dismiss] No database connection available`);
       return res.status(500).json({ error: 'Database connection not available' });
     }
 
@@ -3406,29 +3532,50 @@ router.post('/ai-dismiss-suggestion/:ticketId', async (req: Request, res: Respon
     }
 
     const aiAnalysis = ticket.data?.get ? ticket.data.get('aiAnalysis') : ticket.data?.aiAnalysis;
+    console.log(`[AI Dismiss] Found AI analysis for ticket ${ticketId}:`, JSON.stringify(aiAnalysis, null, 2));
+    
     if (!aiAnalysis) {
+      console.error(`[AI Dismiss] No AI analysis found for ticket ${ticketId}`);
       return res.status(400).json({ error: 'No AI analysis found for this ticket' });
     }
 
     if (aiAnalysis.wasAppliedAutomatically) {
+      console.error(`[AI Dismiss] Cannot dismiss - punishment was already applied for ticket ${ticketId}`);
       return res.status(400).json({ error: 'Cannot dismiss - punishment was already applied' });
     }
 
     if (aiAnalysis.dismissed) {
+      console.error(`[AI Dismiss] AI suggestion was already dismissed for ticket ${ticketId}`);
       return res.status(400).json({ error: 'AI suggestion was already dismissed' });
     }
 
     // Mark the suggestion as dismissed
-    aiAnalysis.dismissed = true;
-    aiAnalysis.dismissedBy = staffName;
-    aiAnalysis.dismissedByRole = staffRole;
-    aiAnalysis.dismissedAt = new Date();
-    aiAnalysis.dismissalReason = reason || 'No reason provided';
+    console.log(`[AI Dismiss] Marking AI suggestion as dismissed for ticket ${ticketId}`);
+    
+    // Create a new object to ensure MongoDB detects the change
+    const dismissedAiAnalysis = {
+      ...aiAnalysis,
+      dismissed: true,
+      dismissedBy: staffName,
+      dismissedByRole: staffRole,
+      dismissedAt: new Date(),
+      dismissalReason: reason || 'No reason provided'
+    };
 
-    ticket.data.set('aiAnalysis', aiAnalysis);
+    console.log(`[AI Dismiss] Updated AI analysis:`, JSON.stringify(dismissedAiAnalysis, null, 2));
+    
+    ticket.data.set('aiAnalysis', dismissedAiAnalysis);
+    ticket.markModified('data');
+    
+    console.log(`[AI Dismiss] Saving ticket ${ticketId}`);
     await ticket.save();
+    
+    // Verify the changes were saved
+    const verifyDismissTicket = await TicketModel.findById(ticketId);
+    const verifyDismissAiAnalysis = verifyDismissTicket.data?.get ? verifyDismissTicket.data.get('aiAnalysis') : verifyDismissTicket.data?.aiAnalysis;
+    console.log(`[AI Dismiss] Verification - dismissed: ${verifyDismissAiAnalysis?.dismissed}`);
 
-    console.log(`[AI Moderation] AI suggestion dismissed for ticket ${ticketId} by ${staffName} (${staffRole}). Reason: ${aiAnalysis.dismissalReason}`);
+    console.log(`[AI Moderation] AI suggestion dismissed for ticket ${ticketId} by ${staffName} (${staffRole}). Reason: ${dismissedAiAnalysis.dismissalReason}`);
 
     res.json({ 
       success: true, 
@@ -3486,7 +3633,8 @@ router.get('/:key', async (req: Request<{ key: string }>, res: Response) => {
   }
 });
 
-router.put('/:key', checkPermission('admin.settings.modify'), async (req: Request<{ key: string }, {}, { value: any }>, res: Response) => {
+router.put('/:key', async (req: Request<{ key: string }, {}, { value: any }>, res: Response) => {
+  if (!(await checkRoutePermission(req, res, 'admin.settings.modify'))) return;
   try {
     const Settings = req.serverDbConnection!.model<ISettingsDocument>('Settings');
     let settingsDoc = await Settings.findOne({});
@@ -3528,7 +3676,8 @@ const upload = multer({
 });
 
 // File upload endpoint for server icons
-router.post('/upload-icon', checkPermission('admin.settings.modify'), upload.single('icon'), async (req: Request, res: Response) => {
+router.post('/upload-icon', upload.single('icon'), async (req: Request, res: Response) => {
+  if (!(await checkRoutePermission(req, res, 'admin.settings.modify'))) return;
   try {
     if (!req.file) {
       return res.status(400).json({ error: 'No file uploaded' });
@@ -4036,7 +4185,8 @@ router.get('/ai-punishment-types', async (req: Request, res: Response) => {
 });
 
 // Create new AI punishment type
-router.post('/ai-punishment-types', checkPermission('admin.settings.modify'), async (req: Request, res: Response) => {
+router.post('/ai-punishment-types', async (req: Request, res: Response) => {
+  if (!(await checkRoutePermission(req, res, 'admin.settings.modify'))) return;
   try {
     if (!req.serverDbConnection) {
       return res.status(500).json({ error: 'Database connection not available' });
@@ -4094,7 +4244,8 @@ router.post('/ai-punishment-types', checkPermission('admin.settings.modify'), as
 });
 
 // Update AI punishment type
-router.put('/ai-punishment-types/:id', checkPermission('admin.settings.modify'), async (req: Request, res: Response) => {
+router.put('/ai-punishment-types/:id', async (req: Request, res: Response) => {
+  if (!(await checkRoutePermission(req, res, 'admin.settings.modify'))) return;
   try {
     if (!req.serverDbConnection) {
       return res.status(500).json({ error: 'Database connection not available' });
@@ -4149,7 +4300,8 @@ router.put('/ai-punishment-types/:id', checkPermission('admin.settings.modify'),
 });
 
 // Delete AI punishment type
-router.delete('/ai-punishment-types/:id', checkPermission('admin.settings.modify'), async (req: Request, res: Response) => {
+router.delete('/ai-punishment-types/:id', async (req: Request, res: Response) => {
+  if (!(await checkRoutePermission(req, res, 'admin.settings.modify'))) return;
   try {
     if (!req.serverDbConnection) {
       return res.status(500).json({ error: 'Database connection not available' });

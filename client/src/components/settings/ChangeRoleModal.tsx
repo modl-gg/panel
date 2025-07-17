@@ -15,11 +15,19 @@ import { Label } from 'modl-shared-web/components/ui/label';
 import { useQueryClient } from '@tanstack/react-query';
 import { useAuth } from '@/hooks/use-auth';
 import { useToast } from 'modl-shared-web/hooks/use-toast';
+import { useQuery } from '@tanstack/react-query';
 
 interface StaffMember {
   _id: string;
   email: string;
-  role: 'Super Admin' | 'Admin' | 'Moderator' | 'Helper';
+  role: string;
+}
+
+interface StaffRole {
+  id: string;
+  name: string;
+  description: string;
+  permissions: string[];
 }
 
 interface ChangeRoleModalProps {
@@ -28,14 +36,25 @@ interface ChangeRoleModalProps {
   staffMember: StaffMember | null;
 }
 
-const ROLES: StaffMember['role'][] = ['Super Admin', 'Admin', 'Moderator', 'Helper'];
 
 const ChangeRoleModal: React.FC<ChangeRoleModalProps> = ({ isOpen, onClose, staffMember }) => {
   const { user: currentUser } = useAuth();
   const { toast } = useToast();
   const queryClient = useQueryClient();
-  const [selectedRole, setSelectedRole] = useState<StaffMember['role'] | ''>('');
-  const [availableRoles, setAvailableRoles] = useState<StaffMember['role'][]>([]);
+  const [selectedRole, setSelectedRole] = useState<string>('');
+  
+  // Fetch available roles from the API
+  const { data: rolesData } = useQuery({
+    queryKey: ['/api/panel/roles'],
+    queryFn: async () => {
+      const response = await fetch('/api/panel/roles');
+      if (!response.ok) throw new Error('Failed to fetch roles');
+      return response.json();
+    },
+    enabled: isOpen
+  });
+  
+  const availableRoles = rolesData?.roles || [];
 
   useEffect(() => {
     if (staffMember) {
@@ -43,33 +62,13 @@ const ChangeRoleModal: React.FC<ChangeRoleModalProps> = ({ isOpen, onClose, staf
     }
   }, [staffMember]);
 
-  useEffect(() => {
-    if (!currentUser || !staffMember) {
-      setAvailableRoles([]);
-      return;
-    }
-
-    if (currentUser.role === 'Super Admin') {
-      // Super Admin can change most roles, but certain users may be protected server-side
-      setAvailableRoles(ROLES);
-    } else if (currentUser.role === 'Admin') {
-      // Admins cannot change a user's role to 'Admin' or 'Super Admin'.
-      // Admins also cannot change an existing 'Admin' or 'Super Admin' role.
-      if (staffMember.role === 'Admin' || staffMember.role === 'Super Admin') {
-        setAvailableRoles([staffMember.role]); // Can only "change" to the current role (effectively no change)
-      } else {
-        setAvailableRoles(['Moderator', 'Helper']);
-      }
-    } else {
-      setAvailableRoles([]); // Other roles cannot change roles
-    }
-  }, [currentUser, staffMember]);
 
   const handleRoleChange = async () => {
     if (!staffMember || !selectedRole) return;
 
     try {
-      const response = await fetch(`/api/panel/staff/${staffMember._id}/role`, {
+      const { csrfFetch } = await import('@/utils/csrf');
+      const response = await csrfFetch(`/api/panel/staff/${staffMember._id}/role`, {
         method: 'PATCH',
         headers: {
           'Content-Type': 'application/json',
@@ -117,16 +116,16 @@ const ChangeRoleModal: React.FC<ChangeRoleModalProps> = ({ isOpen, onClose, staf
             </Label>
             <Select
               value={selectedRole}
-              onValueChange={(value) => setSelectedRole(value as StaffMember['role'])}
-              disabled={availableRoles.length <= 1 && availableRoles[0] === staffMember.role}
+              onValueChange={(value) => setSelectedRole(value)}
+              disabled={availableRoles.length === 0}
             >
               <SelectTrigger className="col-span-3">
                 <SelectValue placeholder="Select a role" />
               </SelectTrigger>
               <SelectContent>
-                {availableRoles.map((role) => (
-                  <SelectItem key={role} value={role}>
-                    {role}
+                {availableRoles.map((role: StaffRole) => (
+                  <SelectItem key={role.id} value={role.name}>
+                    {role.name}
                   </SelectItem>
                 ))}
               </SelectContent>
@@ -137,7 +136,7 @@ const ChangeRoleModal: React.FC<ChangeRoleModalProps> = ({ isOpen, onClose, staf
           <AlertDialogCancel onClick={onClose}>Cancel</AlertDialogCancel>
           <AlertDialogAction
             onClick={handleRoleChange}
-            disabled={!selectedRole || selectedRole === staffMember.role || (availableRoles.length <= 1 && availableRoles[0] === staffMember.role) }
+            disabled={!selectedRole || selectedRole === staffMember.role}
           >
             Confirm
           </AlertDialogAction>

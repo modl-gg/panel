@@ -389,7 +389,7 @@ const TicketDetail = () => {
     'Low': 'bg-info/10 text-info border-info/20',
     'Fixed': 'bg-success/10 text-success border-success/20'
   };  // Use React Query to fetch ticket data from panel API
-  const { data: ticketData, isLoading, isError, error } = usePanelTicket(ticketId);
+  const { data: ticketData, isLoading, isError, error, refetch } = usePanelTicket(ticketId);
   
   useEffect(() => {
     // Ticket data received
@@ -448,6 +448,10 @@ const TicketDetail = () => {
           
           // Update the state with the loaded punishment types
           setPunishmentTypesByCategory(categorized);
+          
+          // Also create a flattened array for AI suggestion lookup
+          const allTypes = [...mergedAdminTypes, ...categorized.Social, ...categorized.Gameplay];
+          setPunishmentTypes(allTypes);
         }
       } catch (error) {
         console.error("Error parsing punishment types:", error);
@@ -467,7 +471,7 @@ const TicketDetail = () => {
         return (
           <div className="relative h-8 w-8 bg-muted rounded-md flex items-center justify-center overflow-hidden flex-shrink-0">
             <img 
-              src={`https://crafatar.com/avatars/${creatorUuid}?size=32&default=MHF_Steve&overlay`}
+              src={`/api/panel/players/avatar/${creatorUuid}?size=32&overlay=true`}
               alt={`${message.sender} Avatar`}
               className={`w-full h-full object-cover transition-opacity duration-200 ${avatarLoading ? 'opacity-0' : 'opacity-100'}`}
               onError={() => {
@@ -504,7 +508,7 @@ const TicketDetail = () => {
         return (
           <div className="relative h-8 w-8 bg-muted rounded-md flex items-center justify-center overflow-hidden flex-shrink-0">
             <img 
-              src={`https://crafatar.com/avatars/${minecraftUuid}?size=32&default=MHF_Steve&overlay`}
+              src={`/api/panel/players/avatar/${minecraftUuid}?size=32&overlay=true`}
               alt={`${message.sender} Avatar`}
               className={`w-full h-full object-cover transition-opacity duration-200 ${avatarLoading ? 'opacity-0' : 'opacity-100'}`}
               onError={() => {
@@ -560,9 +564,39 @@ const TicketDetail = () => {
       });
 
       if (response.ok) {
+        const responseData = await response.json();
+        console.log('AI punishment applied successfully, response:', responseData);
+        
         // Refresh ticket data to show updated AI analysis
-        // This would trigger a re-fetch of the ticket data
-        window.location.reload(); // Simple approach, could be optimized
+        if (refetch && typeof refetch === 'function') {
+          const refetchResult = await refetch();
+          console.log('Data refreshed via refetch, result:', refetchResult);
+        } else {
+          console.error('refetch is not a function:', refetch);
+          console.log('Falling back to page reload');
+          window.location.reload();
+          return;
+        }
+        
+        // Force reload if the AI suggestion is still showing after 2 seconds
+        setTimeout(() => {
+          const aiAnalysis = document.querySelector('[data-testid="ai-analysis"]');
+          if (aiAnalysis) {
+            console.log('AI analysis still visible, forcing page reload');
+            window.location.reload();
+          }
+        }, 2000);
+        
+        // Give a small delay to ensure data is refreshed
+        setTimeout(() => {
+          console.log('Checking if AI analysis is hidden...');
+          const aiAnalysis = document.querySelector('[data-testid="ai-analysis"]');
+          if (aiAnalysis) {
+            console.log('AI analysis still visible after refresh');
+          } else {
+            console.log('AI analysis properly hidden after refresh');
+          }
+        }, 1000);
         
         toast({
           title: "Success",
@@ -607,7 +641,22 @@ const TicketDetail = () => {
 
       if (response.ok) {
         // Refresh ticket data to show dismissed AI analysis
-        window.location.reload(); // Simple approach, could be optimized
+        if (refetch && typeof refetch === 'function') {
+          await refetch();
+        } else {
+          console.error('refetch is not a function:', refetch);
+          window.location.reload();
+          return;
+        }
+        
+        // Force reload if the AI suggestion is still showing after 2 seconds
+        setTimeout(() => {
+          const aiAnalysis = document.querySelector('[data-testid="ai-analysis"]');
+          if (aiAnalysis) {
+            console.log('AI analysis still visible after dismiss, forcing page reload');
+            window.location.reload();
+          }
+        }, 2000);
         
         toast({
           title: "Success",
@@ -1359,36 +1408,36 @@ const TicketDetail = () => {
               <PunishmentDetailsCard punishmentId={ticketData.data.punishmentId} />
             )}
 
-            {/* AI Analysis Section - Only show for Chat Report tickets with AI analysis */}
-            {ticketDetails.category === 'Chat Report' && ticketDetails.aiAnalysis && (
-              <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-4">
+            {/* AI Analysis Section - Only show for Chat Report tickets with AI analysis that hasn't been applied or dismissed */}
+            {ticketDetails.category === 'Chat Report' && ticketDetails.aiAnalysis && !ticketDetails.aiAnalysis.dismissed && !ticketDetails.aiAnalysis.wasAppliedAutomatically && (
+              <div className="bg-blue-50 dark:bg-blue-950 border border-blue-200 dark:border-blue-800 rounded-lg p-4 mb-4" data-testid="ai-analysis">
                 <div className="flex items-start gap-3">
-                  <div className="p-2 bg-blue-100 rounded-full">
-                    <ShieldAlert className="h-5 w-5 text-blue-600" />
+                  <div className="p-2 bg-blue-100 dark:bg-blue-900 rounded-full">
+                    <ShieldAlert className="h-5 w-5 text-blue-600 dark:text-blue-400" />
                   </div>
                   <div className="flex-1">
                     <div className="flex items-center justify-between mb-2">
-                      <h3 className="font-semibold text-blue-900">
+                      <h3 className="font-semibold text-blue-900 dark:text-blue-100">
                         {ticketDetails.aiAnalysis.wasAppliedAutomatically 
                           ? 'AI Action Taken' 
                           : 'AI Suggestion'}
                       </h3>
-                      <Badge variant="outline" className="bg-blue-100 text-blue-700 border-blue-300">
+                      <Badge variant="outline" className="bg-blue-100 dark:bg-blue-900 text-blue-700 dark:text-blue-300 border-blue-300 dark:border-blue-700">
                         AI Analysis
                       </Badge>
                     </div>
 
                     {/* AI Analysis Text */}
-                    <p className="text-sm text-blue-800 mb-3">
+                    <p className="text-sm text-blue-800 dark:text-blue-200 mb-3">
                       {ticketDetails.aiAnalysis.analysis}
                     </p>
 
                     {/* Suggested Action */}
                     {ticketDetails.aiAnalysis.suggestedAction && (
-                      <div className="bg-white rounded-md p-3 border border-blue-200">
+                      <div className="bg-white dark:bg-gray-900 rounded-md p-3 border border-blue-200 dark:border-blue-800">
                         <div className="flex items-center justify-between">
                           <div>
-                            <p className="text-sm font-medium text-gray-900">
+                            <p className="text-sm font-medium text-gray-900 dark:text-gray-100">
                               {ticketDetails.aiAnalysis.wasAppliedAutomatically 
                                 ? 'Applied: ' 
                                 : 'Suggested: '}
@@ -1400,18 +1449,18 @@ const TicketDetail = () => {
                               })()} 
                               ({ticketDetails.aiAnalysis.suggestedAction.severity})
                             </p>
-                            <p className="text-xs text-gray-500 mt-1">
+                            <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
                               Analyzed on {new Date(ticketDetails.aiAnalysis.createdAt).toLocaleString()}
                             </p>
                           </div>
                           
-                          {/* Action buttons - only show if not automatically applied */}
-                          {!ticketDetails.aiAnalysis.wasAppliedAutomatically && (
+                          {/* Action buttons - only show if not automatically applied and not dismissed */}
+                          {!ticketDetails.aiAnalysis.wasAppliedAutomatically && !ticketDetails.aiAnalysis.dismissed && (
                             <div className="flex gap-2">
                               <Button 
                                 size="sm" 
                                 variant="default"
-                                className="bg-green-600 hover:bg-green-700"
+                                className="bg-green-600 hover:bg-green-700 dark:bg-green-700 dark:hover:bg-green-800"
                                 onClick={applyAISuggestion}
                               >
                                 <CheckCircle2 className="h-3.5 w-3.5 mr-1" />
@@ -1433,8 +1482,8 @@ const TicketDetail = () => {
 
                     {/* No action case */}
                     {!ticketDetails.aiAnalysis.suggestedAction && (
-                      <div className="bg-white rounded-md p-3 border border-blue-200">
-                        <p className="text-sm text-gray-700">
+                      <div className="bg-white dark:bg-gray-900 rounded-md p-3 border border-blue-200 dark:border-blue-800">
+                        <p className="text-sm text-gray-700 dark:text-gray-300">
                           <strong>AI Recommendation:</strong> No disciplinary action required
                         </p>
                         <p className="text-xs text-gray-500 mt-1">
@@ -1443,6 +1492,20 @@ const TicketDetail = () => {
                       </div>
                     )}
                   </div>
+                </div>
+              </div>
+            )}
+
+            {/* Show AI status when suggestion has been applied or dismissed */}
+            {ticketDetails.category === 'Chat Report' && ticketDetails.aiAnalysis && (ticketDetails.aiAnalysis.wasAppliedAutomatically || ticketDetails.aiAnalysis.dismissed) && (
+              <div className="bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-lg p-3 mb-4">
+                <div className="flex items-center gap-2 text-sm">
+                  <ShieldCheck className="h-4 w-4 text-green-600 dark:text-green-400" />
+                  <span className="text-gray-700 dark:text-gray-300">
+                    {ticketDetails.aiAnalysis.wasAppliedAutomatically 
+                      ? 'AI suggestion was automatically applied'
+                      : 'AI suggestion was dismissed'}
+                  </span>
                 </div>
               </div>
             )}

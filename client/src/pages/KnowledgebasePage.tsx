@@ -99,7 +99,7 @@ const KnowledgebasePage: React.FC = () => {
             <h2 className="text-2xl font-semibold mb-4">Search Results</h2>
             {searchResults.map(article => (
               <div key={article.id} className="mb-2 p-3 border rounded hover:bg-gray-50">
-                <Link href={`/${article.slug}`} className="text-blue-600 hover:underline">
+                <Link href={`/article/${article.slug}`} className="text-blue-600 hover:underline">
                   {article.title}
                 </Link>
                 {/* Optionally show category: {article.category?.name} */}

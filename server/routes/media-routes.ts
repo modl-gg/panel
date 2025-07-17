@@ -24,11 +24,60 @@ const requireWasabiConfig = (req: any, res: any, next: any) => {
   next();
 };
 
+// Local file storage fallback
+import fs from 'fs/promises';
+import path from 'path';
+
+const LOCAL_UPLOADS_DIR = path.join(process.cwd(), 'uploads');
+
+// Ensure uploads directory exists
+const ensureUploadsDir = async () => {
+  try {
+    await fs.access(LOCAL_UPLOADS_DIR);
+  } catch {
+    await fs.mkdir(LOCAL_UPLOADS_DIR, { recursive: true });
+  }
+};
+
+// Save file locally as fallback when Wasabi isn't configured
+const saveFileLocally = async (file: any, folder: string, subFolder: string, serverName: string) => {
+  await ensureUploadsDir();
+  
+  // Create folder structure: uploads/server-name/folder/subfolder/
+  const serverDir = path.join(LOCAL_UPLOADS_DIR, serverName);
+  const folderDir = path.join(serverDir, folder);
+  const subFolderDir = subFolder ? path.join(folderDir, subFolder) : folderDir;
+  
+  await fs.mkdir(subFolderDir, { recursive: true });
+  
+  // Generate unique filename to avoid conflicts
+  const timestamp = Date.now();
+  const random = Math.random().toString(36).substring(2, 8);
+  const ext = path.extname(file.originalname);
+  const filename = `${timestamp}-${random}${ext}`;
+  
+  const filePath = path.join(subFolderDir, filename);
+  
+  // Save file
+  await fs.writeFile(filePath, file.buffer);
+  
+  // Return relative path from uploads directory for URL generation
+  const relativePath = path.relative(LOCAL_UPLOADS_DIR, filePath);
+  const url = `/uploads/${relativePath.replace(/\\/g, '/')}`;
+  
+  return {
+    success: true,
+    url,
+    key: relativePath,
+    localPath: filePath
+  };
+};
+
 /**
  * Upload evidence media (videos, images)
  * Used for player reports, ban appeals, etc.
  */
-router.post('/upload/evidence', isAuthenticated, requireWasabiConfig, upload.single('file'), async (req, res) => {
+router.post('/upload/evidence', isAuthenticated, upload.single('file'), async (req, res) => {
   try {
     if (!req.file) {
       return res.status(400).json({ error: 'No file provided' });
@@ -47,16 +96,29 @@ router.post('/upload/evidence', isAuthenticated, requireWasabiConfig, upload.sin
       subFolder = category;
     }
 
-    const uploadOptions: MediaUploadOptions = {
-      file: req.file.buffer,
-      fileName: req.file.originalname,
-      contentType: req.file.mimetype,
-      folder: 'evidence',
-      subFolder,
-      serverName,
-    };
+    let result;
 
-    const result = await uploadMedia(uploadOptions);
+    // Try Wasabi first if configured, otherwise fall back to local storage
+    if (isWasabiConfigured()) {
+      try {
+        const uploadOptions: MediaUploadOptions = {
+          file: req.file.buffer,
+          fileName: req.file.originalname,
+          contentType: req.file.mimetype,
+          folder: 'evidence',
+          subFolder,
+          serverName,
+        };
+
+        result = await uploadMedia(uploadOptions);
+      } catch (wasabiError) {
+        console.warn('Wasabi upload failed, falling back to local storage:', wasabiError);
+        result = await saveFileLocally(req.file, 'evidence', subFolder, serverName);
+      }
+    } else {
+      // Use local storage fallback
+      result = await saveFileLocally(req.file, 'evidence', subFolder, serverName);
+    }
 
     if (result.success) {
       res.json({
@@ -64,7 +126,8 @@ router.post('/upload/evidence', isAuthenticated, requireWasabiConfig, upload.sin
         url: result.url,
         key: result.key,
         folderUuid: result.folderUuid,
-        message: 'Evidence uploaded successfully'
+        message: 'Evidence uploaded successfully',
+        storage: isWasabiConfigured() ? 'wasabi' : 'local'
       });
     } else {
       res.status(400).json({

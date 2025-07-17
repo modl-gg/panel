@@ -1,15 +1,14 @@
 import express, { Request, Response, NextFunction } from 'express';
 import { Document as MongooseDocument, Connection } from 'mongoose';
 import { isAuthenticated } from '../middleware/auth-middleware';
-import { checkPermission } from '../middleware/permission-middleware';
+// Note: Permission functions will be imported dynamically to avoid circular dependency issues
 import AIModerationService from '../services/ai-moderation-service';
 import { IReply, ITicket } from 'modl-shared-web/types';
 import { getSettingsValue } from './settings-routes';
 
 interface INote {
-  text: string;
-  issuerName: string;
-  issuerAvatar?: string;
+  content: string;
+  author: string;
   date: Date;
 }
 
@@ -199,7 +198,17 @@ function getCategoryFromType(type: string): string {
   }
 }
 
-router.get('/', checkPermission('ticket.view.all'), async (req: Request, res: Response) => {
+router.get('/', async (req: Request, res: Response) => {
+  // Check permissions
+  const { hasPermission } = await import('../middleware/permission-middleware');
+  const canViewTickets = await hasPermission(req, 'ticket.view.all');
+  
+  if (!canViewTickets) {
+    return res.status(403).json({ 
+      message: 'Forbidden: You do not have the required permissions.',
+      required: ['ticket.view.all']
+    });
+  }
   try {
     const Ticket = req.serverDbConnection!.model('Ticket');
     
@@ -445,7 +454,17 @@ interface AddReplyBody {
   attachments?: any[];
 }
 
-router.post('/:id/replies', checkPermission('ticket.reply.all'), async (req: Request<{ id: string }, {}, AddReplyBody>, res: Response) => {
+router.post('/:id/replies', async (req: Request<{ id: string }, {}, AddReplyBody>, res: Response) => {
+  // Check permissions
+  const { hasPermission } = await import('../middleware/permission-middleware');
+  const canReplyToTickets = await hasPermission(req, 'ticket.reply.all');
+  
+  if (!canReplyToTickets) {
+    return res.status(403).json({ 
+      message: 'Forbidden: You do not have the required permissions.',
+      required: ['ticket.reply.all']
+    });
+  }
   try {
     const Ticket = req.serverDbConnection!.model<ITicket>('Ticket');
     const ticket = await Ticket.findById(req.params.id);
@@ -603,7 +622,17 @@ interface UpdateTicketBody {
 }
 
 // General PATCH route for ticket updates
-router.patch('/:id', checkPermission('ticket.close.all'), async (req: Request<{ id: string }, {}, UpdateTicketBody>, res: Response) => {
+router.patch('/:id', async (req: Request<{ id: string }, {}, UpdateTicketBody>, res: Response) => {
+  // Check permissions
+  const { hasPermission } = await import('../middleware/permission-middleware');
+  const canReplyToTickets = await hasPermission(req, 'ticket.reply.all');
+  
+  if (!canReplyToTickets) {
+    return res.status(403).json({ 
+      message: 'Forbidden: You do not have the required permissions.',
+      required: ['ticket.reply.all']
+    });
+  }
   console.log(`[Ticket PATCH] Updating ticket ${req.params.id}`);
   console.log(`[Ticket PATCH] Request body:`, JSON.stringify(req.body, null, 2));
   
@@ -616,13 +645,19 @@ router.patch('/:id', checkPermission('ticket.close.all'), async (req: Request<{ 
 
     const updates = req.body;
 
-    // Update status if provided
+    // Update status if provided (requires close permission for closing)
     if (updates.status !== undefined) {
+      if (updates.status === 'Closed' && !req.session?.permissions?.includes('ticket.close.all')) {
+        return res.status(403).json({ error: 'Insufficient permissions to close tickets' });
+      }
       ticket.status = updates.status;
     }
 
-    // Update locked status if provided
+    // Update locked status if provided (requires close permission)
     if (updates.locked !== undefined) {
+      if (updates.locked && !req.session?.permissions?.includes('ticket.close.all')) {
+        return res.status(403).json({ error: 'Insufficient permissions to lock tickets' });
+      }
       ticket.locked = updates.locked;
     }
 
@@ -649,7 +684,7 @@ router.patch('/:id', checkPermission('ticket.close.all'), async (req: Request<{ 
           await ensureTicketSubscription(req.serverDbConnection!, req.params.id, req.session.username);
         } catch (subscriptionError) {
           console.error(`[Ticket PATCH] Failed to handle ticket subscription for ticket ${req.params.id}:`, subscriptionError);
-          // Don't fail the reply if subscription fails
+          // Don't fail the reply if subscription fails - this is not critical
         }
       }
 
@@ -698,8 +733,8 @@ router.patch('/:id', checkPermission('ticket.close.all'), async (req: Request<{ 
             });
             console.log(`[Ticket PATCH] Email notification sent successfully to ${emailField}`);
           } catch (emailError) {
-            console.error(`[Staff PATCH Reply] Failed to send email notification for ticket ${req.params.id}:`, emailError);
-            // Don't fail the reply if email fails
+            console.error(`[Ticket PATCH] Failed to send email notification for ticket ${req.params.id}:`, emailError);
+            // Don't fail the reply if email fails - this is not critical
           }
         }
       }
@@ -708,8 +743,8 @@ router.patch('/:id', checkPermission('ticket.close.all'), async (req: Request<{ 
     // Add new note if provided
     if (updates.newNote) {
       const newNote: INote = {
-        text: updates.newNote.content,
-        issuerName: updates.newNote.author,
+        content: updates.newNote.content,
+        author: updates.newNote.author,
         date: new Date(updates.newNote.date)
       };
       ticket.notes.push(newNote);
@@ -741,7 +776,9 @@ router.patch('/:id', checkPermission('ticket.close.all'), async (req: Request<{ 
       locked: ticket.locked || false
     });
   } catch (error: any) {
-    console.error('Error updating ticket:', error);
+    console.error(`[Ticket PATCH] Error updating ticket ${req.params.id}:`, error);
+    console.error(`[Ticket PATCH] Error stack:`, error.stack);
+    console.error(`[Ticket PATCH] Request body was:`, JSON.stringify(req.body, null, 2));
     res.status(500).json({ error: 'Internal server error', details: error.message });
   }
 });
@@ -829,7 +866,17 @@ interface QuickResponseBody {
   appealAction?: 'pardon' | 'reduce' | 'reject' | 'none';
 }
 
-router.post('/:id/quick-response', checkPermission('ticket.reply.all'), async (req: Request<{ id: string }, {}, QuickResponseBody>, res: Response) => {
+router.post('/:id/quick-response', async (req: Request<{ id: string }, {}, QuickResponseBody>, res: Response) => {
+  // Check permissions
+  const { hasPermission } = await import('../middleware/permission-middleware');
+  const canReplyToTickets = await hasPermission(req, 'ticket.reply.all');
+  
+  if (!canReplyToTickets) {
+    return res.status(403).json({ 
+      message: 'Forbidden: You do not have the required permissions.',
+      required: ['ticket.reply.all']
+    });
+  }
   try {
     const Ticket = req.serverDbConnection!.model<ITicket>('Ticket');
     const Settings = req.serverDbConnection!.model('Settings');

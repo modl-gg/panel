@@ -280,7 +280,7 @@ const HomePage: React.FC = () => {
                   ) : searchResults.length > 0 ? (
                     <div className="space-y-1">
                       {searchResults.map(article => (
-                        <Link key={article.id} href={`/${article.slug}`}>
+                        <Link key={article.id} href={`/article/${article.slug}`}>
                           <div className="p-2 rounded hover:bg-muted/50 transition-colors cursor-pointer">
                             <p className="text-sm font-medium text-foreground hover:underline">{article.title}</p>
                           </div>
@@ -439,7 +439,7 @@ const HomePage: React.FC = () => {
                         <CardContent>
                           <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                             {card.category!.articles.map(article => (
-                              <Link key={article.id} href={`/${article.slug}`}>
+                              <Link key={article.id} href={`/article/${article.slug}`}>
                                 <div className="p-3 rounded-lg border border-border/50 hover:shadow-md hover:border-border transition-all duration-200 hover:bg-muted/30 cursor-pointer bg-background/50">
                                   <div className="flex items-center gap-3">
                                     <FileText className="h-4 w-4 text-primary flex-shrink-0" />

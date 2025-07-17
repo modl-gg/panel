@@ -1,5 +1,5 @@
 import React from 'react';
-import { Link } from 'react-router-dom';
+import { Link } from 'wouter';
 
 interface ArticleStub {
   id: string;
@@ -24,7 +24,7 @@ const CategoryDisplay: React.FC<CategoryDisplayProps> = ({ name, description, ar
         <ul className="list-disc pl-5 space-y-1">
           {articles.map(article => (
             <li key={article.id}>
-              <Link to={`/kb/${article.slug}`} className="text-blue-600 hover:underline hover:text-blue-800">
+              <Link href={`/article/${article.slug}`} className="text-blue-600 hover:underline hover:text-blue-800">
                 {article.title}
               </Link>
             </li>
