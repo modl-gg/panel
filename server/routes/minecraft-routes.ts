@@ -2772,6 +2772,10 @@ export function setupMinecraftRoutes(app: Express): void {
         });
       }
 
+      // Debug: Log all punishment IDs for troubleshooting
+      console.log(`DEBUG: Looking for punishment ID: ${punishmentId}`);
+      console.log(`DEBUG: Player has punishments with IDs: ${player.punishments.map(p => p.id).join(', ')}`);
+
       // Find the specific punishment
       const punishment = player.punishments.find(p => p.id === punishmentId);
       if (!punishment) {
@@ -2780,6 +2784,8 @@ export function setupMinecraftRoutes(app: Express): void {
           message: 'Punishment not found' 
         });
       }
+
+      console.log(`DEBUG: Found punishment ${punishmentId}: type=${punishment.type}, isActive=${punishment.isActive}, typeOrdinal=${punishment.typeOrdinal}`);
 
       // Check if already pardoned
       const isAlreadyPardoned = punishment.modifications?.some(mod => 
@@ -2888,21 +2894,79 @@ export function setupMinecraftRoutes(app: Express): void {
         });
       }
 
-      // Find active ban punishment
-      const activeBan = player.punishments.find(p => 
-        p.isActive && 
-        p.type && 
-        p.type.toLowerCase().includes('ban') &&
-        (!p.expiresAt || new Date(p.expiresAt) > new Date()) &&
-        !p.modifications?.some(mod => mod.type === 'MANUAL_PARDON' || mod.type === 'APPEAL_ACCEPT')
-      );
+      // Debug: Log player punishments for troubleshooting
+      console.log(`DEBUG: Player ${playerName} has ${player.punishments.length} punishments`);
+      player.punishments.forEach((p, idx) => {
+        console.log(`DEBUG: Punishment ${idx}: id=${p.id}, type=${p.type}, isActive=${p.isActive}, typeOrdinal=${p.typeOrdinal}, expiresAt=${p.expiresAt}, hasModifications=${p.modifications?.length || 0}`);
+      });
+
+      // Find active ban punishment with more flexible detection
+      let activeBan = player.punishments.find(p => {
+        console.log(`DEBUG: Checking punishment ${p.id}: isActive=${p.isActive}, type="${p.type}", typeOrdinal=${p.typeOrdinal}`);
+        
+        // Check if punishment is active
+        if (!p.isActive) {
+          console.log(`DEBUG: Punishment ${p.id} is not active`);
+          return false;
+        }
+        
+        // Check if it's not already pardoned
+        const isPardoned = p.modifications?.some(mod => 
+          mod.type === 'MANUAL_PARDON' || mod.type === 'APPEAL_ACCEPT'
+        );
+        if (isPardoned) {
+          console.log(`DEBUG: Punishment ${p.id} is already pardoned`);
+          return false;
+        }
+        
+        // Check if it's expired (if it has an expiration)
+        if (p.expiresAt && new Date(p.expiresAt) <= new Date()) {
+          console.log(`DEBUG: Punishment ${p.id} is expired`);
+          return false;
+        }
+        
+        // Check if it's a ban by multiple criteria
+        const typeString = p.type ? p.type.toLowerCase() : '';
+        const isBanByType = typeString.includes('ban') || typeString.includes('suspend') || typeString.includes('blacklist');
+        const isBanByOrdinal = p.typeOrdinal === 2 || p.typeOrdinal === 3 || p.typeOrdinal === 4 || p.typeOrdinal === 5; // Added 5 for blacklist
+        const hasAltBlocking = getPunishmentData(p, 'altBlocking') === true;
+        
+        // Also check if this punishment prevents login (which would make it a ban-like punishment)
+        const preventsLogin = !typeString.includes('mute') && !typeString.includes('warn') && !typeString.includes('kick');
+        
+        const isBan = isBanByType || isBanByOrdinal || hasAltBlocking || (preventsLogin && p.typeOrdinal !== 1);
+        
+        console.log(`DEBUG: Punishment ${p.id} ban check: typeString="${typeString}", isBanByType=${isBanByType}, typeOrdinal=${p.typeOrdinal}, isBanByOrdinal=${isBanByOrdinal}, hasAltBlocking=${hasAltBlocking}, FINAL=${isBan}`);
+        return isBan;
+      });
 
       if (!activeBan) {
-        return res.status(404).json({ 
-          status: 404, 
-          message: 'No active ban found for this player' 
+        console.log(`DEBUG: No active ban found for ${playerName}. Total punishments: ${player.punishments.length}`);
+        
+        // Fallback: try to find ANY active punishment that could be considered a ban
+        activeBan = player.punishments.find(p => {
+          const isActive = p.isActive;
+          const notExpired = !p.expiresAt || new Date(p.expiresAt) > new Date();
+          const notPardoned = !p.modifications?.some(mod => mod.type === 'MANUAL_PARDON' || mod.type === 'APPEAL_ACCEPT');
+          const notMute = !(p.type && p.type.toLowerCase().includes('mute'));
+          const notKick = !(p.type && p.type.toLowerCase().includes('kick'));
+          
+          console.log(`DEBUG: Fallback check for ${p.id}: isActive=${isActive}, notExpired=${notExpired}, notPardoned=${notPardoned}, notMute=${notMute}, notKick=${notKick}`);
+          
+          return isActive && notExpired && notPardoned && notMute && notKick;
         });
+        
+        if (!activeBan) {
+          return res.status(404).json({ 
+            status: 404, 
+            message: 'No active ban found for this player' 
+          });
+        }
+        
+        console.log(`DEBUG: Found fallback ban candidate: ${activeBan.id}`);
       }
+
+      console.log(`DEBUG: Found active ban ${activeBan.id} for ${playerName}`);
 
       // Add pardon modification
       if (!activeBan.modifications) {
