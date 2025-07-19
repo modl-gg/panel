@@ -2834,8 +2834,8 @@ export function setupMinecraftRoutes(app: Express): void {
       // Deactivate the punishment
       punishment.isActive = false;
 
-      // Save the player
-      await player.save();
+      // Save the player with validation disabled to avoid issues with existing invalid evidence records
+      await player.save({ validateBeforeSave: false });
 
       // Create audit log
       await createPunishmentAuditLog(
@@ -2999,8 +2999,8 @@ export function setupMinecraftRoutes(app: Express): void {
       // Deactivate the punishment
       activeBan.isActive = false;
 
-      // Save the player
-      await player.save();
+      // Save the player with validation disabled to avoid issues with existing invalid evidence records
+      await player.save({ validateBeforeSave: false });
 
       // Create audit log
       await createPunishmentAuditLog(
