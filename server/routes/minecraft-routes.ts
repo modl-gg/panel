@@ -870,7 +870,7 @@ async function getPunishmentDescription(
   }
   
   // Fallback to notes if no player description found
-  const noteText = punishment.notes && punishment.notes.length > 0 ? punishment.notes[0].text : null;
+  const noteText = punishment.notes && punishment.notes.length > 0 ? punishment.notes[0] : null;
   return noteText || defaultDescription;
 }
 
