@@ -429,7 +429,7 @@ function hasActiveMute(player: IPlayer): boolean {
     if (p.type_ordinal !== 1) return false;
     
     // Check if explicitly marked as inactive
-    if (p.data && p.data.get('active') === false) return false;
+    if (getPunishmentData(p, 'active') === false) return false;
     
     // Check if pardoned
     const isPardoned = p.modifications?.some(mod => 
@@ -439,7 +439,7 @@ function hasActiveMute(player: IPlayer): boolean {
     
     // Check if started and expired
     if (p.started) {
-      const duration = p.data ? p.data.get('duration') : undefined;
+      const duration = getPunishmentData(p, 'duration');
       if (duration !== -1 && duration !== undefined) {
         const startTime = new Date(p.started).getTime();
         const endTime = startTime + Number(duration);
