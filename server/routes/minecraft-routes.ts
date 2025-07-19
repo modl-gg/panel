@@ -1684,16 +1684,26 @@ export function setupMinecraftRoutes(app: Express): void {
       // Get full player data for all linked accounts
       const linkedPlayers = await Player.find({
         minecraftUuid: { $in: Array.from(linkedAccountUuids) }
-      }).select('minecraftUuid usernames punishments data').lean<IPlayer[]>();
+      }).select('minecraftUuid usernames punishments data ipList notes').lean<IPlayer[]>();
 
       const formattedLinkedAccounts = linkedPlayers.map((acc: IPlayer) => {
         const activeBans = acc.punishments ? acc.punishments.filter((p: IPunishment) => isBanPunishment(p, punishmentTypeConfig) && isPunishmentActive(p, punishmentTypeConfig)).length : 0;
         const activeMutes = acc.punishments ? acc.punishments.filter((p: IPunishment) => isMutePunishment(p, punishmentTypeConfig) && isPunishmentActive(p, punishmentTypeConfig)).length : 0;
         const lastLinkedUpdate = acc.data?.get ? acc.data.get('lastLinkedAccountUpdate') : acc.data?.lastLinkedAccountUpdate;
         
+        // Return full Account structure that matches Minecraft plugin expectations
         return {
+          _id: acc._id,
           minecraftUuid: acc.minecraftUuid,
-          username: acc.usernames && acc.usernames.length > 0 ? acc.usernames[acc.usernames.length - 1].username : 'N/A',
+          usernames: acc.usernames || [],
+          notes: acc.notes || [],
+          ipList: acc.ipList || [],
+          punishments: acc.punishments ? acc.punishments.map((p: IPunishment) => ({
+            ...p,
+            type: getPunishmentType(p, punishmentTypeConfig),
+          })) : [],
+          pendingNotifications: [],
+          // Additional fields for status display
           activeBans,
           activeMutes,
           lastLinkedUpdate: lastLinkedUpdate || null
@@ -2702,16 +2712,26 @@ export function setupMinecraftRoutes(app: Express): void {
       // Get full player data for all linked accounts
       const linkedPlayers = await Player.find({
         minecraftUuid: { $in: Array.from(linkedAccountUuids) }
-      }).select('minecraftUuid usernames punishments data').lean<IPlayer[]>();
+      }).select('minecraftUuid usernames punishments data ipList notes').lean<IPlayer[]>();
 
       const formattedLinkedAccounts = linkedPlayers.map((acc: IPlayer) => {
         const activeBans = acc.punishments ? acc.punishments.filter((p: IPunishment) => isBanPunishment(p, punishmentTypeConfig) && isPunishmentActive(p, punishmentTypeConfig)).length : 0;
         const activeMutes = acc.punishments ? acc.punishments.filter((p: IPunishment) => isMutePunishment(p, punishmentTypeConfig) && isPunishmentActive(p, punishmentTypeConfig)).length : 0;
         const lastLinkedUpdate = acc.data?.get ? acc.data.get('lastLinkedAccountUpdate') : acc.data?.lastLinkedAccountUpdate;
         
+        // Return full Account structure that matches Minecraft plugin expectations
         return {
+          _id: acc._id,
           minecraftUuid: acc.minecraftUuid,
-          username: acc.usernames && acc.usernames.length > 0 ? acc.usernames[acc.usernames.length - 1].username : 'N/A',
+          usernames: acc.usernames || [],
+          notes: acc.notes || [],
+          ipList: acc.ipList || [],
+          punishments: acc.punishments ? acc.punishments.map((p: IPunishment) => ({
+            ...p,
+            type: getPunishmentType(p, punishmentTypeConfig),
+          })) : [],
+          pendingNotifications: [],
+          // Additional fields for status display
           activeBans,
           activeMutes,
           lastLinkedUpdate: lastLinkedUpdate || null
