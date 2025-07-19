@@ -2785,7 +2785,12 @@ export function setupMinecraftRoutes(app: Express): void {
         });
       }
 
-      console.log(`DEBUG: Found punishment ${punishmentId}: type=${punishment.type}, isActive=${punishment.isActive}, typeOrdinal=${punishment.typeOrdinal}`);
+      // Calculate if punishment is active (since isActive might be undefined)
+      const isActiveCalculated = punishment.isActive !== false && 
+        (!punishment.expiresAt || new Date(punishment.expiresAt) > new Date()) && 
+        !punishment.modifications?.some(mod => mod.type === 'MANUAL_PARDON' || mod.type === 'APPEAL_ACCEPT');
+
+      console.log(`DEBUG: Found punishment ${punishmentId}: type=${punishment.type}, isActive=${punishment.isActive}, isActiveCalculated=${isActiveCalculated}, typeOrdinal=${punishment.typeOrdinal}`);
 
       // Check if already pardoned
       const isAlreadyPardoned = punishment.modifications?.some(mod => 
@@ -2904,26 +2909,20 @@ export function setupMinecraftRoutes(app: Express): void {
       let activeBan = player.punishments.find(p => {
         console.log(`DEBUG: Checking punishment ${p.id}: isActive=${p.isActive}, type="${p.type}", typeOrdinal=${p.typeOrdinal}`);
         
+        // Calculate if punishment is active (since isActive might be undefined)
+        const isActiveCalculated = p.isActive !== false && // Not explicitly set to false
+          (!p.expiresAt || new Date(p.expiresAt) > new Date()) && // Not expired
+          !p.modifications?.some(mod => mod.type === 'MANUAL_PARDON' || mod.type === 'APPEAL_ACCEPT'); // Not pardoned
+        
+        console.log(`DEBUG: Punishment ${p.id} active calculation: isActive=${p.isActive}, expiresAt=${p.expiresAt}, hasPardonMod=${p.modifications?.some(mod => mod.type === 'MANUAL_PARDON' || mod.type === 'APPEAL_ACCEPT')}, CALCULATED=${isActiveCalculated}`);
+        
         // Check if punishment is active
-        if (!p.isActive) {
-          console.log(`DEBUG: Punishment ${p.id} is not active`);
+        if (!isActiveCalculated) {
+          console.log(`DEBUG: Punishment ${p.id} is not active (calculated)`);
           return false;
         }
         
-        // Check if it's not already pardoned
-        const isPardoned = p.modifications?.some(mod => 
-          mod.type === 'MANUAL_PARDON' || mod.type === 'APPEAL_ACCEPT'
-        );
-        if (isPardoned) {
-          console.log(`DEBUG: Punishment ${p.id} is already pardoned`);
-          return false;
-        }
-        
-        // Check if it's expired (if it has an expiration)
-        if (p.expiresAt && new Date(p.expiresAt) <= new Date()) {
-          console.log(`DEBUG: Punishment ${p.id} is expired`);
-          return false;
-        }
+        // Pardon and expiration checks are already done in isActiveCalculated above
         
         // Check if it's a ban by multiple criteria
         const typeString = p.type ? p.type.toLowerCase() : '';
@@ -2945,15 +2944,17 @@ export function setupMinecraftRoutes(app: Express): void {
         
         // Fallback: try to find ANY active punishment that could be considered a ban
         activeBan = player.punishments.find(p => {
-          const isActive = p.isActive;
-          const notExpired = !p.expiresAt || new Date(p.expiresAt) > new Date();
-          const notPardoned = !p.modifications?.some(mod => mod.type === 'MANUAL_PARDON' || mod.type === 'APPEAL_ACCEPT');
+          // Calculate active status the same way
+          const isActiveCalculated = p.isActive !== false && 
+            (!p.expiresAt || new Date(p.expiresAt) > new Date()) && 
+            !p.modifications?.some(mod => mod.type === 'MANUAL_PARDON' || mod.type === 'APPEAL_ACCEPT');
+          
           const notMute = !(p.type && p.type.toLowerCase().includes('mute'));
           const notKick = !(p.type && p.type.toLowerCase().includes('kick'));
           
-          console.log(`DEBUG: Fallback check for ${p.id}: isActive=${isActive}, notExpired=${notExpired}, notPardoned=${notPardoned}, notMute=${notMute}, notKick=${notKick}`);
+          console.log(`DEBUG: Fallback check for ${p.id}: isActiveCalculated=${isActiveCalculated}, notMute=${notMute}, notKick=${notKick}`);
           
-          return isActive && notExpired && notPardoned && notMute && notKick;
+          return isActiveCalculated && notMute && notKick;
         });
         
         if (!activeBan) {
