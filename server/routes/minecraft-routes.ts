@@ -421,6 +421,37 @@ function isKickPunishment(punishment: IPunishment, typeConfig: Map<number, "BAN"
 }
 
 /**
+ * Check if a player has any active mutes
+ */
+function hasActiveMute(player: IPlayer): boolean {
+  return player.punishments.some(p => {
+    // Check if it's a mute (ordinal 1)
+    if (p.type_ordinal !== 1) return false;
+    
+    // Check if explicitly marked as inactive
+    if (p.data && p.data.get('active') === false) return false;
+    
+    // Check if pardoned
+    const isPardoned = p.modifications?.some(mod => 
+      mod.type === 'MANUAL_PARDON' || mod.type === 'APPEAL_ACCEPT'
+    );
+    if (isPardoned) return false;
+    
+    // Check if started and expired
+    if (p.started) {
+      const duration = p.data ? p.data.get('duration') : undefined;
+      if (duration !== -1 && duration !== undefined) {
+        const startTime = new Date(p.started).getTime();
+        const endTime = startTime + Number(duration);
+        if (endTime <= Date.now()) return false; // Expired
+      }
+    }
+    
+    return true; // Active mute found
+  });
+}
+
+/**
  * Calculate the actual expiration timestamp for a punishment
  * For unstarted punishments, calculates what expiration would be if started now
  */
@@ -1218,10 +1249,11 @@ export function setupMinecraftRoutes(app: Express): void {
       const oldestUnstartedMute = unstartedValidPunishments.find((p: IPunishment) => isMutePunishment(p, punishmentTypeConfig));
 
       // Combine started active punishments with priority unstarted ones
+      // Only include unstarted mute if player doesn't already have an active mute
       const activePunishments = [
         ...startedActivePunishments,
         ...(oldestUnstartedBan ? [oldestUnstartedBan] : []),
-        ...(oldestUnstartedMute ? [oldestUnstartedMute] : [])
+        ...(oldestUnstartedMute && !hasActiveMute(player) ? [oldestUnstartedMute] : [])
       ];
 
       // Convert to simplified active punishment format with proper descriptions
@@ -1927,8 +1959,8 @@ export function setupMinecraftRoutes(app: Express): void {
             });
           }
 
-          // Add the priority mute if exists
-          if (priorityMute) {
+          // Add the priority mute if exists and player doesn't already have an active mute
+          if (priorityMute && !hasActiveMute(player)) {
             const description = await getPunishmentDescription(priorityMute, serverDbConnection);
             const muteType = getPunishmentType(priorityMute, punishmentTypeConfig);
 
