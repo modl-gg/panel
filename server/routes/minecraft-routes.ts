@@ -2915,18 +2915,12 @@ export function setupMinecraftRoutes(app: Express): void {
       // Debug: Log player punishments for troubleshooting
       console.log(`DEBUG: Player ${playerName} has ${player.punishments.length} punishments`);
       player.punishments.forEach((p, idx) => {
-        console.log(`DEBUG: Punishment ${idx}: id=${p.id}, type=${p.type}, isActive=${p.isActive}, typeOrdinal=${p.typeOrdinal}, expiresAt=${p.expiresAt}, hasModifications=${p.modifications?.length || 0}`);
+        console.log(`DEBUG: Punishment ${idx}: id=${p.id}, type_ordinal=${p.type_ordinal}, started=${p.started}, data.active=${p.data?.get('active')}, hasModifications=${p.modifications?.length || 0}`);
       });
 
-      // Get punishment type configuration (same as used elsewhere in minecraft-routes.ts)
-      const Settings = serverDbConnection.model('Settings');
-      const punishmentTypesDoc = await Settings.findOne({ type: 'punishmentTypes' });
-      const punishmentTypes = punishmentTypesDoc?.data || [];
-      const punishmentTypeConfig = await buildPunishmentTypeMap(punishmentTypes);
-
-      // Find active ban punishment using the same logic as the rest of the system
+      // Find active ban punishment using simplified logic
       let activeBan = player.punishments.find(p => {
-        console.log(`DEBUG: Checking punishment ${p.id}: started=${p.started}, type_ordinal=${p.type_ordinal || p.typeOrdinal}`);
+        console.log(`DEBUG: Checking punishment ${p.id}: started=${p.started}, type_ordinal=${p.type_ordinal}`);
         
         // Use the same active check as player-routes.ts
         if (p.data && p.data.get('active') === false) {
@@ -2950,12 +2944,19 @@ export function setupMinecraftRoutes(app: Express): void {
           }
         }
         
-        // Check if it's a ban using the same logic as getPunishmentType
-        const typeOrdinal = p.type_ordinal || p.typeOrdinal;
-        const punishmentType = getPunishmentType(p, punishmentTypeConfig);
-        const isBan = punishmentType === 'BAN';
+        // Check if it's a ban using ordinal logic (simplified from getPunishmentType)
+        const typeOrdinal = p.type_ordinal;
+        let isBan = false;
         
-        console.log(`DEBUG: Punishment ${p.id} type check: typeOrdinal=${typeOrdinal}, punishmentType=${punishmentType}, isBan=${isBan}`);
+        if (typeOrdinal === 0) {
+          isBan = false; // Kick
+        } else if (typeOrdinal === 1) {
+          isBan = false; // Manual Mute
+        } else {
+          isBan = true; // All other ordinals (2, 3, 4, 5 and custom) default to BAN
+        }
+        
+        console.log(`DEBUG: Punishment ${p.id} type check: typeOrdinal=${typeOrdinal}, isBan=${isBan}`);
         return isBan;
       });
 
@@ -2976,7 +2977,7 @@ export function setupMinecraftRoutes(app: Express): void {
           }
           
           // Any punishment that's not a mute or kick could be a ban
-          const typeOrdinal = p.type_ordinal || p.typeOrdinal;
+          const typeOrdinal = p.type_ordinal;
           const isNotMute = typeOrdinal !== 1; // 1 = Manual Mute
           const isNotKick = typeOrdinal !== 0; // 0 = Kick
           
