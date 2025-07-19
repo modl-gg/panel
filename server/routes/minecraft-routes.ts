@@ -814,7 +814,7 @@ async function getPunishmentDescription(
   
   // For manual punishments (Manual Mute=1, Manual Ban=2, Kick=0), use notes
   if (punishment.type_ordinal <= 2) {
-    const noteText = punishment.notes && punishment.notes.length > 0 ? punishment.notes[0].text : null;
+    const noteText = punishment.notes && punishment.notes.length > 0 ? punishment.notes[0] : null;
     return noteText || defaultDescription;
   }
   
@@ -1511,12 +1511,68 @@ export function setupMinecraftRoutes(app: Express): void {
         return res.status(400).json({ status: 400, message: 'Either type or type_ordinal must be provided' });
       }
 
+      // Check for mute stacking - prevent new mutes when player already has an active mute
+      if (finalTypeOrdinal === 1) { // Manual Mute
+        const hasActiveMute = player.punishments.some(p => {
+          // Check if it's a mute (ordinal 1)
+          if (p.type_ordinal !== 1) return false;
+          
+          // Check if explicitly marked as inactive
+          if (p.data && p.data.get('active') === false) return false;
+          
+          // Check if pardoned
+          const isPardoned = p.modifications?.some(mod => 
+            mod.type === 'MANUAL_PARDON' || mod.type === 'APPEAL_ACCEPT'
+          );
+          if (isPardoned) return false;
+          
+          // Check if started and expired
+          if (p.started) {
+            const duration = p.data ? p.data.get('duration') : undefined;
+            if (duration !== -1 && duration !== undefined) {
+              const startTime = new Date(p.started).getTime();
+              const endTime = startTime + Number(duration);
+              if (endTime <= Date.now()) return false; // Expired
+            }
+          }
+          
+          return true; // Active mute found
+        });
+
+        if (hasActiveMute) {
+          return res.status(400).json({ 
+            status: 400, 
+            message: 'Cannot create mute: Player already has an active mute' 
+          });
+        }
+      }
+
+      // For manual punishments (ordinals 0-5), don't put reason in data - use as first note instead
       const newPunishmentData = new Map<string, any>([
-        ['reason', reason],
         ...(duration ? [['duration', duration] as [string, any]] : []),
         // Don't set expires until punishment is started by server
         ...(data ? Object.entries(data) : [])
       ]);
+
+      // Create notes array with reason as first note for manual punishments
+      const punishmentNotes: INote[] = [];
+      if (finalTypeOrdinal <= 5 && reason) {
+        // Add reason as first note for manual punishments
+        punishmentNotes.push({
+          text: reason,
+          date: new Date(),
+          issuerName: issuerName
+        });
+      }
+      // Add any additional notes
+      if (notes) {
+        punishmentNotes.push(...notes.map((note: any) => ({ 
+          text: note.text, 
+          date: new Date(), 
+          issuerName: note.issuerName || issuerName 
+        } as INote)));
+      }
+
       const newPunishment: IPunishment = {
         id: punishmentId,
         issuerName,
@@ -1525,7 +1581,7 @@ export function setupMinecraftRoutes(app: Express): void {
         started: undefined,
         type_ordinal: finalTypeOrdinal,
         modifications: [],
-        notes: notes ? notes.map((note: any) => ({ text: note.text, date: new Date(), issuerName: note.issuerName || issuerName } as INote)) : [],
+        notes: punishmentNotes,
         attachedTicketIds: attachedTicketIds || [],
         data: newPunishmentData
       };
