@@ -10,6 +10,9 @@ export const PERMISSIONS = {
   ADMIN_STAFF_MANAGE: 'admin.staff.manage',
   ADMIN_ANALYTICS_VIEW: 'admin.analytics.view',
   
+  // Punishment permissions
+  PUNISHMENT_MODIFY: 'punishment.modify',
+  
   // Ticket permissions
   TICKET_VIEW_ALL: 'ticket.view.all',
   TICKET_REPLY_ALL: 'ticket.reply.all',
