@@ -2785,25 +2785,33 @@ export function setupMinecraftRoutes(app: Express): void {
         });
       }
 
-      // Calculate if punishment is active using the same logic as player-routes.ts
-      let isActiveCalculated = true;
+      // Calculate if punishment can be pardoned (started or unstarted)
+      let canBePardonedCalculated = true;
       
       if (punishment.data && punishment.data.get('active') === false) {
-        isActiveCalculated = false;
-      } else if (!punishment.started) {
-        isActiveCalculated = false;
+        canBePardonedCalculated = false;
       } else {
-        const duration = punishment.data ? punishment.data.get('duration') : undefined;
-        if (duration !== -1 && duration !== undefined) {
-          const startTime = new Date(punishment.started).getTime();
-          const endTime = startTime + Number(duration);
-          if (endTime <= Date.now()) {
-            isActiveCalculated = false;
+        // Check if already pardoned
+        const isPardoned = punishment.modifications?.some(mod => 
+          mod.type === 'MANUAL_PARDON' || mod.type === 'APPEAL_ACCEPT'
+        );
+        if (isPardoned) {
+          canBePardonedCalculated = false;
+        } else if (punishment.started) {
+          // For started punishments, check if expired
+          const duration = punishment.data ? punishment.data.get('duration') : undefined;
+          if (duration !== -1 && duration !== undefined) {
+            const startTime = new Date(punishment.started).getTime();
+            const endTime = startTime + Number(duration);
+            if (endTime <= Date.now()) {
+              canBePardonedCalculated = false;
+            }
           }
         }
+        // Unstarted punishments are always pardonable (unless marked inactive or already pardoned)
       }
 
-      console.log(`DEBUG: Found punishment ${punishmentId}: started=${punishment.started}, data.active=${punishment.data?.get('active')}, isActiveCalculated=${isActiveCalculated}, type_ordinal=${punishment.type_ordinal || punishment.typeOrdinal}`);
+      console.log(`DEBUG: Found punishment ${punishmentId}: started=${punishment.started}, data.active=${punishment.data?.get('active')}, canBePardonedCalculated=${canBePardonedCalculated}, type_ordinal=${punishment.type_ordinal || punishment.typeOrdinal}`);
 
       // Check if already pardoned
       const isAlreadyPardoned = punishment.modifications?.some(mod => 
@@ -2918,33 +2926,49 @@ export function setupMinecraftRoutes(app: Express): void {
         console.log(`DEBUG: Punishment ${idx}: id=${p.id}, type_ordinal=${p.type_ordinal}, started=${p.started}, data.active=${p.data?.get('active')}, hasModifications=${p.modifications?.length || 0}`);
       });
 
-      // Find active ban punishment using simplified logic
+      // Find active ban punishment using the complete logic from player-routes.ts
       let activeBan = player.punishments.find(p => {
         console.log(`DEBUG: Checking punishment ${p.id}: started=${p.started}, type_ordinal=${p.type_ordinal}`);
         
-        // Use the same active check as player-routes.ts
+        // Step 1: Check if explicitly marked as inactive in data
         if (p.data && p.data.get('active') === false) {
           console.log(`DEBUG: Punishment ${p.id} is marked inactive in data`);
           return false;
         }
         
-        if (!p.started) {
-          console.log(`DEBUG: Punishment ${p.id} not started yet`);
+        // Step 2: Punishment can be started or unstarted (both can be pardoned)
+        const isStarted = !!p.started;
+        console.log(`DEBUG: Punishment ${p.id} started=${isStarted}`);
+        
+        // Step 3: Check if punishment has been pardoned via modifications
+        const isPardoned = p.modifications?.some(mod => 
+          mod.type === 'MANUAL_PARDON' || mod.type === 'APPEAL_ACCEPT'
+        );
+        if (isPardoned) {
+          console.log(`DEBUG: Punishment ${p.id} has been pardoned via modifications`);
           return false;
         }
         
+        // Step 4: Check duration and expiration
         const duration = p.data ? p.data.get('duration') : undefined;
-        if (duration !== -1 && duration !== undefined) {
+        if (duration === -1 || duration === undefined) {
+          // Permanent punishment - it's valid for pardoning
+          console.log(`DEBUG: Punishment ${p.id} is permanent (duration=${duration})`);
+        } else if (isStarted) {
+          // Temporary punishment that's started - check if expired
           const startTime = new Date(p.started).getTime();
           const endTime = startTime + Number(duration);
           
           if (endTime <= Date.now()) {
-            console.log(`DEBUG: Punishment ${p.id} is expired`);
+            console.log(`DEBUG: Punishment ${p.id} is expired (endTime=${new Date(endTime)}, now=${new Date()})`);
             return false;
           }
+        } else {
+          // Unstarted temporary punishment - it's valid for pardoning
+          console.log(`DEBUG: Punishment ${p.id} is unstarted temporary punishment (duration=${duration})`);
         }
         
-        // Check if it's a ban using ordinal logic (simplified from getPunishmentType)
+        // Step 5: Check if it's a ban using ordinal logic
         const typeOrdinal = p.type_ordinal;
         let isBan = false;
         
@@ -2956,21 +2980,28 @@ export function setupMinecraftRoutes(app: Express): void {
           isBan = true; // All other ordinals (2, 3, 4, 5 and custom) default to BAN
         }
         
-        console.log(`DEBUG: Punishment ${p.id} type check: typeOrdinal=${typeOrdinal}, isBan=${isBan}`);
+        console.log(`DEBUG: Punishment ${p.id} is active ban: typeOrdinal=${typeOrdinal}, isBan=${isBan}`);
         return isBan;
       });
 
       if (!activeBan) {
         console.log(`DEBUG: No active ban found for ${playerName}. Total punishments: ${player.punishments.length}`);
         
-        // Fallback: try to find ANY active punishment using simplified checks
+        // Fallback: try to find ANY punishment that could be a ban (started or unstarted)
         activeBan = player.punishments.find(p => {
-          // Use the same active check as above
+          // Use the same complete check as above
           if (p.data && p.data.get('active') === false) return false;
-          if (!p.started) return false;
           
+          // Check if pardoned
+          const isPardoned = p.modifications?.some(mod => 
+            mod.type === 'MANUAL_PARDON' || mod.type === 'APPEAL_ACCEPT'
+          );
+          if (isPardoned) return false;
+          
+          // Check duration (only for started punishments)
+          const isStarted = !!p.started;
           const duration = p.data ? p.data.get('duration') : undefined;
-          if (duration !== -1 && duration !== undefined) {
+          if (isStarted && duration !== -1 && duration !== undefined) {
             const startTime = new Date(p.started).getTime();
             const endTime = startTime + Number(duration);
             if (endTime <= Date.now()) return false;
@@ -2981,7 +3012,7 @@ export function setupMinecraftRoutes(app: Express): void {
           const isNotMute = typeOrdinal !== 1; // 1 = Manual Mute
           const isNotKick = typeOrdinal !== 0; // 0 = Kick
           
-          console.log(`DEBUG: Fallback check for ${p.id}: typeOrdinal=${typeOrdinal}, isNotMute=${isNotMute}, isNotKick=${isNotKick}`);
+          console.log(`DEBUG: Fallback check for ${p.id}: started=${isStarted}, typeOrdinal=${typeOrdinal}, isNotMute=${isNotMute}, isNotKick=${isNotKick}`);
           
           return isNotMute && isNotKick;
         });
