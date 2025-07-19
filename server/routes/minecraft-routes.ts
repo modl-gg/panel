@@ -2768,7 +2768,7 @@ export function setupMinecraftRoutes(app: Express): void {
       if (!player) {
         return res.status(404).json({ 
           status: 404, 
-          message: 'Punishment not found' 
+          message: `No player found with punishment ID: ${punishmentId}` 
         });
       }
 
@@ -2777,7 +2777,7 @@ export function setupMinecraftRoutes(app: Express): void {
       if (!punishment) {
         return res.status(404).json({ 
           status: 404, 
-          message: 'Punishment not found' 
+          message: `Punishment with ID ${punishmentId} not found in player data` 
         });
       }
 
@@ -2904,7 +2904,7 @@ export function setupMinecraftRoutes(app: Express): void {
       if (!player) {
         return res.status(404).json({ 
           status: 404, 
-          message: 'Player not found' 
+          message: `Player not found: ${playerName}` 
         });
       }
 
