@@ -845,7 +845,7 @@ async function getPunishmentDescription(
   
   // For manual punishments (Manual Mute=1, Manual Ban=2, Kick=0), use notes
   if (punishment.type_ordinal <= 2) {
-    const noteText = punishment.notes && punishment.notes.length > 0 ? punishment.notes[0] : null;
+    const noteText = punishment.notes && punishment.notes.length > 0 ? punishment.notes[0].text : null;
     return noteText || defaultDescription;
   }
   
@@ -870,7 +870,7 @@ async function getPunishmentDescription(
   }
   
   // Fallback to notes if no player description found
-  const noteText = punishment.notes && punishment.notes.length > 0 ? punishment.notes[0] : null;
+  const noteText = punishment.notes && punishment.notes.length > 0 ? punishment.notes[0].text : null;
   return noteText || defaultDescription;
 }
 
