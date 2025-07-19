@@ -362,8 +362,11 @@ export async function createDefaultRoles(dbConnection: Connection): Promise<void
     const { getStaffRoleModel } = await import('../utils/schema-utils');
     const StaffRoles = getStaffRoleModel(dbConnection);
 
-    // Get punishment permissions for default roles
+    // Get all permissions for default roles
+    const basePermissions = getBasePermissions();
     const punishmentPermissions = await getPunishmentPermissions(dbConnection);
+    const allPermissions = [...basePermissions, ...punishmentPermissions];
+    const allPermissionIds = allPermissions.map(p => p.id);
     const allPunishmentPerms = punishmentPermissions.map(p => p.id);
 
     // Define default roles
@@ -372,12 +375,7 @@ export async function createDefaultRoles(dbConnection: Connection): Promise<void
         id: 'super-admin',
         name: 'Super Admin',
         description: 'Full access to all features and settings',
-        permissions: [
-          'admin.settings.view', 'admin.settings.modify', 'admin.staff.manage', 'admin.analytics.view',
-          'punishment.modify',
-          'ticket.view.all', 'ticket.reply.all', 'ticket.close.all', 'ticket.delete.all',
-          ...allPunishmentPerms
-        ],
+        permissions: allPermissionIds, // Super Admin gets ALL permissions
         isDefault: true,
       },
       {

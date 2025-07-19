@@ -2753,7 +2753,7 @@ export function setupMinecraftRoutes(app: Express): void {
    */
   app.post('/api/minecraft/punishment/:id/pardon', async (req: Request, res: Response) => {
     const { id: punishmentId } = req.params;
-    const { issuerName, reason } = req.body;
+    const { issuerName, reason, expectedType } = req.body; // expectedType is optional
     const serverDbConnection = req.serverDbConnection!;
     const serverName = req.serverName!;
 
@@ -2779,6 +2779,27 @@ export function setupMinecraftRoutes(app: Express): void {
           status: 404, 
           message: 'Punishment not found' 
         });
+      }
+
+      // Validate punishment type if expectedType is provided
+      if (expectedType) {
+        const typeOrdinal = punishment.type_ordinal;
+        let isCorrectType = false;
+        
+        if (expectedType === 'ban') {
+          // Ban: ordinals 2, 3, 4, 5 and custom (not 0=kick, 1=mute)
+          isCorrectType = typeOrdinal !== 0 && typeOrdinal !== 1;
+        } else if (expectedType === 'mute') {
+          // Mute: ordinal 1
+          isCorrectType = typeOrdinal === 1;
+        }
+        
+        if (!isCorrectType) {
+          return res.status(400).json({ 
+            status: 400, 
+            message: `This punishment is not a ${expectedType}` 
+          });
+        }
       }
 
       // Check if already pardoned
@@ -2856,7 +2877,8 @@ export function setupMinecraftRoutes(app: Express): void {
   });
 
   /**
-   * Pardon a player by name and punishment type (bans and mutes)
+   * Pardon a player by name and punishment type
+   * Note: /pardon <playername> only sends 'ban', /unmute <playername> sends 'mute'
    */
   app.post('/api/minecraft/player/pardon', async (req: Request, res: Response) => {
     const { playerName, issuerName, punishmentType, reason } = req.body;
@@ -2864,7 +2886,7 @@ export function setupMinecraftRoutes(app: Express): void {
     const serverName = req.serverName!;
 
     try {
-      // Validate punishment type
+      // Validate punishment type - allow both ban and mute
       if (punishmentType !== 'ban' && punishmentType !== 'mute') {
         return res.status(400).json({ 
           status: 400, 
