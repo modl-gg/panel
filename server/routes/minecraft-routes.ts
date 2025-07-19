@@ -2747,4 +2747,224 @@ export function setupMinecraftRoutes(app: Express): void {
       });
     }
   });
+
+  /**
+   * Pardon a punishment by punishment ID
+   */
+  app.post('/api/minecraft/punishment/:id/pardon', async (req: Request, res: Response) => {
+    const { id: punishmentId } = req.params;
+    const { issuerName, reason } = req.body;
+    const serverDbConnection = req.serverDbConnection!;
+    const serverName = req.serverName!;
+
+    try {
+      const Player = serverDbConnection.model<IPlayer>('Player');
+
+      // Find the player with this punishment ID
+      const player = await Player.findOne({ 
+        'punishments.id': punishmentId 
+      });
+
+      if (!player) {
+        return res.status(404).json({ 
+          status: 404, 
+          message: 'Punishment not found' 
+        });
+      }
+
+      // Find the specific punishment
+      const punishment = player.punishments.find(p => p.id === punishmentId);
+      if (!punishment) {
+        return res.status(404).json({ 
+          status: 404, 
+          message: 'Punishment not found' 
+        });
+      }
+
+      // Check if already pardoned
+      const isAlreadyPardoned = punishment.modifications?.some(mod => 
+        mod.type === 'MANUAL_PARDON' || mod.type === 'APPEAL_ACCEPT'
+      );
+
+      if (isAlreadyPardoned) {
+        return res.status(400).json({ 
+          status: 400, 
+          message: 'This punishment has already been pardoned' 
+        });
+      }
+
+      // Add pardon modification
+      if (!punishment.modifications) {
+        punishment.modifications = [];
+      }
+
+      const pardonModification: IModification = {
+        type: 'MANUAL_PARDON',
+        issuerName: issuerName || 'System',
+        issuedAt: new Date(),
+        duration: 0
+      };
+
+      punishment.modifications.push(pardonModification);
+
+      // Add pardon note
+      if (!punishment.notes) {
+        punishment.notes = [];
+      }
+
+      const pardonNote: INote = {
+        text: `Punishment pardoned${reason ? `: ${reason}` : ''}`,
+        issuerName: issuerName || 'System',
+        issuedAt: new Date()
+      };
+
+      punishment.notes.push(pardonNote);
+
+      // Deactivate the punishment
+      punishment.isActive = false;
+
+      // Save the player
+      await player.save();
+
+      // Create audit log
+      await createPunishmentAuditLog(
+        serverDbConnection,
+        serverName,
+        {
+          punishmentId: punishment.id,
+          typeOrdinal: punishment.typeOrdinal || 0,
+          targetPlayer: player.usernames?.[0]?.username || 'Unknown',
+          targetUuid: player.minecraftUuid,
+          issuerName: issuerName || 'System',
+          reason: `Punishment pardoned${reason ? `: ${reason}` : ''}`,
+          isDynamic: false
+        }
+      );
+
+      console.log(`PARDON (${serverName}): Punishment ${punishmentId} pardoned by ${issuerName || 'System'}`);
+
+      res.status(200).json({ 
+        status: 200, 
+        message: 'Punishment pardoned successfully' 
+      });
+
+    } catch (error: any) {
+      console.error('Error pardoning punishment:', error);
+      res.status(500).json({ 
+        status: 500, 
+        message: 'Internal server error' 
+      });
+    }
+  });
+
+  /**
+   * Pardon a player by name and punishment type (bans only)
+   */
+  app.post('/api/minecraft/player/pardon', async (req: Request, res: Response) => {
+    const { playerName, issuerName, punishmentType, reason } = req.body;
+    const serverDbConnection = req.serverDbConnection!;
+    const serverName = req.serverName!;
+
+    try {
+      // Only allow pardoning bans by player name, not mutes
+      if (punishmentType !== 'ban') {
+        return res.status(400).json({ 
+          status: 400, 
+          message: 'Pardoning by player name is only supported for bans. Use punishment ID to pardon mutes.' 
+        });
+      }
+
+      const Player = serverDbConnection.model<IPlayer>('Player');
+
+      // Find player by username
+      const player = await Player.findOne({
+        'usernames.username': { $regex: new RegExp(`^${playerName}$`, 'i') }
+      });
+
+      if (!player) {
+        return res.status(404).json({ 
+          status: 404, 
+          message: 'Player not found' 
+        });
+      }
+
+      // Find active ban punishment
+      const activeBan = player.punishments.find(p => 
+        p.isActive && 
+        p.type && 
+        p.type.toLowerCase().includes('ban') &&
+        (!p.expiresAt || new Date(p.expiresAt) > new Date()) &&
+        !p.modifications?.some(mod => mod.type === 'MANUAL_PARDON' || mod.type === 'APPEAL_ACCEPT')
+      );
+
+      if (!activeBan) {
+        return res.status(404).json({ 
+          status: 404, 
+          message: 'No active ban found for this player' 
+        });
+      }
+
+      // Add pardon modification
+      if (!activeBan.modifications) {
+        activeBan.modifications = [];
+      }
+
+      const pardonModification: IModification = {
+        type: 'MANUAL_PARDON',
+        issuerName: issuerName || 'System',
+        issuedAt: new Date(),
+        duration: 0
+      };
+
+      activeBan.modifications.push(pardonModification);
+
+      // Add pardon note
+      if (!activeBan.notes) {
+        activeBan.notes = [];
+      }
+
+      const pardonNote: INote = {
+        text: `Ban pardoned${reason ? `: ${reason}` : ''}`,
+        issuerName: issuerName || 'System',
+        issuedAt: new Date()
+      };
+
+      activeBan.notes.push(pardonNote);
+
+      // Deactivate the punishment
+      activeBan.isActive = false;
+
+      // Save the player
+      await player.save();
+
+      // Create audit log
+      await createPunishmentAuditLog(
+        serverDbConnection,
+        serverName,
+        {
+          punishmentId: activeBan.id,
+          typeOrdinal: activeBan.typeOrdinal || 0,
+          targetPlayer: playerName,
+          targetUuid: player.minecraftUuid,
+          issuerName: issuerName || 'System',
+          reason: `Ban pardoned${reason ? `: ${reason}` : ''}`,
+          isDynamic: false
+        }
+      );
+
+      console.log(`PARDON (${serverName}): ${playerName}'s ban (${activeBan.id}) pardoned by ${issuerName || 'System'}`);
+
+      res.status(200).json({ 
+        status: 200, 
+        message: `Successfully pardoned ${playerName}'s ban` 
+      });
+
+    } catch (error: any) {
+      console.error('Error pardoning player ban:', error);
+      res.status(500).json({ 
+        status: 500, 
+        message: 'Internal server error' 
+      });
+    }
+  });
 }
