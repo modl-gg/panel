@@ -1943,79 +1943,84 @@ export function setupMinecraftRoutes(app: Express): void {
             .filter((p: IPunishment) => (!p.started || p.started === null || p.started === undefined) && isPunishmentValid(p))
             .sort((a: IPunishment, b: IPunishment) => new Date(a.issued).getTime() - new Date(b.issued).getTime());
 
-          // Determine which punishments to send to server for this player:
-          // Priority 1: Already started and still active punishments
-          // Priority 2: If no active punishment of that type, send earliest unstarted valid punishment
+          // SYNC ENDPOINT: Only send UNSTARTED punishments that need to be executed
+          // Already started punishments are handled by login endpoint
           
-          const startedActivePunishments = player.punishments.filter((punishment: IPunishment) => {
-            // Must be started
-            if (!punishment.started || punishment.started === null || punishment.started === undefined) return false;
-            
-            // Get effective state considering modifications (pardons, duration changes, etc.)
-            const effectiveState = getEffectivePunishmentState(punishment);
-            
-            // If punishment has been pardoned or otherwise made inactive by modifications
-            if (!effectiveState.effectiveActive) return false;
+          // Find earliest unstarted ban and mute (only send if no active punishment of that type)
+          const earliestUnstartedBan = validUnstartedPunishments.find((p: IPunishment) => isBanPunishment(p, punishmentTypeConfig));
+          const earliestUnstartedMute = validUnstartedPunishments.find((p: IPunishment) => isMutePunishment(p, punishmentTypeConfig));
 
-            // Check duration-based expiry using effective expiry if available
+          // Check if player has any active (started) punishments of each type
+          const hasActiveBan = player.punishments.some((p: IPunishment) => {
+            if (!isBanPunishment(p, punishmentTypeConfig)) return false;
+            if (!p.started) return false;
+            
+            const effectiveState = getEffectivePunishmentState(p);
+            if (!effectiveState.effectiveActive) return false;
+            
             if (effectiveState.effectiveExpiry) {
               return effectiveState.effectiveExpiry.getTime() > new Date().getTime();
             }
             
-            // Fallback to original duration logic for punishments without modifications
-            const duration = getPunishmentData(punishment, 'duration');
-            if (duration === -1 || duration === undefined) return true; // Permanent punishment
+            const duration = getPunishmentData(p, 'duration');
+            if (duration === -1 || duration === undefined) return true;
             
-            const startTime = new Date(punishment.started).getTime();
+            const startTime = new Date(p.started).getTime();
             const endTime = startTime + Number(duration);
-            
-            return endTime > Date.now(); // Active if not expired
+            return endTime > Date.now();
           });
 
-          // Find active ban and mute (started punishments)
-          const activeBan = startedActivePunishments.find((p: IPunishment) => isBanPunishment(p, punishmentTypeConfig));
-          const activeMute = startedActivePunishments.find((p: IPunishment) => isMutePunishment(p, punishmentTypeConfig));
-          
-          // Find earliest unstarted ban and mute
-          const earliestUnstartedBan = validUnstartedPunishments.find((p: IPunishment) => isBanPunishment(p, punishmentTypeConfig));
-          const earliestUnstartedMute = validUnstartedPunishments.find((p: IPunishment) => isMutePunishment(p, punishmentTypeConfig));
+          const hasActiveMute = player.punishments.some((p: IPunishment) => {
+            if (!isMutePunishment(p, punishmentTypeConfig)) return false;
+            if (!p.started) return false;
+            
+            const effectiveState = getEffectivePunishmentState(p);
+            if (!effectiveState.effectiveActive) return false;
+            
+            if (effectiveState.effectiveExpiry) {
+              return effectiveState.effectiveExpiry.getTime() > new Date().getTime();
+            }
+            
+            const duration = getPunishmentData(p, 'duration');
+            if (duration === -1 || duration === undefined) return true;
+            
+            const startTime = new Date(p.started).getTime();
+            const endTime = startTime + Number(duration);
+            return endTime > Date.now();
+          });
 
-          // Determine which ban and mute to send (priority: active > earliest unstarted)
-          const banToSend = activeBan || earliestUnstartedBan;
-          const muteToSend = activeMute || earliestUnstartedMute;
-
-          // Add the ban if exists
-          if (banToSend) {
-            const description = await getPunishmentDescription(banToSend, serverDbConnection);
-            const banType = getPunishmentType(banToSend, punishmentTypeConfig);
+          // Only send unstarted ban if no active ban exists
+          if (earliestUnstartedBan && !hasActiveBan) {
+            const description = await getPunishmentDescription(earliestUnstartedBan, serverDbConnection);
+            const banType = getPunishmentType(earliestUnstartedBan, punishmentTypeConfig);
 
             pendingPunishments.push({
               minecraftUuid: player.minecraftUuid,
               username: player.usernames[player.usernames.length - 1]?.username || 'Unknown',
               punishment: {
                 type: banType,
-                started: !!banToSend.started,
-                expiration: calculateExpiration(banToSend),
+                started: false, // Always false for sync (unstarted punishments)
+                expiration: calculateExpiration(earliestUnstartedBan),
                 description: description,
-                id: banToSend.id
+                id: earliestUnstartedBan.id
               }
             });
           }
 
-          // Add the mute if exists  
-          if (muteToSend) {
-            const description = await getPunishmentDescription(muteToSend, serverDbConnection);
-            const muteType = getPunishmentType(muteToSend, punishmentTypeConfig);
+          // Only send unstarted mute if no active mute exists
+          if (earliestUnstartedMute && !hasActiveMute) {
+            const description = await getPunishmentDescription(earliestUnstartedMute, serverDbConnection);
+            const muteType = getPunishmentType(earliestUnstartedMute, punishmentTypeConfig);
 
             pendingPunishments.push({
               minecraftUuid: player.minecraftUuid,
               username: player.usernames[player.usernames.length - 1]?.username || 'Unknown',
               punishment: {
                 type: muteType,
-                started: !!muteToSend.started,
-                expiration: calculateExpiration(muteToSend),
+                started: false, // Always false for sync (unstarted punishments)
+                expiration: calculateExpiration(earliestUnstartedMute),
                 description: description,
-                id: muteToSend.id
+                id: earliestUnstartedMute.id
               }
             });
           }
