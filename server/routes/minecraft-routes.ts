@@ -428,6 +428,9 @@ function hasActiveMute(player: IPlayer): boolean {
     // Check if it's a mute (ordinal 1)
     if (p.type_ordinal !== 1) return false;
     
+    // Must be started to be considered "active"
+    if (!p.started) return false;
+    
     // Check if explicitly marked as inactive
     if (getPunishmentData(p, 'active') === false) return false;
     
@@ -437,14 +440,12 @@ function hasActiveMute(player: IPlayer): boolean {
     );
     if (isPardoned) return false;
     
-    // Check if started and expired
-    if (p.started) {
-      const duration = getPunishmentData(p, 'duration');
-      if (duration !== -1 && duration !== undefined) {
-        const startTime = new Date(p.started).getTime();
-        const endTime = startTime + Number(duration);
-        if (endTime <= Date.now()) return false; // Expired
-      }
+    // Check if expired
+    const duration = getPunishmentData(p, 'duration');
+    if (duration !== -1 && duration !== undefined) {
+      const startTime = new Date(p.started).getTime();
+      const endTime = startTime + Number(duration);
+      if (endTime <= Date.now()) return false; // Expired
     }
     
     return true; // Active mute found
@@ -1210,10 +1211,10 @@ export function setupMinecraftRoutes(app: Express): void {
           });
         }
       }
-      // Get both started and unstarted punishments for login response
-      // Include:
-      // 1. Started punishments that are still active
-      // 2. Unstarted punishments that are valid (for immediate execution)
+      // Determine which punishments to send to server:
+      // Priority 1: Already started and still active punishments
+      // Priority 2: If no active punishment of that type, send earliest unstarted valid punishment
+      
       const startedActivePunishments = player.punishments.filter((punishment: IPunishment) => {
         // Must be started
         if (!punishment.started || punishment.started === null || punishment.started === undefined) return false;
@@ -1239,21 +1240,30 @@ export function setupMinecraftRoutes(app: Express): void {
         return endTime > Date.now(); // Active if not expired
       });
 
-      // Get valid unstarted punishments (for immediate execution by server)
+      // Get valid unstarted punishments (sorted by issued date - earliest first)
       const unstartedValidPunishments = player.punishments
         .filter((p: IPunishment) => (!p.started || p.started === null || p.started === undefined) && isPunishmentValid(p))
         .sort((a: IPunishment, b: IPunishment) => new Date(a.issued).getTime() - new Date(b.issued).getTime());
 
-      // Implement stacking: only include oldest unstarted ban + oldest unstarted mute
-      const oldestUnstartedBan = unstartedValidPunishments.find((p: IPunishment) => isBanPunishment(p, punishmentTypeConfig));
-      const oldestUnstartedMute = unstartedValidPunishments.find((p: IPunishment) => isMutePunishment(p, punishmentTypeConfig));
+      // Find active ban and mute (started punishments)
+      const activeBan = startedActivePunishments.find((p: IPunishment) => isBanPunishment(p, punishmentTypeConfig));
+      const activeMute = startedActivePunishments.find((p: IPunishment) => isMutePunishment(p, punishmentTypeConfig));
+      
+      // Find earliest unstarted ban and mute
+      const earliestUnstartedBan = unstartedValidPunishments.find((p: IPunishment) => isBanPunishment(p, punishmentTypeConfig));
+      const earliestUnstartedMute = unstartedValidPunishments.find((p: IPunishment) => isMutePunishment(p, punishmentTypeConfig));
 
-      // Combine started active punishments with priority unstarted ones
-      // Only include unstarted mute if player doesn't already have an active mute
+      // Determine which ban and mute to send (priority: active > earliest unstarted)
+      const banToSend = activeBan || earliestUnstartedBan;
+      const muteToSend = activeMute || earliestUnstartedMute;
+
+      // Build final punishment list (max 1 ban + 1 mute + other types)
       const activePunishments = [
-        ...startedActivePunishments,
-        ...(oldestUnstartedBan ? [oldestUnstartedBan] : []),
-        ...(oldestUnstartedMute && !hasActiveMute(player) ? [oldestUnstartedMute] : [])
+        // Include all non-ban/mute active punishments (kicks, etc.)
+        ...startedActivePunishments.filter((p: IPunishment) => !isBanPunishment(p, punishmentTypeConfig) && !isMutePunishment(p, punishmentTypeConfig)),
+        // Include the chosen ban and mute
+        ...(banToSend ? [banToSend] : []),
+        ...(muteToSend ? [muteToSend] : [])
       ];
 
       // Convert to simplified active punishment format with proper descriptions
@@ -1579,17 +1589,21 @@ export function setupMinecraftRoutes(app: Express): void {
         }
       }
 
-      // For manual punishments (ordinals 0-5), don't put reason in data - use as first note instead
+      // Never put reason in data - always use notes instead
+      const filteredData = data ? Object.fromEntries(
+        Object.entries(data).filter(([key]) => key !== 'reason')
+      ) : {};
+      
       const newPunishmentData = new Map<string, any>([
         ...(duration ? [['duration', duration] as [string, any]] : []),
         // Don't set expires until punishment is started by server
-        ...(data ? Object.entries(data) : [])
+        ...Object.entries(filteredData)
       ]);
 
-      // Create notes array with reason as first note for manual punishments
+      // Create notes array with reason as first note for ALL punishments
       const punishmentNotes: INote[] = [];
-      if (finalTypeOrdinal <= 5 && reason) {
-        // Add reason as first note for manual punishments
+      if (reason) {
+        // Add reason as first note for all punishments
         punishmentNotes.push({
           text: reason,
           date: new Date(),
@@ -1929,55 +1943,88 @@ export function setupMinecraftRoutes(app: Express): void {
             .filter((p: IPunishment) => (!p.started || p.started === null || p.started === undefined) && isPunishmentValid(p))
             .sort((a: IPunishment, b: IPunishment) => new Date(a.issued).getTime() - new Date(b.issued).getTime());
 
-          // Also get recently issued punishments that might need immediate execution
-          const recentlyIssuedUnstarted = validUnstartedPunishments
-            .filter((p: IPunishment) => new Date(p.issued) >= lastSync);
+          // Determine which punishments to send to server for this player:
+          // Priority 1: Already started and still active punishments
+          // Priority 2: If no active punishment of that type, send earliest unstarted valid punishment
+          
+          const startedActivePunishments = player.punishments.filter((punishment: IPunishment) => {
+            // Must be started
+            if (!punishment.started || punishment.started === null || punishment.started === undefined) return false;
+            
+            // Get effective state considering modifications (pardons, duration changes, etc.)
+            const effectiveState = getEffectivePunishmentState(punishment);
+            
+            // If punishment has been pardoned or otherwise made inactive by modifications
+            if (!effectiveState.effectiveActive) return false;
 
-          // Prioritize recently issued punishments, then fall back to oldest unstarted
-          const priorityBan = recentlyIssuedUnstarted.find((p: IPunishment) => isBanPunishment(p, punishmentTypeConfig)) || 
-                             validUnstartedPunishments.find((p: IPunishment) => isBanPunishment(p, punishmentTypeConfig));
-          const priorityMute = recentlyIssuedUnstarted.find((p: IPunishment) => isMutePunishment(p, punishmentTypeConfig)) || 
-                              validUnstartedPunishments.find((p: IPunishment) => isMutePunishment(p, punishmentTypeConfig));
-          // For kicks, only send recently issued ones (kicks are instant)
-          const priorityKick = recentlyIssuedUnstarted.find((p: IPunishment) => isKickPunishment(p, punishmentTypeConfig));
+            // Check duration-based expiry using effective expiry if available
+            if (effectiveState.effectiveExpiry) {
+              return effectiveState.effectiveExpiry.getTime() > new Date().getTime();
+            }
+            
+            // Fallback to original duration logic for punishments without modifications
+            const duration = getPunishmentData(punishment, 'duration');
+            if (duration === -1 || duration === undefined) return true; // Permanent punishment
+            
+            const startTime = new Date(punishment.started).getTime();
+            const endTime = startTime + Number(duration);
+            
+            return endTime > Date.now(); // Active if not expired
+          });
 
-          // Add the priority ban if exists
-          if (priorityBan) {
-            const description = await getPunishmentDescription(priorityBan, serverDbConnection);
-            const banType = getPunishmentType(priorityBan, punishmentTypeConfig);
+          // Find active ban and mute (started punishments)
+          const activeBan = startedActivePunishments.find((p: IPunishment) => isBanPunishment(p, punishmentTypeConfig));
+          const activeMute = startedActivePunishments.find((p: IPunishment) => isMutePunishment(p, punishmentTypeConfig));
+          
+          // Find earliest unstarted ban and mute
+          const earliestUnstartedBan = validUnstartedPunishments.find((p: IPunishment) => isBanPunishment(p, punishmentTypeConfig));
+          const earliestUnstartedMute = validUnstartedPunishments.find((p: IPunishment) => isMutePunishment(p, punishmentTypeConfig));
+
+          // Determine which ban and mute to send (priority: active > earliest unstarted)
+          const banToSend = activeBan || earliestUnstartedBan;
+          const muteToSend = activeMute || earliestUnstartedMute;
+
+          // Add the ban if exists
+          if (banToSend) {
+            const description = await getPunishmentDescription(banToSend, serverDbConnection);
+            const banType = getPunishmentType(banToSend, punishmentTypeConfig);
 
             pendingPunishments.push({
               minecraftUuid: player.minecraftUuid,
               username: player.usernames[player.usernames.length - 1]?.username || 'Unknown',
               punishment: {
                 type: banType,
-                started: false,
-                expiration: calculateExpiration(priorityBan),
+                started: !!banToSend.started,
+                expiration: calculateExpiration(banToSend),
                 description: description,
-                id: priorityBan.id
+                id: banToSend.id
               }
             });
           }
 
-          // Add the priority mute if exists and player doesn't already have an active mute
-          if (priorityMute && !hasActiveMute(player)) {
-            const description = await getPunishmentDescription(priorityMute, serverDbConnection);
-            const muteType = getPunishmentType(priorityMute, punishmentTypeConfig);
+          // Add the mute if exists  
+          if (muteToSend) {
+            const description = await getPunishmentDescription(muteToSend, serverDbConnection);
+            const muteType = getPunishmentType(muteToSend, punishmentTypeConfig);
 
             pendingPunishments.push({
               minecraftUuid: player.minecraftUuid,
               username: player.usernames[player.usernames.length - 1]?.username || 'Unknown',
               punishment: {
                 type: muteType,
-                started: false,
-                expiration: calculateExpiration(priorityMute),
+                started: !!muteToSend.started,
+                expiration: calculateExpiration(muteToSend),
                 description: description,
-                id: priorityMute.id
+                id: muteToSend.id
               }
             });
           }
 
-          // Add the priority kick if exists (kicks are instant and don't persist)
+          // Add kicks (only recently issued ones since kicks are instant)
+          const recentlyIssuedUnstarted = validUnstartedPunishments
+            .filter((p: IPunishment) => new Date(p.issued) >= lastSync);
+          const priorityKick = recentlyIssuedUnstarted.find((p: IPunishment) => isKickPunishment(p, punishmentTypeConfig));
+          
           if (priorityKick) {
             const description = await getPunishmentDescription(priorityKick, serverDbConnection);
             const kickType = getPunishmentType(priorityKick, punishmentTypeConfig);
