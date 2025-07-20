@@ -1553,41 +1553,8 @@ export function setupMinecraftRoutes(app: Express): void {
         return res.status(400).json({ status: 400, message: 'Either type or type_ordinal must be provided' });
       }
 
-      // Check for mute stacking - prevent new mutes when player already has an active mute
-      if (finalTypeOrdinal === 1) { // Manual Mute
-        const hasActiveMute = player.punishments.some(p => {
-          // Check if it's a mute (ordinal 1)
-          if (p.type_ordinal !== 1) return false;
-          
-          // Check if explicitly marked as inactive
-          if (p.data && p.data.get('active') === false) return false;
-          
-          // Check if pardoned
-          const isPardoned = p.modifications?.some(mod => 
-            mod.type === 'MANUAL_PARDON' || mod.type === 'APPEAL_ACCEPT'
-          );
-          if (isPardoned) return false;
-          
-          // Check if started and expired
-          if (p.started) {
-            const duration = p.data ? p.data.get('duration') : undefined;
-            if (duration !== -1 && duration !== undefined) {
-              const startTime = new Date(p.started).getTime();
-              const endTime = startTime + Number(duration);
-              if (endTime <= Date.now()) return false; // Expired
-            }
-          }
-          
-          return true; // Active mute found
-        });
-
-        if (hasActiveMute) {
-          return res.status(400).json({ 
-            status: 400, 
-            message: 'Cannot create mute: Player already has an active mute' 
-          });
-        }
-      }
+      // Allow infinite mute creation - they will queue as unstarted until executed
+      // No mute stacking prevention needed - sync/login logic handles the queue
 
       // Never put reason in data - always use notes instead
       const filteredData = data ? Object.fromEntries(
