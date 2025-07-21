@@ -87,7 +87,7 @@ import { useSidebar } from '@/hooks/use-sidebar';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from 'modl-shared-web/components/ui/table';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from 'modl-shared-web/components/ui/tabs';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from 'modl-shared-web/components/ui/select';
-import { useTickets } from '@/hooks/use-data';
+import { useTickets, useTicketCounts } from '@/hooks/use-data';
 import PageContainer from '@/components/layout/PageContainer';
 
 // Define the Ticket interface to match the MongoDB schema
@@ -157,6 +157,12 @@ const Tickets = () => {
     search: debouncedSearchQuery,
     status: statusFilter === "all" ? "" : statusFilter,
     type: activeTab,
+  });
+  
+  // Get ticket counts for all categories to show in tab badges
+  const { counts: ticketCounts, isLoading: isLoadingCounts } = useTicketCounts({
+    search: debouncedSearchQuery,
+    status: statusFilter === "all" ? "" : statusFilter,
   });
   
   // More generous left margin to prevent text overlap with sidebar
@@ -394,7 +400,7 @@ const Tickets = () => {
                     className="data-[state=active]:border-b-2 data-[state=active]:border-primary data-[state=active]:text-primary rounded-none px-3 py-0.5 flex-shrink-0 text-sm"
                   >
                     <MessageSquare className="h-4 w-4 mr-2" />
-                    Support                    <Badge variant="outline" className="ml-2 bg-muted/30 text-foreground border-none text-xs font-medium">{tickets ? tickets.filter((t: Ticket) => t.type === 'support').length : 0}</Badge>
+                    Support                    <Badge variant="outline" className="ml-2 bg-muted/30 text-foreground border-none text-xs font-medium">{ticketCounts.support || 0}</Badge>
                   </TabsTrigger>
                 <TabsTrigger 
                   value="bug" 
@@ -402,7 +408,7 @@ const Tickets = () => {
                 >
                   <Bug className="h-4 w-4 mr-2" />
                   Bug Reports
-                  <Badge variant="outline" className="ml-2 bg-muted/30 text-foreground border-none text-xs font-medium">{tickets ? tickets.filter((t: Ticket) => t.type === 'bug').length : 0}</Badge>
+                  <Badge variant="outline" className="ml-2 bg-muted/30 text-foreground border-none text-xs font-medium">{ticketCounts.bug || 0}</Badge>
                 </TabsTrigger>
                 <TabsTrigger 
                   value="player" 
@@ -410,7 +416,7 @@ const Tickets = () => {
                 >
                   <Users className="h-4 w-4 mr-2" />
                   Player Reports
-                  <Badge variant="outline" className="ml-2 bg-muted/30 text-foreground border-none text-xs font-medium">{tickets ? tickets.filter((t: Ticket) => t.type === 'player').length : 0}</Badge>
+                  <Badge variant="outline" className="ml-2 bg-muted/30 text-foreground border-none text-xs font-medium">{ticketCounts.player || 0}</Badge>
                 </TabsTrigger>
                 <TabsTrigger 
                   value="chat" 
@@ -418,7 +424,7 @@ const Tickets = () => {
                 >
                   <MessageSquare className="h-4 w-4 mr-2" />
                   Chat Reports
-                  <Badge variant="outline" className="ml-2 bg-muted/30 text-foreground border-none text-xs font-medium">{tickets ? tickets.filter((t: Ticket) => t.type === 'chat').length : 0}</Badge>
+                  <Badge variant="outline" className="ml-2 bg-muted/30 text-foreground border-none text-xs font-medium">{ticketCounts.chat || 0}</Badge>
                 </TabsTrigger>
                 <TabsTrigger 
                   value="appeal" 
@@ -426,7 +432,7 @@ const Tickets = () => {
                 >
                   <LockKeyhole className="h-4 w-4 mr-2" />
                   Ban Appeals
-                  <Badge variant="outline" className="ml-2 bg-muted/30 text-foreground border-none text-xs font-medium">{tickets ? tickets.filter((t: Ticket) => t.type === 'appeal').length : 0}</Badge>
+                  <Badge variant="outline" className="ml-2 bg-muted/30 text-foreground border-none text-xs font-medium">{ticketCounts.appeal || 0}</Badge>
                 </TabsTrigger>
                 <TabsTrigger 
                   value="staff" 
@@ -434,7 +440,7 @@ const Tickets = () => {
                 >
                   <MessageSquare className="h-4 w-4 mr-2" />
                   Staff Applications
-                  <Badge variant="outline" className="ml-2 bg-muted/30 text-foreground border-none text-xs font-medium">{tickets ? tickets.filter((t: Ticket) => t.type === 'staff').length : 0}</Badge>
+                  <Badge variant="outline" className="ml-2 bg-muted/30 text-foreground border-none text-xs font-medium">{ticketCounts.staff || 0}</Badge>
                 </TabsTrigger>
               
               </TabsList>
