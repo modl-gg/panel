@@ -6,10 +6,11 @@ interface MarkdownRendererProps {
   content: string;
   className?: string;
   allowHtml?: boolean;
+  disableClickablePlayers?: boolean;
 }
 
 // Function to process chat message lines and make usernames clickable
-const processMarkdownContent = (content: string): string => {
+const processMarkdownContent = (content: string, disableClickablePlayers = false): string => {
   // First, check if content contains JSON-formatted chat messages
   if (content.includes('**Chat Messages:**')) {
     const chatHeaderIndex = content.indexOf('**Chat Messages:**');
@@ -60,6 +61,11 @@ const processMarkdownContent = (content: string): string => {
   // Look for already formatted chat message pattern and make usernames clickable
   const chatMessagePattern = /\*\*([^*\n]+)\*\*:/g;
   
+  // Only process player links if not disabled
+  if (disableClickablePlayers) {
+    return content;
+  }
+  
   return content.replace(chatMessagePattern, (match, username) => {
     // Only replace if this looks like a player username (not other bold text like section headers)
     if (username && !username.includes(':') && !username.includes('\n') && !username.includes('Chat Messages')) {
@@ -69,8 +75,8 @@ const processMarkdownContent = (content: string): string => {
   });
 };
 
-const MarkdownRenderer = ({ content, className, allowHtml = false }: MarkdownRendererProps) => {
-  const processedContent = processMarkdownContent(content);
+const MarkdownRenderer = ({ content, className, allowHtml = false, disableClickablePlayers = false }: MarkdownRendererProps) => {
+  const processedContent = processMarkdownContent(content, disableClickablePlayers);
   
   // Check if content contains structured form data (bullet points, bold labels)
   const hasStructuredContent = /\*\*[^*]+\*\*:\s*\n(•[^\n]*\n?)+/.test(content);
@@ -136,7 +142,7 @@ const MarkdownRenderer = ({ content, className, allowHtml = false }: MarkdownRen
             const text = children?.toString() || '';
             const playerMatch = text.match(/^\[PLAYER:(.*)\]$/);
             
-            if (playerMatch) {
+            if (playerMatch && !disableClickablePlayers) {
               const username = playerMatch[1];
               return (
                 <ClickablePlayer playerText={username} variant="text" showIcon={false}>

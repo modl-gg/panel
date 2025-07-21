@@ -967,7 +967,7 @@ const PlayerTicket = () => {
                           )}
                         </div>
                         <div className="text-sm">
-                          <MarkdownRenderer content={message.content} />
+                          <MarkdownRenderer content={message.content} disableClickablePlayers={true} />
                         </div>
                         {message.attachments && message.attachments.length > 0 && (
                           <div className="mt-2 space-y-1">
