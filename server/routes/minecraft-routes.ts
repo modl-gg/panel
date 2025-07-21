@@ -1276,7 +1276,8 @@ export function setupMinecraftRoutes(app: Express): void {
           started: p.started ? true : false,
           expiration: calculateExpiration(p),
           description: description,
-          id: p.id
+          id: p.id,
+          ordinal: p.type_ordinal
         };
       }));
 
@@ -1969,7 +1970,8 @@ export function setupMinecraftRoutes(app: Express): void {
                 started: false, // Always false for sync (unstarted punishments)
                 expiration: calculateExpiration(earliestUnstartedBan),
                 description: description,
-                id: earliestUnstartedBan.id
+                id: earliestUnstartedBan.id,
+                ordinal: earliestUnstartedBan.type_ordinal
               }
             });
           }
@@ -1987,7 +1989,8 @@ export function setupMinecraftRoutes(app: Express): void {
                 started: false, // Always false for sync (unstarted punishments)
                 expiration: calculateExpiration(earliestUnstartedMute),
                 description: description,
-                id: earliestUnstartedMute.id
+                id: earliestUnstartedMute.id,
+                ordinal: earliestUnstartedMute.type_ordinal
               }
             });
           }
@@ -2009,7 +2012,8 @@ export function setupMinecraftRoutes(app: Express): void {
                 started: false,
                 expiration: null, // Kicks are instant
                 description: description,
-                id: priorityKick.id
+                id: priorityKick.id,
+                ordinal: priorityKick.type_ordinal
               }
             });
           }
