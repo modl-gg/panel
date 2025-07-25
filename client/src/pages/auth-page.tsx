@@ -345,7 +345,7 @@ const AuthPage = () => {
             </CardContent>
             <CardFooter className="flex justify-center border-t pt-4">
               <p className="text-xs text-muted-foreground">
-                Administrator contact: <a href="mailto:admin@cobl.gg" className="text-primary hover:underline">admin@cobl.gg</a>
+                Administrator contact: <a href="mailto:admin@modl.gg" className="text-primary hover:underline">admin@modl.gg</a>
               </p>
             </CardFooter>
           </Card>

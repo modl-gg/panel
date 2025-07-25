@@ -35,7 +35,7 @@ interface InviteEmailData extends EmailData {
 class EmailTemplateService {
 
   async sendAuthVerificationEmail(data: AuthEmailData): Promise<void> {
-    const fromAddress = `"${data.serverDisplayName}" <noreply@cobl.gg>`;
+    const fromAddress = `"${data.serverDisplayName}" <noreply@${process.env.DOMAIN}>`;
 
     const textContent = this.generateAuthTextEmail(data);
     const htmlContent = this.generateAuthHtmlEmail(data);
@@ -52,7 +52,7 @@ class EmailTemplateService {
   }
 
   async sendStaffInviteEmail(data: InviteEmailData): Promise<void> {
-    const fromAddress = `"${data.serverDisplayName}" <noreply@cobl.gg>`;
+    const fromAddress = `"${data.serverDisplayName}" <noreply@${process.env.DOMAIN}>`;
 
     const textContent = this.generateInviteTextEmail(data);
     const htmlContent = this.generateInviteHtmlEmail(data);
