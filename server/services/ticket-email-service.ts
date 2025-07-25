@@ -35,7 +35,7 @@ class TicketEmailService {
       const domain = process.env.DOMAIN || 'modl.gg';
       const ticketUrl = `https://${data.serverName || 'app'}.${domain}/ticket/${data.ticketId}`;
       const displayName = data.serverDisplayName || 'modl';
-      const fromAddress = `"${displayName}" <noreply@cobl.gg>`;
+      const fromAddress = `"${displayName}" <noreply@${domain}>`;
       
       const subject = `Reply to Your ${data.ticketType} Ticket #${data.ticketId}`;
       
