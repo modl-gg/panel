@@ -1,5 +1,4 @@
 import { Router, Request, Response } from 'express';
-import nodemailer from 'nodemailer';
 import { randomBytes } from 'crypto';
 import { getSettingsValue } from './settings-routes';
 import EmailTemplateService from '../services/email-template-service';

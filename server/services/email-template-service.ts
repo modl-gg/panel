@@ -1,14 +1,19 @@
 import nodemailer from 'nodemailer';
 
 // Email service configuration - requires environment variables
+const smtpPort = Number(process.env.SMTP_PORT) || 25;
+const emailAuth = {
+  user: process.env.SMTP_USERNAME,
+  pass: process.env.SMTP_PASSWORD
+};
 const transporter = nodemailer.createTransport({
-  host: process.env.SMTP_HOST,
-  port: parseInt(process.env.SMTP_PORT || '587'),
-  secure: process.env.SMTP_SECURE === 'true',
-  auth: {
-    user: process.env.SMTP_USER,
-    pass: process.env.SMTP_PASS
-  }
+  host: process.env.SMTP_HOST || "localhost", // Assuming postfix is running on localhost
+  port: smtpPort,
+  secure: false, // true for 465, false for other ports
+  tls: {
+    rejectUnauthorized: false // Allow self-signed certificates
+  },
+  auth: (emailAuth.user && emailAuth.pass) ? emailAuth : undefined
 });
 
 interface EmailData {
@@ -28,10 +33,10 @@ interface InviteEmailData extends EmailData {
 }
 
 class EmailTemplateService {
-  
+
   async sendAuthVerificationEmail(data: AuthEmailData): Promise<void> {
     const fromAddress = `"${data.serverDisplayName}" <noreply@cobl.gg>`;
-    
+
     const textContent = this.generateAuthTextEmail(data);
     const htmlContent = this.generateAuthHtmlEmail(data);
 
@@ -48,7 +53,7 @@ class EmailTemplateService {
 
   async sendStaffInviteEmail(data: InviteEmailData): Promise<void> {
     const fromAddress = `"${data.serverDisplayName}" <noreply@cobl.gg>`;
-    
+
     const textContent = this.generateInviteTextEmail(data);
     const htmlContent = this.generateInviteHtmlEmail(data);
 

@@ -1,13 +1,19 @@
 import nodemailer from 'nodemailer';
 
 // Email service configuration
+const smtpPort = Number(process.env.SMTP_PORT) || 25;
+const emailAuth = {
+  user: process.env.SMTP_USERNAME,
+  pass: process.env.SMTP_PASSWORD
+};
 const transporter = nodemailer.createTransport({
-  host: 'localhost',
-  port: 25,
-  secure: false,
+  host: process.env.SMTP_HOST || "localhost", // Assuming postfix is running on localhost
+  port: smtpPort,
+  secure: false, // true for 465, false for other ports
   tls: {
-    rejectUnauthorized: false
-  }
+    rejectUnauthorized: false // Allow self-signed certificates
+  },
+  auth: (emailAuth.user && emailAuth.pass) ? emailAuth : undefined
 });
 
 interface TicketEmailData {
