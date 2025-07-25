@@ -9,6 +9,7 @@ import { Badge } from 'modl-shared-web/components/ui/badge';
 import { Separator } from 'modl-shared-web/components/ui/separator';
 import { useToast } from 'modl-shared-web/hooks/use-toast';
 import { useAuth } from '@/hooks/use-auth';
+import { usePermissions } from '@/hooks/use-permissions';
 
 interface DomainStatus {
   domain: string;
@@ -28,6 +29,7 @@ const DomainSettings: React.FC = () => {
   const [copied, setCopied] = useState(false);
   const { toast } = useToast();
   const { user } = useAuth();
+  const { hasPermission } = usePermissions();
 
   // Get current subdomain from window location
   useEffect(() => {
@@ -245,8 +247,8 @@ const DomainSettings: React.FC = () => {
     }
   };
 
-  // Only show to Super Admin or Admin
-  if (!user || !['Super Admin', 'Admin'].includes(user.role)) {
+  // Only show to users with admin settings permissions
+  if (!user || !hasPermission('admin.settings.modify')) {
     return (
       <div className="flex items-center justify-center h-64 border-2 border-dashed border-muted rounded-lg">
         <p className="text-muted-foreground">You do not have permission to view this page.</p>

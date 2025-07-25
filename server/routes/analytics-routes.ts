@@ -1,12 +1,31 @@
 import express from 'express';
 import { startOfMonth, endOfMonth, subMonths, startOfDay, endOfDay, eachDayOfInterval, format } from 'date-fns';
 import { isAuthenticated } from '../middleware/auth-middleware';
-import { checkRole } from '../middleware/role-middleware';
+// Note: Permission functions will be imported dynamically to avoid circular dependency issues
 
 const router = express.Router();
 
-// Ensure all analytics routes require authentication and admin role
-router.use(isAuthenticated, checkRole(['Super Admin', 'Admin', 'Moderator']));
+// Ensure all analytics routes require authentication and admin analytics permission
+router.use(isAuthenticated);
+
+// Add permission check middleware for all routes
+router.use(async (req, res, next) => {
+  try {
+    const { hasPermission } = await import('../middleware/permission-middleware');
+    const canViewAnalytics = await hasPermission(req, 'admin.analytics.view');
+    
+    if (!canViewAnalytics) {
+      return res.status(403).json({ 
+        message: 'Forbidden: You do not have permission to view analytics.',
+        required: ['admin.analytics.view']
+      });
+    }
+    next();
+  } catch (error) {
+    console.error('Error checking analytics permissions:', error);
+    res.status(500).json({ message: 'Internal server error while checking permissions.' });
+  }
+});
 
 // Helper function to get punishment types from settings (using both storage methods)
 async function getPunishmentTypesConfig(db: any) {

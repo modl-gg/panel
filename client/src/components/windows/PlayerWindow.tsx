@@ -1329,7 +1329,7 @@ const PlayerWindow = ({ playerId, isOpen, onClose, initialPosition }: PlayerWind
                 {playerId && !avatarError ? (
                   <>
                     <img 
-                      src={`https://crafatar.com/avatars/${playerId}?size=64&default=MHF_Steve&overlay`}
+                      src={`/api/panel/players/avatar/${playerId}?size=64&overlay=true`}
                       alt={`${playerInfo.username || 'Player'} Avatar`}
                       className={`w-full h-full object-cover transition-opacity duration-200 ${avatarLoading ? 'opacity-0' : 'opacity-100'}`}
                       onError={() => {

@@ -120,7 +120,7 @@ const MessageAvatar = ({ message, creatorUuid }: { message: TicketMessage, creat
       return (
         <div className="relative h-8 w-8 bg-muted rounded-md flex items-center justify-center overflow-hidden flex-shrink-0">
           <img 
-            src={`https://crafatar.com/avatars/${creatorUuid}?size=32&default=MHF_Steve&overlay`}
+            src={`/api/panel/players/avatar/${creatorUuid}?size=32&overlay=true`}
             alt={`${message.sender} Avatar`}
             className={`w-full h-full object-cover transition-opacity duration-200 ${avatarLoading ? 'opacity-0' : 'opacity-100'}`}
             onError={() => {
@@ -156,7 +156,7 @@ const MessageAvatar = ({ message, creatorUuid }: { message: TicketMessage, creat
       return (
         <div className="relative h-8 w-8 bg-muted rounded-md flex items-center justify-center overflow-hidden flex-shrink-0">
           <img 
-            src={`https://crafatar.com/avatars/${staffMinecraftUuid}?size=32&default=MHF_Steve&overlay`}
+            src={`/api/panel/players/avatar/${staffMinecraftUuid}?size=32&overlay=true`}
             alt={`${message.sender} Avatar`}
             className={`w-full h-full object-cover transition-opacity duration-200 ${avatarLoading ? 'opacity-0' : 'opacity-100'}`}
             onError={() => {
@@ -967,7 +967,7 @@ const PlayerTicket = () => {
                           )}
                         </div>
                         <div className="text-sm">
-                          <MarkdownRenderer content={message.content} />
+                          <MarkdownRenderer content={message.content} disableClickablePlayers={true} />
                         </div>
                         {message.attachments && message.attachments.length > 0 && (
                           <div className="mt-2 space-y-1">

@@ -146,7 +146,8 @@ async function getUserPermissions(req: Request, userRole: string): Promise<strin
 
   // Check if user has a custom role
   try {
-    const StaffRoles = req.serverDbConnection.model('StaffRole');
+    const { getStaffRoleModel } = await import('../utils/schema-utils');
+    const StaffRoles = getStaffRoleModel(req.serverDbConnection);
     const customRole = await StaffRoles.findOne({ name: userRole });
     
     if (customRole) {
@@ -417,6 +418,38 @@ function isMutePunishment(punishment: IPunishment, typeConfig: Map<number, "BAN"
  */
 function isKickPunishment(punishment: IPunishment, typeConfig: Map<number, "BAN" | "MUTE" | "KICK">): boolean {
   return getPunishmentType(punishment, typeConfig) === "KICK";
+}
+
+/**
+ * Check if a player has any active mutes
+ */
+function hasActiveMute(player: IPlayer): boolean {
+  return player.punishments.some(p => {
+    // Check if it's a mute (ordinal 1)
+    if (p.type_ordinal !== 1) return false;
+    
+    // Must be started to be considered "active"
+    if (!p.started) return false;
+    
+    // Check if explicitly marked as inactive
+    if (getPunishmentData(p, 'active') === false) return false;
+    
+    // Check if pardoned
+    const isPardoned = p.modifications?.some(mod => 
+      mod.type === 'MANUAL_PARDON' || mod.type === 'APPEAL_ACCEPT'
+    );
+    if (isPardoned) return false;
+    
+    // Check if expired
+    const duration = getPunishmentData(p, 'duration');
+    if (duration !== -1 && duration !== undefined) {
+      const startTime = new Date(p.started).getTime();
+      const endTime = startTime + Number(duration);
+      if (endTime <= Date.now()) return false; // Expired
+    }
+    
+    return true; // Active mute found
+  });
 }
 
 /**
@@ -1178,10 +1211,10 @@ export function setupMinecraftRoutes(app: Express): void {
           });
         }
       }
-      // Get both started and unstarted punishments for login response
-      // Include:
-      // 1. Started punishments that are still active
-      // 2. Unstarted punishments that are valid (for immediate execution)
+      // Determine which punishments to send to server:
+      // Priority 1: Already started and still active punishments
+      // Priority 2: If no active punishment of that type, send earliest unstarted valid punishment
+      
       const startedActivePunishments = player.punishments.filter((punishment: IPunishment) => {
         // Must be started
         if (!punishment.started || punishment.started === null || punishment.started === undefined) return false;
@@ -1207,20 +1240,30 @@ export function setupMinecraftRoutes(app: Express): void {
         return endTime > Date.now(); // Active if not expired
       });
 
-      // Get valid unstarted punishments (for immediate execution by server)
+      // Get valid unstarted punishments (sorted by issued date - earliest first)
       const unstartedValidPunishments = player.punishments
         .filter((p: IPunishment) => (!p.started || p.started === null || p.started === undefined) && isPunishmentValid(p))
         .sort((a: IPunishment, b: IPunishment) => new Date(a.issued).getTime() - new Date(b.issued).getTime());
 
-      // Implement stacking: only include oldest unstarted ban + oldest unstarted mute
-      const oldestUnstartedBan = unstartedValidPunishments.find((p: IPunishment) => isBanPunishment(p, punishmentTypeConfig));
-      const oldestUnstartedMute = unstartedValidPunishments.find((p: IPunishment) => isMutePunishment(p, punishmentTypeConfig));
+      // Find active ban and mute (started punishments)
+      const activeBan = startedActivePunishments.find((p: IPunishment) => isBanPunishment(p, punishmentTypeConfig));
+      const activeMute = startedActivePunishments.find((p: IPunishment) => isMutePunishment(p, punishmentTypeConfig));
+      
+      // Find earliest unstarted ban and mute
+      const earliestUnstartedBan = unstartedValidPunishments.find((p: IPunishment) => isBanPunishment(p, punishmentTypeConfig));
+      const earliestUnstartedMute = unstartedValidPunishments.find((p: IPunishment) => isMutePunishment(p, punishmentTypeConfig));
 
-      // Combine started active punishments with priority unstarted ones
+      // Determine which ban and mute to send (priority: active > earliest unstarted)
+      const banToSend = activeBan || earliestUnstartedBan;
+      const muteToSend = activeMute || earliestUnstartedMute;
+
+      // Build final punishment list (max 1 ban + 1 mute + other types)
       const activePunishments = [
-        ...startedActivePunishments,
-        ...(oldestUnstartedBan ? [oldestUnstartedBan] : []),
-        ...(oldestUnstartedMute ? [oldestUnstartedMute] : [])
+        // Include all non-ban/mute active punishments (kicks, etc.)
+        ...startedActivePunishments.filter((p: IPunishment) => !isBanPunishment(p, punishmentTypeConfig) && !isMutePunishment(p, punishmentTypeConfig)),
+        // Include the chosen ban and mute
+        ...(banToSend ? [banToSend] : []),
+        ...(muteToSend ? [muteToSend] : [])
       ];
 
       // Convert to simplified active punishment format with proper descriptions
@@ -1233,7 +1276,8 @@ export function setupMinecraftRoutes(app: Express): void {
           started: p.started ? true : false,
           expiration: calculateExpiration(p),
           description: description,
-          id: p.id
+          id: p.id,
+          ordinal: p.type_ordinal
         };
       }));
 
@@ -1344,19 +1388,64 @@ export function setupMinecraftRoutes(app: Express): void {
         contentString += `**Chat Messages:**\n`;
         try {
           const messages = Array.isArray(chatMessages) ? chatMessages : [];
+          
           messages.forEach((msg: any) => {
-            if (typeof msg === 'object' && msg.username && msg.message) {
-              const timestamp = msg.timestamp ? new Date(msg.timestamp).toLocaleString() : 'Unknown time';
-              const username = msg.username;
-              const message = msg.message;
-              contentString += `\`[${timestamp}]\` **${username}**: ${message}\n`;
-            } else if (typeof msg === 'string') {
-              contentString += `${msg}\n`;
+            // Check if msg is a JSON string that needs parsing
+            let parsedMsg = msg;
+            if (typeof msg === 'string') {
+              try {
+                parsedMsg = JSON.parse(msg);
+              } catch (e) {
+                // Not valid JSON, treat as plain string
+                contentString += `${msg}\n`;
+                return;
+              }
+            }
+            
+            // Handle different possible message formats
+            if (typeof parsedMsg === 'object' && parsedMsg !== null) {
+              // Format 1: { username, message, timestamp }
+              if (parsedMsg.username && parsedMsg.message) {
+                const timestamp = parsedMsg.timestamp ? new Date(parsedMsg.timestamp).toLocaleString() : 'Unknown time';
+                const username = parsedMsg.username;
+                const message = parsedMsg.message;
+                contentString += `\`[${timestamp}]\` **${username}**: ${message}\n`;
+              }
+              // Format 2: { player, text, time } (alternative format)
+              else if (parsedMsg.player && parsedMsg.text) {
+                const timestamp = parsedMsg.time ? new Date(parsedMsg.time).toLocaleString() : 'Unknown time';
+                const username = parsedMsg.player;
+                const message = parsedMsg.text;
+                contentString += `\`[${timestamp}]\` **${username}**: ${message}\n`;
+              }
+              // Format 3: { name, content, date } (another alternative)
+              else if (parsedMsg.name && parsedMsg.content) {
+                const timestamp = parsedMsg.date ? new Date(parsedMsg.date).toLocaleString() : 'Unknown time';
+                const username = parsedMsg.name;
+                const message = parsedMsg.content;
+                contentString += `\`[${timestamp}]\` **${username}**: ${message}\n`;
+              }
+              // Format 4: Object with unknown structure - try to extract useful info
+              else {
+                // Look for any property that might be a username
+                const usernameField = parsedMsg.username || parsedMsg.player || parsedMsg.name || parsedMsg.user || 'Unknown';
+                // Look for any property that might be a message
+                const messageField = parsedMsg.message || parsedMsg.text || parsedMsg.content || parsedMsg.msg || JSON.stringify(parsedMsg);
+                // Look for any property that might be a timestamp
+                const timestampField = parsedMsg.timestamp || parsedMsg.time || parsedMsg.date || parsedMsg.when;
+                const timestamp = timestampField ? new Date(timestampField).toLocaleString() : 'Unknown time';
+                
+                contentString += `\`[${timestamp}]\` **${usernameField}**: ${messageField}\n`;
+              }
+            } else {
+              // Fallback for any other format
+              contentString += `${JSON.stringify(parsedMsg)}\n`;
             }
           });
         } catch (error) {
-          // Fallback to basic format if parsing fails
-          contentString += `${chatMessages.join('\n')}\n`;
+          console.error('Error processing chat messages:', error);
+          // Fallback to JSON format if all parsing fails
+          contentString += `${JSON.stringify(chatMessages, null, 2)}\n`;
         }
         contentString += `\n`;
       }
@@ -1465,12 +1554,39 @@ export function setupMinecraftRoutes(app: Express): void {
         return res.status(400).json({ status: 400, message: 'Either type or type_ordinal must be provided' });
       }
 
+      // Allow infinite mute creation - they will queue as unstarted until executed
+      // No mute stacking prevention needed - sync/login logic handles the queue
+
+      // Never put reason in data - always use notes instead
+      const filteredData = data ? Object.fromEntries(
+        Object.entries(data).filter(([key]) => key !== 'reason')
+      ) : {};
+      
       const newPunishmentData = new Map<string, any>([
-        ['reason', reason],
         ...(duration ? [['duration', duration] as [string, any]] : []),
         // Don't set expires until punishment is started by server
-        ...(data ? Object.entries(data) : [])
+        ...Object.entries(filteredData)
       ]);
+
+      // Create notes array with reason as first note for ALL punishments
+      const punishmentNotes: INote[] = [];
+      if (reason) {
+        // Add reason as first note for all punishments
+        punishmentNotes.push({
+          text: reason,
+          date: new Date(),
+          issuerName: issuerName
+        });
+      }
+      // Add any additional notes
+      if (notes) {
+        punishmentNotes.push(...notes.map((note: any) => ({ 
+          text: note.text, 
+          date: new Date(), 
+          issuerName: note.issuerName || issuerName 
+        } as INote)));
+      }
+
       const newPunishment: IPunishment = {
         id: punishmentId,
         issuerName,
@@ -1479,7 +1595,7 @@ export function setupMinecraftRoutes(app: Express): void {
         started: undefined,
         type_ordinal: finalTypeOrdinal,
         modifications: [],
-        notes: notes ? notes.map((note: any) => ({ text: note.text, date: new Date(), issuerName: note.issuerName || issuerName } as INote)) : [],
+        notes: punishmentNotes,
         attachedTicketIds: attachedTicketIds || [],
         data: newPunishmentData
       };
@@ -1638,16 +1754,26 @@ export function setupMinecraftRoutes(app: Express): void {
       // Get full player data for all linked accounts
       const linkedPlayers = await Player.find({
         minecraftUuid: { $in: Array.from(linkedAccountUuids) }
-      }).select('minecraftUuid usernames punishments data').lean<IPlayer[]>();
+      }).select('minecraftUuid usernames punishments data ipList notes').lean<IPlayer[]>();
 
       const formattedLinkedAccounts = linkedPlayers.map((acc: IPlayer) => {
         const activeBans = acc.punishments ? acc.punishments.filter((p: IPunishment) => isBanPunishment(p, punishmentTypeConfig) && isPunishmentActive(p, punishmentTypeConfig)).length : 0;
         const activeMutes = acc.punishments ? acc.punishments.filter((p: IPunishment) => isMutePunishment(p, punishmentTypeConfig) && isPunishmentActive(p, punishmentTypeConfig)).length : 0;
         const lastLinkedUpdate = acc.data?.get ? acc.data.get('lastLinkedAccountUpdate') : acc.data?.lastLinkedAccountUpdate;
         
+        // Return full Account structure that matches Minecraft plugin expectations
         return {
+          _id: acc._id,
           minecraftUuid: acc.minecraftUuid,
-          username: acc.usernames && acc.usernames.length > 0 ? acc.usernames[acc.usernames.length - 1].username : 'N/A',
+          usernames: acc.usernames || [],
+          notes: acc.notes || [],
+          ipList: acc.ipList || [],
+          punishments: acc.punishments ? acc.punishments.map((p: IPunishment) => ({
+            ...p,
+            type: getPunishmentType(p, punishmentTypeConfig),
+          })) : [],
+          pendingNotifications: [],
+          // Additional fields for status display
           activeBans,
           activeMutes,
           lastLinkedUpdate: lastLinkedUpdate || null
@@ -1785,55 +1911,95 @@ export function setupMinecraftRoutes(app: Express): void {
             .filter((p: IPunishment) => (!p.started || p.started === null || p.started === undefined) && isPunishmentValid(p))
             .sort((a: IPunishment, b: IPunishment) => new Date(a.issued).getTime() - new Date(b.issued).getTime());
 
-          // Also get recently issued punishments that might need immediate execution
-          const recentlyIssuedUnstarted = validUnstartedPunishments
-            .filter((p: IPunishment) => new Date(p.issued) >= lastSync);
+          // SYNC ENDPOINT: Only send UNSTARTED punishments that need to be executed
+          // Already started punishments are handled by login endpoint
+          
+          // Find earliest unstarted ban and mute (only send if no active punishment of that type)
+          const earliestUnstartedBan = validUnstartedPunishments.find((p: IPunishment) => isBanPunishment(p, punishmentTypeConfig));
+          const earliestUnstartedMute = validUnstartedPunishments.find((p: IPunishment) => isMutePunishment(p, punishmentTypeConfig));
 
-          // Prioritize recently issued punishments, then fall back to oldest unstarted
-          const priorityBan = recentlyIssuedUnstarted.find((p: IPunishment) => isBanPunishment(p, punishmentTypeConfig)) || 
-                             validUnstartedPunishments.find((p: IPunishment) => isBanPunishment(p, punishmentTypeConfig));
-          const priorityMute = recentlyIssuedUnstarted.find((p: IPunishment) => isMutePunishment(p, punishmentTypeConfig)) || 
-                              validUnstartedPunishments.find((p: IPunishment) => isMutePunishment(p, punishmentTypeConfig));
-          // For kicks, only send recently issued ones (kicks are instant)
-          const priorityKick = recentlyIssuedUnstarted.find((p: IPunishment) => isKickPunishment(p, punishmentTypeConfig));
+          // Check if player has any active (started) punishments of each type
+          const hasActiveBan = player.punishments.some((p: IPunishment) => {
+            if (!isBanPunishment(p, punishmentTypeConfig)) return false;
+            if (!p.started) return false;
+            
+            const effectiveState = getEffectivePunishmentState(p);
+            if (!effectiveState.effectiveActive) return false;
+            
+            if (effectiveState.effectiveExpiry) {
+              return effectiveState.effectiveExpiry.getTime() > new Date().getTime();
+            }
+            
+            const duration = getPunishmentData(p, 'duration');
+            if (duration === -1 || duration === undefined) return true;
+            
+            const startTime = new Date(p.started).getTime();
+            const endTime = startTime + Number(duration);
+            return endTime > Date.now();
+          });
 
-          // Add the priority ban if exists
-          if (priorityBan) {
-            const description = await getPunishmentDescription(priorityBan, serverDbConnection);
-            const banType = getPunishmentType(priorityBan, punishmentTypeConfig);
+          const hasActiveMute = player.punishments.some((p: IPunishment) => {
+            if (!isMutePunishment(p, punishmentTypeConfig)) return false;
+            if (!p.started) return false;
+            
+            const effectiveState = getEffectivePunishmentState(p);
+            if (!effectiveState.effectiveActive) return false;
+            
+            if (effectiveState.effectiveExpiry) {
+              return effectiveState.effectiveExpiry.getTime() > new Date().getTime();
+            }
+            
+            const duration = getPunishmentData(p, 'duration');
+            if (duration === -1 || duration === undefined) return true;
+            
+            const startTime = new Date(p.started).getTime();
+            const endTime = startTime + Number(duration);
+            return endTime > Date.now();
+          });
+
+          // Only send unstarted ban if no active ban exists
+          if (earliestUnstartedBan && !hasActiveBan) {
+            const description = await getPunishmentDescription(earliestUnstartedBan, serverDbConnection);
+            const banType = getPunishmentType(earliestUnstartedBan, punishmentTypeConfig);
 
             pendingPunishments.push({
               minecraftUuid: player.minecraftUuid,
               username: player.usernames[player.usernames.length - 1]?.username || 'Unknown',
               punishment: {
                 type: banType,
-                started: false,
-                expiration: calculateExpiration(priorityBan),
+                started: false, // Always false for sync (unstarted punishments)
+                expiration: calculateExpiration(earliestUnstartedBan),
                 description: description,
-                id: priorityBan.id
+                id: earliestUnstartedBan.id,
+                ordinal: earliestUnstartedBan.type_ordinal
               }
             });
           }
 
-          // Add the priority mute if exists
-          if (priorityMute) {
-            const description = await getPunishmentDescription(priorityMute, serverDbConnection);
-            const muteType = getPunishmentType(priorityMute, punishmentTypeConfig);
+          // Only send unstarted mute if no active mute exists
+          if (earliestUnstartedMute && !hasActiveMute) {
+            const description = await getPunishmentDescription(earliestUnstartedMute, serverDbConnection);
+            const muteType = getPunishmentType(earliestUnstartedMute, punishmentTypeConfig);
 
             pendingPunishments.push({
               minecraftUuid: player.minecraftUuid,
               username: player.usernames[player.usernames.length - 1]?.username || 'Unknown',
               punishment: {
                 type: muteType,
-                started: false,
-                expiration: calculateExpiration(priorityMute),
+                started: false, // Always false for sync (unstarted punishments)
+                expiration: calculateExpiration(earliestUnstartedMute),
                 description: description,
-                id: priorityMute.id
+                id: earliestUnstartedMute.id,
+                ordinal: earliestUnstartedMute.type_ordinal
               }
             });
           }
 
-          // Add the priority kick if exists (kicks are instant and don't persist)
+          // Add kicks (only recently issued ones since kicks are instant)
+          const recentlyIssuedUnstarted = validUnstartedPunishments
+            .filter((p: IPunishment) => new Date(p.issued) >= lastSync);
+          const priorityKick = recentlyIssuedUnstarted.find((p: IPunishment) => isKickPunishment(p, punishmentTypeConfig));
+          
           if (priorityKick) {
             const description = await getPunishmentDescription(priorityKick, serverDbConnection);
             const kickType = getPunishmentType(priorityKick, punishmentTypeConfig);
@@ -1846,7 +2012,8 @@ export function setupMinecraftRoutes(app: Express): void {
                 started: false,
                 expiration: null, // Kicks are instant
                 description: description,
-                id: priorityKick.id
+                id: priorityKick.id,
+                ordinal: priorityKick.type_ordinal
               }
             });
           }
@@ -2603,6 +2770,367 @@ export function setupMinecraftRoutes(app: Express): void {
         status: 500,
         message: 'Internal server error',
         error: error.message
+      });
+    }
+  });
+
+  /**
+   * Get linked accounts by UUID (path parameter version)
+   * - Find accounts linked by IP addresses
+   * - Alternative endpoint format for /api/minecraft/player/{uuid}/linked-accounts
+   */
+  app.get('/api/minecraft/player/:uuid/linked-accounts', async (req: Request, res: Response) => {
+    const { uuid } = req.params;
+    const serverDbConnection = req.serverDbConnection!;
+    const Player = serverDbConnection.model<IPlayer>('Player');
+
+    if (!uuid || typeof uuid !== 'string') {
+      return res.status(400).json({ status: 400, message: 'UUID path parameter is required' });
+    }
+
+    try {
+      // Load punishment type configuration
+      const punishmentTypeConfig = await loadPunishmentTypeConfig(serverDbConnection);
+      
+      const player = await Player.findOne({ minecraftUuid: uuid }).lean<IPlayer>();
+      if (!player) {
+        return res.status(200).json({ status: 200, linkedAccounts: [] });
+      }
+
+      const linkedAccountUuids = new Set<string>();
+
+      // Method 1: Get linked accounts from stored data (new system)
+      const storedLinkedAccounts = player.data?.get ? player.data.get('linkedAccounts') : player.data?.linkedAccounts;
+      if (storedLinkedAccounts && Array.isArray(storedLinkedAccounts)) {
+        storedLinkedAccounts.forEach((uuid: string) => linkedAccountUuids.add(uuid));
+      }
+
+      // Method 2: Get linked accounts by IP addresses (legacy/fallback system)
+      if (player.ipList && player.ipList.length > 0) {
+        const playerIps = player.ipList.map((ip: IIPAddress) => ip.ipAddress);
+        const ipLinkedPlayers = await Player.find({
+          minecraftUuid: { $ne: uuid },
+          'ipList.ipAddress': { $in: playerIps }
+        }).select('minecraftUuid').lean();
+        
+        ipLinkedPlayers.forEach((p: any) => linkedAccountUuids.add(p.minecraftUuid));
+      }
+
+      if (linkedAccountUuids.size === 0) {
+        return res.status(200).json({ status: 200, linkedAccounts: [] });
+      }
+
+      // Get full player data for all linked accounts
+      const linkedPlayers = await Player.find({
+        minecraftUuid: { $in: Array.from(linkedAccountUuids) }
+      }).select('minecraftUuid usernames punishments data ipList notes').lean<IPlayer[]>();
+
+      const formattedLinkedAccounts = linkedPlayers.map((acc: IPlayer) => {
+        const activeBans = acc.punishments ? acc.punishments.filter((p: IPunishment) => isBanPunishment(p, punishmentTypeConfig) && isPunishmentActive(p, punishmentTypeConfig)).length : 0;
+        const activeMutes = acc.punishments ? acc.punishments.filter((p: IPunishment) => isMutePunishment(p, punishmentTypeConfig) && isPunishmentActive(p, punishmentTypeConfig)).length : 0;
+        const lastLinkedUpdate = acc.data?.get ? acc.data.get('lastLinkedAccountUpdate') : acc.data?.lastLinkedAccountUpdate;
+        
+        // Return full Account structure that matches Minecraft plugin expectations
+        return {
+          _id: acc._id,
+          minecraftUuid: acc.minecraftUuid,
+          usernames: acc.usernames || [],
+          notes: acc.notes || [],
+          ipList: acc.ipList || [],
+          punishments: acc.punishments ? acc.punishments.map((p: IPunishment) => ({
+            ...p,
+            type: getPunishmentType(p, punishmentTypeConfig),
+          })) : [],
+          pendingNotifications: [],
+          // Additional fields for status display
+          activeBans,
+          activeMutes,
+          lastLinkedUpdate: lastLinkedUpdate || null
+        };
+      });
+      
+      return res.status(200).json({ status: 200, linkedAccounts: formattedLinkedAccounts });
+    } catch (error: any) {
+      console.error('Error getting linked accounts by UUID:', error);
+      return res.status(500).json({
+        status: 500,
+        message: 'Internal server error'
+      });
+    }
+  });
+
+  /**
+   * Pardon a punishment by punishment ID
+   */
+  app.post('/api/minecraft/punishment/:id/pardon', async (req: Request, res: Response) => {
+    const { id: punishmentId } = req.params;
+    const { issuerName, reason, expectedType } = req.body; // expectedType is optional
+    const serverDbConnection = req.serverDbConnection!;
+    const serverName = req.serverName!;
+
+    try {
+      const Player = serverDbConnection.model<IPlayer>('Player');
+
+      // Find the player with this punishment ID
+      const player = await Player.findOne({ 
+        'punishments.id': punishmentId 
+      });
+
+      if (!player) {
+        return res.status(404).json({ 
+          status: 404, 
+          message: `No player found with punishment ID: ${punishmentId}` 
+        });
+      }
+
+      // Find the specific punishment
+      const punishment = player.punishments.find(p => p.id === punishmentId);
+      if (!punishment) {
+        return res.status(404).json({ 
+          status: 404, 
+          message: `Punishment with ID ${punishmentId} not found in player data` 
+        });
+      }
+
+      // Validate punishment type if expectedType is provided
+      if (expectedType) {
+        const typeOrdinal = punishment.type_ordinal;
+        let isCorrectType = false;
+        
+        if (expectedType === 'ban') {
+          // Ban: ordinals 2, 3, 4, 5 and custom (not 0=kick, 1=mute)
+          isCorrectType = typeOrdinal !== 0 && typeOrdinal !== 1;
+        } else if (expectedType === 'mute') {
+          // Mute: ordinal 1
+          isCorrectType = typeOrdinal === 1;
+        }
+        
+        if (!isCorrectType) {
+          return res.status(400).json({ 
+            status: 400, 
+            message: `This punishment is not a ${expectedType}` 
+          });
+        }
+      }
+
+      // Check if already pardoned
+      const isAlreadyPardoned = punishment.modifications?.some(mod => 
+        mod.type === 'MANUAL_PARDON' || mod.type === 'APPEAL_ACCEPT'
+      );
+
+      if (isAlreadyPardoned) {
+        return res.status(400).json({ 
+          status: 400, 
+          message: 'This punishment has already been pardoned' 
+        });
+      }
+
+      // Add pardon modification
+      if (!punishment.modifications) {
+        punishment.modifications = [];
+      }
+
+      const pardonModification: IModification = {
+        type: 'MANUAL_PARDON',
+        issuerName: issuerName || 'System',
+        issuedAt: new Date(),
+        duration: 0
+      };
+
+      punishment.modifications.push(pardonModification);
+
+      // Add pardon note
+      if (!punishment.notes) {
+        punishment.notes = [];
+      }
+
+      const pardonNote: INote = {
+        text: `Punishment pardoned${reason ? `: ${reason}` : ''}`,
+        issuerName: issuerName || 'System',
+        issuedAt: new Date()
+      };
+
+      punishment.notes.push(pardonNote);
+
+      // Deactivate the punishment
+      punishment.isActive = false;
+
+      // Save the player with validation disabled to avoid issues with existing invalid evidence records
+      await player.save({ validateBeforeSave: false });
+
+      // Create audit log
+      await createPunishmentAuditLog(
+        serverDbConnection,
+        serverName,
+        {
+          punishmentId: punishment.id,
+          typeOrdinal: punishment.typeOrdinal || 0,
+          targetPlayer: player.usernames?.[0]?.username || 'Unknown',
+          targetUuid: player.minecraftUuid,
+          issuerName: issuerName || 'System',
+          reason: `Punishment pardoned${reason ? `: ${reason}` : ''}`,
+          isDynamic: false
+        }
+      );
+
+      res.status(200).json({ 
+        status: 200, 
+        message: 'Punishment pardoned successfully' 
+      });
+
+    } catch (error: any) {
+      console.error('Error pardoning punishment:', error);
+      res.status(500).json({ 
+        status: 500, 
+        message: 'Internal server error' 
+      });
+    }
+  });
+
+  /**
+   * Pardon a player by name and punishment type
+   * Note: /pardon <playername> only sends 'ban', /unmute <playername> sends 'mute'
+   */
+  app.post('/api/minecraft/player/pardon', async (req: Request, res: Response) => {
+    const { playerName, issuerName, punishmentType, reason } = req.body;
+    const serverDbConnection = req.serverDbConnection!;
+    const serverName = req.serverName!;
+
+    try {
+      // Validate punishment type - allow both ban and mute
+      if (punishmentType !== 'ban' && punishmentType !== 'mute') {
+        return res.status(400).json({ 
+          status: 400, 
+          message: 'Invalid punishment type. Must be "ban" or "mute".' 
+        });
+      }
+
+      const Player = serverDbConnection.model<IPlayer>('Player');
+
+      // Find player by username
+      const player = await Player.findOne({
+        'usernames.username': { $regex: new RegExp(`^${playerName}$`, 'i') }
+      });
+
+      if (!player) {
+        return res.status(404).json({ 
+          status: 404, 
+          message: `Player not found: ${playerName}` 
+        });
+      }
+
+
+      // Find active punishment of the specified type
+      let activePunishment = player.punishments.find(p => {
+        // Step 1: Check if explicitly marked as inactive in data
+        if (p.data && p.data.get('active') === false) {
+          return false;
+        }
+        
+        // Step 2: Check if punishment has been pardoned via modifications
+        const isPardoned = p.modifications?.some(mod => 
+          mod.type === 'MANUAL_PARDON' || mod.type === 'APPEAL_ACCEPT'
+        );
+        if (isPardoned) {
+          return false;
+        }
+        
+        // Step 3: Check duration and expiration
+        const isStarted = !!p.started;
+        const duration = p.data ? p.data.get('duration') : undefined;
+        if (duration === -1 || duration === undefined) {
+          // Permanent punishment - it's valid for pardoning
+        } else if (isStarted) {
+          // Temporary punishment that's started - check if expired
+          const startTime = new Date(p.started).getTime();
+          const endTime = startTime + Number(duration);
+          
+          if (endTime <= Date.now()) {
+            return false;
+          }
+        }
+        // Unstarted temporary punishments are also valid for pardoning
+        
+        // Step 4: Check if it matches the requested punishment type
+        const typeOrdinal = p.type_ordinal;
+        let matchesType = false;
+        
+        if (punishmentType === 'ban') {
+          // Ban: ordinals 2, 3, 4, 5 and custom (not 0=kick, 1=mute)
+          matchesType = typeOrdinal !== 0 && typeOrdinal !== 1;
+        } else if (punishmentType === 'mute') {
+          // Mute: ordinal 1
+          matchesType = typeOrdinal === 1;
+        }
+        
+        return matchesType;
+      });
+
+      if (!activePunishment) {
+        return res.status(404).json({ 
+          status: 404, 
+          message: `No active ${punishmentType} found for this player` 
+        });
+      }
+
+      // Add pardon modification
+      if (!activePunishment.modifications) {
+        activePunishment.modifications = [];
+      }
+
+      const pardonModification: IModification = {
+        type: 'MANUAL_PARDON',
+        issuerName: issuerName || 'System',
+        issuedAt: new Date(),
+        duration: 0
+      };
+
+      activePunishment.modifications.push(pardonModification);
+
+      // Add pardon note
+      if (!activePunishment.notes) {
+        activePunishment.notes = [];
+      }
+
+      const pardonNote: INote = {
+        text: `${punishmentType.charAt(0).toUpperCase() + punishmentType.slice(1)} pardoned${reason ? `: ${reason}` : ''}`,
+        issuerName: issuerName || 'System',
+        issuedAt: new Date()
+      };
+
+      activePunishment.notes.push(pardonNote);
+
+      // Deactivate the punishment
+      activePunishment.isActive = false;
+
+      // Save the player with validation disabled to avoid issues with existing invalid evidence records
+      await player.save({ validateBeforeSave: false });
+
+      // Create audit log
+      await createPunishmentAuditLog(
+        serverDbConnection,
+        serverName,
+        {
+          punishmentId: activePunishment.id,
+          typeOrdinal: activePunishment.typeOrdinal || 0,
+          targetPlayer: playerName,
+          targetUuid: player.minecraftUuid,
+          issuerName: issuerName || 'System',
+          reason: `${punishmentType.charAt(0).toUpperCase() + punishmentType.slice(1)} pardoned${reason ? `: ${reason}` : ''}`,
+          isDynamic: false
+        }
+      );
+
+      res.status(200).json({ 
+        status: 200, 
+        message: `Successfully pardoned ${playerName}'s ${punishmentType}` 
+      });
+
+    } catch (error: any) {
+      console.error(`Error pardoning player ${punishmentType}:`, error);
+      res.status(500).json({ 
+        status: 500, 
+        message: 'Internal server error' 
       });
     }
   });

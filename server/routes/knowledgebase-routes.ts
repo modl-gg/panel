@@ -7,10 +7,37 @@ import {
 } from 'modl-shared-web';
 import mongoose, { Model } from 'mongoose';
 import { isAuthenticated } from '../middleware/auth-middleware';
-import { checkRole } from '../middleware/role-middleware'; // Import checkRole
+// Note: Permission functions will be imported dynamically to avoid circular dependency issues
 import { check, validationResult } from 'express-validator'; // For validation
 
 const router = express.Router();
+
+// Apply permission middleware to all routes that modify knowledgebase content
+const knowledgebasePermissionMiddleware = async (req: Request, res: Response, next: Function) => {
+  // Skip permission check for GET requests (read-only)
+  if (req.method === 'GET') {
+    return next();
+  }
+  
+  try {
+    const { hasPermission } = await import('../middleware/permission-middleware');
+    const hasAdminPermission = await hasPermission(req, 'admin.settings.modify');
+    
+    if (!hasAdminPermission) {
+      return res.status(403).json({ 
+        message: 'Forbidden: You do not have permission to manage knowledgebase content.',
+        required: ['admin.settings.modify']
+      });
+    }
+    next();
+  } catch (error) {
+    console.error('Error checking knowledgebase permissions:', error);
+    res.status(500).json({ message: 'Internal server error while checking permissions.' });
+  }
+};
+
+// Apply the permission middleware to all routes
+router.use(knowledgebasePermissionMiddleware);
 
 // Helper to get the KnowledgebaseCategory model for the current tenant
 const getKnowledgebaseCategoryModel = (req: Request): Model<IKnowledgebaseCategory> => {
@@ -40,7 +67,6 @@ const getKnowledgebaseArticleModel = (req: Request): Model<IKnowledgebaseArticle
 router.post(
   '/categories',
   isAuthenticated, // Apply authentication
-  checkRole(['Super Admin', 'Admin']), // Apply authorization
   [ // Validation rules
     check('name', 'Category name is required').not().isEmpty().trim(),
     check('description', 'Description can be a string').optional().isString().trim(),
@@ -92,7 +118,7 @@ router.post(
 router.get(
   '/categories',
   isAuthenticated,
-  checkRole(['Super Admin', 'Admin']),
+  
   async (req: Request, res: Response) => {
     try {
       const KnowledgebaseCategory = getKnowledgebaseCategoryModel(req);
@@ -132,7 +158,7 @@ router.get(
 router.get(
   '/categories/:categoryId',
   isAuthenticated,
-  checkRole(['Super Admin', 'Admin']),
+  
   async (req: Request, res: Response) => {
     try {
       const KnowledgebaseCategory = getKnowledgebaseCategoryModel(req);
@@ -181,7 +207,7 @@ router.get(
 router.put(
   '/categories/:categoryId',
   isAuthenticated,
-  checkRole(['Super Admin', 'Admin']),
+  
   [
     check('name', 'Category name must be a non-empty string').optional().notEmpty().trim(),
     check('description', 'Description must be a string').optional().isString().trim(),
@@ -248,7 +274,7 @@ router.put(
 router.delete(
   '/categories/:categoryId',
   isAuthenticated,
-  checkRole(['Super Admin', 'Admin']),
+  
   async (req: Request, res: Response) => {
     try {
       const KnowledgebaseCategory = getKnowledgebaseCategoryModel(req);
@@ -284,7 +310,7 @@ router.delete(
 router.put(
   '/categories/reorder',
   isAuthenticated,
-  checkRole(['Super Admin', 'Admin']),
+  
   async (req: Request, res: Response) => {
     try {
       const KnowledgebaseCategory = getKnowledgebaseCategoryModel(req);
@@ -323,7 +349,7 @@ router.put(
 router.post(
   '/categories/:categoryId/articles',
   isAuthenticated,
-  checkRole(['Super Admin', 'Admin']),
+  
   [
     check('title', 'Article title is required').not().isEmpty().trim(),
     check('content', 'Article content is required').not().isEmpty(),
@@ -392,7 +418,7 @@ router.post(
 router.get(
   '/categories/:categoryId/articles/:articleId',
   isAuthenticated, // Or make public if needed, adjust authorize accordingly
-  checkRole(['Super Admin', 'Admin']),
+  
   async (req: Request, res: Response) => {
     try {
       const KnowledgebaseArticle = getKnowledgebaseArticleModel(req);
@@ -434,7 +460,7 @@ router.get(
 router.put(
   '/categories/:categoryId/articles/:articleId',
   isAuthenticated,
-  checkRole(['Super Admin', 'Admin']),
+  
   [
     check('title', 'Article title must be a non-empty string').optional({ checkFalsy: true }).notEmpty().trim(),
     check('content', 'Article content must be a non-empty string').optional({ checkFalsy: true }).notEmpty(),
@@ -495,7 +521,7 @@ router.put(
 router.delete(
   '/categories/:categoryId/articles/:articleId',
   isAuthenticated,
-  checkRole(['Super Admin', 'Admin']),
+  
   async (req: Request, res: Response) => {
     try {
       const KnowledgebaseArticle = getKnowledgebaseArticleModel(req);
@@ -524,7 +550,7 @@ router.delete(
 router.put(
   '/categories/:categoryId/articles/reorder',
   isAuthenticated,
-  checkRole(['Super Admin', 'Admin']),
+  
   async (req: Request, res: Response) => {
     try {
       const KnowledgebaseCategory = getKnowledgebaseCategoryModel(req); // To verify category exists

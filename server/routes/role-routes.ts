@@ -1,10 +1,46 @@
 import express, { Request, Response, NextFunction } from 'express';
 import { Connection, Schema } from 'mongoose';
 import { isAuthenticated } from '../middleware/auth-middleware';
-import { checkRole } from '../middleware/role-middleware';
+// Note: Permission functions will be imported dynamically to avoid circular dependency issues
 import { strictRateLimit } from '../middleware/rate-limiter';
 
 const router = express.Router();
+
+// Helper function to check role management permissions
+async function checkRolePermission(req: Request, res: Response, requireSuperAdmin: boolean = false): Promise<boolean> {
+  try {
+    const { hasPermission } = await import('../middleware/permission-middleware');
+    const canManageStaff = await hasPermission(req, 'admin.staff.manage');
+    
+    if (!canManageStaff) {
+      res.status(403).json({ 
+        message: 'Forbidden: You do not have permission to manage roles.',
+        required: ['admin.staff.manage']
+      });
+      return false;
+    }
+    
+    // For destructive operations (create/modify/delete), also check if user is server admin
+    if (requireSuperAdmin) {
+      const adminEmail = req.modlServer?.adminEmail?.toLowerCase();
+      const userEmail = req.currentUser?.email?.toLowerCase();
+      
+      if (!adminEmail || !userEmail || userEmail !== adminEmail) {
+        res.status(403).json({ 
+          message: 'Forbidden: Only the server administrator can modify roles.',
+          required: ['server_admin']
+        });
+        return false;
+      }
+    }
+    
+    return true;
+  } catch (error) {
+    console.error('Error checking role permissions:', error);
+    res.status(500).json({ message: 'Internal server error while checking permissions.' });
+    return false;
+  }
+}
 
 // Permission definitions
 interface Permission {
@@ -47,6 +83,9 @@ const getBasePermissions = (): Permission[] => [
   { id: 'admin.staff.manage', name: 'Manage Staff', description: 'Invite, remove, and modify staff members', category: 'admin' },
   { id: 'admin.analytics.view', name: 'View Analytics', description: 'Access system analytics and reports', category: 'admin' },
   
+  // Punishment permissions
+  { id: 'punishment.modify', name: 'Modify Punishments', description: 'Pardon, modify duration, and edit existing punishments', category: 'punishment' },
+  
   // Ticket permissions
   { id: 'ticket.view.all', name: 'View All Tickets', description: 'View all tickets regardless of type', category: 'ticket' },
   { id: 'ticket.reply.all', name: 'Reply to All Tickets', description: 'Reply to all ticket types', category: 'ticket' },
@@ -74,7 +113,8 @@ const getPunishmentPermissions = async (dbConnection: Connection): Promise<Permi
 };
 
 // GET /api/panel/roles/permissions - Get all available permissions
-router.get('/permissions', checkRole(['Super Admin', 'Admin']), async (req: Request, res: Response) => {
+router.get('/permissions', async (req: Request, res: Response) => {
+  if (!(await checkRolePermission(req, res))) return;
   try {
     const basePermissions = getBasePermissions();
     const punishmentPermissions = await getPunishmentPermissions(req.serverDbConnection!);
@@ -96,26 +136,14 @@ router.get('/permissions', checkRole(['Super Admin', 'Admin']), async (req: Requ
 });
 
 // GET /api/panel/roles - Get all roles
-router.get('/', checkRole(['Super Admin', 'Admin']), async (req: Request, res: Response) => {
+router.get('/', async (req: Request, res: Response) => {
+  if (!(await checkRolePermission(req, res))) return;
   try {
     const db = req.serverDbConnection!;
     
-    // Try to get all roles from the database
-    let StaffRoles;
-    try {
-      StaffRoles = db.model('StaffRole');
-    } catch {
-      // If model doesn't exist, create it and return empty roles array
-      const StaffRoleSchema = new Schema({
-        id: { type: String, required: true, unique: true },
-        name: { type: String, required: true },
-        description: { type: String, required: true },
-        permissions: [{ type: String }],
-        isDefault: { type: Boolean, default: false }
-      }, { timestamps: true });
-      
-      StaffRoles = db.model('StaffRole', StaffRoleSchema);
-    }
+    // Get StaffRole model with consistent schema
+    const { getStaffRoleModel } = await import('../utils/schema-utils');
+    const StaffRoles = getStaffRoleModel(db);
     
     const allRoles = await StaffRoles.find({});
 
@@ -144,19 +172,15 @@ router.get('/', checkRole(['Super Admin', 'Admin']), async (req: Request, res: R
 });
 
 // GET /api/panel/roles/:id - Get a specific role by ID
-router.get('/:id', checkRole(['Super Admin', 'Admin']), async (req: Request, res: Response) => {
+router.get('/:id', async (req: Request, res: Response) => {
+  if (!(await checkRolePermission(req, res))) return;
   try {
     const { id } = req.params;
     const db = req.serverDbConnection!;
     
-    // Try to get role from database
-    let StaffRoles;
-    try {
-      StaffRoles = db.model('StaffRole');
-    } catch {
-      // If model doesn't exist, role doesn't exist
-      return res.status(404).json({ error: 'Role not found' });
-    }
+    // Get StaffRole model with consistent schema
+    const { getStaffRoleModel } = await import('../utils/schema-utils');
+    const StaffRoles = getStaffRoleModel(db);
     
     const role = await StaffRoles.findOne({ id });
     if (!role) {
@@ -180,7 +204,8 @@ router.get('/:id', checkRole(['Super Admin', 'Admin']), async (req: Request, res
 });
 
 // POST /api/panel/roles - Create a new custom role
-router.post('/', checkRole(['Super Admin']), strictRateLimit, async (req: Request, res: Response) => {
+router.post('/', strictRateLimit, async (req: Request, res: Response) => {
+  if (!(await checkRolePermission(req, res, true))) return;
   try {
     const { name, description, permissions } = req.body;
     
@@ -190,21 +215,9 @@ router.post('/', checkRole(['Super Admin']), strictRateLimit, async (req: Reques
     
     const db = req.serverDbConnection!;
     
-    // Create/get the StaffRole model
-    let StaffRoles;
-    try {
-      StaffRoles = db.model('StaffRole');
-    } catch {
-      const StaffRoleSchema = new Schema({
-        id: { type: String, required: true, unique: true },
-        name: { type: String, required: true },
-        description: { type: String, required: true },
-        permissions: [{ type: String }],
-        isDefault: { type: Boolean, default: false }
-      }, { timestamps: true });
-      
-      StaffRoles = db.model('StaffRole', StaffRoleSchema);
-    }
+    // Get StaffRole model with consistent schema
+    const { getStaffRoleModel } = await import('../utils/schema-utils');
+    const StaffRoles = getStaffRoleModel(db);
     
     // Generate unique ID
     const id = `custom-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
@@ -246,7 +259,8 @@ router.post('/', checkRole(['Super Admin']), strictRateLimit, async (req: Reques
 });
 
 // PUT /api/panel/roles/:id - Update a custom role
-router.put('/:id', checkRole(['Super Admin']), strictRateLimit, async (req: Request, res: Response) => {
+router.put('/:id', strictRateLimit, async (req: Request, res: Response) => {
+  if (!(await checkRolePermission(req, res, true))) return;
   try {
     const { id } = req.params;
     const { name, description, permissions } = req.body;
@@ -262,7 +276,9 @@ router.put('/:id', checkRole(['Super Admin']), strictRateLimit, async (req: Requ
       return res.status(403).json({ error: 'Cannot modify Super Admin role' });
     }
     
-    const StaffRoles = db.model('StaffRole');
+    // Get StaffRole model with consistent schema
+    const { getStaffRoleModel } = await import('../utils/schema-utils');
+    const StaffRoles = getStaffRoleModel(db);
     
     // Validate permissions
     const basePermissions = getBasePermissions();
@@ -298,7 +314,8 @@ router.put('/:id', checkRole(['Super Admin']), strictRateLimit, async (req: Requ
 });
 
 // DELETE /api/panel/roles/:id - Delete a custom role
-router.delete('/:id', checkRole(['Super Admin']), strictRateLimit, async (req: Request, res: Response) => {
+router.delete('/:id', strictRateLimit, async (req: Request, res: Response) => {
+  if (!(await checkRolePermission(req, res, true))) return;
   try {
     const { id } = req.params;
     const db = req.serverDbConnection!;
@@ -308,7 +325,9 @@ router.delete('/:id', checkRole(['Super Admin']), strictRateLimit, async (req: R
       return res.status(403).json({ error: 'Cannot delete Super Admin role' });
     }
     
-    const StaffRoles = db.model('StaffRole');
+    // Get StaffRole model with consistent schema
+    const { getStaffRoleModel } = await import('../utils/schema-utils');
+    const StaffRoles = getStaffRoleModel(db);
     const Staff = db.model('Staff');
     
     // Check if any staff members are using this role
@@ -339,24 +358,15 @@ router.delete('/:id', checkRole(['Super Admin']), strictRateLimit, async (req: R
  */
 export async function createDefaultRoles(dbConnection: Connection): Promise<void> {
   try {
-    // Create StaffRole model if it doesn't exist
-    let StaffRoles;
-    try {
-      StaffRoles = dbConnection.model('StaffRole');
-    } catch {
-      const StaffRoleSchema = new Schema({
-        id: { type: String, required: true, unique: true },
-        name: { type: String, required: true },
-        description: { type: String, required: true },
-        permissions: [{ type: String }],
-        isDefault: { type: Boolean, default: false }
-      }, { timestamps: true });
-      
-      StaffRoles = dbConnection.model('StaffRole', StaffRoleSchema);
-    }
+    // Get StaffRole model with consistent schema
+    const { getStaffRoleModel } = await import('../utils/schema-utils');
+    const StaffRoles = getStaffRoleModel(dbConnection);
 
-    // Get punishment permissions for default roles
+    // Get all permissions for default roles
+    const basePermissions = getBasePermissions();
     const punishmentPermissions = await getPunishmentPermissions(dbConnection);
+    const allPermissions = [...basePermissions, ...punishmentPermissions];
+    const allPermissionIds = allPermissions.map(p => p.id);
     const allPunishmentPerms = punishmentPermissions.map(p => p.id);
 
     // Define default roles
@@ -365,11 +375,7 @@ export async function createDefaultRoles(dbConnection: Connection): Promise<void
         id: 'super-admin',
         name: 'Super Admin',
         description: 'Full access to all features and settings',
-        permissions: [
-          'admin.settings.view', 'admin.settings.modify', 'admin.staff.manage', 'admin.analytics.view',
-          'ticket.view.all', 'ticket.reply.all', 'ticket.close.all', 'ticket.delete.all',
-          ...allPunishmentPerms
-        ],
+        permissions: allPermissionIds, // Super Admin gets ALL permissions
         isDefault: true,
       },
       {
@@ -378,6 +384,7 @@ export async function createDefaultRoles(dbConnection: Connection): Promise<void
         description: 'Administrative access with some restrictions',
         permissions: [
           'admin.settings.view', 'admin.staff.manage', 'admin.analytics.view',
+          'punishment.modify',
           'ticket.view.all', 'ticket.reply.all', 'ticket.close.all',
           ...allPunishmentPerms
         ],
@@ -388,6 +395,7 @@ export async function createDefaultRoles(dbConnection: Connection): Promise<void
         name: 'Moderator',
         description: 'Moderation permissions for punishments and tickets',
         permissions: [
+          'punishment.modify',
           'ticket.view.all', 'ticket.reply.all', 'ticket.close.all',
           // Moderator gets all punishment permissions except the most severe ones
           ...allPunishmentPerms.filter(p => !p.includes('blacklist') && !p.includes('security-ban'))

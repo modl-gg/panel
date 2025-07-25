@@ -1495,4 +1495,43 @@ router.get('/punishment-lookup/:punishmentId', async (req: Request<{ punishmentI
   }
 });
 
+// Avatar proxy route to avoid CORS issues with Crafatar
+router.get('/avatar/:uuid', async (req: Request, res: Response) => {
+  try {
+    const { uuid } = req.params;
+    const { size = '32', overlay = 'true' } = req.query;
+    
+    // Validate UUID format (basic check)
+    if (!uuid || !/^[a-f0-9\-]{32,36}$/i.test(uuid)) {
+      return res.status(400).json({ error: 'Invalid UUID format' });
+    }
+    
+    // Construct Crafatar URL
+    const crafatarUrl = `https://crafatar.com/avatars/${uuid}?size=${size}&default=MHF_Steve${overlay === 'true' ? '&overlay' : ''}`;
+    
+    // Fetch the image from Crafatar
+    const response = await fetch(crafatarUrl);
+    
+    if (!response.ok) {
+      return res.status(404).json({ error: 'Avatar not found' });
+    }
+    
+    // Get the image buffer
+    const imageBuffer = await response.arrayBuffer();
+    
+    // Set appropriate headers
+    res.set({
+      'Content-Type': 'image/png',
+      'Cache-Control': 'public, max-age=3600', // Cache for 1 hour
+      'Cross-Origin-Resource-Policy': 'cross-origin'
+    });
+    
+    // Send the image
+    res.send(Buffer.from(imageBuffer));
+  } catch (error) {
+    console.error('Error proxying avatar:', error);
+    res.status(500).json({ error: 'Failed to fetch avatar' });
+  }
+});
+
 export default router;

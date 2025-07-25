@@ -1884,12 +1884,12 @@ const Settings = () => {
       }
       
       try {
-        const response = await fetch('/api/auth/profile', {
+        const { csrfFetch } = await import('@/utils/csrf');
+        const response = await csrfFetch('/api/auth/profile', {
           method: 'PATCH',
           headers: {
             'Content-Type': 'application/json',
           },
-          credentials: 'include',
           body: JSON.stringify({
             username: currentUsername
           })

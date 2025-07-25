@@ -37,12 +37,55 @@ export const checkPermission = (requiredPermissions: string | string[]) => {
 };
 
 // Helper function to get user permissions based on role
-async function getUserPermissions(req: Request, userRole: string): Promise<string[]> {
+export async function getUserPermissions(req: Request, userRole: string): Promise<string[]> {
   if (!req.serverDbConnection) {
     throw new Error('Database connection not available');
   }
 
-  // Define default role permissions
+  // Check if user has a custom role defined in the database
+  try {
+    // Get StaffRole model with consistent schema
+    const { getStaffRoleModel } = await import('../utils/schema-utils');
+    const StaffRoles = getStaffRoleModel(req.serverDbConnection);
+    
+    const roleDoc = await StaffRoles.findOne({ name: userRole });
+    
+    if (roleDoc && roleDoc.permissions && Array.isArray(roleDoc.permissions)) {
+      // Get punishment permissions from settings and add them
+      try {
+        const { getSettingsValue } = await import('../routes/settings-routes');
+        const punishmentTypes = await getSettingsValue(req.serverDbConnection!, 'punishmentTypes') || [];
+        
+        const punishmentPermissions = punishmentTypes.map((type: any) => 
+          `punishment.apply.${type.name.toLowerCase().replace(/\s+/g, '-')}`
+        );
+
+        // Add punishment permissions based on role permissions level
+        let userPermissions = [...roleDoc.permissions];
+        
+        // If role has admin permissions, give all punishment permissions
+        if (roleDoc.permissions.includes('admin.settings.modify') || roleDoc.permissions.includes('admin.staff.manage')) {
+          userPermissions = [...userPermissions, ...punishmentPermissions];
+        }
+        // If role has ticket close permissions, give most punishment permissions (except severe ones)
+        else if (roleDoc.permissions.includes('ticket.close.all')) {
+          const moderatePunishmentPerms = punishmentPermissions.filter((p: string) => 
+            !p.includes('blacklist') && !p.includes('security-ban')
+          );
+          userPermissions = [...userPermissions, ...moderatePunishmentPerms];
+        }
+        
+        return userPermissions;
+      } catch (error) {
+        console.error('Error adding punishment permissions to custom role:', error);
+        return roleDoc.permissions;
+      }
+    }
+  } catch (error) {
+    console.error('Error fetching custom role permissions:', error);
+  }
+
+  // Fallback to default role permissions for backwards compatibility
   const defaultPermissions: Record<string, string[]> = {
     'Super Admin': [
       'admin.settings.view', 'admin.settings.modify', 'admin.staff.manage', 'admin.analytics.view',
@@ -60,9 +103,11 @@ async function getUserPermissions(req: Request, userRole: string): Promise<strin
     ]
   };
 
+  // Get base permissions for the role
+  const basePermissions = defaultPermissions[userRole] || [];
+
   // Get punishment permissions from settings
   try {
-    // Import helper function dynamically
     const { getSettingsValue } = await import('../routes/settings-routes');
     const punishmentTypes = await getSettingsValue(req.serverDbConnection!, 'punishmentTypes') || [];
     
@@ -70,35 +115,22 @@ async function getUserPermissions(req: Request, userRole: string): Promise<strin
       `punishment.apply.${type.name.toLowerCase().replace(/\s+/g, '-')}`
     );
 
-    // Add punishment permissions to appropriate roles
-    if (userRole === 'Super Admin' || userRole === 'Admin') {
-      defaultPermissions[userRole] = [...defaultPermissions[userRole], ...punishmentPermissions];
-    } else if (userRole === 'Moderator') {
-      // Moderators get all punishment permissions except the most severe ones
-      const moderatorPunishmentPerms = punishmentPermissions.filter((p: string) => 
+    // Add punishment permissions based on base permissions level
+    if (basePermissions.includes('admin.settings.modify') || basePermissions.includes('admin.staff.manage')) {
+      return [...basePermissions, ...punishmentPermissions];
+    } else if (basePermissions.includes('ticket.close.all')) {
+      // Moderator-level permissions - exclude severe punishment types
+      const moderatePunishmentPerms = punishmentPermissions.filter((p: string) => 
         !p.includes('blacklist') && !p.includes('security-ban')
       );
-      defaultPermissions[userRole] = [...defaultPermissions[userRole], ...moderatorPunishmentPerms];
+      return [...basePermissions, ...moderatePunishmentPerms];
     }
+    
+    return basePermissions;
   } catch (error) {
     console.error('Error fetching punishment permissions:', error);
+    return basePermissions;
   }
-
-  // Check if user has a custom role
-  try {
-    const StaffRoles = req.serverDbConnection.model('StaffRole');
-    const customRole = await StaffRoles.findOne({ name: userRole });
-    
-    if (customRole) {
-      return customRole.permissions || [];
-    }
-  } catch (error) {
-    // Custom role model might not exist, fall back to default permissions
-    console.log('Custom role model not found, using default permissions');
-  }
-
-  // Return default permissions for the role
-  return defaultPermissions[userRole] || [];
 }
 
 // Convenience function to check if user has a specific permission

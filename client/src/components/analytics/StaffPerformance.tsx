@@ -22,11 +22,16 @@ interface StaffPerformanceProps {
   onPeriodChange: (period: string) => void;
 }
 
-const roleColorMap: { [key: string]: string } = {
-  'Super Admin': 'destructive',
-  'Admin': 'default',
-  'Moderator': 'secondary',
-  'Helper': 'outline'
+// Dynamic role color mapping - uses fallback colors for unknown roles
+const getRoleColor = (roleName: string): string => {
+  const roleColorMap: { [key: string]: string } = {
+    'Super Admin': 'destructive',
+    'Admin': 'default',
+    'Moderator': 'secondary',
+    'Helper': 'outline'
+  };
+  
+  return roleColorMap[roleName] || 'default';
 };
 
 export function StaffPerformance({ data, loading, period, onPeriodChange }: StaffPerformanceProps) {
@@ -110,7 +115,7 @@ export function StaffPerformance({ data, loading, period, onPeriodChange }: Staf
                   <TableRow key={staff.id}>
                     <TableCell className="font-medium">{staff.username}</TableCell>
                     <TableCell>
-                      <Badge variant={roleColorMap[staff.role] as any || 'default'}>
+                      <Badge variant={getRoleColor(staff.role) as any}>
                         {staff.role}
                       </Badge>
                     </TableCell>

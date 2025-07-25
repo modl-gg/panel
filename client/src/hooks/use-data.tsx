@@ -1,4 +1,4 @@
-import { useQuery, useMutation, useQueryClient, QueryClient } from '@tanstack/react-query';
+import { useQuery, useMutation, useQueryClient, QueryClient, useQueries } from '@tanstack/react-query';
 import { queryClient } from '../lib/queryClient';
 import { useAuth } from './use-auth';
 
@@ -1049,4 +1049,50 @@ export function useMarkSubscriptionUpdateAsRead() {
       queryClient.invalidateQueries({ queryKey: ['/api/panel/ticket-subscriptions/updates'] });
     },
   });
+}
+
+// Hook to get ticket counts by category for tab badges
+export function useTicketCounts(options?: {
+  search?: string;
+  status?: string;
+}) {
+  const { search = '', status = '' } = options || {};
+  
+  const ticketTypes = ['support', 'bug', 'player', 'chat', 'appeal', 'staff'];
+  
+  const queries = useQueries({
+    queries: ticketTypes.map(type => ({
+      queryKey: ['/api/panel/tickets/count', { search, status, type }],
+      queryFn: async () => {
+        const params = new URLSearchParams();
+        params.append('page', '1');
+        params.append('limit', '1'); // We only need the count, not the actual tickets
+        if (search) params.append('search', search);
+        if (status) params.append('status', status);
+        params.append('type', type);
+        
+        const res = await fetch(`/api/panel/tickets?${params.toString()}`);
+        if (!res.ok) {
+          throw new Error(`Failed to fetch ticket count for ${type}`);
+        }
+        const data = await res.json();
+        return { type, count: data.pagination?.totalTickets || 0 };
+      },
+      staleTime: 30000, // 30 seconds
+      refetchOnMount: true,
+      refetchOnWindowFocus: true
+    }))
+  });
+
+  // Convert array of query results to object with counts by type
+  const counts = queries.reduce((acc, query, index) => {
+    const type = ticketTypes[index];
+    acc[type] = query.data?.count || 0;
+    return acc;
+  }, {} as Record<string, number>);
+
+  const isLoading = queries.some(query => query.isLoading);
+  const isError = queries.some(query => query.isError);
+
+  return { counts, isLoading, isError };
 }

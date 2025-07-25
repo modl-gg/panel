@@ -7,6 +7,7 @@ import { Separator } from 'modl-shared-web/components/ui/separator';
 import { Progress } from 'modl-shared-web/components/ui/progress';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from 'modl-shared-web/components/ui/collapsible';
 import { useAuth } from '@/hooks/use-auth';
+import { usePermissions } from '@/hooks/use-permissions';
 import BillingSettings from './BillingSettings';
 import DomainSettings from './DomainSettings';
 import UsageSettings from './UsageSettings';
@@ -72,6 +73,7 @@ const GeneralSettings = ({
   getDomainSummary
 }: GeneralSettingsProps) => {
   const { user } = useAuth();
+  const { hasPermission } = usePermissions();
   
   // Collapsible state
   const [isBillingExpanded, setIsBillingExpanded] = useState(false);
@@ -83,7 +85,7 @@ const GeneralSettings = ({
     <div className="space-y-6 p-6">
       <div className="space-y-4">
         {/* Billing Settings - Moved to top */}
-        {user?.role === 'Super Admin' && (
+        {hasPermission('admin.settings.modify') && (
           <Collapsible open={isBillingExpanded} onOpenChange={setIsBillingExpanded}>
             <CollapsibleTrigger className="flex items-center justify-between w-full p-4 bg-muted/50 rounded-lg hover:bg-muted/70 transition-colors">
               <div className="flex items-center">
@@ -382,7 +384,7 @@ const GeneralSettings = ({
         </Collapsible>
 
         {/* Custom Domain Settings */}
-        {(user?.role === 'Super Admin' || user?.role === 'Admin') && (
+        {hasPermission('admin.settings.view') && (
           <Collapsible open={isDomainExpanded} onOpenChange={setIsDomainExpanded}>
             <CollapsibleTrigger className="flex items-center justify-between w-full p-4 bg-muted/50 rounded-lg hover:bg-muted/70 transition-colors">
               <div className="flex items-center">

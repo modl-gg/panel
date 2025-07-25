@@ -38,6 +38,7 @@ const Sidebar = () => {
   const [searchQuery, setSearchQuery] = useState("");
   const [isFocused, setIsFocused] = useState(false);
   const [isHoveringSearch, setIsHoveringSearch] = useState(false);
+  const [recentSearches, setRecentSearches] = useState<Array<{player: Player, timestamp: number}>>([]);
   
   // Detect if search query starts with # for punishment lookup
   const isPunishmentLookup = searchQuery.trim().startsWith('#');
@@ -50,6 +51,48 @@ const Sidebar = () => {
     isLoading: isPunishmentLoading, 
     error: punishmentError 
   } = usePunishmentLookup(debouncedPunishmentQuery);
+
+  // Load recent searches from localStorage on mount
+  useEffect(() => {
+    const savedSearches = localStorage.getItem('recentPlayerSearches');
+    if (savedSearches) {
+      try {
+        const parsed = JSON.parse(savedSearches);
+        if (Array.isArray(parsed)) {
+          setRecentSearches(parsed);
+        }
+      } catch (e) {
+        console.error('Failed to parse recent searches:', e);
+      }
+    }
+  }, []);
+
+  // Helper function to get player UUID (handling both uuid and minecraftUuid fields)
+  const getPlayerUuid = (player: Player) => {
+    return player.minecraftUuid || player.uuid;
+  };
+
+  // Function to handle player selection and update recent searches
+  const handlePlayerSelect = (player: Player) => {
+    const uuid = getPlayerUuid(player);
+    
+    // Update recent searches
+    const timestamp = Date.now();
+    const existing = recentSearches.filter(s => getPlayerUuid(s.player) !== uuid);
+    const newSearches = [{player, timestamp}, ...existing].slice(0, 10);
+    setRecentSearches(newSearches);
+    
+    // Save to localStorage
+    localStorage.setItem('recentPlayerSearches', JSON.stringify(newSearches));
+    
+    // Open player window and close lookup
+    const url = new URL(window.location.href);
+    url.searchParams.set("player", uuid);
+    window.history.pushState({}, "", url.toString());
+    openPlayerWindow(uuid);
+    closeLookup();
+  };
+
   // Track multiple windows with a map of id -> isOpen state
   const [playerWindows, setPlayerWindows] = useState<Record<string, boolean>>(
     {},
@@ -456,16 +499,7 @@ const Sidebar = () => {
                           key={index}
                           variant="ghost"
                           className="w-full justify-start text-xs py-2 px-3 h-auto mb-1"
-                          onClick={() => {
-                            // Set the URL parameter without changing the page
-                            const url = new URL(window.location.href);
-                            url.searchParams.set("player", player.uuid);
-                            window.history.pushState({}, "", url.toString());
-
-                            // Open the player window
-                            openPlayerWindow(player.uuid);
-                            closeLookup();
-                          }}
+                          onClick={() => handlePlayerSelect(player)}
                         >
                           <div className="flex flex-col items-start">
                             <span className="font-medium">{player.username || 'Unknown'}</span>
@@ -492,42 +526,63 @@ const Sidebar = () => {
                     </div>
                   )}
                 </div>
-              ) : players && players.length > 0 ? (
+              ) : (
                 <div className="flex-1 overflow-y-auto pr-1">
-                  <div className="py-1 px-2 mb-2 text-xs text-muted-foreground">
-                    Recent Players
-                  </div>
-                  {players
-                    .sort((a: Player, b: Player) => {
-                      // Sort by lastOnline, most recent first
-                      const aTime = a.lastOnline ? new Date(a.lastOnline).getTime() : 0;
-                      const bTime = b.lastOnline ? new Date(b.lastOnline).getTime() : 0;
-                      return bTime - aTime;
-                    })
-                    .slice(0, 5)
-                    .map((player: Player, index: number) => (
-                    <Button
-                      key={index}
-                      variant="ghost"
-                      className="w-full justify-start text-xs py-2 px-3 h-auto mb-1"
-                      onClick={() => {
-                        const url = new URL(window.location.href);
-                        url.searchParams.set("player", player.uuid);
-                        window.history.pushState({}, "", url.toString());
-                        openPlayerWindow(player.uuid);
-                        closeLookup();
-                      }}
-                    >
-                      <div className="flex flex-col items-start">
-                        <span className="font-medium">{player.username || 'Unknown'}</span>
-                        <span className="text-muted-foreground text-[10px]">
-                          {player.status}
-                        </span>
+                  {recentSearches.length > 0 ? (
+                    <>
+                      <div className="py-1 px-2 mb-2 text-xs text-muted-foreground">
+                        Recent Searches
                       </div>
-                    </Button>
-                  ))}
+                      {recentSearches
+                        .sort((a, b) => b.timestamp - a.timestamp)
+                        .slice(0, 5)
+                        .map(({player}, index) => (
+                        <Button
+                          key={index}
+                          variant="ghost"
+                          className="w-full justify-start text-xs py-2 px-3 h-auto mb-1"
+                          onClick={() => handlePlayerSelect(player)}
+                        >
+                          <div className="flex flex-col items-start">
+                            <span className="font-medium">{player.username || 'Unknown'}</span>
+                            <span className="text-muted-foreground text-[10px]">
+                              {player.status === 'Online' || (player.isOnline || player.data?.isOnline) ? 'Online' : 'Offline'}
+                            </span>
+                          </div>
+                        </Button>
+                      ))}
+                    </>
+                  ) : players && players.length > 0 ? (
+                    <>
+                      <div className="py-1 px-2 mb-2 text-xs text-muted-foreground">
+                        Recent Players
+                      </div>
+                      {players
+                        .sort((a: Player, b: Player) => {
+                          // Sort by document creation order (most recent MongoDB documents first)
+                          // This assumes newer documents are at the end, so we reverse
+                          return players.indexOf(b) - players.indexOf(a);
+                        })
+                        .slice(0, 5)
+                        .map((player: Player, index: number) => (
+                        <Button
+                          key={index}
+                          variant="ghost"
+                          className="w-full justify-start text-xs py-2 px-3 h-auto mb-1"
+                          onClick={() => handlePlayerSelect(player)}
+                        >
+                          <div className="flex flex-col items-start">
+                            <span className="font-medium">{player.username || 'Unknown'}</span>
+                            <span className="text-muted-foreground text-[10px]">
+                              {player.status === 'Online' || (player.isOnline || player.data?.isOnline) ? 'Online' : 'Offline'}
+                            </span>
+                          </div>
+                        </Button>
+                      ))}
+                    </>
+                  ) : null}
                 </div>
-              ) : null}
+              )}
             </div>
           </div>
         )}

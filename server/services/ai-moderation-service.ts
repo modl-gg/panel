@@ -20,8 +20,9 @@ interface AIPunishmentType {
 interface AIAnalysisResult {
   analysis: string;
   suggestedAction: {
-    punishmentTypeId: string;
+    punishmentTypeId: string | number;
     severity: 'low' | 'regular' | 'severe';
+    originalAITypeId?: string; // Store original AI type ID for reference
   } | null;
   wasAppliedAutomatically: boolean;
   createdAt: Date;
@@ -71,6 +72,11 @@ export class AIModerationService {
         // No punishment types found, skipping analysis
         return null;
       }
+      
+      console.log(`[AI Moderation] Providing ${punishmentTypes.length} punishment types to AI:`);
+      punishmentTypes.forEach(pt => {
+        console.log(`  - ID: ${pt.id}, Name: ${pt.name}, Description: ${pt.aiDescription}`);
+      });
 
       // Get system prompt for strictness level with punishment types injected
       const systemPrompt = await this.systemPromptsService.getPromptForStrictnessLevel(
@@ -85,23 +91,33 @@ export class AIModerationService {
         playerNameForAI
       );
 
-      // Prepare AI analysis result
+      // Map AI punishment type ID to actual punishment type ID for storage
+      let mappedPunishmentTypeId: number | null = null;
+      if (geminiResponse.suggestedAction) {
+        console.log(`[AI Moderation] AI returned punishment type ID: ${geminiResponse.suggestedAction.punishmentTypeId} (type: ${typeof geminiResponse.suggestedAction.punishmentTypeId})`);
+        console.log(`[AI Moderation] Full AI response: ${JSON.stringify(geminiResponse)}`);
+        
+        mappedPunishmentTypeId = await this.mapAIPunishmentTypeToActual(geminiResponse.suggestedAction.punishmentTypeId);
+        if (!mappedPunishmentTypeId) {
+          console.error(`[AI Moderation] No mapping found for AI punishment type ${geminiResponse.suggestedAction.punishmentTypeId}`);
+        }
+      }
+
+      // Prepare AI analysis result with mapped punishment type ID
       const analysisResult: AIAnalysisResult = {
         analysis: geminiResponse.analysis,
-        suggestedAction: geminiResponse.suggestedAction,
+        suggestedAction: geminiResponse.suggestedAction ? {
+          punishmentTypeId: mappedPunishmentTypeId || parseInt(geminiResponse.suggestedAction.punishmentTypeId) || geminiResponse.suggestedAction.punishmentTypeId, // Use mapped ID if available
+          severity: geminiResponse.suggestedAction.severity,
+          originalAITypeId: geminiResponse.suggestedAction.punishmentTypeId // Store original for reference
+        } : null,
         wasAppliedAutomatically: false,
         createdAt: new Date()
       };
 
       // Apply punishment automatically if enabled and action is suggested
-      if (aiSettings.enableAutomatedActions && geminiResponse.suggestedAction && playerIdentifier) {
+      if (aiSettings.enableAutomatedActions && geminiResponse.suggestedAction && playerIdentifier && mappedPunishmentTypeId) {
         try {
-          // Map AI punishment type ID to actual punishment type ID
-          const mappedPunishmentTypeId = await this.mapAIPunishmentTypeToActual(geminiResponse.suggestedAction.punishmentTypeId);
-          if (!mappedPunishmentTypeId) {
-            console.error(`[AI Moderation] No mapping found for AI punishment type ${geminiResponse.suggestedAction.punishmentTypeId}`);
-            throw new Error(`No mapping found for AI punishment type ${geminiResponse.suggestedAction.punishmentTypeId}`);
-          }
 
           const punishmentResult = await this.punishmentService.applyPunishment(
             playerIdentifier,
@@ -113,6 +129,10 @@ export class AIModerationService {
 
           if (punishmentResult.success) {
             analysisResult.wasAppliedAutomatically = true;
+            
+            // Create an "Accept Report" reply for automated actions
+            await this.createAcceptReportReply(ticketId, geminiResponse.suggestedAction.severity, geminiResponse.analysis, punishmentResult.punishmentId, 'AI Moderation System');
+            
             console.log(`[AI Moderation] Automatically applied punishment ${punishmentResult.punishmentId} for ticket ${ticketId}`);
           } else {
             console.error(`[AI Moderation] Failed to apply automatic punishment for ticket ${ticketId}: ${punishmentResult.error}`);
@@ -184,26 +204,92 @@ export class AIModerationService {
   private async getPunishmentTypes(): Promise<AIPunishmentType[]> {
     try {
       const SettingsModel = this.dbConnection.model('Settings');
-      const aiSettingsDoc = await SettingsModel.findOne({ type: 'aiModerationSettings' });
       
-      if (!aiSettingsDoc || !aiSettingsDoc.data || !aiSettingsDoc.data.aiPunishmentConfigs) {
-        console.error('[AI Moderation] AI moderation settings or punishment configs not found.');
+      // Get actual punishment types from database
+      const punishmentTypesDoc = await SettingsModel.findOne({ type: 'punishmentTypes' });
+      if (!punishmentTypesDoc?.data) {
+        console.error('[AI Moderation] No punishment types found in database.');
+        return [];
+      }
+      
+      // Get AI moderation settings to see which punishment types are enabled for AI
+      const aiSettingsDoc = await SettingsModel.findOne({ type: 'aiModerationSettings' });
+      if (!aiSettingsDoc?.data?.aiPunishmentConfigs) {
+        console.error('[AI Moderation] AI moderation settings not found.');
         return [];
       }
 
       const aiPunishmentConfigs = aiSettingsDoc.data.aiPunishmentConfigs;
+      const actualPunishmentTypes = punishmentTypesDoc.data;
 
-      // Get enabled AI punishment types from the standalone configuration
-      const enabledAIPunishmentTypes = Object.values(aiPunishmentConfigs)
-        .filter((config: any) => config.enabled === true)
-        .map((config: any) => ({
-          id: config.id,
-          name: config.name,
-          aiDescription: config.aiDescription,
-          enabled: config.enabled
-        }));
+      if (!aiPunishmentConfigs || Object.keys(aiPunishmentConfigs).length === 0) {
+        console.warn('[AI Moderation] No AI punishment configs found in settings');
+        return [];
+      }
+
+      console.log(`[AI Moderation] AI punishment configs:`, JSON.stringify(aiPunishmentConfigs, null, 2));
+      console.log(`[AI Moderation] Found ${Object.keys(aiPunishmentConfigs).length} AI punishment configurations`);
+
+      // Map AI punishment configs to actual punishment types
+      const enabledAIPunishmentTypes: AIPunishmentType[] = [];
+      
+      Object.values(aiPunishmentConfigs).forEach((config: any) => {
+        console.log(`[AI Moderation] Checking AI config '${config.name}' (id: ${config.id}): enabled=${config.enabled}`);
+        
+        if (config.enabled === true) {
+          let actualPunishmentType = null;
+          
+          // First, try to find by explicit mapping if it exists
+          if (config.mappedPunishmentTypeId) {
+            actualPunishmentType = actualPunishmentTypes.find((pt: any) => 
+              pt.id === config.mappedPunishmentTypeId || pt.ordinal === config.mappedPunishmentTypeId
+            );
+          }
+          
+          // If no explicit mapping, try to find by name similarity
+          if (!actualPunishmentType) {
+            actualPunishmentType = actualPunishmentTypes.find((pt: any) => 
+              pt.name.toLowerCase().includes(config.name.toLowerCase()) ||
+              config.name.toLowerCase().includes(pt.name.toLowerCase())
+            );
+          }
+          
+          // As a fallback, use default mappings for known AI configs
+          if (!actualPunishmentType) {
+            const defaultMappings: Record<string, number> = {
+              'chat-abuse': 6,    // Default Chat Abuse punishment type ordinal
+              'anti-social': 7    // Default Anti Social punishment type ordinal
+            };
+            
+            const defaultOrdinal = defaultMappings[config.id];
+            if (defaultOrdinal) {
+              actualPunishmentType = actualPunishmentTypes.find((pt: any) => pt.ordinal === defaultOrdinal);
+            }
+          }
+          
+          if (actualPunishmentType) {
+            enabledAIPunishmentTypes.push({
+              id: actualPunishmentType.ordinal.toString(), // Use actual ordinal as string
+              name: actualPunishmentType.name,
+              aiDescription: config.aiDescription || `Apply ${actualPunishmentType.name} punishment`,
+              enabled: true
+            });
+            console.log(`[AI Moderation] Mapped AI config '${config.name}' to punishment type '${actualPunishmentType.name}' (ordinal: ${actualPunishmentType.ordinal})`);
+          } else {
+            console.warn(`[AI Moderation] Could not find actual punishment type for AI config: ${config.name} (id: ${config.id})`);
+          }
+        }
+      });
+
+      // If no AI punishment types were found, the AI should not make punishment suggestions
+      if (enabledAIPunishmentTypes.length === 0) {
+        console.warn('[AI Moderation] No enabled AI punishment configs found - AI will not suggest punishments');
+        console.warn('[AI Moderation] Configure AI punishment types in the AI Moderation Settings to enable punishment suggestions');
+        return [];
+      }
 
       console.log(`[AI Moderation] Found ${enabledAIPunishmentTypes.length} enabled AI punishment types.`);
+      console.log(`[AI Moderation] AI punishment types: ${JSON.stringify(enabledAIPunishmentTypes.map(pt => ({ id: pt.id, name: pt.name })))}`);
 
       return enabledAIPunishmentTypes;
     } catch (error) {
@@ -217,31 +303,86 @@ export class AIModerationService {
    */
   private async mapAIPunishmentTypeToActual(aiPunishmentTypeId: string): Promise<number | null> {
     try {
-      // Define mapping from AI punishment types to actual punishment types
-      const mappings: Record<string, number> = {
-        'chat-abuse': 6,    // Chat Abuse punishment type ID
-        'anti-social': 7    // Anti Social punishment type ID
-      };
-
-      const mappedId = mappings[aiPunishmentTypeId];
-      if (mappedId) {
-        // Verify the punishment type exists in the database
-        const SettingsModel = this.dbConnection.model('Settings');
-        const punishmentTypesDoc = await SettingsModel.findOne({ type: 'punishmentTypes' });
-        
-        if (punishmentTypesDoc?.data) {
-          const punishmentType = punishmentTypesDoc.data.find((pt: any) => pt.id === mappedId);
-          if (punishmentType) {
-            return mappedId;
-          }
+      // Since we now provide actual punishment type ordinals as strings to the AI,
+      // we can directly parse the string to get the numeric ID
+      const numericId = parseInt(aiPunishmentTypeId);
+      
+      if (isNaN(numericId)) {
+        console.error(`[AI Moderation] Invalid punishment type ID format: ${aiPunishmentTypeId}`);
+        return null;
+      }
+      
+      // Verify the punishment type exists in the database
+      const SettingsModel = this.dbConnection.model('Settings');
+      const punishmentTypesDoc = await SettingsModel.findOne({ type: 'punishmentTypes' });
+      
+      if (punishmentTypesDoc?.data) {
+        const punishmentType = punishmentTypesDoc.data.find((pt: any) => pt.ordinal === numericId);
+        if (punishmentType) {
+          console.log(`[AI Moderation] Successfully mapped AI punishment type ${aiPunishmentTypeId} to ${punishmentType.name} (ordinal: ${numericId})`);
+          return numericId;
         }
       }
 
-      console.error(`[AI Moderation] No valid mapping found for AI punishment type: ${aiPunishmentTypeId}`);
+      console.error(`[AI Moderation] No valid punishment type found for ordinal: ${numericId}`);
       return null;
     } catch (error) {
       console.error(`[AI Moderation] Error mapping AI punishment type ${aiPunishmentTypeId}:`, error);
       return null;
+    }
+  }
+
+  /**
+   * Create an "Accept Report" reply when AI suggestion is applied
+   */
+  private async createAcceptReportReply(
+    ticketId: string, 
+    severity: string, 
+    analysis: string, 
+    punishmentId: string, 
+    staffName: string
+  ): Promise<void> {
+    try {
+      const TicketModel = this.dbConnection.model('Ticket');
+      const ticket = await TicketModel.findById(ticketId);
+      
+      if (!ticket) {
+        console.error(`[AI Moderation] Ticket ${ticketId} not found for adding accept report reply`);
+        return;
+      }
+
+      // Create an "Accept Report" reply
+      const acceptReply = {
+        name: staffName,
+        content: `This report has been reviewed and accepted. A ${severity} severity punishment has been applied to the reported player.`,
+        type: 'public',
+        staff: true,
+        action: 'Accept Report',
+        created: new Date()
+      };
+      
+      // Add the reply to the ticket
+      ticket.replies.push(acceptReply);
+      
+      // Add staff note with AI analysis details
+      const staffNote = {
+        content: `AI Analysis: ${analysis}\n\nPunishment Applied: ${punishmentId}\nApplied by: ${staffName}\nSeverity: ${severity}`,
+        author: staffName,
+        createdBy: staffName,
+        createdAt: new Date(),
+        type: 'ai_analysis'
+      };
+      
+      if (!ticket.notes) {
+        ticket.notes = [];
+      }
+      ticket.notes.push(staffNote);
+      
+      await ticket.save();
+      
+      console.log(`[AI Moderation] Added Accept Report reply to ticket ${ticketId} by ${staffName}`);
+    } catch (error) {
+      console.error(`[AI Moderation] Error creating accept report reply for ticket ${ticketId}:`, error);
     }
   }
 

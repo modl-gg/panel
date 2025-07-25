@@ -17,7 +17,7 @@ function getPageName(location: string): string {
     if (location === '/panel/api-docs') return 'API Documentation';
     if (location === '/panel/auth') return 'Staff Login';
     if (location.startsWith('/panel/player/')) return 'Player Details';
-    return 'Panel';
+    return '';
   }
   
   // Handle public routes
@@ -30,7 +30,7 @@ function getPageName(location: string): string {
   if (location.startsWith('/accept-invitation')) return 'Accept Invitation';
   
   // Default fallback
-  return 'Panel';
+  return '';
 }
 
 /**
@@ -54,9 +54,9 @@ export function useDocumentTitle() {
 
     // Update document title
     if (serverDisplayName) {
-      document.title = `${pageName} - ${serverDisplayName}`;
+      document.title = pageName ? `${pageName} - ${serverDisplayName}` : serverDisplayName;
     } else {
-      document.title = `${pageName} - modl`;
+      document.title = pageName ? `${pageName} - modl` : 'modl';
     }
 
     // Update favicon if available

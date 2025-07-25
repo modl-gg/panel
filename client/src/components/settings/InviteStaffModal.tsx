@@ -24,11 +24,19 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from 'm
 import { useAuth } from '@/hooks/use-auth';
 import { useToast } from 'modl-shared-web/hooks/use-toast';
 import { Loader2 } from 'lucide-react';
+import { useQuery } from '@tanstack/react-query';
 
 const inviteSchema = z.object({
   email: z.string().email({ message: 'Invalid email address.' }),
-  role: z.enum(['Admin', 'Moderator', 'Helper']),
+  role: z.string().min(1, { message: 'Please select a role.' }),
 });
+
+interface StaffRole {
+  id: string;
+  name: string;
+  description: string;
+  permissions: string[];
+}
 
 type InviteFormValues = z.infer<typeof inviteSchema>;
 
@@ -43,11 +51,24 @@ const InviteStaffModal: React.FC<InviteStaffModalProps> = ({ isOpen, onClose, on
   const { toast } = useToast();
   const [isLoading, setIsLoading] = useState(false);
   
+  // Fetch available roles from the API
+  const { data: rolesData } = useQuery({
+    queryKey: ['/api/panel/roles'],
+    queryFn: async () => {
+      const response = await fetch('/api/panel/roles');
+      if (!response.ok) throw new Error('Failed to fetch roles');
+      return response.json();
+    },
+    enabled: isOpen
+  });
+  
+  const availableRoles = rolesData?.roles || [];
+  
   const form = useForm<InviteFormValues>({
     resolver: zodResolver(inviteSchema),
     defaultValues: {
       email: '',
-      role: 'Helper',
+      role: '',
     },
   });
 
@@ -61,7 +82,8 @@ const InviteStaffModal: React.FC<InviteStaffModalProps> = ({ isOpen, onClose, on
   const onSubmit = async (values: InviteFormValues) => {
     setIsLoading(true);
     try {
-      const response = await fetch('/api/panel/staff/invite', {
+      const { csrfFetch } = await import('@/utils/csrf');
+      const response = await csrfFetch('/api/panel/staff/invite', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -136,9 +158,11 @@ const InviteStaffModal: React.FC<InviteStaffModalProps> = ({ isOpen, onClose, on
                       </SelectTrigger>
                     </FormControl>
                     <SelectContent>
-                      {user?.role === 'Super Admin' && <SelectItem value="Admin">Admin</SelectItem>}
-                      <SelectItem value="Moderator">Moderator</SelectItem>
-                      <SelectItem value="Helper">Helper</SelectItem>
+                      {availableRoles.map((role: StaffRole) => (
+                        <SelectItem key={role.id} value={role.name}>
+                          {role.name}
+                        </SelectItem>
+                      ))}
                     </SelectContent>
                   </Select>
                   <FormMessage />

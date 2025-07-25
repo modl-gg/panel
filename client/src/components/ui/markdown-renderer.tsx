@@ -6,21 +6,77 @@ interface MarkdownRendererProps {
   content: string;
   className?: string;
   allowHtml?: boolean;
+  disableClickablePlayers?: boolean;
 }
 
 // Function to process chat message lines and make usernames clickable
-const processMarkdownContent = (content: string): string => {
-  // Look for chat message pattern: `[timestamp]` **username**: message
-  const chatMessagePattern = /(`\[.*?\]`\s+\*\*([^*]+)\*\*:\s+.*)/g;
+const processMarkdownContent = (content: string, disableClickablePlayers = false): string => {
+  // First, check if content contains JSON-formatted chat messages
+  if (content.includes('**Chat Messages:**')) {
+    const chatHeaderIndex = content.indexOf('**Chat Messages:**');
+    const beforeChat = content.substring(0, chatHeaderIndex);
+    const afterChatHeader = content.substring(chatHeaderIndex + '**Chat Messages:**'.length);
+    
+    // Find where the chat messages section ends (usually at the next ** or end of content)
+    let chatSectionEnd = afterChatHeader.search(/\n\*\*[^*]+\*\*:|$/);
+    if (chatSectionEnd === -1) chatSectionEnd = afterChatHeader.length;
+    
+    const chatSection = afterChatHeader.substring(0, chatSectionEnd);
+    const afterChat = afterChatHeader.substring(chatSectionEnd);
+    
+    // Process the chat section
+    const lines = chatSection.split('\n');
+    let formattedMessages = '';
+    
+    for (const line of lines) {
+      const trimmedLine = line.trim();
+      
+      // Skip empty lines
+      if (!trimmedLine) continue;
+      
+      // Try to parse JSON objects
+      if (trimmedLine.startsWith('{') && trimmedLine.includes('"username"') && trimmedLine.includes('"message"')) {
+        try {
+          const msgObj = JSON.parse(trimmedLine);
+          if (msgObj.username && msgObj.message) {
+            const timestamp = msgObj.timestamp ? new Date(msgObj.timestamp).toLocaleString() : 'Unknown time';
+            // Format as a single line with proper spacing
+            formattedMessages += `  \n[${timestamp}] **${msgObj.username}**: ${msgObj.message}`;
+          } else {
+            formattedMessages += `  \n${line}`;
+          }
+        } catch (e) {
+          // If JSON parsing fails, keep the original line
+          formattedMessages += `  \n${line}`;
+        }
+      } else {
+        formattedMessages += `  \n${line}`;
+      }
+    }
+    
+    // Reconstruct the content with formatted messages
+    content = beforeChat + '**Chat Messages:**' + formattedMessages + afterChat;
+  }
   
-  return content.replace(chatMessagePattern, (match, fullLine, username) => {
-    // Replace the username with a special marker that we can process in the component
-    return fullLine.replace(`**${username}**`, `**[PLAYER:${username}]**`);
+  // Look for already formatted chat message pattern and make usernames clickable
+  const chatMessagePattern = /\*\*([^*\n]+)\*\*:/g;
+  
+  // Only process player links if not disabled
+  if (disableClickablePlayers) {
+    return content;
+  }
+  
+  return content.replace(chatMessagePattern, (match, username) => {
+    // Only replace if this looks like a player username (not other bold text like section headers)
+    if (username && !username.includes(':') && !username.includes('\n') && !username.includes('Chat Messages')) {
+      return `**[PLAYER:${username}]**:`;
+    }
+    return match;
   });
 };
 
-const MarkdownRenderer = ({ content, className, allowHtml = false }: MarkdownRendererProps) => {
-  const processedContent = processMarkdownContent(content);
+const MarkdownRenderer = ({ content, className, allowHtml = false, disableClickablePlayers = false }: MarkdownRendererProps) => {
+  const processedContent = processMarkdownContent(content, disableClickablePlayers);
   
   // Check if content contains structured form data (bullet points, bold labels)
   const hasStructuredContent = /\*\*[^*]+\*\*:\s*\n(•[^\n]*\n?)+/.test(content);
@@ -86,7 +142,7 @@ const MarkdownRenderer = ({ content, className, allowHtml = false }: MarkdownRen
             const text = children?.toString() || '';
             const playerMatch = text.match(/^\[PLAYER:(.*)\]$/);
             
-            if (playerMatch) {
+            if (playerMatch && !disableClickablePlayers) {
               const username = playerMatch[1];
               return (
                 <ClickablePlayer playerText={username} variant="text" showIcon={false}>

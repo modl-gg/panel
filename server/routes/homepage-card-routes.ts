@@ -9,10 +9,37 @@ import {
 } from 'modl-shared-web';
 import mongoose, { Model } from 'mongoose';
 import { isAuthenticated } from '../middleware/auth-middleware';
-import { checkRole } from '../middleware/role-middleware';
+// Note: Permission functions will be imported dynamically to avoid circular dependency issues
 import { check, validationResult } from 'express-validator';
 
 const router = express.Router();
+
+// Apply permission middleware to all routes that modify homepage cards
+const homepagePermissionMiddleware = async (req: Request, res: Response, next: Function) => {
+  // Skip permission check for GET requests (read-only)
+  if (req.method === 'GET') {
+    return next();
+  }
+  
+  try {
+    const { hasPermission } = await import('../middleware/permission-middleware');
+    const hasAdminPermission = await hasPermission(req, 'admin.settings.modify');
+    
+    if (!hasAdminPermission) {
+      return res.status(403).json({ 
+        message: 'Forbidden: You do not have permission to manage homepage cards.',
+        required: ['admin.settings.modify']
+      });
+    }
+    next();
+  } catch (error) {
+    console.error('Error checking homepage permissions:', error);
+    res.status(500).json({ message: 'Internal server error while checking permissions.' });
+  }
+};
+
+// Apply the permission middleware to all routes
+router.use(homepagePermissionMiddleware);
 
 // Helper to get the HomepageCard model for the current tenant
 const getHomepageCardModel = (req: Request): Model<IHomepageCard> => {
@@ -40,7 +67,7 @@ const getKnowledgebaseCategoryModel = (req: Request): Model<IKnowledgebaseCatego
 router.get(
   '/homepage-cards',
   isAuthenticated,
-  checkRole(['Super Admin', 'Admin']),
+  
   async (req: Request, res: Response) => {
     try {
       console.log('[Homepage Cards] GET request received');
@@ -85,7 +112,7 @@ router.get(
 router.post(
   '/homepage-cards',
   isAuthenticated,
-  checkRole(['Super Admin', 'Admin']),
+  
   [
     check('title', 'Title is required').not().isEmpty().trim(),
     check('description', 'Description is required').not().isEmpty().trim(),
@@ -190,7 +217,7 @@ router.post(
 router.put(
   '/homepage-cards/:cardId',
   isAuthenticated,
-  checkRole(['Super Admin', 'Admin']),
+  
   [
     check('title', 'Title must be a non-empty string').optional().notEmpty().trim(),
     check('description', 'Description must be a non-empty string').optional().notEmpty().trim(),
@@ -294,7 +321,7 @@ router.put(
 router.delete(
   '/homepage-cards/:cardId',
   isAuthenticated,
-  checkRole(['Super Admin', 'Admin']),
+  
   async (req: Request, res: Response) => {
     try {
       const HomepageCard = getHomepageCardModel(req);
@@ -324,7 +351,7 @@ router.delete(
 router.put(
   '/homepage-cards/reorder',
   isAuthenticated,
-  checkRole(['Super Admin', 'Admin']),
+  
   [
     check('cardIds', 'Card IDs must be an array').isArray(),
     check('cardIds.*', 'Each card ID must be a valid ObjectId').isMongoId(),

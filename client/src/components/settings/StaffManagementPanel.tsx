@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
 import { useAuth } from '@/hooks/use-auth';
+import { usePermissions } from '@/hooks/use-permissions';
 import { Button } from 'modl-shared-web/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from 'modl-shared-web/components/ui/card';
 import ChangeRoleModal from './ChangeRoleModal'; // Import the new modal
@@ -19,7 +20,7 @@ interface StaffMember {
   _id: string;
   email: string;
   username: string;
-  role: 'Super Admin' | 'Admin' | 'Moderator' | 'Helper';
+  role: string;
   createdAt: string;
   status: string;
   assignedMinecraftUuid?: string;
@@ -29,49 +30,28 @@ interface StaffMember {
 interface User {
   _id: string;
   email: string;
-  role: 'Super Admin' | 'Admin' | 'Moderator' | 'Helper';
+  role: string;
 }
 
 // Helper function to check if a user can change another member's role
-const canChangeRole = (currentUser: User, member: StaffMember): boolean => {
-  // Super Admin can change any role (server will handle additional protections)
-  if (currentUser.role === 'Super Admin') {
-    return true;
-  }
-  
-  // Admins can only change Moderator/Helper roles, not other Admins or Super Admins
-  if (currentUser.role === 'Admin') {
-    return member.role === 'Moderator' || member.role === 'Helper';
-  }
-  
-  // Other roles cannot change roles
-  return false;
+const canChangeRole = (hasStaffManagePermission: boolean): boolean => {
+  return hasStaffManagePermission;
 };
 
 // Helper function to check if a user can remove another member
-const canRemoveMember = (currentUser: User, member: StaffMember): boolean => {
+const canRemoveMember = (hasStaffManagePermission: boolean, currentUser: User, member: StaffMember): boolean => {
   // Cannot remove yourself (checked by member ID comparison in the actual removal)
   if (currentUser._id === member._id) {
     return false;
   }
   
-  // Super Admin can remove anyone (server will handle additional protections)
-  if (currentUser.role === 'Super Admin') {
-    return true;
-  }
-  
-  // Admins can only remove Moderators and Helpers, not other Admins or Super Admins
-  if (currentUser.role === 'Admin') {
-    return member.role === 'Moderator' || member.role === 'Helper';
-  }
-  
-  // Other roles cannot remove anyone
-  return false;
+  return hasStaffManagePermission;
 };
 
 const StaffManagementPanel = () => {
   const { data: staff, isLoading, error, refetch: refetchStaff, isRefetching } = useStaff();
   const { user: currentUser } = useAuth();
+  const { hasPermission } = usePermissions();
   const [isInviteModalOpen, setIsInviteModalOpen] = useState(false);
   const [isRemoveAlertOpen, setIsRemoveAlertOpen] = useState(false);
   const [isChangeRoleModalOpen, setIsChangeRoleModalOpen] = useState(false);
@@ -263,17 +243,17 @@ const StaffManagementPanel = () => {
                             </>
                           ) : (
                             <>
-                              {currentUser && currentUser.role === 'Super Admin' && (
+                              {hasPermission('admin.staff.manage') && (
                                 <DropdownMenuItem onSelect={() => openAssignPlayerModal(member)}>
                                   {member.assignedMinecraftUsername ? 'Change' : 'Assign'} Minecraft Player
                                 </DropdownMenuItem>
                               )}
-                              {currentUser && canChangeRole(currentUser, member) && (
+                              {currentUser && canChangeRole(hasPermission('admin.staff.manage')) && (
                                 <DropdownMenuItem onSelect={() => openChangeRoleModal(member)}>
                                   Change Role
                                 </DropdownMenuItem>
                               )}
-                              {currentUser && canRemoveMember(currentUser, member) && (
+                              {currentUser && canRemoveMember(hasPermission('admin.staff.manage'), currentUser, member) && (
                                 <DropdownMenuItem onSelect={() => openConfirmationDialog(member)}>
                                   Remove Staff Member
                                 </DropdownMenuItem>
