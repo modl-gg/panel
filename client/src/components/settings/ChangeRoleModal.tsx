@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Button } from 'modl-shared-web/components/ui/button';
+import { Button } from '@modl-gg/shared-web/components/ui/button';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -9,12 +9,12 @@ import {
   AlertDialogFooter,
   AlertDialogHeader,
   AlertDialogTitle,
-} from 'modl-shared-web/components/ui/alert-dialog';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from 'modl-shared-web/components/ui/select';
-import { Label } from 'modl-shared-web/components/ui/label';
+} from '@modl-gg/shared-web/components/ui/alert-dialog';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@modl-gg/shared-web/components/ui/select';
+import { Label } from '@modl-gg/shared-web/components/ui/label';
 import { useQueryClient } from '@tanstack/react-query';
 import { useAuth } from '@/hooks/use-auth';
-import { useToast } from 'modl-shared-web/hooks/use-toast';
+import { useToast } from '@modl-gg/shared-web/hooks/use-toast';
 import { useQuery } from '@tanstack/react-query';
 
 interface StaffMember {

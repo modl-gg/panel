@@ -1,5 +1,5 @@
-import { Card, CardContent } from "modl-shared-web/components/ui/card";
-import { Button } from "modl-shared-web/components/ui/button";
+import { Card, CardContent } from "@modl-gg/shared-web/components/ui/card";
+import { Button } from "@modl-gg/shared-web/components/ui/button";
 import { AlertCircle, Home } from "lucide-react";
 import { useLocation } from "wouter";
 import { useEffect } from "react";

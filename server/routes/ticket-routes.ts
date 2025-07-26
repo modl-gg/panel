@@ -3,7 +3,7 @@ import { Document as MongooseDocument, Connection } from 'mongoose';
 import { isAuthenticated } from '../middleware/auth-middleware';
 // Note: Permission functions will be imported dynamically to avoid circular dependency issues
 import AIModerationService from '../services/ai-moderation-service';
-import { IReply, ITicket } from 'modl-shared-web/types';
+import { IReply, ITicket } from '@modl-gg/shared-web/types';
 import { getSettingsValue } from './settings-routes';
 
 interface INote {

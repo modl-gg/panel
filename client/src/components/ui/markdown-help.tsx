@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { HelpCircle, ChevronDown, ChevronUp } from 'lucide-react';
-import { Button } from 'modl-shared-web/components/ui/button';
-import { Collapsible, CollapsibleContent, CollapsibleTrigger } from 'modl-shared-web/components/ui/collapsible';
+import { Button } from '@modl-gg/shared-web/components/ui/button';
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@modl-gg/shared-web/components/ui/collapsible';
 import MarkdownRenderer from './markdown-renderer';
 
 const MarkdownHelp = () => {

@@ -26,24 +26,24 @@ import {
   Database,
   Gavel
 } from 'lucide-react';
-import { Button } from 'modl-shared-web/components/ui/button';
-import { Card, CardContent, CardHeader, CardTitle } from 'modl-shared-web/components/ui/card';
-import { Badge } from 'modl-shared-web/components/ui/badge';
-import { Input } from 'modl-shared-web/components/ui/input';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from 'modl-shared-web/components/ui/select';
-import { Checkbox } from 'modl-shared-web/components/ui/checkbox';
-import { Separator } from 'modl-shared-web/components/ui/separator';
-import { Popover, PopoverContent, PopoverTrigger } from 'modl-shared-web/components/ui/popover';
-import { Calendar as CalendarComponent } from 'modl-shared-web/components/ui/calendar';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from 'modl-shared-web/components/ui/dialog';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from 'modl-shared-web/components/ui/tabs';
-import { ScrollArea } from 'modl-shared-web/components/ui/scrollarea';
+import { Button } from '@modl-gg/shared-web/components/ui/button';
+import { Card, CardContent, CardHeader, CardTitle } from '@modl-gg/shared-web/components/ui/card';
+import { Badge } from '@modl-gg/shared-web/components/ui/badge';
+import { Input } from '@modl-gg/shared-web/components/ui/input';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@modl-gg/shared-web/components/ui/select';
+import { Checkbox } from '@modl-gg/shared-web/components/ui/checkbox';
+import { Separator } from '@modl-gg/shared-web/components/ui/separator';
+import { Popover, PopoverContent, PopoverTrigger } from '@modl-gg/shared-web/components/ui/popover';
+import { Calendar as CalendarComponent } from '@modl-gg/shared-web/components/ui/calendar';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@modl-gg/shared-web/components/ui/dialog';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@modl-gg/shared-web/components/ui/tabs';
+import { ScrollArea } from '@modl-gg/shared-web/components/ui/scrollarea';
 import { format, subDays, startOfDay, endOfDay } from 'date-fns';
 import { useLogs } from '@/hooks/use-data';
 import { useQuery } from '@tanstack/react-query';
 import PageContainer from '@/components/layout/PageContainer';
-import { useToast } from 'modl-shared-web/hooks/use-toast';
-import { cn } from 'modl-shared-web/lib/utils';
+import { useToast } from '@modl-gg/shared-web/hooks/use-toast';
+import { cn } from '@modl-gg/shared-web/lib/utils';
 import { usePlayerWindow } from '@/contexts/PlayerWindowContext';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell, LineChart, Line, Area, AreaChart } from 'recharts';
 import { getEvidenceDisplayText, getEvidenceClickUrl, getEvidenceShortName, isEvidenceClickable } from '@/utils/evidence-utils';

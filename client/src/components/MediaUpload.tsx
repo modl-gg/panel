@@ -1,10 +1,10 @@
 import React, { useState, useRef, useCallback } from 'react';
 import { Upload, X, FileText, Image, Video, File, Loader2, Check, AlertCircle } from 'lucide-react';
-import { Button } from 'modl-shared-web/components/ui/button';
-import { useToast } from 'modl-shared-web/hooks/use-toast';
-import { Progress } from 'modl-shared-web/components/ui/progress';
-import { Card, CardContent } from 'modl-shared-web/components/ui/card';
-import { cn } from 'modl-shared-web/lib/utils';
+import { Button } from '@modl-gg/shared-web/components/ui/button';
+import { useToast } from '@modl-gg/shared-web/hooks/use-toast';
+import { Progress } from '@modl-gg/shared-web/components/ui/progress';
+import { Card, CardContent } from '@modl-gg/shared-web/components/ui/card';
+import { cn } from '@modl-gg/shared-web/lib/utils';
 
 interface MediaUploadProps {
   uploadType: 'evidence' | 'ticket' | 'appeal' | 'article' | 'server-icon';

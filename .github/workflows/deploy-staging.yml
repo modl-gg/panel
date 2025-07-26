@@ -8,24 +8,56 @@ on:
 jobs:
   deploy:
     runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    environment: staging
 
     steps:
-    - name: Checkout code
-      uses: actions/checkout@v3
+      - name: Checkout code
+        uses: actions/checkout@v4
 
-    - name: Setup SSH
-      run: |
-        mkdir -p ~/.ssh
-        echo "${{ secrets.SSH_PRIVATE_KEY }}" > ~/.ssh/id_rsa
-        chmod 600 ~/.ssh/id_rsa
-        ssh-keyscan -H ${{ secrets.STAGING_IP }} >> ~/.ssh/known_hosts
+      - name: Setup SSH
+        uses: webfactory/ssh-agent@v0.7.0
+        with:
+          ssh-private-key: ${{ secrets.SSH_PRIVATE_KEY }}
 
-    - name: Deploy via SSH
-      run: |
-        ssh ${{ secrets.SERVER_USER }}@${{ secrets.STAGING_IP }} << 'EOF'
-          cd /home/modl/modl-panel
-          git pull origin dev
-          npm install
-          npm run build
-          pm2 reload modl-panel
-        EOF
+      - name: Add server to known hosts
+        run: |
+          ssh-keyscan -H ${{ secrets.STAGING_IP }} >> ~/.ssh/known_hosts
+
+      - name: Deploy via SSH
+        run: |
+          ssh -o StrictHostKeyChecking=no ${{ secrets.SERVER_USER }}@${{ secrets.STAGING_IP }} << 'EOF'
+            set -e
+            
+            cd /home/modl/modl-panel
+            
+            git stash
+            
+            git pull origin dev
+            
+            if git diff --name-only HEAD@{1} HEAD | grep -q "package.*\.json"; then
+              npm ci
+            fi
+            
+            npm run build
+            
+            pm2 reload modl-panel --wait-ready
+            
+            if pm2 describe modl-panel | grep -q "online"; then
+              echo "PM2 process is running successfully"
+            else
+              echo "Error: PM2 process failed to start"
+              exit 1
+            fi
+          EOF
+
+      # - name: Verify deployment
+      #   run: |
+      #     echo "Deployment verification completed"
+      # if we ever add in health checks then we could use this? idk i aint gonna bother lol
+
+      - name: Notify on failure
+        if: failure()
+        run: |
+          echo "Deployment failed! Check the logs."

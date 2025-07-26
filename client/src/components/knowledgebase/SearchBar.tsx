@@ -1,5 +1,5 @@
 import React from 'react';
-import { Input } from 'modl-shared-web/components/ui/input'; // Assuming you have a general Input component
+import { Input } from '@modl-gg/shared-web/components/ui/input'; // Assuming you have a general Input component
 
 interface SearchBarProps {
   searchTerm: string;

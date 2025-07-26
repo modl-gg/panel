@@ -1,9 +1,9 @@
 import React, { useState } from 'react';
 import { ArrowUpRight, Loader2, AlertCircle } from 'lucide-react';
-import { Button } from 'modl-shared-web/components/ui/button';
+import { Button } from '@modl-gg/shared-web/components/ui/button';
 import { usePlayerWindow } from '@/contexts/PlayerWindowContext';
 import { usePlayerLookup, extractPlayerIdentifier } from '@/hooks/use-player-lookup';
-import { cn } from 'modl-shared-web/lib/utils';
+import { cn } from '@modl-gg/shared-web/lib/utils';
 
 interface ClickablePlayerProps {
   children: React.ReactNode;

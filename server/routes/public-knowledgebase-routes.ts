@@ -4,7 +4,7 @@ import {
   KnowledgebaseArticleSchema,
   KnowledgebaseCategory,
   KnowledgebaseArticle
-} from 'modl-shared-web';
+} from '@modl-gg/shared-web';
 import mongoose, { Model, Connection } from 'mongoose';
 
 const router = express.Router();

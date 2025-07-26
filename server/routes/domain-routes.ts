@@ -7,7 +7,7 @@ import {
   CloudflareCustomHostname 
 } from '../api/cloudflare';
 import { Types } from 'mongoose';
-import { ModlServerSchema } from 'modl-shared-web';
+import { ModlServerSchema } from '@modl-gg/shared-web';
 import { connectToGlobalModlDb } from '../db/connectionManager';
 
 interface IModlServer {

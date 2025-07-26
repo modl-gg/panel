@@ -1,5 +1,5 @@
 import React from 'react';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from 'modl-shared-web/components/ui/card';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@modl-gg/shared-web/components/ui/card';
 import { ArrowUpIcon, ArrowDownIcon, Users, Ticket, Shield, AlertTriangle } from 'lucide-react';
 
 interface OverviewData {

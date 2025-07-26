@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useLocation, Link } from 'wouter';
-import { Popover, PopoverContent, PopoverTrigger } from 'modl-shared-web/components/ui/popover';
+import { Popover, PopoverContent, PopoverTrigger } from '@modl-gg/shared-web/components/ui/popover';
 import { queryClient } from '@/lib/queryClient';
 import { useAuth } from '@/hooks/use-auth';
 import {
@@ -39,14 +39,14 @@ import {
   Eye,
   Paperclip
 } from 'lucide-react';
-import { Button } from 'modl-shared-web/components/ui/button';
-import { Badge } from 'modl-shared-web/components/ui/badge';
-import { Checkbox } from 'modl-shared-web/components/ui/checkbox';
+import { Button } from '@modl-gg/shared-web/components/ui/button';
+import { Badge } from '@modl-gg/shared-web/components/ui/badge';
+import { Checkbox } from '@modl-gg/shared-web/components/ui/checkbox';
 import { useTicket, usePanelTicket, useUpdateTicket, useSettings, useStaff, useModifyPunishment } from '@/hooks/use-data';
 import { QuickResponsesConfiguration, defaultQuickResponsesConfig } from '@/types/quickResponses';
 import { useToast } from '@/hooks/use-toast';
 import PageContainer from '@/components/layout/PageContainer';
-import { Card, CardHeader, CardTitle, CardDescription, CardContent, CardFooter } from 'modl-shared-web/components/ui/card';
+import { Card, CardHeader, CardTitle, CardDescription, CardContent, CardFooter } from '@modl-gg/shared-web/components/ui/card';
 import { apiRequest } from '@/lib/queryClient';
 import { useAddTicketReply } from '@/hooks/use-add-ticket-reply';
 import MarkdownRenderer from '@/components/ui/markdown-renderer';

@@ -4,13 +4,13 @@ import { z } from 'zod';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { AlertTriangle, SearchIcon, ShieldCheck, ShieldX, Send, Paperclip, File, Image, Video, FileText, Eye, X } from 'lucide-react';
-import { Label } from "modl-shared-web/components/ui/label";
-import { Button } from "modl-shared-web/components/ui/button";
-import { Input } from "modl-shared-web/components/ui/input";
-import { Textarea } from "modl-shared-web/components/ui/textarea";
-import { Checkbox } from "modl-shared-web/components/ui/checkbox";
-import { RadioGroup, RadioGroupItem } from "modl-shared-web/components/ui/radio-group";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "modl-shared-web/components/ui/select";
+import { Label } from "@modl-gg/shared-web/components/ui/label";
+import { Button } from "@modl-gg/shared-web/components/ui/button";
+import { Input } from "@modl-gg/shared-web/components/ui/input";
+import { Textarea } from "@modl-gg/shared-web/components/ui/textarea";
+import { Checkbox } from "@modl-gg/shared-web/components/ui/checkbox";
+import { RadioGroup, RadioGroupItem } from "@modl-gg/shared-web/components/ui/radio-group";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@modl-gg/shared-web/components/ui/select";
 import MediaUpload from '@/components/MediaUpload';
 import {
   Form,
@@ -20,7 +20,7 @@ import {
   FormItem,
   FormLabel,
   FormMessage,
-} from "modl-shared-web/components/ui/form";
+} from "@modl-gg/shared-web/components/ui/form";
 import {
   Card,
   CardContent,
@@ -28,15 +28,15 @@ import {
   CardFooter,
   CardHeader,
   CardTitle,
-} from "modl-shared-web/components/ui/card";
+} from "@modl-gg/shared-web/components/ui/card";
 import {
   Alert,
   AlertDescription,
   AlertTitle,
-} from "modl-shared-web/components/ui/alert";
+} from "@modl-gg/shared-web/components/ui/alert";
 import { useToast } from "@/hooks/use-toast";
-import { Separator } from 'modl-shared-web/components/ui/separator';
-import { Badge } from 'modl-shared-web/components/ui/badge';
+import { Separator } from '@modl-gg/shared-web/components/ui/separator';
+import { Badge } from '@modl-gg/shared-web/components/ui/badge';
 import { useSettings, useCreateAppeal } from '@/hooks/use-data';
 import TicketAttachments from '@/components/TicketAttachments';
 

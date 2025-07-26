@@ -2,19 +2,19 @@ import React, { useState } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
 import { useAuth } from '@/hooks/use-auth';
 import { usePermissions } from '@/hooks/use-permissions';
-import { Button } from 'modl-shared-web/components/ui/button';
-import { Card, CardContent, CardHeader, CardTitle } from 'modl-shared-web/components/ui/card';
+import { Button } from '@modl-gg/shared-web/components/ui/button';
+import { Card, CardContent, CardHeader, CardTitle } from '@modl-gg/shared-web/components/ui/card';
 import ChangeRoleModal from './ChangeRoleModal'; // Import the new modal
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from 'modl-shared-web/components/ui/table';
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@modl-gg/shared-web/components/ui/table';
 import { useStaff } from '@/hooks/use-data';
-import { Skeleton } from 'modl-shared-web/components/ui/skeleton';
+import { Skeleton } from '@modl-gg/shared-web/components/ui/skeleton';
 import { MoreHorizontal, Plus, PlusIcon, RefreshCw, User } from 'lucide-react';
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from 'modl-shared-web/components/ui/dropdown-menu';
-import { Badge } from 'modl-shared-web/components/ui/badge';
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@modl-gg/shared-web/components/ui/dropdown-menu';
+import { Badge } from '@modl-gg/shared-web/components/ui/badge';
 import InviteStaffModal from './InviteStaffModal';
 import AssignMinecraftPlayerModal from './AssignMinecraftPlayerModal';
-import { useToast } from 'modl-shared-web/hooks/use-toast';
-import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from 'modl-shared-web/components/ui/alert-dialog';
+import { useToast } from '@modl-gg/shared-web/hooks/use-toast';
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@modl-gg/shared-web/components/ui/alert-dialog';
 
 interface StaffMember {
   _id: string;

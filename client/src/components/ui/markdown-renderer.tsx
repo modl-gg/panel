@@ -1,5 +1,5 @@
 import ReactMarkdown from 'react-markdown';
-import { cn } from 'modl-shared-web/lib/utils';
+import { cn } from '@modl-gg/shared-web/lib/utils';
 import { ClickablePlayer } from './clickable-player';
 
 interface MarkdownRendererProps {

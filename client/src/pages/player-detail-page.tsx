@@ -5,9 +5,9 @@ import {
   Link2, StickyNote, Ticket, UserRound, Shield, FileText, Upload, Loader2,
   ChevronDown, ChevronRight, Settings, Plus
 } from 'lucide-react';
-import { Button } from 'modl-shared-web/components/ui/button';
-import { Badge } from 'modl-shared-web/components/ui/badge';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from 'modl-shared-web/components/ui/tabs';
+import { Button } from '@modl-gg/shared-web/components/ui/button';
+import { Badge } from '@modl-gg/shared-web/components/ui/badge';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@modl-gg/shared-web/components/ui/tabs';
 import { usePlayer, useApplyPunishment, useSettings, usePlayerTickets, usePlayerAllTickets, useModifyPunishment, useAddPunishmentNote, useLinkedAccounts, useFindLinkedAccounts } from '@/hooks/use-data';
 import { ClickablePlayer } from '@/components/ui/clickable-player';
 import { useAuth } from '@/hooks/use-auth';

@@ -1,11 +1,11 @@
 import React, { useState } from 'react';
 import { Image as ImageIcon, Video, Upload, Copy, Check, Trash2 } from 'lucide-react';
-import { Button } from 'modl-shared-web/components/ui/button';
-import { Card, CardContent, CardHeader, CardTitle } from 'modl-shared-web/components/ui/card';
-import { Badge } from 'modl-shared-web/components/ui/badge';
-import { useToast } from 'modl-shared-web/hooks/use-toast';
-import { Input } from 'modl-shared-web/components/ui/input';
-import { Label } from 'modl-shared-web/components/ui/label';
+import { Button } from '@modl-gg/shared-web/components/ui/button';
+import { Card, CardContent, CardHeader, CardTitle } from '@modl-gg/shared-web/components/ui/card';
+import { Badge } from '@modl-gg/shared-web/components/ui/badge';
+import { useToast } from '@modl-gg/shared-web/hooks/use-toast';
+import { Input } from '@modl-gg/shared-web/components/ui/input';
+import { Label } from '@modl-gg/shared-web/components/ui/label';
 import MediaUpload from './MediaUpload';
 import { useMediaUpload } from '@/hooks/use-media-upload';
 

@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
-import { Button } from 'modl-shared-web/components/ui/button';
+import { Button } from '@modl-gg/shared-web/components/ui/button';
 import {
   Dialog,
   DialogContent,
@@ -10,7 +10,7 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
-} from 'modl-shared-web/components/ui/dialog';
+} from '@modl-gg/shared-web/components/ui/dialog';
 import {
   Form,
   FormControl,
@@ -18,11 +18,11 @@ import {
   FormItem,
   FormLabel,
   FormMessage,
-} from 'modl-shared-web/components/ui/form';
-import { Input } from 'modl-shared-web/components/ui/input';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from 'modl-shared-web/components/ui/select';
+} from '@modl-gg/shared-web/components/ui/form';
+import { Input } from '@modl-gg/shared-web/components/ui/input';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@modl-gg/shared-web/components/ui/select';
 import { useAuth } from '@/hooks/use-auth';
-import { useToast } from 'modl-shared-web/hooks/use-toast';
+import { useToast } from '@modl-gg/shared-web/hooks/use-toast';
 import { Loader2 } from 'lucide-react';
 import { useQuery } from '@tanstack/react-query';
 

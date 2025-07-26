@@ -1,9 +1,9 @@
 import React, { useState, useMemo } from 'react';
-import { Button } from 'modl-shared-web/components/ui/button';
-import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from 'modl-shared-web/components/ui/dialog';
-import { Input } from 'modl-shared-web/components/ui/input';
-import { Badge } from 'modl-shared-web/components/ui/badge';
-import { useToast } from 'modl-shared-web/hooks/use-toast';
+import { Button } from '@modl-gg/shared-web/components/ui/button';
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@modl-gg/shared-web/components/ui/dialog';
+import { Input } from '@modl-gg/shared-web/components/ui/input';
+import { Badge } from '@modl-gg/shared-web/components/ui/badge';
+import { useToast } from '@modl-gg/shared-web/hooks/use-toast';
 import { usePlayers, useAssignMinecraftPlayer, useStaff } from '@/hooks/use-data';
 import { Loader2, User, X, Search } from 'lucide-react';
 

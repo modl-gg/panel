@@ -1,8 +1,8 @@
 import { useState, useEffect } from 'react';
 import { useLocation } from 'wouter';
 import { Search, ChevronRight, X, Loader2 } from 'lucide-react';
-import { Input } from 'modl-shared-web/components/ui/input';
-import { Button } from 'modl-shared-web/components/ui/button';
+import { Input } from '@modl-gg/shared-web/components/ui/input';
+import { Button } from '@modl-gg/shared-web/components/ui/button';
 import { usePlayers } from '@/hooks/use-data';
 
 interface Player {

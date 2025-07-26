@@ -5,9 +5,9 @@ import {
   ChevronDown, ChevronRight, Settings, Plus
 } from 'lucide-react';
 import { useLocation } from 'wouter';
-import { Button } from 'modl-shared-web/components/ui/button';
-import { Badge } from 'modl-shared-web/components/ui/badge';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from 'modl-shared-web/components/ui/tabs';
+import { Button } from '@modl-gg/shared-web/components/ui/button';
+import { Badge } from '@modl-gg/shared-web/components/ui/badge';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@modl-gg/shared-web/components/ui/tabs';
 import ResizableWindow from '@/components/layout/ResizableWindow';
 import { usePlayer, useApplyPunishment, useSettings, usePlayerTickets, usePlayerAllTickets, useModifyPunishment, useAddPunishmentNote, useLinkedAccounts, useFindLinkedAccounts } from '@/hooks/use-data';
 import { ClickablePlayer } from '@/components/ui/clickable-player';

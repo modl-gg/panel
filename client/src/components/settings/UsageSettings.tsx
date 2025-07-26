@@ -1,16 +1,16 @@
 import React, { useState, useEffect } from 'react';
 import { HardDrive, Search, Filter, Trash2, Download, FolderOpen, Calendar, AlertCircle, Settings, CreditCard, TrendingUp, Brain, Zap } from 'lucide-react';
-import { Button } from 'modl-shared-web/components/ui/button';
-import { Input } from 'modl-shared-web/components/ui/input';
-import { Label } from 'modl-shared-web/components/ui/label';
-import { Progress } from 'modl-shared-web/components/ui/progress';
-import { Card, CardContent, CardHeader, CardTitle } from 'modl-shared-web/components/ui/card';
-import { Badge } from 'modl-shared-web/components/ui/badge';
-import { Checkbox } from 'modl-shared-web/components/ui/checkbox';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from 'modl-shared-web/components/ui/select';
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from 'modl-shared-web/components/ui/table';
-import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from 'modl-shared-web/components/ui/alert-dialog';
-import { useToast } from 'modl-shared-web/hooks/use-toast';
+import { Button } from '@modl-gg/shared-web/components/ui/button';
+import { Input } from '@modl-gg/shared-web/components/ui/input';
+import { Label } from '@modl-gg/shared-web/components/ui/label';
+import { Progress } from '@modl-gg/shared-web/components/ui/progress';
+import { Card, CardContent, CardHeader, CardTitle } from '@modl-gg/shared-web/components/ui/card';
+import { Badge } from '@modl-gg/shared-web/components/ui/badge';
+import { Checkbox } from '@modl-gg/shared-web/components/ui/checkbox';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@modl-gg/shared-web/components/ui/select';
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@modl-gg/shared-web/components/ui/table';
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@modl-gg/shared-web/components/ui/alert-dialog';
+import { useToast } from '@modl-gg/shared-web/hooks/use-toast';
 
 interface StorageFile {
   id: string;

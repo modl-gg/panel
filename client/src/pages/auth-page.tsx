@@ -7,8 +7,8 @@ import { Eye, EyeOff, Fingerprint, KeyRound, LockKeyhole, Mail, ShieldCheck } fr
 import { useAuth } from '@/hooks/use-auth';
 import { usePublicSettings } from '@/hooks/use-public-settings';
 
-import { Button } from "modl-shared-web/components/ui/button";
-import { Input } from "modl-shared-web/components/ui/input";
+import { Button } from "@modl-gg/shared-web/components/ui/button";
+import { Input } from "@modl-gg/shared-web/components/ui/input";
 import {
   Form,
   FormControl,
@@ -17,7 +17,7 @@ import {
   FormItem,
   FormLabel,
   FormMessage,
-} from "modl-shared-web/components/ui/form";
+} from "@modl-gg/shared-web/components/ui/form";
 import {
   Card,
   CardContent,
@@ -25,16 +25,16 @@ import {
   CardFooter,
   CardHeader,
   CardTitle,
-} from "modl-shared-web/components/ui/card";
+} from "@modl-gg/shared-web/components/ui/card";
 import {
   Tabs,
   TabsContent,
   TabsList,
   TabsTrigger,
-} from "modl-shared-web/components/ui/tabs";
-import { useToast } from "modl-shared-web/hooks/use-toast";
-import { Badge } from 'modl-shared-web/components/ui/badge';
-import { Separator } from 'modl-shared-web/components/ui/separator';
+} from "@modl-gg/shared-web/components/ui/tabs";
+import { useToast } from "@modl-gg/shared-web/hooks/use-toast";
+import { Badge } from '@modl-gg/shared-web/components/ui/badge';
+import { Separator } from '@modl-gg/shared-web/components/ui/separator';
 
 // Define the login form schema
 const loginSchema = z.object({

@@ -7,7 +7,7 @@ import {
   SettingsSchema,
   HomepageCardSchema,
   IHomepageCard
-} from 'modl-shared-web';
+} from '@modl-gg/shared-web';
 import { createDefaultSettings, addDefaultPunishmentTypes } from '../routes/settings-routes';
 import { Connection } from 'mongoose';
 import { v4 as uuidv4 } from 'uuid';

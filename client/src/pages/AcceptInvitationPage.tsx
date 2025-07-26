@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 import { useLocation } from 'wouter';
 import PageContainer from '@/components/layout/PageContainer';
 import { useAuth } from '@/hooks/use-auth';
-import { useToast } from 'modl-shared-web/hooks/use-toast';
+import { useToast } from '@modl-gg/shared-web/hooks/use-toast';
 
 const AcceptInvitationPage = () => {
   const [status, setStatus] = useState('Verifying your invitation...');

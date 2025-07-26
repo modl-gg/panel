@@ -4,7 +4,7 @@ import mongoose, { Document as MongooseDocument, Connection, Model } from 'mongo
 import { isAuthenticated } from '../middleware/auth-middleware';
 // Note: checkRole replaced with permission-based checks
 // Note: checkPermission will be imported dynamically to avoid circular dependency issues
-import { IPasskey, IStaff, IModlServer, Invitation } from 'modl-shared-web';
+import { IPasskey, IStaff, IModlServer, Invitation } from '@modl-gg/shared-web';
 import { getModlServersModel } from '../db/connectionManager';
 import { strictRateLimit, authRateLimit } from '../middleware/rate-limiter';
 import { getSettingsValue } from './settings-routes';

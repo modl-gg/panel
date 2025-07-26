@@ -15,9 +15,9 @@ import {
   Tooltip,
   TooltipContent,
   TooltipTrigger,
-} from "modl-shared-web/components/ui/tooltip";
-import { Button } from "modl-shared-web/components/ui/button";
-import { Input } from "modl-shared-web/components/ui/input";
+} from "@modl-gg/shared-web/components/ui/tooltip";
+import { Button } from "@modl-gg/shared-web/components/ui/button";
+import { Input } from "@modl-gg/shared-web/components/ui/input";
 import { usePlayers, useBillingStatus } from "@/hooks/use-data";
 import { useDashboard } from "@/contexts/DashboardContext";
 import PlayerWindow from "../../components/windows/PlayerWindow";

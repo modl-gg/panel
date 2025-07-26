@@ -1,8 +1,8 @@
 import { Request, Response, NextFunction } from 'express';
 import { Connection as MongooseConnection } from 'mongoose';
 import { connectToGlobalModlDb, connectToServerDb } from '../db/connectionManager';
-import { ModlServerSchema } from 'modl-shared-web/schemas/ModlServerSchema';
-import { SystemConfigSchema } from 'modl-shared-web';
+import { ModlServerSchema } from '@modl-gg/shared-web/schemas/ModlServerSchema';
+import { SystemConfigSchema } from '@modl-gg/shared-web';
 import { reservedSubdomains } from '../config/reserved-subdomains';
 
 const DOMAIN = process.env.DOMAIN || 'modl.gg';

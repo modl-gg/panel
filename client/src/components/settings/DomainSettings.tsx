@@ -1,13 +1,13 @@
 import React, { useState, useEffect } from 'react';
 import { Globe, CheckCircle, AlertCircle, Copy, ExternalLink, RefreshCw, Check } from 'lucide-react';
-import { Button } from 'modl-shared-web/components/ui/button';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from 'modl-shared-web/components/ui/card';
-import { Input } from 'modl-shared-web/components/ui/input';
-import { Label } from 'modl-shared-web/components/ui/label';
-import { Alert, AlertDescription, AlertTitle } from 'modl-shared-web/components/ui/alert';
-import { Badge } from 'modl-shared-web/components/ui/badge';
-import { Separator } from 'modl-shared-web/components/ui/separator';
-import { useToast } from 'modl-shared-web/hooks/use-toast';
+import { Button } from '@modl-gg/shared-web/components/ui/button';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@modl-gg/shared-web/components/ui/card';
+import { Input } from '@modl-gg/shared-web/components/ui/input';
+import { Label } from '@modl-gg/shared-web/components/ui/label';
+import { Alert, AlertDescription, AlertTitle } from '@modl-gg/shared-web/components/ui/alert';
+import { Badge } from '@modl-gg/shared-web/components/ui/badge';
+import { Separator } from '@modl-gg/shared-web/components/ui/separator';
+import { useToast } from '@modl-gg/shared-web/hooks/use-toast';
 import { useAuth } from '@/hooks/use-auth';
 import { usePermissions } from '@/hooks/use-permissions';
 

@@ -1,9 +1,9 @@
 import React, { useState, useEffect } from 'react';
 import { Save } from 'lucide-react';
-import { Button } from 'modl-shared-web/components/ui/button';
-import { Input } from 'modl-shared-web/components/ui/input';
-import { Label } from 'modl-shared-web/components/ui/label';
-import { useToast } from 'modl-shared-web/hooks/use-toast';
+import { Button } from '@modl-gg/shared-web/components/ui/button';
+import { Input } from '@modl-gg/shared-web/components/ui/input';
+import { Label } from '@modl-gg/shared-web/components/ui/label';
+import { useToast } from '@modl-gg/shared-web/hooks/use-toast';
 import { useAuth } from '@/hooks/use-auth';
 
 const ProfileSettings = () => {

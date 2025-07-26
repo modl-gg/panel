@@ -10,8 +10,8 @@ import {
   KnowledgebaseArticleSchema,
   KnowledgebaseCategorySchema,
   HomepageCardSchema
-} from 'modl-shared-web';
-import { ModlServerSchema } from 'modl-shared-web';
+} from '@modl-gg/shared-web';
+import { ModlServerSchema } from '@modl-gg/shared-web';
 
 dotenv.config();
 
