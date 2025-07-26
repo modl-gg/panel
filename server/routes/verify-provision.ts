@@ -63,7 +63,7 @@ export async function provisionNewServerInstance(
   await seedDefaultHomepageCards(dbConnection);
     
 
-  const ModlServerModel = globalConnection.models.ModlServer || globalConnection.model<IModlServer>('ModlServer', ModlServerSchema);
+  const ModlServerModel = globalConnection.models.ModlServer || globalConnection.model<IModlServer>('ModlServer', ModlServerSchema as any);
   await ModlServerModel.findByIdAndUpdate(serverConfigId, {
     provisioningStatus: 'completed',
     databaseName: dbConnection.name, // Store the actual database name used
@@ -82,7 +82,7 @@ export function setupVerificationAndProvisioningRoutes(app: Express) {
     let globalConnection: Connection;
     try {
       globalConnection = await connectToGlobalModlDb();
-      const ModlServerModel = globalConnection.models.ModlServer || globalConnection.model<IModlServer>('ModlServer', ModlServerSchema);
+      const ModlServerModel = globalConnection.models.ModlServer || globalConnection.model<IModlServer>('ModlServer', ModlServerSchema as any);
       const server = await ModlServerModel.findOne({ emailVerificationToken: token });
 
       if (!server) {
@@ -138,7 +138,7 @@ export function setupVerificationAndProvisioningRoutes(app: Express) {
     let globalConnection: Connection;
     try {
       globalConnection = await connectToGlobalModlDb();
-      const ModlServerModel = globalConnection.models.ModlServer || globalConnection.model<IModlServer>('ModlServer', ModlServerSchema);
+      const ModlServerModel = globalConnection.models.ModlServer || globalConnection.model<IModlServer>('ModlServer', ModlServerSchema as any);
       const server = await ModlServerModel.findOne({ serverName: serverName });
 
       if (!server) {
@@ -151,8 +151,50 @@ export function setupVerificationAndProvisioningRoutes(app: Express) {
       }
 
       if (server.provisioningStatus === 'completed') {
-        // Server is provisioned and ready - no auto-login, users must authenticate normally
-        const message = `Server '${serverName}' is provisioned and ready. Please log in to access your panel.`;
+        // Server is provisioned and ready
+        const message = `Server '${serverName}' is provisioned and ready. You will be redirected shortly...`;
+
+        // Check if they provided a valid sign-in token for auto-login
+        if (clientSignInToken && server.provisioningSignInToken && server.provisioningSignInTokenExpiresAt) {
+          // Validate the token
+          const isTokenValid = clientSignInToken === server.provisioningSignInToken;
+          const isTokenNotExpired = new Date() < server.provisioningSignInTokenExpiresAt;
+
+          if (isTokenValid && isTokenNotExpired) {
+            // Valid token - create admin session for auto-login
+            try {
+              // Set up session data for the admin user
+              (req.session as any).userId = server.adminEmail;
+              (req.session as any).email = server.adminEmail;
+              (req.session as any).username = server.adminEmail.split('@')[0] || 'admin';
+              (req.session as any).role = 'Super Admin';
+              (req.session as any).plan = 'premium';
+              (req.session as any).subscription_status = 'active';
+
+              await req.session.save();
+
+              // Clear the provisioning sign-in token to prevent reuse
+              server.provisioningSignInToken = undefined;
+              server.provisioningSignInTokenExpiresAt = undefined;
+              await server.save();
+
+              // Return success with user data for auto-login
+              return res.json({
+                status: 'completed',
+                message: message,
+                user: {
+                  id: server.adminEmail,
+                  email: server.adminEmail,
+                  username: server.adminEmail.split('@')[0] || 'admin',
+                  role: 'Super Admin'
+                }
+              });
+            } catch (sessionError: any) {
+              console.error(`[verify-provision] Error creating session for ${serverName}:`, sessionError);
+              // If session creation fails, still clear the token and proceed without auto-login
+            }
+          }
+        }
 
         // Clear the provisioning sign-in token to prevent any potential misuse
         if (server.provisioningSignInToken || server.provisioningSignInTokenExpiresAt) {
@@ -169,7 +211,7 @@ export function setupVerificationAndProvisioningRoutes(app: Express) {
         return res.json({
           status: 'completed',
           message: message,
-          user: null // No user session created - users must authenticate normally
+          user: null // No auto-login - users must authenticate normally
         });
       }
 
@@ -230,7 +272,7 @@ export function setupVerificationAndProvisioningRoutes(app: Express) {
 async function createSuperAdminUser(dbConnection: Connection, globalConnection: Connection, serverConfigId: string) {
   try {
     // Get the server config to get admin email
-    const ModlServerModel = globalConnection.models.ModlServer || globalConnection.model<IModlServer>('ModlServer', ModlServerSchema);
+    const ModlServerModel = globalConnection.models.ModlServer || globalConnection.model<IModlServer>('ModlServer', ModlServerSchema as any);
     const serverConfig = await ModlServerModel.findById(serverConfigId);
     
     if (!serverConfig) {
