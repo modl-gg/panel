@@ -69,10 +69,10 @@ const AuthPage = () => {
 
   const { login, user, requestEmailVerification, request2FAVerification, requestPasskeyAuthentication } = useAuth();
 
-  // Redirect to home page if already authenticated
+  // Redirect to panel home page if already authenticated
   useEffect(() => {
     if (user) {
-      setLocation('/');
+      setLocation('/panel');
     }
   }, [user, setLocation]);
 

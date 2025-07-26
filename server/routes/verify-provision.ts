@@ -152,7 +152,7 @@ export function setupVerificationAndProvisioningRoutes(app: Express) {
 
       if (server.provisioningStatus === 'completed') {
         // Server is provisioned and ready
-        const message = `Server '${serverName}' is provisioned and ready. You will be redirected shortly...`;
+        const message = `Server '${serverName}' is provisioned and ready.`;
 
         // Check if they provided a valid sign-in token for auto-login
         if (clientSignInToken && server.provisioningSignInToken && server.provisioningSignInTokenExpiresAt) {
