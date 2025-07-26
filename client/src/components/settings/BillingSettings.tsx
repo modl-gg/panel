@@ -1,12 +1,12 @@
 import React, { useState, useEffect } from 'react';
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from 'modl-shared-web/components/ui/card';
-import { Button } from 'modl-shared-web/components/ui/button';
-import { Badge } from 'modl-shared-web/components/ui/badge';
-import { useToast } from 'modl-shared-web/hooks/use-toast';
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@modl-gg/shared-web/components/ui/card';
+import { Button } from '@modl-gg/shared-web/components/ui/button';
+import { Badge } from '@modl-gg/shared-web/components/ui/badge';
+import { useToast } from '@modl-gg/shared-web/hooks/use-toast';
 import { loadStripe } from '@stripe/stripe-js';
 import { useBillingStatus, useCancelSubscription, useResubscribe } from '@/hooks/use-data';
 import { useQueryClient } from '@tanstack/react-query';
-import { Skeleton } from 'modl-shared-web/components/ui/skeleton';
+import { Skeleton } from '@modl-gg/shared-web/components/ui/skeleton';
 import { 
   RefreshCw, 
   Check, 
@@ -25,11 +25,11 @@ import {
   CheckCircle,
   Clock
 } from 'lucide-react';
-import { Alert, AlertDescription } from 'modl-shared-web/components/ui/alert';
-import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from 'modl-shared-web/components/ui/alert-dialog';
-import { Progress } from 'modl-shared-web/components/ui/progress';
-import { Switch } from 'modl-shared-web/components/ui/switch';
-import { Label } from 'modl-shared-web/components/ui/label';
+import { Alert, AlertDescription } from '@modl-gg/shared-web/components/ui/alert';
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@modl-gg/shared-web/components/ui/alert-dialog';
+import { Progress } from '@modl-gg/shared-web/components/ui/progress';
+import { Switch } from '@modl-gg/shared-web/components/ui/switch';
+import { Label } from '@modl-gg/shared-web/components/ui/label';
 
 // Initialize Stripe with the publishable key
 const stripePromise = loadStripe(import.meta.env.VITE_STRIPE_PUBLISHABLE_KEY);

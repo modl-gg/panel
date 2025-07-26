@@ -1,16 +1,16 @@
 import express, { Request, Response } from 'express';
 import {
   HomepageCardSchema
-} from 'modl-shared-web/schemas/TenantSchemas';
+} from '@modl-gg/shared-web/schemas/TenantSchemas';
 import {
   KnowledgebaseCategorySchema,
   KnowledgebaseArticleSchema
-} from 'modl-shared-web/schemas/TenantSchemas';
+} from '@modl-gg/shared-web/schemas/TenantSchemas';
 import {
   IHomepageCard,
   IKnowledgebaseCategory,
   IKnowledgebaseArticle
-} from 'modl-shared-web/types';
+} from '@modl-gg/shared-web/types';
 import mongoose, { Model } from 'mongoose';
 
 const router = express.Router();

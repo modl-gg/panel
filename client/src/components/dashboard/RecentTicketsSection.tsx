@@ -1,7 +1,7 @@
 import React from 'react';
-import { Card, CardContent, CardHeader, CardTitle } from 'modl-shared-web/components/ui/card';
-import { Badge } from 'modl-shared-web/components/ui/badge';
-import { Button } from 'modl-shared-web/components/ui/button';
+import { Card, CardContent, CardHeader, CardTitle } from '@modl-gg/shared-web/components/ui/card';
+import { Badge } from '@modl-gg/shared-web/components/ui/badge';
+import { Button } from '@modl-gg/shared-web/components/ui/button';
 import { Ticket, Clock, User } from 'lucide-react';
 import { useLocation } from 'wouter';
 

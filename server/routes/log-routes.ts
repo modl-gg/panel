@@ -1,6 +1,6 @@
 import { Router } from 'express';
 import { Connection, Document } from 'mongoose';
-import { ISystemLog } from 'modl-shared-web/types';
+import { ISystemLog } from '@modl-gg/shared-web/types';
 
 export async function createSystemLog(
   dbConnection: Connection | undefined | null,

@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import { Switch, Route, useLocation } from "wouter";
-import { Toaster } from "modl-shared-web/components/ui/toaster";
-import { TooltipProvider } from "modl-shared-web/components/ui/tooltip";
+import { Toaster } from "@modl-gg/shared-web/components/ui/toaster";
+import { TooltipProvider } from "@modl-gg/shared-web/components/ui/tooltip";
 import NotFound from "@/pages/not-found";
 import Sidebar from "@/components/layout/Sidebar";
 import MobileNavbar from "@/components/layout/MobileNavbar";

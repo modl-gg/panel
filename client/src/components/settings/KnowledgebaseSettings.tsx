@@ -1,17 +1,17 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { Button } from 'modl-shared-web/components/ui/button';
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from 'modl-shared-web/components/ui/card';
-import { Input } from 'modl-shared-web/components/ui/input';
-import { Textarea } from 'modl-shared-web/components/ui/textarea';
-import { useToast } from 'modl-shared-web/hooks/use-toast';
+import { Button } from '@modl-gg/shared-web/components/ui/button';
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@modl-gg/shared-web/components/ui/card';
+import { Input } from '@modl-gg/shared-web/components/ui/input';
+import { Textarea } from '@modl-gg/shared-web/components/ui/textarea';
+import { useToast } from '@modl-gg/shared-web/hooks/use-toast';
 import { queryClient } from '@/lib/queryClient';
 import { useQuery, useMutation } from '@tanstack/react-query';
 import { Plus, Edit, Trash2, GripVertical, Eye, EyeOff, ArrowUpDown } from 'lucide-react';
 import { DndProvider, useDrag, useDrop, DropTargetMonitor } from 'react-dnd';
 import { HTML5Backend } from 'react-dnd-html5-backend';
 import ArticleListItem, { ItemTypes as ArticleItemTypes } from './ArticleListItem';
-import MarkdownEditor from 'modl-shared-web/components/ui/MarkdownEditor';
-import { KnowledgebaseCategory, KnowledgebaseArticle } from 'modl-shared-web/types';
+import MarkdownEditor from '@modl-gg/shared-web/components/ui/MarkdownEditor';
+import { KnowledgebaseCategory, KnowledgebaseArticle } from '@modl-gg/shared-web/types';
 // For now, we'll mock dnd as it's a larger setup.
 // Consider using a library like @dnd-kit/core for a more modern approach if not already in use.
 

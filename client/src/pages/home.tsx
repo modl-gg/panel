@@ -5,7 +5,7 @@ import {
   Sun,
   Moon
 } from 'lucide-react';
-import { Button } from 'modl-shared-web/components/ui/button';
+import { Button } from '@modl-gg/shared-web/components/ui/button';
 import { useTheme } from 'next-themes';
 import { 
   useStats,
@@ -16,7 +16,7 @@ import {
   useUnsubscribeFromTicket,
   useMarkSubscriptionUpdateAsRead
 } from '@/hooks/use-data';
-import { useToast } from 'modl-shared-web/hooks/use-toast';
+import { useToast } from '@modl-gg/shared-web/hooks/use-toast';
 import PageContainer from '@/components/layout/PageContainer';
 import { DashboardMetricsChart } from '@/components/dashboard/DashboardMetricsChart';
 import { RecentTicketsSection } from '@/components/dashboard/RecentTicketsSection';

@@ -1,10 +1,10 @@
 import React, { useState, useEffect } from 'react';
 import { Link } from 'wouter';
 import { Search, Shield, MessageCircle, Phone, UserPlus, FileText, ExternalLink, ChevronRight, BookOpen, ChevronDown, LogIn, Sun, Moon } from 'lucide-react';
-import { Button } from 'modl-shared-web/components/ui/button';
-import { Input } from 'modl-shared-web/components/ui/input';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from 'modl-shared-web/components/ui/card';
-import { Collapsible, CollapsibleContent, CollapsibleTrigger } from 'modl-shared-web/components/ui/collapsible';
+import { Button } from '@modl-gg/shared-web/components/ui/button';
+import { Input } from '@modl-gg/shared-web/components/ui/input';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@modl-gg/shared-web/components/ui/card';
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@modl-gg/shared-web/components/ui/collapsible';
 import { useTheme } from 'next-themes';
 import serverLogo from '@/assets/server-logo.png';
 import * as LucideIcons from 'lucide-react';

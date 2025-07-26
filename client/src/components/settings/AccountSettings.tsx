@@ -1,11 +1,11 @@
 import React, { useState } from 'react';
 import { CheckCircle, KeyRound, Fingerprint, QrCode, Copy, Check, LogOut } from 'lucide-react';
-import { Button } from 'modl-shared-web/components/ui/button';
-import { Input } from 'modl-shared-web/components/ui/input';
-import { Label } from 'modl-shared-web/components/ui/label';
-import { Separator } from 'modl-shared-web/components/ui/separator';
-import { Badge } from 'modl-shared-web/components/ui/badge';
-import { useToast } from 'modl-shared-web/hooks/use-toast';
+import { Button } from '@modl-gg/shared-web/components/ui/button';
+import { Input } from '@modl-gg/shared-web/components/ui/input';
+import { Label } from '@modl-gg/shared-web/components/ui/label';
+import { Separator } from '@modl-gg/shared-web/components/ui/separator';
+import { Badge } from '@modl-gg/shared-web/components/ui/badge';
+import { useToast } from '@modl-gg/shared-web/hooks/use-toast';
 import { useAuth } from '@/hooks/use-auth';
 
 interface AccountSettingsProps {

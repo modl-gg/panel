@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { ChevronDown, ChevronRight } from 'lucide-react';
-import { Button } from 'modl-shared-web/components/ui/button';
+import { Button } from '@modl-gg/shared-web/components/ui/button';
 
 const ApiDocs = () => {
   const [expandedEndpoints, setExpandedEndpoints] = useState<Record<string, boolean>>({

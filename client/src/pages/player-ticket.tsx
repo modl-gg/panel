@@ -13,15 +13,15 @@ import {
   Copy,
   CheckSquare
 } from 'lucide-react';
-import { Button } from 'modl-shared-web/components/ui/button';
-import { Badge } from 'modl-shared-web/components/ui/badge';
-import { Textarea } from 'modl-shared-web/components/ui/textarea';
-import { Input } from 'modl-shared-web/components/ui/input';
-import { Label } from 'modl-shared-web/components/ui/label';
-import { Checkbox } from 'modl-shared-web/components/ui/checkbox';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from 'modl-shared-web/components/ui/select';
-import { Popover, PopoverContent, PopoverTrigger } from 'modl-shared-web/components/ui/popover';
-import { Card, CardHeader, CardTitle, CardDescription, CardContent, CardFooter } from 'modl-shared-web/components/ui/card';
+import { Button } from '@modl-gg/shared-web/components/ui/button';
+import { Badge } from '@modl-gg/shared-web/components/ui/badge';
+import { Textarea } from '@modl-gg/shared-web/components/ui/textarea';
+import { Input } from '@modl-gg/shared-web/components/ui/input';
+import { Label } from '@modl-gg/shared-web/components/ui/label';
+import { Checkbox } from '@modl-gg/shared-web/components/ui/checkbox';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@modl-gg/shared-web/components/ui/select';
+import { Popover, PopoverContent, PopoverTrigger } from '@modl-gg/shared-web/components/ui/popover';
+import { Card, CardHeader, CardTitle, CardDescription, CardContent, CardFooter } from '@modl-gg/shared-web/components/ui/card';
 import { useTicket, useAddTicketReply, useSubmitTicketForm, useSettings } from '@/hooks/use-data';
 import TicketAttachments from '@/components/TicketAttachments';
 import MediaUpload from '@/components/MediaUpload';

@@ -1,8 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { useQuery } from '@tanstack/react-query';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from 'modl-shared-web/components/ui/card';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from 'modl-shared-web/components/ui/tabs';
-import { Alert, AlertDescription } from 'modl-shared-web/components/ui/alert';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@modl-gg/shared-web/components/ui/card';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@modl-gg/shared-web/components/ui/tabs';
+import { Alert, AlertDescription } from '@modl-gg/shared-web/components/ui/alert';
 import { AlertTriangle, BarChart3, Users, Ticket, Shield, Activity } from 'lucide-react';
 import PageContainer from '@/components/layout/PageContainer';
 import { PermissionWrapper } from '@/components/PermissionWrapper';

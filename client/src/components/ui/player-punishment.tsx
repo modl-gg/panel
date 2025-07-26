@@ -1,8 +1,8 @@
 import React, { useState } from 'react';
-import { Button } from 'modl-shared-web/components/ui/button';
-import { Checkbox } from 'modl-shared-web/components/ui/checkbox';
-import { Badge } from 'modl-shared-web/components/ui/badge';
-import { Input } from 'modl-shared-web/components/ui/input';
+import { Button } from '@modl-gg/shared-web/components/ui/button';
+import { Checkbox } from '@modl-gg/shared-web/components/ui/checkbox';
+import { Badge } from '@modl-gg/shared-web/components/ui/badge';
+import { Input } from '@modl-gg/shared-web/components/ui/input';
 import { useToast } from '@/hooks/use-toast';
 import MediaUpload from '@/components/MediaUpload';
 

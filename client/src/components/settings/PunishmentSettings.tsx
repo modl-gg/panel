@@ -1,11 +1,11 @@
 import React, { useState } from 'react';
 import { GamepadIcon, MessageCircle, Lock, Plus, Trash2 } from 'lucide-react';
-import { Button } from 'modl-shared-web/components/ui/button';
-import { Input } from 'modl-shared-web/components/ui/input';
-import { Label } from 'modl-shared-web/components/ui/label';
-import { Separator } from 'modl-shared-web/components/ui/separator';
-import { Slider } from 'modl-shared-web/components/ui/slider';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from 'modl-shared-web/components/ui/select';
+import { Button } from '@modl-gg/shared-web/components/ui/button';
+import { Input } from '@modl-gg/shared-web/components/ui/input';
+import { Label } from '@modl-gg/shared-web/components/ui/label';
+import { Separator } from '@modl-gg/shared-web/components/ui/separator';
+import { Slider } from '@modl-gg/shared-web/components/ui/slider';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@modl-gg/shared-web/components/ui/select';
 
 interface PunishmentType {
   id: number;

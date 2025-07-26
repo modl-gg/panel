@@ -79,14 +79,14 @@ const formatTimeAgo = (dateString: string): string => {
     return "Unknown";
   }
 };
-import { Button } from 'modl-shared-web/components/ui/button';
-import { Card, CardContent, CardHeader } from 'modl-shared-web/components/ui/card';
-import { Badge } from 'modl-shared-web/components/ui/badge';
-import { Input } from 'modl-shared-web/components/ui/input';
+import { Button } from '@modl-gg/shared-web/components/ui/button';
+import { Card, CardContent, CardHeader } from '@modl-gg/shared-web/components/ui/card';
+import { Badge } from '@modl-gg/shared-web/components/ui/badge';
+import { Input } from '@modl-gg/shared-web/components/ui/input';
 import { useSidebar } from '@/hooks/use-sidebar';
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from 'modl-shared-web/components/ui/table';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from 'modl-shared-web/components/ui/tabs';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from 'modl-shared-web/components/ui/select';
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@modl-gg/shared-web/components/ui/table';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@modl-gg/shared-web/components/ui/tabs';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@modl-gg/shared-web/components/ui/select';
 import { useTickets, useTicketCounts } from '@/hooks/use-data';
 import PageContainer from '@/components/layout/PageContainer';
 

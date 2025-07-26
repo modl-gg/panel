@@ -70,7 +70,7 @@ async function createPunishmentAuditLog(
   }
 }
 import { verifyMinecraftApiKey } from '../middleware/api-auth';
-import { IIPAddress, IModification, INote, IPunishment, IPlayer, ITicket, IUsername } from 'modl-shared-web/types';
+import { IIPAddress, IModification, INote, IPunishment, IPlayer, ITicket, IUsername } from '@modl-gg/shared-web/types';
 
 // Import getUserPermissions from permission middleware
 async function getUserPermissions(req: Request, userRole: string): Promise<string[]> {

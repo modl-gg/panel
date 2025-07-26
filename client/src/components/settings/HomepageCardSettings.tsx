@@ -1,15 +1,15 @@
 import React, { useState, useEffect } from 'react';
-import { Button } from 'modl-shared-web/components/ui/button';
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from 'modl-shared-web/components/ui/card';
-import { Input } from 'modl-shared-web/components/ui/input';
-import { Textarea } from 'modl-shared-web/components/ui/textarea';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from 'modl-shared-web/components/ui/select';
-import { useToast } from 'modl-shared-web/hooks/use-toast';
+import { Button } from '@modl-gg/shared-web/components/ui/button';
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@modl-gg/shared-web/components/ui/card';
+import { Input } from '@modl-gg/shared-web/components/ui/input';
+import { Textarea } from '@modl-gg/shared-web/components/ui/textarea';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@modl-gg/shared-web/components/ui/select';
+import { useToast } from '@modl-gg/shared-web/hooks/use-toast';
 import { queryClient } from '@/lib/queryClient';
 import { useQuery, useMutation } from '@tanstack/react-query';
 import { Plus, Edit, Trash2, GripVertical, Eye, EyeOff } from 'lucide-react';
-import { Switch } from 'modl-shared-web/components/ui/switch';
-import { Label } from 'modl-shared-web/components/ui/label';
+import { Switch } from '@modl-gg/shared-web/components/ui/switch';
+import { Label } from '@modl-gg/shared-web/components/ui/label';
 import * as LucideIcons from 'lucide-react';
 
 // Get list of curated icons suitable for homepage cards

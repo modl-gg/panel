@@ -1,14 +1,14 @@
 import React, { useState, useEffect } from 'react';
 import { Shield, Plus, Edit, Trash2, Save, X, Check } from 'lucide-react';
-import { Button } from 'modl-shared-web/components/ui/button';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from 'modl-shared-web/components/ui/card';
-import { Input } from 'modl-shared-web/components/ui/input';
-import { Label } from 'modl-shared-web/components/ui/label';
-import { Checkbox } from 'modl-shared-web/components/ui/checkbox';
-import { Badge } from 'modl-shared-web/components/ui/badge';
-import { useToast } from 'modl-shared-web/hooks/use-toast';
-import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "modl-shared-web/components/ui/dialog";
-import { Separator } from 'modl-shared-web/components/ui/separator';
+import { Button } from '@modl-gg/shared-web/components/ui/button';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@modl-gg/shared-web/components/ui/card';
+import { Input } from '@modl-gg/shared-web/components/ui/input';
+import { Label } from '@modl-gg/shared-web/components/ui/label';
+import { Checkbox } from '@modl-gg/shared-web/components/ui/checkbox';
+import { Badge } from '@modl-gg/shared-web/components/ui/badge';
+import { useToast } from '@modl-gg/shared-web/hooks/use-toast';
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@modl-gg/shared-web/components/ui/dialog";
+import { Separator } from '@modl-gg/shared-web/components/ui/separator';
 import { useSettings, useRoles, usePermissions, useCreateRole, useUpdateRole, useDeleteRole } from '@/hooks/use-data';
 
 // Permission categories and definitions

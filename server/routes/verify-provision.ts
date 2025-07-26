@@ -9,7 +9,7 @@ import {
   LogSchema, 
   SettingsSchema,
   ModlServerSchema
-} from 'modl-shared-web';
+} from '@modl-gg/shared-web';
 import { seedDefaultHomepageCards } from '../db/seed-data';
 import { strictRateLimit } from '../middleware/rate-limiter';
 import { createDefaultSettings, addDefaultPunishmentTypes } from './settings-routes';

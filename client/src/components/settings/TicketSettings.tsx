@@ -1,19 +1,19 @@
 import React, { useState, useEffect } from 'react';
 import { MessageCircle, Tag, Plus, X, ChevronDown, ChevronRight, Layers, Shield, Edit3, Trash2, GripVertical, Save, CheckCircle, Settings } from 'lucide-react';
-import { Button } from 'modl-shared-web/components/ui/button';
-import { Input } from 'modl-shared-web/components/ui/input';
-import { Textarea } from 'modl-shared-web/components/ui/textarea';
-import { Label } from 'modl-shared-web/components/ui/label';
-import { Badge } from 'modl-shared-web/components/ui/badge';
-import { Switch } from 'modl-shared-web/components/ui/switch';
-import { Slider } from 'modl-shared-web/components/ui/slider';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from 'modl-shared-web/components/ui/select';
-import { Collapsible, CollapsibleContent, CollapsibleTrigger } from 'modl-shared-web/components/ui/collapsible';
+import { Button } from '@modl-gg/shared-web/components/ui/button';
+import { Input } from '@modl-gg/shared-web/components/ui/input';
+import { Textarea } from '@modl-gg/shared-web/components/ui/textarea';
+import { Label } from '@modl-gg/shared-web/components/ui/label';
+import { Badge } from '@modl-gg/shared-web/components/ui/badge';
+import { Switch } from '@modl-gg/shared-web/components/ui/switch';
+import { Slider } from '@modl-gg/shared-web/components/ui/slider';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@modl-gg/shared-web/components/ui/select';
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@modl-gg/shared-web/components/ui/collapsible';
 import { DndProvider, useDrag, useDrop } from 'react-dnd';
 import { HTML5Backend } from 'react-dnd-html5-backend';
-import { Card, CardContent, CardHeader, CardTitle } from 'modl-shared-web/components/ui/card';
-import { Separator } from 'modl-shared-web/components/ui/separator';
-import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from 'modl-shared-web/components/ui/dialog';
+import { Card, CardContent, CardHeader, CardTitle } from '@modl-gg/shared-web/components/ui/card';
+import { Separator } from '@modl-gg/shared-web/components/ui/separator';
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@modl-gg/shared-web/components/ui/dialog';
 import { QuickResponseAction, QuickResponseCategory, QuickResponsesConfiguration, defaultQuickResponsesConfig } from '@/types/quickResponses';
 
 // Import the types we need for the form builder

@@ -1,7 +1,7 @@
 import express, { Request, Response, NextFunction } from 'express';
 import { Connection, Document, Types, Model } from 'mongoose';
 import { createSystemLog } from './log-routes';
-import { ITicket, IPlayer } from 'modl-shared-web/types';
+import { ITicket, IPlayer } from '@modl-gg/shared-web/types';
 
 interface ITicketData extends Map<string, any> {
   punishmentId?: string;

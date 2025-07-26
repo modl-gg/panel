@@ -6,7 +6,7 @@ import {
   IHomepageCard,
   IKnowledgebaseCategory,
   IKnowledgebaseArticle
-} from 'modl-shared-web';
+} from '@modl-gg/shared-web';
 import mongoose, { Model } from 'mongoose';
 import { isAuthenticated } from '../middleware/auth-middleware';
 // Note: Permission functions will be imported dynamically to avoid circular dependency issues

@@ -1,5 +1,5 @@
 import mongoose from 'mongoose';
-import { PlayerSchema, StaffSchema, TicketSchema, LogSchema, SettingsSchema } from 'modl-shared-web/schemas/TenantSchemas';
+import { PlayerSchema, StaffSchema, TicketSchema, LogSchema, SettingsSchema } from '@modl-gg/shared-web/schemas/TenantSchemas';
 import { createDefaultSettings, addDefaultPunishmentTypes } from '../routes/settings-routes';
 import { Connection } from 'mongoose';
 import { v4 as uuidv4 } from 'uuid';

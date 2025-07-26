@@ -1,10 +1,10 @@
 import React from 'react';
-import { Card, CardContent, CardHeader, CardTitle } from 'modl-shared-web/components/ui/card';
-import { Badge } from 'modl-shared-web/components/ui/badge';
-import { Button } from 'modl-shared-web/components/ui/button';
+import { Card, CardContent, CardHeader, CardTitle } from '@modl-gg/shared-web/components/ui/card';
+import { Badge } from '@modl-gg/shared-web/components/ui/badge';
+import { Button } from '@modl-gg/shared-web/components/ui/button';
 import { Bell, Clock, User, MessageSquare, X, UserMinus } from 'lucide-react';
 import { useLocation } from 'wouter';
-import { useToast } from 'modl-shared-web/hooks/use-toast';
+import { useToast } from '@modl-gg/shared-web/hooks/use-toast';
 
 export interface TicketSubscriptionUpdate {
   id: string;
