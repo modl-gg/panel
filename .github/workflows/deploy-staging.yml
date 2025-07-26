@@ -27,7 +27,7 @@ jobs:
 
       - name: Deploy via SSH
         run: |
-          ssh -o StrictHostKeyChecking=no ${{ secrets.SERVER_USER }}@${{ secrets.STAGING_IP }} << 'EOF'
+          ssh -o StrictHostKeyChecking=no ${{ secrets.SERVER_USER }}@${{ secrets.STAGING_IP }} "GITHUB_TOKEN=${{ secrets.GITHUB_TOKEN }}" << 'EOF'
             set -e
             
             cd /home/modl/modl-panel
