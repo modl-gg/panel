@@ -21,7 +21,7 @@ const AcceptInvitationPage = () => {
         description: 'You cannot accept an invitation while logged in.',
         variant: 'destructive',
       });
-      navigate('/');
+      navigate('/panel');
       return;
     }
 
@@ -39,7 +39,7 @@ const AcceptInvitationPage = () => {
         });
         if (response.ok) {
           setStatus('Invitation accepted! Redirecting...');
-          window.location.href = '/';
+          window.location.href = '/panel';
         } else {
           const errorData = await response.json();
           setStatus(errorData.message || 'This invitation link is invalid or has expired.');

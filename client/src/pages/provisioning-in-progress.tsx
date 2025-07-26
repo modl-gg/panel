@@ -51,7 +51,7 @@ const ProvisioningInProgressPage: React.FC = () => {
         // Provisioning is complete - always redirect to auth page for login
         setStatusMessage(data.message + ' Redirecting to login...');
         setTimeout(() => {
-          window.location.href = '/auth?message=provisioning_complete_login_required';
+          window.location.href = '/panel/auth?message=provisioning_complete_login_required';
         }, 3000);
       } else if (data.status === 'in-progress') {
         setError(null);
