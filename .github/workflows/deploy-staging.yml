@@ -27,30 +27,24 @@ jobs:
 
       - name: Deploy via SSH
         run: |
-          ssh -o StrictHostKeyChecking=no ${{ secrets.SERVER_USER }}@${{ secrets.STAGING_IP }} "GITHUB_TOKEN=${{ secrets.GITHUB_TOKEN }}" << 'EOF'
-            set -e
-            
-            cd /home/modl/modl-panel
-            
-            git stash
-            
-            git pull origin dev
-            
-            if git diff --name-only HEAD@{1} HEAD | grep -q "package.*\.json"; then
-              npm ci
-            fi
-            
-            npm run build
-            
-            pm2 reload modl-panel --wait-ready
-            
-            if pm2 describe modl-panel | grep -q "online"; then
-              echo "PM2 process is running successfully"
-            else
-              echo "Error: PM2 process failed to start"
-              exit 1
-            fi
-          EOF
+          ssh -o StrictHostKeyChecking=no ${{ secrets.SERVER_USER }}@${{ secrets.STAGING_IP }} '
+          set -e
+          export GITHUB_TOKEN="${{ secrets.GITHUB_TOKEN }}"
+          cd /home/modl/modl-panel
+          git stash
+          git pull origin dev
+          if git diff --name-only HEAD@{1} HEAD | grep -q "package.*\.json"; then
+            npm ci
+          fi
+          npm run build
+          pm2 reload modl-panel --wait-ready
+          if pm2 describe modl-panel | grep -q "online"; then
+            echo "PM2 process is running successfully"
+          else
+            echo "Error: PM2 process failed to start"
+            exit 1
+          fi
+          '
 
       # - name: Verify deployment
       #   run: |
