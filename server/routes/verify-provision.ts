@@ -323,308 +323,362 @@ async function createDefaultTicketForms(dbConnection: Connection) {
 
     // Define default ticket forms with comprehensive structure
     const defaultTicketForms = {
-      bug: {
-        fields: [
-          // Contact Information
+      "bug": {
+        "fields": [
           {
-            id: 'contact_email',
-            type: 'text',
-            label: 'Email Address',
-            description: 'Your email address for updates on this bug report',
-            required: true,
-            order: 0,
-            sectionId: 'basic_info'
-          },
-          // Basic Information Section
-          {
-            id: 'bug_title',
-            type: 'text',
-            label: 'Bug Title',
-            description: 'Brief description of the bug',
-            required: true,
-            order: 1,
-            sectionId: 'basic_info'
+            "id": "1753243804677",
+            "type": "textarea",
+            "label": "Bug Description",
+            "description": "Describe the bug in full detail",
+            "required": true,
+            "order": 3,
+            "sectionId": "1753243782799"
           },
           {
-            id: 'bug_severity',
-            type: 'dropdown',
-            label: 'Bug Severity',
-            description: 'How severe is this bug?',
-            required: true,
-            options: ['Low', 'Medium', 'High', 'Critical'],
-            order: 2,
-            sectionId: 'basic_info'
+            "id": "1753243846548",
+            "type": "textarea",
+            "label": "Environment",
+            "description": "Game/server, client version, and any other relevant conditions",
+            "required": true,
+            "order": 3,
+            "sectionId": "1753243782799"
           },
           {
-            id: 'bug_category',
-            type: 'dropdown',
-            label: 'Bug Category',
-            description: 'What type of bug is this?',
-            required: true,
-            options: ['Gameplay', 'UI/Interface', 'Performance', 'Audio', 'Visual', 'Other'],
-            order: 3,
-            sectionId: 'basic_info'
-          },
-          // Description Section
-          {
-            id: 'bug_description',
-            type: 'textarea',
-            label: 'Detailed Description',
-            description: 'Provide a detailed description of the bug you encountered',
-            required: true,
-            order: 4,
-            sectionId: 'description'
+            "id": "1753243865490",
+            "type": "textarea",
+            "label": "Steps to reproduce",
+            "description": "Detailed description on how we can reproduce the bug",
+            "required": true,
+            "order": 2,
+            "sectionId": "1753243782799"
           },
           {
-            id: 'steps_to_reproduce',
-            type: 'textarea',
-            label: 'Steps to Reproduce',
-            description: 'List the exact steps to reproduce this bug (1. First step, 2. Second step, etc.)',
-            required: true,
-            order: 5,
-            sectionId: 'description'
+            "id": "1753243883567",
+            "type": "textarea",
+            "label": "Any other information?",
+            "required": false,
+            "order": 3,
+            "sectionId": "1753243782799"
           },
           {
-            id: 'expected_behavior',
-            type: 'textarea',
-            label: 'Expected Behavior',
-            description: 'What did you expect to happen?',
-            required: true,
-            order: 6,
-            sectionId: 'description'
-          },
-          {
-            id: 'actual_behavior',
-            type: 'textarea',
-            label: 'Actual Behavior',
-            description: 'What actually happened instead?',
-            required: true,
-            order: 7,
-            sectionId: 'description'
+            "id": "1753243946458",
+            "type": "file_upload",
+            "label": "Attachments",
+            "description": "Upload relevant attachments to help us squash this bug.",
+            "required": false,
+            "order": 4,
+            "sectionId": "1753243782799"
           }
         ],
-        sections: [
+        "sections": [
           {
-            id: 'basic_info',
-            title: 'Basic Information',
-            description: 'Essential information about the bug',
-            order: 0
-          },
-          {
-            id: 'description',
-            title: 'Bug Description',
-            description: 'Describe the bug in detail',
-            order: 1
+            "id": "1753243782799",
+            "title": "General",
+            "order": 0,
+            "hideByDefault": false
           }
         ]
       },
-      support: {
-        fields: [
-          // Contact Information
+      "support": {
+        "fields": [
           {
-            id: 'contact_email',
-            type: 'text',
-            label: 'Email Address',
-            description: 'Your email address for updates on this support request',
-            required: true,
-            order: 0,
-            sectionId: 'request_info'
-          },
-          // Request Information Section
-          {
-            id: 'support_category',
-            type: 'dropdown',
-            label: 'Support Category',
-            description: 'What type of support do you need?',
-            required: true,
-            options: ['Account Issues', 'Payment/Billing', 'Technical Issues', 'Gameplay Help', 'Appeal Request', 'Other'],
-            order: 1,
-            sectionId: 'request_info'
+            "id": "1753243961223",
+            "type": "textarea",
+            "label": "Description",
+            "description": "How can we assist you?",
+            "required": true,
+            "order": 0,
+            "sectionId": "1753243900648"
           },
           {
-            id: 'urgency_level',
-            type: 'dropdown',
-            label: 'Urgency Level',
-            description: 'How urgent is this request?',
-            required: true,
-            options: ['Low - General inquiry', 'Medium - Affecting gameplay', 'High - Unable to play', 'Critical - Account compromised'],
-            order: 2,
-            sectionId: 'request_info'
-          },
-          // Issue Details Section
-          {
-            id: 'issue_title',
-            type: 'text',
-            label: 'Issue Summary',
-            description: 'Brief summary of your issue or request',
-            required: true,
-            order: 3,
-            sectionId: 'issue_details'
-          },
-          {
-            id: 'issue_description',
-            type: 'textarea',
-            label: 'Detailed Description',
-            description: 'Describe your issue or request in detail',
-            required: true,
-            order: 4,
-            sectionId: 'issue_details'
-          },
-          {
-            id: 'when_occurred',
-            type: 'text',
-            label: 'When did this occur?',
-            description: 'When did you first notice this issue? (date/time if possible)',
-            required: false,
-            order: 5,
-            sectionId: 'issue_details'
+            "id": "1753243997358",
+            "type": "file_upload",
+            "label": "Attachments",
+            "description": "Upload any relevant attachments.",
+            "required": false,
+            "order": 1,
+            "sectionId": "1753243900648"
           }
         ],
-        sections: [
+        "sections": [
           {
-            id: 'request_info',
-            title: 'Request Information',
-            description: 'Basic information about your support request',
-            order: 0
-          },
-          {
-            id: 'issue_details',
-            title: 'Issue Details',
-            description: 'Detailed information about your issue',
-            order: 1
+            "id": "1753243900648",
+            "title": "General",
+            "order": 0,
+            "hideByDefault": false
           }
         ]
       },
-      application: {
-        fields: [
-          // Contact Information
+      "application": {
+        "fields": [
           {
-            id: 'contact_email',
-            type: 'text',
-            label: 'Email Address',
-            description: 'Your email address for application updates',
-            required: true,
-            order: 0,
-            sectionId: 'contact_info'
+            "id": "1753244506417",
+            "type": "textarea",
+            "label": "Have you ever been banned or muted on this server? If yes, what have you learned moving forward?",
+            "description": "If so, please explain each occurrence.",
+            "required": true,
+            "order": 0,
+            "sectionId": "1753244183109"
           },
           {
-            id: 'discord_username',
-            type: 'text',
-            label: 'Discord Username',
-            description: 'Your Discord username (required for staff communication)',
-            required: true,
-            order: 1,
-            sectionId: 'contact_info'
-          },
-          // Personal Information
-          {
-            id: 'real_name',
-            type: 'text',
-            label: 'Real Name',
-            description: 'Your real first and last name',
-            required: true,
-            order: 2,
-            sectionId: 'personal_info'
+            "id": "1753245191475",
+            "type": "textarea",
+            "label": "Why do you want to be an developer on this server?",
+            "required": true,
+            "order": 0,
+            "sectionId": "1753244282540"
           },
           {
-            id: 'age',
-            type: 'text',
-            label: 'Age',
-            description: 'How old are you? (Must be 16+)',
-            required: true,
-            order: 3,
-            sectionId: 'personal_info'
+            "id": "1753244313811",
+            "type": "text",
+            "label": "First Name",
+            "required": true,
+            "order": 0,
+            "sectionId": "1753244011186"
           },
           {
-            id: 'timezone',
-            type: 'text',
-            label: 'Timezone',
-            description: 'What timezone are you in? (e.g., EST, PST, GMT)',
-            required: true,
-            order: 4,
-            sectionId: 'personal_info'
+            "id": "1753244551193",
+            "type": "textarea",
+            "label": "Describe your moderation background and previous experience.",
+            "description": "The more detail the better. This doesn't have to be limited to Minecraft servers, as we welcome any previous experience in moderating Discord servers or even other game communities.  Please provide references and proof for your more notable experiences.",
+            "required": true,
+            "order": 1,
+            "sectionId": "1753244183109"
           },
           {
-            id: 'availability',
-            type: 'textarea',
-            label: 'Availability',
-            description: 'What days and times are you typically available? (include timezone)',
-            required: true,
-            order: 5,
-            sectionId: 'personal_info'
-          },
-          // Experience Section
-          {
-            id: 'minecraft_experience',
-            type: 'textarea',
-            label: 'Minecraft Experience',
-            description: 'How long have you been playing Minecraft? Describe your experience with the game.',
-            required: true,
-            order: 6,
-            sectionId: 'experience'
+            "id": "1753245262717",
+            "type": "textarea",
+            "label": "Do you have experience developing for other servers?",
+            "required": true,
+            "order": 1,
+            "sectionId": "1753244282540"
           },
           {
-            id: 'server_experience',
-            type: 'textarea',
-            label: 'Server Experience',
-            description: 'How long have you been playing on this server? What do you enjoy most about it?',
-            required: true,
-            order: 7,
-            sectionId: 'experience'
+            "id": "1753244038340",
+            "type": "text",
+            "label": "Discord username",
+            "description": "Please use the new username format, starting with an @.",
+            "required": true,
+            "order": 1,
+            "sectionId": "1753244011186"
           },
           {
-            id: 'previous_staff_experience',
-            type: 'textarea',
-            label: 'Previous Staff Experience',
-            description: 'Describe any previous moderation or staff experience (Minecraft or other platforms)',
-            required: false,
-            order: 8,
-            sectionId: 'experience'
-          },
-          // Motivation Section
-          {
-            id: 'why_apply',
-            type: 'textarea',
-            label: 'Why do you want to be staff?',
-            description: 'Explain your motivation for applying and what you hope to contribute',
-            required: true,
-            order: 9,
-            sectionId: 'motivation'
+            "id": "1753245280773",
+            "type": "text",
+            "label": "Please provide proof of previous work in the form of a GitHub link",
+            "required": true,
+            "order": 2,
+            "sectionId": "1753244282540"
           },
           {
-            id: 'qualities',
-            type: 'textarea',
-            label: 'What qualities make you a good fit?',
-            description: 'What personal qualities or skills make you suitable for a staff position?',
-            required: true,
-            order: 10,
-            sectionId: 'motivation'
+            "id": "1753244070995",
+            "type": "text",
+            "label": "Age",
+            "required": true,
+            "order": 2,
+            "sectionId": "1753244011186"
+          },
+          {
+            "id": "1753245291714",
+            "type": "textarea",
+            "label": "Anything else you would like to say?",
+            "required": false,
+            "order": 3,
+            "sectionId": "1753244282540"
+          },
+          {
+            "id": "1753244166086",
+            "type": "text",
+            "label": "Region & Timezone",
+            "description": "Ex: NA, Eastern Time",
+            "required": true,
+            "order": 3,
+            "sectionId": "1753244011186"
+          },
+          {
+            "id": "1753244525756",
+            "type": "text",
+            "label": "What languages can you speak?",
+            "description": "If you speak more than one, please list your level of fluency in each.",
+            "required": true,
+            "order": 4,
+            "sectionId": "1753244011186"
+          },
+          {
+            "id": "1753244114967",
+            "type": "checkbox",
+            "label": "Do you have access to both a working microphone and recording software?",
+            "required": true,
+            "order": 5,
+            "sectionId": "1753244011186"
+          },
+          {
+            "id": "1753244244863",
+            "type": "dropdown",
+            "label": "Position",
+            "description": "What position are you applying for?",
+            "required": true,
+            "options": [
+              "Moderator",
+              "Builder",
+              "Developer",
+              "Media"
+            ],
+            "order": 6,
+            "sectionId": "1753244011186",
+            "optionSectionMapping": {
+              "Moderator": "1753244183109",
+              "Builder": "1753244277605",
+              "Engineer": "1753244282540",
+              "Media": "1753244286527",
+              "Developer": "1753244282540"
+            }
+          },
+          {
+            "id": "1753244585381",
+            "type": "textarea",
+            "label": "Why do you want to become a moderator on this server?",
+            "description": "Again, the more detail on this question the better. Providing us with as much detail as possible will help us understand your motivation and will to become a moderator!",
+            "required": true,
+            "order": 9,
+            "sectionId": "1753244183109"
+          },
+          {
+            "id": "1753244603377",
+            "type": "text",
+            "label": "How much time do you see yourself committing to the server?",
+            "required": true,
+            "order": 10,
+            "sectionId": "1753244183109"
+          },
+          {
+            "id": "1753244687326",
+            "type": "textarea",
+            "label": "You are a Moderator with the ability to mute and ban. You are playing on the server with a friend and come across a player who you think is hacking. They kill your friend, but then you kill them. What do you do in this situation?",
+            "required": true,
+            "order": 11,
+            "sectionId": "1753244183109"
+          },
+          {
+            "id": "1753244762984",
+            "type": "textarea",
+            "label": "You are a Moderator with the ability to mute and ban. You are spectating a player who you believe is hacking, but multiple chat reports come in about a player in another gamemode who is being violently disruptive in chat. Somehow, you are the only moderator online. How do you handle the two situations?",
+            "required": true,
+            "order": 12,
+            "sectionId": "1753244183109"
+          },
+          {
+            "id": "1753244861431",
+            "type": "textarea",
+            "label": "You are a Moderator with the ability to mute and ban. You see 5+ reports come in accusing the same player of breaking the chat rules. You join the server where the situation is taking place and open the accused player's recent chat history. You see that they were being rude, but haven't actually broken a rule. When you decide that they are not guilty, the same group reports the player again, and sends you multiple private messages calling you a bad moderator for not muting the player. What's the first step in dealing with this situation? Explain how this step will move towards resolving the conflict.",
+            "required": true,
+            "order": 13,
+            "sectionId": "1753244183109"
+          },
+          {
+            "id": "1753244931272",
+            "type": "textarea",
+            "label": "You are the newest Moderator on the team. While you are spectating a game, you witness a Sr. Moderator mining suspiciously. In a matter of minutes, you get enough evidence that suggests that the Sr. Moderator may likely be x-raying. Suddenly, they head to the surface and do nothing suspicious for the rest of your time spectating them. How do you proceed?",
+            "required": true,
+            "order": 14,
+            "sectionId": "1753244183109"
+          },
+          {
+            "id": "1753245023983",
+            "type": "textarea",
+            "label": "You are a Moderator with the ability to mute and ban. You notice a well-known streamer/YouTuber closely affiliated with the server is nicked. They message a player words encouraging suicide under their disguised alias. What steps do you take to resolve the situation?",
+            "required": true,
+            "order": 15,
+            "sectionId": "1753244183109"
+          },
+          {
+            "id": "1753245081481",
+            "type": "textarea",
+            "label": "Do you have experience building for other servers?",
+            "required": true,
+            "order": 16,
+            "sectionId": "1753244277605"
+          },
+          {
+            "id": "1753245137086",
+            "type": "textarea",
+            "label": "Please provide proof of previous work in link form here (Imgur, YouTube, etc)",
+            "required": true,
+            "order": 17,
+            "sectionId": "1753244277605"
+          },
+          {
+            "id": "1753245154307",
+            "type": "textarea",
+            "label": "Anything else you would like to say?",
+            "required": false,
+            "order": 23,
+            "sectionId": "1753244277605"
+          },
+          {
+            "id": "1753245348514",
+            "type": "text",
+            "label": "Have you ever been banned or muted on this server? If yes, what have you learned moving forward?",
+            "description": "If so, please explain each occurrence.",
+            "required": true,
+            "order": 23,
+            "sectionId": "1753244286527"
+          },
+          {
+            "id": "1753245358313",
+            "type": "text",
+            "label": "A link to your YouTube and/or Stream Channel",
+            "required": true,
+            "order": 24,
+            "sectionId": "1753244286527"
+          },
+          {
+            "id": "1753245471763",
+            "type": "checkbox",
+            "label": "We will email the contact email listed on the channel for proof of ownership, please verify it is accurate and actively monitored.",
+            "required": true,
+            "order": 25,
+            "sectionId": "1753244286527"
+          },
+          {
+            "id": "1753245511672",
+            "type": "textarea",
+            "label": "Anything else you would like to say?",
+            "required": false,
+            "order": 26,
+            "sectionId": "1753244286527"
           }
         ],
-        sections: [
+        "sections": [
           {
-            id: 'contact_info',
-            title: 'Contact Information',
-            description: 'How we can reach you',
-            order: 0
+            "id": "1753244011186",
+            "title": "General",
+            "order": 0,
+            "hideByDefault": false
           },
           {
-            id: 'personal_info',
-            title: 'Personal Information',
-            description: 'Tell us about yourself',
-            order: 1
+            "id": "1753244183109",
+            "title": "Moderator",
+            "order": 1,
+            "hideByDefault": true
           },
           {
-            id: 'experience',
-            title: 'Experience',
-            description: 'Your gaming and staff experience',
-            order: 2
+            "id": "1753244277605",
+            "title": "Builder",
+            "order": 2,
+            "hideByDefault": true
           },
           {
-            id: 'motivation',
-            title: 'Motivation & Qualities',
-            description: 'Why you want to join our team',
-            order: 3
+            "id": "1753244282540",
+            "title": "Developer",
+            "order": 3,
+            "hideByDefault": true
+          },
+          {
+            "id": "1753244286527",
+            "title": "Media",
+            "order": 4,
+            "hideByDefault": true
           }
         ]
       }
