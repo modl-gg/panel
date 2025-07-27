@@ -903,17 +903,13 @@ export async function createDefaultSettings(dbConnection: Connection, serverName
           enableAutomatedActions: true,
           strictnessLevel: 'standard',
           aiPunishmentConfigs: {
-            'chat-abuse': {
-              id: 'chat-abuse',
-              name: 'Chat Abuse',
-              aiDescription: 'Inappropriate language, excessive caps, spam, harassment, or disruptive chat behavior that violates community standards.',
-              enabled: true
+            6: {
+              enabled: true,
+              aiDescription: 'Inappropriate language, excessive caps, spam, harassment, or disruptive chat behavior that violates community standards and creates a negative environment.'
             },
-            'anti-social': {
-              id: 'anti-social',
-              name: 'Anti Social',
-              aiDescription: 'Hostile, toxic, bullying, or antisocial behavior that creates a negative environment for other players.',
-              enabled: true
+            7: {
+              enabled: true,
+              aiDescription: 'Hostile, toxic, bullying, or antisocial behavior including personal attacks, threats, discrimination, or actions that deliberately harm the community atmosphere.'
             }
           }
         }
@@ -1536,17 +1532,13 @@ export async function createDefaultSettingsDocument(dbConnection: Connection, se
       enableAutomatedActions: true,
       strictnessLevel: 'standard',
       aiPunishmentConfigs: {
-        'chat-abuse': {
-          id: 'chat-abuse',
-          name: 'Chat Abuse',
-          aiDescription: 'Inappropriate language, excessive caps, spam, harassment, or disruptive chat behavior that violates community standards and creates a negative environment.',
-          enabled: true
+        6: {
+          enabled: true,
+          aiDescription: 'Inappropriate language, excessive caps, spam, harassment, or disruptive chat behavior that violates community standards and creates a negative environment.'
         },
-        'anti-social': {
-          id: 'anti-social',
-          name: 'Anti Social',
-          aiDescription: 'Hostile, toxic, bullying, or antisocial behavior including personal attacks, threats, discrimination, or actions that deliberately harm the community atmosphere.',
-          enabled: true
+        7: {
+          enabled: true,
+          aiDescription: 'Hostile, toxic, bullying, or antisocial behavior including personal attacks, threats, discrimination, or actions that deliberately harm the community atmosphere.'
         }
       }
     });
@@ -2388,7 +2380,7 @@ export async function createDefaultSettingsDocument(dbConnection: Connection, se
         {
           id: 'general_actions',
           name: 'General Actions',
-          ticketTypes: ['other'],
+          ticketTypes: ['bug', 'support', 'application'],
           order: 6,
           actions: [
             {
