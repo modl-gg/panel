@@ -223,7 +223,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
               color: 'blue',
               title: `Created ticket: ${ticket.subject}`,
               time: new Date(ticket.created).toISOString(),
-              description: `Created ${ticket.category || 'Other'} ticket`,
+              description: `Created ${ticket.category || 'Support'} ticket`,
               actions: [
                 { label: 'View Ticket', link: `/panel/tickets/${ticket._id}`, primary: true }
               ]
@@ -248,8 +248,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
                 title: `${actionType} on ticket: ${ticket.subject}`,
                 time: new Date(message.timestamp).toISOString(),
                 description: isStaffMessage 
-                  ? `You replied to ${ticket.category || 'Other'} ticket` 
-                  : `${message.sender} replied to ${ticket.category || 'Other'} ticket`,
+                  ? `You replied to ${ticket.category || 'Support'} ticket` 
+                  : `${message.sender} replied to ${ticket.category || 'Support'} ticket`,
                 actions: [
                   { label: 'View Ticket', link: `/panel/tickets/${ticket._id}`, primary: true }
                 ]

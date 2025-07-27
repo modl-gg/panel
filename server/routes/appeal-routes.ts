@@ -158,7 +158,7 @@ router.post('/', async (req: Request, res: Response) => {
       type: 'appeal',
       status: 'Open',
       subject: `Appeal for Punishment: ${punishmentId}`,
-      tags: ['appeal', punishmentTypeOrdinal === 1 ? 'mute' : punishmentTypeOrdinal === 2 ? 'ban' : 'other'],
+      tags: ['appeal', punishmentTypeOrdinal === 1 ? 'mute' : punishmentTypeOrdinal === 2 ? 'ban' : 'punishment'],
       created: new Date(),
       creator: player.usernames[player.usernames.length - 1]?.username || playerUuid,
       creatorUuid: playerUuid,

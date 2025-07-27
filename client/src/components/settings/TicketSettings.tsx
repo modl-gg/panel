@@ -1786,7 +1786,7 @@ const QuickResponseCategoryForm = ({
     ticketTypes: category?.ticketTypes || []
   });
 
-  const availableTicketTypes = ['player_report', 'chat_report', 'bug_report', 'appeal', 'support', 'other'];
+  const availableTicketTypes = ['player_report', 'chat_report', 'bug', 'appeal', 'support', 'application'];
 
   const handleSave = () => {
     if (!formData.name || formData.ticketTypes.length === 0) return;

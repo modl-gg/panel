@@ -900,18 +900,85 @@ export async function createDefaultSettings(dbConnection: Connection, serverName
         type: 'aiModerationSettings',
         data: {
           enableAIReview: true,
-          enableAutomatedActions: true,
+          enableAutomatedActions: false,
           strictnessLevel: 'standard',
           aiPunishmentConfigs: {
-            6: {
-              enabled: true,
-              aiDescription: 'Inappropriate language, excessive caps, spam, harassment, or disruptive chat behavior that violates community standards and creates a negative environment.'
+            "1753245662827": {
+              id: "1753245662827",
+              name: "Chat Abuse",
+              aiDescription: "Chat abuse is the act of spamming, excessive profanity, abusive language, inappropriate topics or jokes, and misleading information",
+              enabled: true
             },
-            7: {
-              enabled: true,
-              aiDescription: 'Hostile, toxic, bullying, or antisocial behavior including personal attacks, threats, discrimination, or actions that deliberately harm the community atmosphere.'
+            "1753245774990": {
+              id: "1753245774990",
+              name: "Anti Social",
+              aiDescription: "Anti social is the act of harassing, threatening, black-mailing, or otherwise abusing another player or group of players. This includes bigotry and other forms of discrimination against protected classes.",
+              enabled: true
             }
           }
+        }
+      },
+      { upsert: true, new: true }
+    ),
+    
+    // AI Moderation Settings document
+    models.Settings.findOneAndUpdate(
+      { type: 'aiModerationSettings' },
+      {
+        type: 'aiModerationSettings',
+        data: {
+          enableAIReview: true,
+          enableAutomatedActions: false,
+          strictnessLevel: 'standard',
+          aiPunishmentConfigs: {
+            "1753245662827": {
+              id: "1753245662827",
+              name: "Chat Abuse",
+              aiDescription: "Chat abuse is the act of spamming, excessive profanity, abusive language, inappropriate topics or jokes, and misleading information",
+              enabled: true
+            },
+            "1753245774990": {
+              id: "1753245774990",
+              name: "Anti Social",
+              aiDescription: "Anti social is the act of harassing, threatening, black-mailing, or otherwise abusing another player or group of players. This includes bigotry and other forms of discrimination against protected classes.",
+              enabled: true
+            }
+          }
+        }
+      },
+      { upsert: true, new: true }
+    ),
+    
+    // Quick Responses document
+    models.Settings.findOneAndUpdate(
+      { type: 'quickResponses' },
+      {
+        type: 'quickResponses',
+        data: {
+          categories: [
+            {
+              id: 'general_actions',
+              name: 'General Actions',
+              ticketTypes: ['player_report', 'chat_report', 'bug', 'appeal', 'support', 'application'],
+              order: 1,
+              actions: [
+                {
+                  id: 'acknowledge',
+                  name: 'Acknowledge',
+                  message: 'Thank you for your message. We have received your ticket and will review it shortly.',
+                  order: 1,
+                  closeTicket: false,
+                },
+                {
+                  id: 'follow_up',
+                  name: 'Follow Up',
+                  message: 'We are following up on your ticket. Please let us know if you have any additional information or questions.',
+                  order: 2,
+                  closeTicket: false,
+                }
+              ]
+            }
+          ]
         }
       },
       { upsert: true, new: true }
@@ -2380,7 +2447,7 @@ export async function createDefaultSettingsDocument(dbConnection: Connection, se
         {
           id: 'general_actions',
           name: 'General Actions',
-          ticketTypes: ['bug', 'support', 'application'],
+          ticketTypes: ['player_report', 'chat_report', 'bug', 'appeal', 'support', 'application'],
           order: 6,
           actions: [
             {

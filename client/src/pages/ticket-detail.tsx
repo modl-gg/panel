@@ -128,7 +128,7 @@ interface AIAnalysis {
 }
 
 // Define types for ticket categories and actions
-type TicketCategory = 'Player Report' | 'Chat Report' | 'Bug Report' | 'Punishment Appeal' | 'Other';
+type TicketCategory = 'Player Report' | 'Chat Report' | 'Bug Report' | 'Punishment Appeal' | 'Support' | 'Application';
 type PlayerReportAction = 'Accepted' | 'Rejected' | 'Close';
 type BugReportAction = 'Completed' | 'Stale' | 'Duplicate' | 'Close';
 type PunishmentAppealAction = 'Pardon' | 'Reduce' | 'Reject' | 'Close';
@@ -157,8 +157,14 @@ export const defaultReplies: Record<TicketCategory, Record<string, string>> = {
     'Reject': 'After careful consideration of your appeal, we have decided to uphold the original punishment. The decision remains final.',
     'Close': 'This appeal has been closed. If you have additional information, please create a new appeal.'
   },
-  'Other': {
-    'Close': 'This ticket has been closed. Thank you for your message.'
+  'Support': {
+    'Resolved': 'Your support request has been resolved. If you need further assistance, please feel free to create a new ticket.',
+    'Close': 'This support ticket has been closed. Thank you for contacting us.'
+  },
+  'Application': {
+    'Accepted': 'Congratulations! Your application has been accepted. You will receive further instructions shortly.',
+    'Rejected': 'Thank you for your interest. Unfortunately, we have decided not to move forward with your application at this time.',
+    'Close': 'This application has been closed.'
   }
 };
 
@@ -300,11 +306,14 @@ const TicketDetail = () => {
       case 'Punishment Appeal':
         ticketType = 'appeal';
         break;
-      case 'Other':
-        ticketType = 'other';
+      case 'Support':
+        ticketType = 'support';
+        break;
+      case 'Application':
+        ticketType = 'application';
         break;
       default:
-        ticketType = 'other';
+        ticketType = 'support';
     }
     
     // Find the category that handles this ticket type
@@ -699,7 +708,9 @@ const TicketDetail = () => {
       const category = (ticketData.type === 'bug' ? 'Bug Report' : 
                       ticketData.type === 'chat' ? 'Chat Report' :
                       ticketData.type === 'player' ? 'Player Report' : 
-                      ticketData.type === 'appeal' ? 'Punishment Appeal' : 'Other') as TicketCategory;
+                      ticketData.type === 'appeal' ? 'Punishment Appeal' :
+                      ticketData.type === 'support' ? 'Support' :
+                      ticketData.type === 'application' ? 'Application' : 'Support') as TicketCategory;
         // Get default tags for this category if no tags are provided
       const tags = ticketData.tags || getDefaultTagsForCategory(category);
       
