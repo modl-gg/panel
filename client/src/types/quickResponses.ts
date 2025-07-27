@@ -258,7 +258,7 @@ export const defaultQuickResponsesConfig: QuickResponsesConfiguration = {
     {
       id: 'general_actions',
       name: 'General Actions',
-      ticketTypes: ['bug', 'support', 'application'],
+      ticketTypes: ['player_report', 'chat_report', 'bug', 'appeal', 'support', 'application'],
       order: 6,
       actions: [
         {

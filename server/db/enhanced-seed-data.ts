@@ -157,7 +157,7 @@ export async function seedEnhancedDatabase(dbConnection: Connection) {
     // We only support 'Unfinished', 'Open', 'Closed' statuses in our schema
     const ticketStatuses = ['Open', 'Closed'];
     const ticketPriorities = ['Critical', 'Medium', 'Low', 'Fixed'];
-    const ticketCategories = ['Bug Report', 'Player Report', 'Punishment Appeal', 'Other'];
+    const ticketCategories = ['Bug Report', 'Player Report', 'Punishment Appeal', 'Support', 'Staff Application'];
     
     const ticketTags = [
       'bug', 'crash', 'performance', 'UI', 'gameplay', 'critical',
@@ -436,7 +436,8 @@ export async function seedEnhancedDatabase(dbConnection: Connection) {
       const priority = randomItem(ticketPriorities);
       const category = type === 'bug' ? 'Bug Report' : 
                       type === 'player' ? 'Player Report' :
-                      type === 'appeal' ? 'Punishment Appeal' : 'Other';
+                      type === 'appeal' ? 'Punishment Appeal' : 
+                      type === 'chat' ? 'Chat Report' : 'Support';
                       
       const subject = randomItem(ticketSubjects);
       const staffName = staffNames.length > 0 ? randomItem(staffNames) : defaultStaffName;

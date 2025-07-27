@@ -271,7 +271,7 @@ const PlayerTicket = () => {
         status: mappedStatus as 'Unfinished' | 'Open' | 'Closed',
         reportedBy: ticketData.creator || ticketData.reportedBy || 'Unknown',
         date: validDate,
-        category: ticketData.category || 'Other',
+        category: ticketData.category || 'Support',
         type: ticketData.type || 'bug',
         messages: processedMessages,
         locked: ticketData.locked === true
