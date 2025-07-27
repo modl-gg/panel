@@ -192,9 +192,10 @@ function getCategoryFromType(type: string): string {
     case 'player': return 'Player Report';
     case 'chat': return 'Chat Report';
     case 'appeal': return 'Ban Appeal';
-    case 'staff': return 'Staff Application';
+    case 'staff': 
+    case 'application': return 'Staff Application';
     case 'support': return 'General Support';
-    default: return 'Other';
+    default: return 'General Support';
   }
 }
 
