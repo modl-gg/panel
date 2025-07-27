@@ -17,7 +17,7 @@ dotenv.config();
 
 const GLOBAL_MODL_DB_URI = process.env.GLOBAL_MODL_DB_URI;
 const PANEL_DB_PREFIX = process.env.PANEL_DB_PREFIX || 'server_';
-const IS_DEVELOPMENT = process.env.NODE_ENV === 'development';
+const IS_DEVELOPMENT = process.env.NODE_ENV === 'staging';
 
 let globalModlConnection: Connection | null = null;
 const serverConnections = new Map<string, Connection>();
@@ -99,7 +99,7 @@ export async function connectToServerDb(serverName: string): Promise<Connection>
 
   if (IS_DEVELOPMENT) {
     actualDbNameForConnection = 'modl_test';
-    connectionKeyInMap = 'dev_shared_modl_test_connection';
+    connectionKeyInMap = 'modl_test';
   } else {
     actualDbNameForConnection = `${PANEL_DB_PREFIX}${serverName}`;
     connectionKeyInMap = serverName;
