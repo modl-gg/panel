@@ -4,7 +4,7 @@
   "type": "module",
   "license": "AGPL-3.0-only",
   "scripts": {
-    "dev": "echo 'Development mode not supported. Use NODE_ENV=production for local development.' && exit 1",
+    "dev": "cross-env NODE_ENV=staging tsx server/index.ts",
     "build": "vite build && esbuild server/index.ts --platform=node --packages=external --bundle --format=esm --outdir=dist",
     "start": "NODE_ENV=production node dist/index.js",
     "start:local": "NODE_ENV=production tsx server/index.ts",

@@ -138,6 +138,28 @@ export async function subdomainDbMiddleware(req: Request, res: Response, next: N
       }
     }
 
+    if (!serverConfig && (hostname === "localhost" || hostname === "127.0.0.1") && process.env.NODE_ENV === "staging") {
+      req.serverName = "modl_test";
+      serverConfig = {
+        "adminEmail": "dev@modl.gg",
+        "serverName": "modl_test",
+        "customDomain": "localhost",
+        "plan": "free",
+        "emailVerified": true,
+        "ai_requests_current_period": 0,
+        "cdn_usage_current_period": 0,
+        "createdAt": new Date(),
+        "provisioningStatus": "completed",
+        "subscription_status": "inactive",
+        "ticketCount": 0,
+        "updatedAt": new Date(),
+        "usage_billing_enabled": false,
+        "userCount": 0,
+        "databaseName": "modl_test",
+        save: () => {}
+      };
+    }
+
     if (!serverConfig) {
       
       // If this was a custom domain attempt, check if it exists but isn't active
@@ -178,7 +200,8 @@ export async function subdomainDbMiddleware(req: Request, res: Response, next: N
       '/pending-verification',
       '/resend-verification',
       '/verify-email'
-    ];    const alwaysAllowedApiPatterns = [
+    ];    
+    const alwaysAllowedApiPatterns = [
       '/api/auth/',
       '/api/request-email-verification',
       '/api/staff/check-email'
