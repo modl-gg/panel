@@ -15,7 +15,7 @@ export interface QuickResponseAction {
 export interface QuickResponseCategory {
   id: string;
   name: string;
-  ticketTypes: string[]; // ['player_report', 'chat_report', 'bug_report', 'appeal', 'support', 'application', 'other']
+  ticketTypes: string[]; // ['player_report', 'chat_report', 'bug_report', 'appeal', 'support', 'application']
   actions: QuickResponseAction[];
   order: number;
 }
@@ -186,7 +186,7 @@ export const defaultQuickResponsesConfig: QuickResponsesConfiguration = {
     {
       id: 'bug_actions',
       name: 'Bug Report Actions',
-      ticketTypes: ['bug_report'],
+      ticketTypes: ['bug'],
       order: 4,
       actions: [
         {
@@ -258,7 +258,7 @@ export const defaultQuickResponsesConfig: QuickResponsesConfiguration = {
     {
       id: 'general_actions',
       name: 'General Actions',
-      ticketTypes: ['other'],
+      ticketTypes: ['bug', 'support', 'application'],
       order: 6,
       actions: [
         {
