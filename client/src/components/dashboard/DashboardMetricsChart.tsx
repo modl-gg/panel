@@ -100,46 +100,51 @@ export function DashboardMetricsChart({ data, loading, period, onPeriodChange }:
                 type="monotone"
                 dataKey="openTickets"
                 stroke={METRIC_COLORS.openTickets}
+                fill={METRIC_COLORS.openTickets}
                 strokeWidth={2}
                 name="Open Tickets"
-                dot={{ r: 4 }}
-                activeDot={{ r: 6 }}
+                dot={{ r: 2 }}
+                activeDot={{ r: 4 }}
               />
               <Line
                 type="monotone"
                 dataKey="onlinePlayers"
                 stroke={METRIC_COLORS.onlinePlayers}
+                fill={METRIC_COLORS.onlinePlayers}
                 strokeWidth={2}
                 name="Online Players"
-                dot={{ r: 4 }}
-                activeDot={{ r: 6 }}
+                dot={{ r: 2 }}
+                activeDot={{ r: 4 }}
               />
               <Line
                 type="monotone"
                 dataKey="newPlayers"
                 stroke={METRIC_COLORS.newPlayers}
+                fill={METRIC_COLORS.newPlayers}
                 strokeWidth={2}
                 name="New Players"
-                dot={{ r: 4 }}
-                activeDot={{ r: 6 }}
+                dot={{ r: 2 }}
+                activeDot={{ r: 4 }}
               />
               <Line
                 type="monotone"
                 dataKey="punishmentsIssued"
                 stroke={METRIC_COLORS.punishmentsIssued}
+                fill={METRIC_COLORS.punishmentsIssued}
                 strokeWidth={2}
                 name="Punishments Issued"
-                dot={{ r: 4 }}
-                activeDot={{ r: 6 }}
+                dot={{ r: 2 }}
+                activeDot={{ r: 4 }}
               />
               <Line
                 type="monotone"
                 dataKey="newTickets"
                 stroke={METRIC_COLORS.newTickets}
+                fill={METRIC_COLORS.newTickets}
                 strokeWidth={2}
                 name="New Tickets"
-                dot={{ r: 4 }}
-                activeDot={{ r: 6 }}
+                dot={{ r: 2 }}
+                activeDot={{ r: 4 }}
               />
             </LineChart>
           </ResponsiveContainer>
