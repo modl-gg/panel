@@ -391,7 +391,7 @@ export async function seedDefaultHomepageCards(dbConnection: mongoose.Connection
         icon: 'Scale',
         icon_color: '#f59e0b', // amber-500
         action_type: 'url',
-        action_url: '/appeals',
+        action_url: '/appeal',
         action_button_text: 'Submit Appeal',
         is_enabled: true,
         ordinal: 0

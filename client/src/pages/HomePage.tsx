@@ -327,7 +327,7 @@ const HomePage: React.FC = () => {
                         <h3 className="font-medium text-lg mb-3">Appeal Punishment</h3>
                         <p className="text-sm text-muted-foreground mb-4">Submit an appeal if you believe you were unfairly banned or punished</p>
                       </div>
-                      <Link href="/appeals">
+                      <Link href="/appeal">
                         <Button variant="outline" size="sm" className="w-full">
                           Submit Appeal
                         </Button>
