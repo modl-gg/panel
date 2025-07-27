@@ -554,14 +554,14 @@ router.patch('/profile', async (req: Request, res: Response) => {
         user 
       });
     }    // For regular staff, update database
-    const User = req.serverDbConnection!.model('User');
+    const Staff = req.serverDbConnection!.model('Staff');
     const updateData: any = {};
     
     if (username !== undefined) {
       updateData.username = username;
     }
 
-    const updatedUser = await User.findByIdAndUpdate(
+    const updatedUser = await Staff.findByIdAndUpdate(
       userId,
       updateData,
       { new: true, runValidators: true }
@@ -650,8 +650,8 @@ router.get('/session', async (req: Request, res: Response) => {
     }
 
     // For regular staff, fetch from database to get latest profile data
-    const User = req.serverDbConnection!.model('User');
-    const user = await User.findById(session.userId);
+    const Staff = req.serverDbConnection!.model('Staff');
+    const user = await Staff.findById(session.userId);
     
     if (!user) {
       console.log('[SESSION] User not found in database for ID:', session.userId);

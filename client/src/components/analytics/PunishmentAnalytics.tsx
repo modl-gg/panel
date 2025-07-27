@@ -124,7 +124,7 @@ export function PunishmentAnalytics({ data, loading, period, onPeriodChange }: P
           </TabsContent>
           
           <TabsContent value="types">
-            <div className="h-80">
+            <div className="h-100">
               <ResponsiveContainer width="100%" height="100%">
                 <PieChart>
                   <Pie
@@ -132,7 +132,6 @@ export function PunishmentAnalytics({ data, loading, period, onPeriodChange }: P
                     cx="50%"
                     cy="50%"
                     labelLine={false}
-                    label={(entry) => `${entry.type}: ${entry.count}`}
                     outerRadius={80}
                     fill="#8884d8"
                     dataKey="count"
