@@ -1,7 +1,7 @@
 import { Router } from 'express';
 import multer from 'multer';
 import { isAuthenticated } from '../middleware/auth-middleware';
-import { uploadMedia, deleteMedia, isWasabiConfigured, isSecureFileKey, MediaUploadOptions } from '../services/wasabi-service';
+import { uploadMedia, deleteMedia, isBackblazeConfigured, isSecureFileKey, MediaUploadOptions } from '../services/wasabi-service';
 
 const router = Router();
 
@@ -15,10 +15,10 @@ const upload = multer({
 
 // Middleware to check if Wasabi is configured
 const requireWasabiConfig = (req: any, res: any, next: any) => {
-  if (!isWasabiConfigured()) {
+  if (!isBackblazeConfigured()) {
     return res.status(503).json({
       error: 'Media storage not configured',
-      message: 'Wasabi cloud storage is not properly configured. Please contact your administrator.'
+      message: 'Backblaze cloud storage is not properly configured. Please contact your administrator.'
     });
   }
   next();
@@ -99,7 +99,7 @@ router.post('/upload/evidence', isAuthenticated, upload.single('file'), async (r
     let result;
 
     // Try Wasabi first if configured, otherwise fall back to local storage
-    if (isWasabiConfigured()) {
+    if (isBackblazeConfigured()) {
       try {
         const uploadOptions: MediaUploadOptions = {
           file: req.file.buffer,
@@ -112,7 +112,7 @@ router.post('/upload/evidence', isAuthenticated, upload.single('file'), async (r
 
         result = await uploadMedia(uploadOptions);
       } catch (wasabiError) {
-        console.warn('Wasabi upload failed, falling back to local storage:', wasabiError);
+        console.warn('Backblaze upload failed, falling back to local storage:', wasabiError);
         result = await saveFileLocally(req.file, 'evidence', subFolder, serverName);
       }
     } else {
@@ -127,7 +127,7 @@ router.post('/upload/evidence', isAuthenticated, upload.single('file'), async (r
         key: result.key,
         folderUuid: result.folderUuid,
         message: 'Evidence uploaded successfully',
-        storage: isWasabiConfigured() ? 'wasabi' : 'local'
+        storage: isBackblazeConfigured() ? 'backblaze' : 'local'
       });
     } else {
       res.status(400).json({
@@ -396,7 +396,7 @@ router.delete('/media/:key', isAuthenticated, requireWasabiConfig, async (req, r
  */
 router.get('/config', isAuthenticated, (req, res) => {
   res.json({
-    wasabiConfigured: isWasabiConfigured(),
+    wasabiConfigured: isBackblazeConfigured(),
     supportedTypes: {
       evidence: ['image/jpeg', 'image/png', 'image/gif', 'image/webp', 'video/mp4', 'video/webm', 'video/quicktime'],
       tickets: ['image/jpeg', 'image/png', 'image/gif', 'image/webp', 'application/pdf', 'text/plain', 'application/msword', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document'],
