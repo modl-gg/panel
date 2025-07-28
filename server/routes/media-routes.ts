@@ -1,7 +1,7 @@
 import { Router } from 'express';
 import multer from 'multer';
 import { isAuthenticated } from '../middleware/auth-middleware';
-import { uploadMedia, deleteMedia, isBackblazeConfigured, isSecureFileKey, MediaUploadOptions } from '../services/wasabi-service';
+import { uploadMedia, deleteMedia, isBackblazeConfigured, isSecureFileKey, MediaUploadOptions } from '../services/backblaze-service';
 
 const router = Router();
 
