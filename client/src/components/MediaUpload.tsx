@@ -5,6 +5,7 @@ import { useToast } from '@modl-gg/shared-web/hooks/use-toast';
 import { Progress } from '@modl-gg/shared-web/components/ui/progress';
 import { Card, CardContent } from '@modl-gg/shared-web/components/ui/card';
 import { cn } from '@modl-gg/shared-web/lib/utils';
+import { useMediaUpload } from '@/hooks/use-media-upload';
 
 interface MediaUploadProps {
   uploadType: 'evidence' | 'ticket' | 'appeal' | 'article' | 'server-icon';
@@ -67,6 +68,7 @@ export function MediaUpload({
   const [isDragging, setIsDragging] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const { toast } = useToast();
+  const { uploadMedia } = useMediaUpload();
 
   const allowedTypes = acceptedTypes || DEFAULT_ACCEPTED_TYPES[uploadType];
   const sizeLimit = maxSizeBytes || DEFAULT_SIZE_LIMITS[uploadType];
