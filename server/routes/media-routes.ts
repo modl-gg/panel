@@ -159,7 +159,7 @@ async function handleFileUpload(req: any, res: any, file: Express.Multer.File, f
 
 // Upload ticket attachment
 router.post('/upload/ticket', isAuthenticated, requireBackblazeConfig, upload.single('file'), async (req, res) => {
-  const { serverName } = (req as any).user;
+  const serverName = (req as any).serverName;
   const { ticketId } = req.body;
   
   if (!req.file) {
@@ -215,7 +215,7 @@ router.post('/upload/ticket', isAuthenticated, requireBackblazeConfig, upload.si
 
 // Upload article media
 router.post('/upload/article', isAuthenticated, requireBackblazeConfig, upload.single('file'), async (req, res) => {
-  const { serverName } = (req as any).user;
+  const serverName = (req as any).serverName;
   const { articleId } = req.body;
   
   if (!req.file) {
@@ -329,7 +329,7 @@ router.post('/upload/appeal', requireBackblazeConfig, upload.single('file'), asy
  * Uploads to Backblaze B2 instead of local storage
  */
 router.post('/upload/server-icon', isAuthenticated, requireBackblazeConfig, upload.single('file'), async (req, res) => {
-  const { serverName } = (req as any).user;
+  const serverName = (req as any).serverName;
   
   if (!req.file) {
     return res.status(400).json({ error: 'No file uploaded' });
@@ -377,7 +377,7 @@ router.post('/upload/server-icon', isAuthenticated, requireBackblazeConfig, uplo
 // Delete media file
 router.delete('/media/:key', isAuthenticated, requireBackblazeConfig, async (req, res) => {
   const { key } = req.params;
-  const { serverName } = (req as any).user;
+  const serverName = (req as any).serverName;
   
   if (!key) {
     return res.status(400).json({ error: 'File key required' });
