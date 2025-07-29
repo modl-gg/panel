@@ -234,6 +234,7 @@ const Sidebar = () => {
       name: "Audit",
       path: "/panel/audit",
       icon: <FileText className="h-5 w-5" />,
+      permission: PERMISSIONS.ADMIN_AUDIT_VIEW,
       onClick: () => {
         if (isLookupOpen) closeLookup();
         navigate("/panel/audit");

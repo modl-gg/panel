@@ -40,6 +40,7 @@ const DEFAULT_PERMISSIONS: Permission[] = [
   { id: 'admin.settings.modify', name: 'Modify Settings', description: 'Modify system settings (excluding account settings)', category: 'admin' },
   { id: 'admin.staff.manage', name: 'Manage Staff', description: 'Invite, remove, and modify staff members', category: 'admin' },
   { id: 'admin.analytics.view', name: 'View Analytics', description: 'Access system analytics and reports', category: 'admin' },
+  { id: 'admin.audit.view', name: 'View Audit', description: 'Access audit logs and system activity', category: 'admin' },
   
   // Punishment permissions
   { id: 'punishment.modify', name: 'Modify Punishments', description: 'Pardon, modify duration, and edit existing punishments', category: 'punishment' },
@@ -56,14 +57,14 @@ const DEFAULT_ROLES: StaffRole[] = [
     id: 'super-admin',
     name: 'Super Admin',
     description: 'Full access to all features and settings',
-    permissions: ['admin.settings.view', 'admin.settings.modify', 'admin.staff.manage', 'admin.analytics.view', 'ticket.view.all', 'ticket.reply.all', 'ticket.close.all', 'ticket.delete.all'],
+    permissions: ['admin.settings.view', 'admin.settings.modify', 'admin.staff.manage', 'admin.analytics.view', 'admin.audit.view', 'ticket.view.all', 'ticket.reply.all', 'ticket.close.all', 'ticket.delete.all'],
     isDefault: true,
   },
   {
     id: 'admin',
     name: 'Admin',
     description: 'Administrative access with some restrictions',
-    permissions: ['admin.settings.view', 'admin.staff.manage', 'admin.analytics.view', 'ticket.view.all', 'ticket.reply.all', 'ticket.close.all'],
+    permissions: ['admin.settings.view', 'admin.staff.manage', 'admin.analytics.view', 'admin.audit.view', 'ticket.view.all', 'ticket.reply.all', 'ticket.close.all'],
     isDefault: true,
   },
   {
