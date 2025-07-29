@@ -540,15 +540,6 @@ const PlayerTicket = () => {
     
     // If no form config found, show error - no fallback
     if (!formConfig || !formConfig.fields) {
-      // Debug information
-      console.log('=== TICKET FORM DEBUG ===');
-      console.log('ticketDetails.type:', ticketDetails.type);
-      console.log('settingsData:', settingsData);
-      console.log('ticketForms:', settingsData?.settings?.ticketForms);
-      console.log('Available form keys:', Object.keys(settingsData?.settings?.ticketForms || {}));
-      console.log('formConfig:', formConfig);
-      console.log('========================');
-
       return (
         <div className="text-center py-8 border-2 border-dashed border-red-200 bg-red-50 rounded-lg">
           <div className="text-red-600 mb-4">
@@ -560,15 +551,9 @@ const PlayerTicket = () => {
           <p className="text-red-700 mb-4">
             No form configuration found for {ticketDetails.type} tickets.
           </p>
-          <p className="text-sm text-red-600 mb-4">
+          <p className="text-sm text-red-600">
             Please contact server administration to configure this ticket form.
           </p>
-          <div className="text-xs text-red-500 bg-red-100 p-2 rounded border-l-4 border-red-500">
-            <strong>Debug Info:</strong><br/>
-            Ticket Type: {ticketDetails.type}<br/>
-            Available Forms: {Object.keys(settingsData?.settings?.ticketForms || {}).join(', ') || 'None'}<br/>
-            Form Config: {formConfig ? 'Found but no fields' : 'Not found'}
-          </div>
         </div>
       );
     }
