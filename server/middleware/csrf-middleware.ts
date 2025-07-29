@@ -35,7 +35,10 @@ export function csrfProtection(req: CSRFRequest, res: Response, next: NextFuncti
   // Skip CSRF for Stripe webhooks (server-to-server, authenticated via webhook signatures)
   const isWebhookRoute = req.path.startsWith('/stripe-public-webhooks/stripe-webhooks');
   
-  if (isApiKeyRoute || isWebhookRoute) {
+  // Skip CSRF for public upload endpoints (no authentication required)
+  const isPublicUploadRoute = req.path === '/api/public/media/upload/ticket';
+  
+  if (isApiKeyRoute || isWebhookRoute || isPublicUploadRoute) {
     return next();
   }
 
