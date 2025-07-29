@@ -70,19 +70,44 @@ export function useMediaUpload() {
       formData.append(key, value.toString());
     });
 
-    const { csrfFetch } = await import('@/utils/csrf');
-    const response = await csrfFetch(`/api/panel/media/upload/${uploadType}`, {
-      method: 'POST',
-      body: formData,
-    });
+    // Check if we're on a public page (player ticket, appeals, etc.)
+    const currentPath = window.location.pathname;
+    const isPublicPage = currentPath.startsWith('/ticket/') || 
+                        currentPath.startsWith('/appeal') || 
+                        currentPath === '/' ||
+                        currentPath.startsWith('/knowledgebase') ||
+                        currentPath.startsWith('/article/');
 
-    if (!response.ok) {
-      const errorData = await response.json();
-      throw new Error(errorData.error || 'Upload failed');
+    // Use public endpoint for ticket uploads on public pages
+    if (isPublicPage && uploadType === 'ticket') {
+      const response = await fetch('/api/public/media/upload/ticket', {
+        method: 'POST',
+        body: formData,
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || 'Upload failed');
+      }
+
+      const result = await response.json();
+      return { url: result.url, key: result.key };
+    } else {
+      // Use authenticated endpoint for panel pages or non-ticket uploads
+      const { csrfFetch } = await import('@/utils/csrf');
+      const response = await csrfFetch(`/api/panel/media/upload/${uploadType}`, {
+        method: 'POST',
+        body: formData,
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || 'Upload failed');
+      }
+
+      const result = await response.json();
+      return { url: result.url, key: result.key };
     }
-
-    const result = await response.json();
-    return { url: result.url, key: result.key };
   };
 
   const deleteMedia = async (key: string): Promise<void> => {

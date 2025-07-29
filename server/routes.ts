@@ -226,6 +226,104 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.status(500).json({ error: 'Failed to fetch avatar' });
     }
   });
+
+  // Public media upload endpoint - no authentication required (for ticket attachments)
+  app.post('/api/public/media/upload/ticket', express.raw({ type: 'multipart/form-data', limit: '100mb' }), async (req, res) => {
+    const multer = await import('multer');
+    const fs = await import('fs');
+    const path = await import('path');
+    
+    // Configure multer for this specific endpoint
+    const upload = multer.default({ 
+      dest: 'uploads/',
+      limits: { fileSize: 50 * 1024 * 1024 } // 50MB limit for tickets
+    });
+
+    // Use multer middleware
+    upload.single('file')(req, res, async (err) => {
+      if (err) {
+        console.error('[Public Upload] Multer error:', err);
+        return res.status(400).json({ error: 'File upload error', details: err.message });
+      }
+
+      try {
+        const file = req.file;
+        if (!file) {
+          return res.status(400).json({ error: 'No file uploaded' });
+        }
+
+        // Check if file exists
+        if (!fs.default.existsSync(file.path)) {
+          return res.status(400).json({ error: 'Uploaded file not found' });
+        }
+
+        // Import services
+        const { uploadMedia, isBackblazeConfigured } = await import('./services/backblaze-service');
+
+        // Read file buffer
+        const fileBuffer = fs.default.readFileSync(file.path);
+
+        // Always clean up temp file
+        fs.default.unlinkSync(file.path);
+
+        // Try Backblaze B2 first if configured, otherwise fall back to local storage
+        if (isBackblazeConfigured()) {
+          try {
+            const result = await uploadMedia({
+              buffer: fileBuffer,
+              originalName: file.originalname,
+              mimeType: file.mimetype
+            }, 'tickets', req.body.ticketId || 'public');
+
+            return res.json({
+              success: true,
+              url: result.url,
+              key: result.key,
+              storage: 'backblaze'
+            });
+          } catch (backblazeError) {
+            console.error('[Public Upload] Backblaze upload failed, falling back to local:', backblazeError);
+            // Fall through to local storage
+          }
+        }
+
+        // Local storage fallback
+        const timestamp = Date.now();
+        const ext = path.default.extname(file.originalname);
+        const filename = `${path.default.basename(file.originalname, ext)}-${timestamp}${ext}`;
+        
+        let relativePath = `uploads/tickets`;
+        if (req.body.ticketId) {
+          relativePath += `/${req.body.ticketId}`;
+        }
+        relativePath += `/${filename}`;
+        
+        // Ensure directory exists
+        const fullDir = path.default.dirname(relativePath);
+        if (!fs.default.existsSync(fullDir)) {
+          fs.default.mkdirSync(fullDir, { recursive: true });
+        }
+        
+        // Write file to final location
+        fs.default.writeFileSync(relativePath, fileBuffer);
+        
+        return res.json({
+          success: true,
+          url: `/${relativePath}`,
+          key: relativePath,
+          storage: 'local',
+          message: 'File uploaded to local storage (Backblaze B2 not configured)'
+        });
+
+      } catch (error) {
+        console.error('[Public Upload] Upload error:', error);
+        return res.status(500).json({ 
+          error: 'Upload failed',
+          details: error instanceof Error ? error.message : 'Unknown error'
+        });
+      }
+    });
+  });
   // Panel specific API routes
   const panelRouter = express.Router();
   
