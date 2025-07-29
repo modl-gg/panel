@@ -8,10 +8,10 @@ export function securityHeaders(req: Request, res: Response, next: NextFunction)
   // Content Security Policy - helps prevent XSS attacks
   const cspPolicy = [
     "default-src 'self'",
-    "script-src 'self' 'unsafe-inline' 'unsafe-eval'", // Allow inline scripts for React
-    "style-src 'self' 'unsafe-inline'", // Allow inline styles for Tailwind/React
+    "script-src 'self' 'unsafe-inline' 'unsafe-eval' https://js.stripe.com", // Allow inline scripts for React and Stripe
+    "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com", // Allow inline styles for Tailwind/React and Google Fonts
     "img-src 'self' data: https:", // Allow images from self, data URLs, and HTTPS
-    "font-src 'self' data:", // Allow fonts from self and data URLs
+    "font-src 'self' data: https://fonts.gstatic.com", // Allow fonts from self, data URLs, and Google Fonts
     "connect-src 'self' https:", // Allow connections to self and HTTPS
     "media-src 'self'", // Allow media from self
     "object-src 'none'", // Disable plugins
