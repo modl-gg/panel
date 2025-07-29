@@ -278,14 +278,6 @@ const PlayerTicket = () => {
           staffMinecraftUuid: message.staffMinecraftUuid // Preserve staff Minecraft UUID for avatars
         };
         
-        if (message.attachments && message.attachments.length > 0) {
-          console.log('Message with attachments found:', {
-            messageId: processed.id,
-            sender: processed.sender,
-            attachments: message.attachments
-          });
-        }
-        
         return processed;
       });
           
@@ -322,8 +314,6 @@ const PlayerTicket = () => {
     const tempId = Date.now().toString();
     const timestamp = new Date().toISOString();
     
-    console.log('Sending reply with attachments:', replyAttachments);
-    
     // Create new message for immediate display
     const newMessage: TicketMessage = {
       id: tempId,
@@ -334,8 +324,6 @@ const PlayerTicket = () => {
       staff: false,
       attachments: replyAttachments.map(att => att.url) // Include attachment URLs
     };
-    
-    console.log('Optimistic message with attachments:', newMessage.attachments);
     
     // Update UI immediately with the new message
     setTicketDetails(prev => ({
@@ -353,8 +341,6 @@ const PlayerTicket = () => {
       attachments: replyAttachments.map(att => att.url) // Include attachment URLs for API
     };
     
-    console.log('Sending API reply with attachments:', reply.attachments);
-    
     // Store current attachments for potential restoration
     const currentAttachments = [...replyAttachments];
     
@@ -368,11 +354,8 @@ const PlayerTicket = () => {
         reply: reply
       });
       
-      console.log('Reply sent successfully, scheduling cache invalidation');
-      
       // Small delay to ensure backend has saved the data, then invalidate cache
       setTimeout(() => {
-        console.log('Invalidating cache to refresh data');
         queryClient.invalidateQueries({ queryKey: ['/api/public/tickets', ticketDetails.id] });
       }, 1500); // Increased delay to give backend more time
     } catch (error) {
