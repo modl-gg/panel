@@ -33,7 +33,7 @@ export function csrfProtection(req: CSRFRequest, res: Response, next: NextFuncti
                         (req.headers['x-api-key'] || req.headers['x-ticket-api-key']));
   
   // Skip CSRF for Stripe webhooks (server-to-server, authenticated via webhook signatures)
-  const isWebhookRoute = req.path.startsWith('/stripe-webhooks');
+  const isWebhookRoute = req.path.startsWith('/stripe-public-webhooks/stripe-webhooks');
   
   if (isApiKeyRoute || isWebhookRoute) {
     return next();
