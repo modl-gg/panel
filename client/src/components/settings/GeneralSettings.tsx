@@ -11,8 +11,8 @@ import { usePermissions } from '@/hooks/use-permissions';
 import BillingSettings from './BillingSettings';
 import DomainSettings from './DomainSettings';
 import UsageSettings from './UsageSettings';
-import { toast } from '@modl-gg/shared-web';
 import { queryClient } from '@/lib/queryClient';
+import { toast } from '@/hooks/use-toast';
 
 interface GeneralSettingsProps {
   // Server Configuration
