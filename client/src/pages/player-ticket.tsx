@@ -79,6 +79,17 @@ interface FormSection {
   hideByDefault?: boolean;
 }
 
+interface TicketAttachment {
+  id: string;
+  url: string;
+  key: string;
+  fileName: string;
+  fileType: string;
+  fileSize: number;
+  uploadedAt: string;
+  uploadedBy: string;
+}
+
 // Format date to MM/dd/yy HH:mm in browser's timezone
 const formatDate = (dateString: string): string => {
   try {
@@ -200,6 +211,7 @@ const PlayerTicket = () => {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [formSubject, setFormSubject] = useState('');
   const [formData, setFormData] = useState<Record<string, string>>({});
+  const [replyAttachments, setReplyAttachments] = useState<TicketAttachment[]>([]);
   
   // Use React Query to fetch ticket data
   const { data: ticketData, isLoading, isError } = useTicket(id || '');
@@ -305,7 +317,8 @@ const PlayerTicket = () => {
       senderType: 'user',
       content: newReply.trim(),
       timestamp: new Date().toISOString(),
-      staff: false
+      staff: false,
+      attachments: replyAttachments.map(att => att.url) // Include attachment URLs
     };
     
     // Update UI immediately with the new message
@@ -320,11 +333,13 @@ const PlayerTicket = () => {
       type: 'user',
       content: newReply.trim(),
       created: timestamp,
-      staff: false
+      staff: false,
+      attachments: replyAttachments.map(att => att.url) // Include attachment URLs for API
     };
     
-    // Clear the reply field
+    // Clear the reply field and attachments
     setNewReply('');
+    setReplyAttachments([]);
       try {
       // Send the update to the API using the new public reply endpoint
       await addReplyMutation.mutateAsync({
@@ -346,6 +361,9 @@ const PlayerTicket = () => {
         ...prev,
         messages: prev.messages.filter(msg => msg.id !== tempId)
       }));
+      // Restore the reply content and attachments on failure
+      setNewReply(newReply);
+      setReplyAttachments(replyAttachments);
     } finally {
       setIsSubmitting(false);
     }
@@ -473,6 +491,11 @@ const PlayerTicket = () => {
       ...prev,
       [name]: value
     }));
+  };
+
+  // Handle attachments update
+  const handleAttachmentsUpdate = (attachments: TicketAttachment[]) => {
+    setReplyAttachments(attachments);
   };
   
   // No fallback forms - only use configured forms
@@ -806,9 +829,9 @@ const PlayerTicket = () => {
           
           {/* Render sections in order - only show visible sections */}
           {sectionDefinitions
-            .filter(section => visibleSections.has(section.id))
-            .sort((a, b) => a.order - b.order)
-            .map((section) => {
+            .filter((section: FormSection) => visibleSections.has(section.id))
+            .sort((a: FormSection, b: FormSection) => a.order - b.order)
+            .map((section: FormSection) => {
               const sectionFields = fieldsBySection[section.id] || [];
               if (sectionFields.length === 0) return null;
               
@@ -1030,6 +1053,7 @@ const PlayerTicket = () => {
                           showTitle={false}
                           compact={true}
                           publicMode={true}
+                          onAttachmentsUpdate={handleAttachmentsUpdate}
                         />
                       </div>
                       
