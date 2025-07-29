@@ -593,7 +593,7 @@ router.get('/tickets/:id', async (req: Request, res: Response) => {
       
       // Enhance each message with staff UUID and normalize field structure
       for (const message of ticket.replies) {
-        const enhancedMessage = { ...message };
+        const enhancedMessage = { ...message.toObject?.() || message };
         
         // Normalize message fields for compatibility
         enhancedMessage.name = message.name || message.sender || 'Unknown';
@@ -601,6 +601,9 @@ router.get('/tickets/:id', async (req: Request, res: Response) => {
         enhancedMessage.content = message.content || message.message || '';
         enhancedMessage.senderType = message.senderType || (message.staff ? 'staff' : 'user');
         enhancedMessage.timestamp = message.timestamp || message.created || new Date().toISOString();
+        
+        // Explicitly preserve attachments
+        enhancedMessage.attachments = message.attachments || [];
         
         if ((message.staff === true || message.senderType === 'staff') && (message.name || message.sender)) {
           const staffUsername = message.name || message.sender;
