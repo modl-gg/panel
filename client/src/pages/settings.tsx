@@ -1041,10 +1041,10 @@ const Settings = () => {
 
   // Load API key on component mount (only for users with appropriate permissions)
   useEffect(() => {
-    if (canAccessSettingsTab('general')) {
+    if (user && canAccessSettingsTab('general')) {
       loadApiKey();
     }
-  }, [canAccessSettingsTab]);
+  }, [user?.role]); // Only depend on user role, not the function
 
   // File upload functions
   const uploadIcon = async (file: File, iconType: 'homepage' | 'panel'): Promise<string | null> => {
@@ -1448,11 +1448,11 @@ const Settings = () => {
 
   // Load AI moderation settings on component mount (only for users with appropriate permissions)
   useEffect(() => {
-    if (canAccessSettingsTab('tags')) {
+    if (user && canAccessSettingsTab('tags')) {
       loadAiModerationSettings();
       loadAvailablePunishmentTypes();
     }
-  }, [canAccessSettingsTab]);
+  }, [user?.role]); // Only depend on user role, not the function
 
   // Auto-save AI moderation settings when they change
   useEffect(() => {
@@ -1462,7 +1462,7 @@ const Settings = () => {
       }, 1000);
       return () => clearTimeout(saveTimeout);
     }
-  }, [aiModerationSettings, isLoadingAiSettings, canAccessSettingsTab]);
+  }, [aiModerationSettings, isLoadingAiSettings]); // Don't include canAccessSettingsTab in dependencies
 
   // Auto-save AI punishment configs when they change
   useEffect(() => {
@@ -1472,7 +1472,7 @@ const Settings = () => {
       }, 1000);
       return () => clearTimeout(saveTimeout);
     }
-  }, [aiModerationSettings.aiPunishmentConfigs, aiModerationSettings, isLoadingAiSettings, canAccessSettingsTab]);
+  }, [aiModerationSettings.aiPunishmentConfigs, aiModerationSettings, isLoadingAiSettings]); // Don't include canAccessSettingsTab in dependencies
 
   // Define captureInitialSettings first, before it's used anywhere else
   const captureInitialSettings = useCallback(() => {
