@@ -86,7 +86,7 @@ export const SUPPORTED_FILE_TYPES: Record<FolderType, string[]> = {
 // File size limits (in bytes)
 export const FILE_SIZE_LIMITS: Record<FolderType, number> = {
   evidence: 100 * 1024 * 1024, // 100MB for evidence (videos can be large)
-  tickets: 10 * 1024 * 1024,   // 10MB for ticket attachments
+  tickets: 50 * 1024 * 1024,   // 50MB for ticket attachments (authenticated users)
   appeals: 10 * 1024 * 1024,   // 10MB for appeal attachments
   articles: 50 * 1024 * 1024,  // 50MB for article media
   'server-icons': 5 * 1024 * 1024 // 5MB for server icons
