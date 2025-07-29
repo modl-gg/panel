@@ -247,7 +247,7 @@ const fetchDatabaseData = async (table: string, limit = 100, skip = 0) => {
 };
 
 // Custom themed tooltip component for charts
-const CustomTooltip = ({ active, payload, label, formatValue }: any) => {
+const CustomTooltip = ({ active, payload, label, formatValue, formatName }: any) => {
   if (active && payload && payload.length) {
     return (
       <div className="bg-background border border-border rounded-lg p-3 shadow-lg z-50 pointer-events-none">
@@ -258,7 +258,7 @@ const CustomTooltip = ({ active, payload, label, formatValue }: any) => {
               className="w-3 h-3 rounded-full flex-shrink-0" 
               style={{ backgroundColor: entry.color }}
             />
-            <span className="text-muted-foreground">{entry.name || entry.dataKey}:</span>
+            <span className="text-muted-foreground">{formatName ? formatName(entry.name || entry.dataKey) : entry.name || entry.dataKey}:</span>
             <span className="font-medium">
               {formatValue ? formatValue(entry.value, entry.name) : entry.value}
             </span>
@@ -437,15 +437,24 @@ const StaffPerformanceModal = () => {
                 <CardTitle className="text-base">Actions by Staff Member</CardTitle>
               </CardHeader>
               <CardContent>
-                <ResponsiveContainer width="100%" height={200}>
-                  <BarChart data={staffData}>
-                    <CartesianGrid strokeDasharray="3 3" className="opacity-30" />
-                    <XAxis dataKey="username" className="text-muted-foreground" fontSize={12} />
-                    <YAxis className="text-muted-foreground" fontSize={12} />
-                    <Tooltip content={<CustomTooltip />} />
-                    <Bar dataKey="totalActions" fill="#8884d8" />
-                  </BarChart>
-                </ResponsiveContainer>
+                {!staffData || staffData.length === 0 ? (
+                  <div className="flex items-center justify-center h-[200px] text-muted-foreground">
+                    <div className="text-center">
+                      <Users className="h-8 w-8 mx-auto mb-2 opacity-50" />
+                      <p className="text-sm">No staff action data available</p>
+                    </div>
+                  </div>
+                ) : (
+                  <ResponsiveContainer width="100%" height={200}>
+                    <BarChart data={staffData}>
+                      <CartesianGrid strokeDasharray="3 3" className="opacity-30" />
+                      <XAxis dataKey="username" className="text-muted-foreground" fontSize={12} />
+                      <YAxis className="text-muted-foreground" fontSize={12} />
+                      <Tooltip cursor={false} content={<CustomTooltip />} />
+                      <Bar dataKey="totalActions" fill="#8884d8" />
+                    </BarChart>
+                  </ResponsiveContainer>
+                )}
               </CardContent>
             </Card>
             
@@ -454,15 +463,24 @@ const StaffPerformanceModal = () => {
                 <CardTitle className="text-base">Response Times</CardTitle>
               </CardHeader>
               <CardContent>
-                <ResponsiveContainer width="100%" height={200}>
-                  <BarChart data={staffData}>
-                    <CartesianGrid strokeDasharray="3 3" className="opacity-30" />
-                    <XAxis dataKey="username" className="text-muted-foreground" fontSize={12} />
-                    <YAxis className="text-muted-foreground" fontSize={12} />
-                    <Tooltip content={<CustomTooltip formatValue={(value: any, name: any) => name?.includes('ResponseTime') ? `${value}h` : value} />} />
-                    <Bar dataKey="avgResponseTime" fill="#82ca9d" />
-                  </BarChart>
-                </ResponsiveContainer>
+                {!staffData || staffData.length === 0 ? (
+                  <div className="flex items-center justify-center h-[200px] text-muted-foreground">
+                    <div className="text-center">
+                      <Clock className="h-8 w-8 mx-auto mb-2 opacity-50" />
+                      <p className="text-sm">No response time data available</p>
+                    </div>
+                  </div>
+                ) : (
+                  <ResponsiveContainer width="100%" height={200}>
+                    <BarChart data={staffData}>
+                      <CartesianGrid strokeDasharray="3 3" className="opacity-30" />
+                      <XAxis dataKey="username" className="text-muted-foreground" fontSize={12} />
+                      <YAxis className="text-muted-foreground" fontSize={12} />
+                      <Tooltip content={<CustomTooltip formatValue={(value: any, name: any) => name?.includes('ResponseTime') ? `${value}h` : value} />} />
+                      <Bar dataKey="avgResponseTime" fill="#82ca9d" />
+                    </BarChart>
+                  </ResponsiveContainer>
+                )}
               </CardContent>
             </Card>
           </div>
@@ -931,17 +949,26 @@ const StaffDetailModal = ({ staff, isOpen, onClose }: {
                 <CardTitle className="text-base">Daily Activity Breakdown</CardTitle>
               </CardHeader>
               <CardContent>
-                <ResponsiveContainer width="100%" height={300}>
-                  <AreaChart data={staffActivityData}>
-                    <CartesianGrid strokeDasharray="3 3" className="opacity-30" />
-                    <XAxis dataKey="date" className="text-muted-foreground" fontSize={12} />
-                    <YAxis className="text-muted-foreground" fontSize={12} />
-                    <Tooltip content={<CustomTooltip />} />
-                    <Area type="monotone" dataKey="punishments" stackId="1" stroke="#ef4444" fill="#ef4444" dot={false} activeDot={false} />
-                    <Area type="monotone" dataKey="tickets" stackId="1" stroke="#3b82f6" fill="#3b82f6" dot={false} activeDot={false} />
-                    <Area type="monotone" dataKey="evidence" stackId="1" stroke="#10b981" fill="#10b981" dot={false} activeDot={false} />
-                  </AreaChart>
-                </ResponsiveContainer>
+                {!staffActivityData || staffActivityData.length === 0 ? (
+                  <div className="flex items-center justify-center h-[300px] text-muted-foreground">
+                    <div className="text-center">
+                      <Activity className="h-8 w-8 mx-auto mb-2 opacity-50" />
+                      <p className="text-sm">No daily activity data available</p>
+                    </div>
+                  </div>
+                ) : (
+                  <ResponsiveContainer width="100%" height={300}>
+                    <AreaChart data={staffActivityData}>
+                      <CartesianGrid strokeDasharray="3 3" className="opacity-30" />
+                      <XAxis dataKey="date" className="text-muted-foreground" fontSize={12} />
+                      <YAxis className="text-muted-foreground" fontSize={12} />
+                      <Tooltip content={<CustomTooltip />} />
+                      <Area type="monotone" dataKey="punishments" stackId="1" stroke="#ef4444" fill="#ef4444" dot={false} activeDot={false} />
+                      <Area type="monotone" dataKey="tickets" stackId="1" stroke="#3b82f6" fill="#3b82f6" dot={false} activeDot={false} />
+                      <Area type="monotone" dataKey="evidence" stackId="1" stroke="#10b981" fill="#10b981" dot={false} activeDot={false} />
+                    </AreaChart>
+                  </ResponsiveContainer>
+                )}
               </CardContent>
             </Card>
 
@@ -950,24 +977,33 @@ const StaffDetailModal = ({ staff, isOpen, onClose }: {
                 <CardTitle className="text-base">Punishment Types Issued</CardTitle>
               </CardHeader>
               <CardContent>
-                <ResponsiveContainer width="100%" height={300}>
-                  <PieChart>
-                    <Pie
-                      data={punishmentTypeData}
-                      cx="50%"
-                      cy="50%"
-                      outerRadius={80}
-                      fill="#8884d8"
-                      dataKey="count"
-                      label={({ type, percent }) => `${type} ${(percent * 100).toFixed(0)}%`}
-                    >
-                      {punishmentTypeData.map((entry: any, index: number) => (
-                        <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
-                      ))}
-                    </Pie>
-                    <Tooltip content={<CustomTooltip />} />
-                  </PieChart>
-                </ResponsiveContainer>
+                {!punishmentTypeData || punishmentTypeData.length === 0 ? (
+                  <div className="flex items-center justify-center h-[300px] text-muted-foreground">
+                    <div className="text-center">
+                      <Shield className="h-8 w-8 mx-auto mb-2 opacity-50" />
+                      <p className="text-sm">No punishment type data available</p>
+                    </div>
+                  </div>
+                ) : (
+                  <ResponsiveContainer width="100%" height={300}>
+                    <PieChart>
+                      <Pie
+                        data={punishmentTypeData}
+                        cx="50%"
+                        cy="50%"
+                        outerRadius={80}
+                        fill="#8884d8"
+                        dataKey="count"
+                        label={({ type, percent }) => `${type} ${((percent || 0) * 100).toFixed(0)}%`}
+                      >
+                        {punishmentTypeData.map((entry: any, index: number) => (
+                          <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+                        ))}
+                      </Pie>
+                      <Tooltip content={<CustomTooltip />} />
+                    </PieChart>
+                  </ResponsiveContainer>
+                )}
               </CardContent>
             </Card>
           </div>
@@ -993,7 +1029,7 @@ const StaffDetailModal = ({ staff, isOpen, onClose }: {
                       </tr>
                     </thead>
                     <tbody>
-                      {recentPunishments.length > 0 ? recentPunishments.map((punishment, index) => {
+                      {recentPunishments.length > 0 ? recentPunishments.map((punishment: any, index: number) => {
                         // Format duration helper function
                         const formatDuration = (duration: any) => {
                           const durationNum = typeof duration === 'number' ? duration : Number(duration);
@@ -1144,7 +1180,7 @@ const StaffDetailModal = ({ staff, isOpen, onClose }: {
                                         console.error('Rollback error:', error);
                                         toast({
                                           title: "Rollback Failed",
-                                          description: `Failed to rollback punishment: ${error.message}`,
+                                          description: `Failed to rollback punishment: ${error instanceof Error ? error.message : 'Unknown error'}`,
                                           variant: "destructive"
                                         });
                                       }
@@ -1189,7 +1225,7 @@ const StaffDetailModal = ({ staff, isOpen, onClose }: {
                       </tr>
                     </thead>
                     <tbody>
-                      {recentTickets && recentTickets.length > 0 ? recentTickets.map((ticket, index) => {
+                      {recentTickets && recentTickets.length > 0 ? recentTickets.map((ticket: any, index: number) => {
                         const timeSinceOpened = formatDurationDetailed(new Date(ticket.created || ticket.createdAt || ticket.timestamp));
                         const timeSinceLastActivity = ticket.lastActivity ? formatDurationDetailed(new Date(ticket.lastActivity)) : 
                                                      ticket.updatedAt ? formatDurationDetailed(new Date(ticket.updatedAt)) : '--';
@@ -1410,7 +1446,7 @@ const TicketAnalyticsSection = ({ analyticsPeriod }: { analyticsPeriod: string }
             </div>
             
             {/* By Category */}
-            {(ticketAnalytics?.avgResolutionByCategory || []).map((cat, index) => (
+            {(ticketAnalytics?.avgResolutionByCategory || []).map((cat: any, index: number) => (
               <div key={index} className="p-4 border rounded">
                 <h4 className="font-medium text-sm capitalize">{cat.category || 'Uncategorized'}</h4>
                 <p className="text-2xl font-bold">{cat.display}</p>
@@ -1507,82 +1543,91 @@ const TicketAnalyticsSection = ({ analyticsPeriod }: { analyticsPeriod: string }
           </div>
         </CardHeader>
         <CardContent>
-          <ResponsiveContainer width="100%" height={400}>
-            <LineChart data={chartData}>
-              <CartesianGrid strokeDasharray="3 3" className="opacity-30" />
-              <XAxis 
-                dataKey="date" 
-                className="text-muted-foreground"
-                fontSize={12}
-              />
-              <YAxis 
-                className="text-muted-foreground"
-                fontSize={12}
-              />
-              <Tooltip 
-                content={({ active, payload, label }) => {
-                  if (active && payload && payload.length) {
-                    return (
-                      <div className="bg-background border border-border rounded-lg p-3 shadow-md">
-                        <p className="text-sm font-medium mb-2">{label}</p>
-                        {payload.map((entry, index) => (
-                          <div key={index} className="flex items-center gap-2 text-sm">
-                            <div 
-                              className="w-3 h-3 rounded-full" 
-                              style={{ backgroundColor: entry.color }}
-                            />
-                            <span className="text-muted-foreground">{entry.name}:</span>
-                            <span className="font-medium">
-                              {entry.name?.includes('Response Time') 
-                                ? `${Number(entry.value).toFixed(1)}h`
-                                : entry.value
-                              }
-                            </span>
-                          </div>
-                        ))}
-                      </div>
-                    );
-                  }
-                  return null;
-                }}
-                allowEscapeViewBox={{ x: false, y: false }}
-              />
-              
-              {/* Average Response Time Line */}
-              <Line
-                type="monotone"
-                dataKey="responseTime_overall"
-                stroke="#3b82f6"
-                strokeWidth={2}
-                name="Average Response Time (hours)"
-                connectNulls={true}
-                dot={false}
-                activeDot={false}
-              />
-              
-              {/* Opened Tickets Line */}
-              <Line
-                type="monotone"
-                dataKey="opened_overall"
-                stroke="#10b981"
-                strokeWidth={2}
-                name="Tickets Opened"
-                dot={false}
-                activeDot={false}
-              />
-              
-              {/* Closed Tickets Line */}
-              <Line
-                type="monotone"
-                dataKey="closed_overall"
-                stroke="#ef4444"
-                strokeWidth={2}
-                name="Tickets Closed"
-                dot={false}
-                activeDot={false}
-              />
-            </LineChart>
-          </ResponsiveContainer>
+          {!chartData || chartData.length === 0 ? (
+            <div className="flex items-center justify-center h-[400px] text-muted-foreground">
+              <div className="text-center">
+                <FileText className="h-8 w-8 mx-auto mb-2 opacity-50" />
+                <p className="text-sm">No ticket trend data available</p>
+              </div>
+            </div>
+          ) : (
+            <ResponsiveContainer width="100%" height={400}>
+              <LineChart data={chartData}>
+                <CartesianGrid strokeDasharray="3 3" className="opacity-30" />
+                <XAxis 
+                  dataKey="date" 
+                  className="text-muted-foreground"
+                  fontSize={12}
+                />
+                <YAxis 
+                  className="text-muted-foreground"
+                  fontSize={12}
+                />
+                <Tooltip 
+                  content={({ active, payload, label }) => {
+                    if (active && payload && payload.length) {
+                      return (
+                        <div className="bg-background border border-border rounded-lg p-3 shadow-md">
+                          <p className="text-sm font-medium mb-2">{label}</p>
+                          {payload.map((entry, index) => (
+                            <div key={index} className="flex items-center gap-2 text-sm">
+                              <div 
+                                className="w-3 h-3 rounded-full" 
+                                style={{ backgroundColor: entry.color }}
+                              />
+                              <span className="text-muted-foreground">{entry.name}:</span>
+                              <span className="font-medium">
+                                {entry.name?.includes('Response Time') 
+                                  ? `${Number(entry.value).toFixed(1)}h`
+                                  : entry.value
+                                }
+                              </span>
+                            </div>
+                          ))}
+                        </div>
+                      );
+                    }
+                    return null;
+                  }}
+                  allowEscapeViewBox={{ x: false, y: false }}
+                />
+                
+                {/* Average Response Time Line */}
+                <Line
+                  type="monotone"
+                  dataKey="responseTime_overall"
+                  stroke="#3b82f6"
+                  strokeWidth={2}
+                  name="Average Response Time (hours)"
+                  connectNulls={true}
+                  dot={false}
+                  activeDot={false}
+                />
+                
+                {/* Opened Tickets Line */}
+                <Line
+                  type="monotone"
+                  dataKey="opened_overall"
+                  stroke="#10b981"
+                  strokeWidth={2}
+                  name="Tickets Opened"
+                  dot={false}
+                  activeDot={false}
+                />
+                
+                {/* Closed Tickets Line */}
+                <Line
+                  type="monotone"
+                  dataKey="closed_overall"
+                  stroke="#ef4444"
+                  strokeWidth={2}
+                  name="Tickets Closed"
+                  dot={false}
+                  activeDot={false}
+                />
+              </LineChart>
+            </ResponsiveContainer>
+          )}
         </CardContent>
       </Card>
     </div>
@@ -1772,7 +1817,7 @@ const AuditLog = () => {
           ...rows.map(row => row.map(cell => `"${cell}"`).join(','))
         ].join('\n');
         
-        filename = `audit-logs-${format(new Date(), 'yyyy-MM-dd')}.csv`;
+        filename = `audit-logs-${new Date().toISOString().split('T')[0]}.csv`;
         mimeType = 'text/csv';
       } else {
         content = JSON.stringify(filteredLogs.map(log => ({
@@ -1784,7 +1829,7 @@ const AuditLog = () => {
           metadata: log.metadata
         })), null, 2);
         
-        filename = `audit-logs-${format(new Date(), 'yyyy-MM-dd')}.json`;
+        filename = `audit-logs-${new Date().toISOString().split('T')[0]}.json`;
         mimeType = 'application/json';
       }
       
@@ -1883,7 +1928,7 @@ const AuditLog = () => {
           
           <TabsContent value="overview" className="space-y-6">
             {/* Overview Statistics */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mt-6">
               <Card>
                 <CardContent className="p-4">
                   <div className="flex items-center justify-between">
@@ -1931,7 +1976,7 @@ const AuditLog = () => {
                       <p className="text-sm text-muted-foreground">Staff Members</p>
                       <p className="text-2xl font-bold">{analyticsOverview?.overview.totalStaff || 0}</p>
                       <p className="text-xs text-muted-foreground mt-1">
-                        Active: {staffPerformanceData.filter(s => new Date(s.lastActive) > subDays(new Date(), 7)).length}
+                        Active: {staffPerformanceData.filter((s: any) => new Date(s.lastActive) > subDays(new Date(), 7)).length}
                       </p>
                     </div>
                     <Users className="h-8 w-8 text-purple-600" />
@@ -1960,15 +2005,24 @@ const AuditLog = () => {
                   <CardTitle className="text-base">Ticket Trends</CardTitle>
                 </CardHeader>
                 <CardContent>
-                  <ResponsiveContainer width="100%" height={200}>
-                    <LineChart data={ticketAnalytics?.dailyTrend || []}>
-                      <CartesianGrid strokeDasharray="3 3" className="opacity-30" />
-                      <XAxis dataKey="date" className="text-muted-foreground" fontSize={12} />
-                      <YAxis className="text-muted-foreground" fontSize={12} />
-                      <Tooltip content={<CustomTooltip />} />
-                      <Line type="monotone" dataKey="count" stroke="#3b82f6" strokeWidth={2} dot={false} activeDot={false} />
-                    </LineChart>
-                  </ResponsiveContainer>
+                  {!ticketAnalytics?.dailyTrend || ticketAnalytics.dailyTrend.length === 0 ? (
+                    <div className="flex items-center justify-center h-[200px] text-muted-foreground">
+                      <div className="text-center">
+                        <BarChart3 className="h-8 w-8 mx-auto mb-2 opacity-50" />
+                        <p className="text-sm">No ticket trend data available</p>
+                      </div>
+                    </div>
+                  ) : (
+                    <ResponsiveContainer width="100%" height={200}>
+                      <LineChart data={ticketAnalytics.dailyTrend}>
+                        <CartesianGrid strokeDasharray="3 3" className="opacity-30" />
+                        <XAxis dataKey="date" className="text-muted-foreground" fontSize={12} />
+                        <YAxis className="text-muted-foreground" fontSize={12} />
+                        <Tooltip content={<CustomTooltip />} />
+                        <Line type="monotone" dataKey="count" stroke="#3b82f6" strokeWidth={2} dot={false} activeDot={false} />
+                      </LineChart>
+                    </ResponsiveContainer>
+                  )}
                 </CardContent>
               </Card>
               
@@ -1977,24 +2031,34 @@ const AuditLog = () => {
                   <CardTitle className="text-base">Punishment Distribution</CardTitle>
                 </CardHeader>
                 <CardContent>
-                  <ResponsiveContainer width="100%" height={200}>
-                    <PieChart>
-                      <Pie
-                        data={punishmentAnalytics?.byType || []}
-                        cx="50%"
-                        cy="50%"
-                        outerRadius={60}
-                        fill="#8884d8"
-                        dataKey="count"
-                        label={({ type, percent }) => `${type} ${(percent * 100).toFixed(0)}%`}
-                      >
-                        {(punishmentAnalytics?.byType || []).map((entry: any, index: number) => (
-                          <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
-                        ))}
-                      </Pie>
-                      {/* <Tooltip content={<CustomTooltip />} /> */}
-                    </PieChart>
-                  </ResponsiveContainer>
+                  {!punishmentAnalytics?.byType || punishmentAnalytics.byType.length === 0 ? (
+                    <div className="flex items-center justify-center h-[200px] text-muted-foreground">
+                      <div className="text-center">
+                        <BarChart3 className="h-8 w-8 mx-auto mb-2 opacity-50" />
+                        <p className="text-sm">No punishment data available</p>
+                      </div>
+                    </div>
+                  ) : (
+                    <ResponsiveContainer width="100%" height={200}>
+                      <PieChart>
+                        <Pie
+                          data={punishmentAnalytics.byType}
+                          cx="50%"
+                          cy="50%"
+                          outerRadius={80}
+                          stroke="#434341"
+                          strokeWidth={1}
+                          fill="#8884d8"
+                          dataKey="count"
+                          label={({ type, percent }) => `${type} ${((percent || 0) * 100).toFixed(0)}%`}
+                        >
+                          {punishmentAnalytics.byType.map((entry: any, index: number) => (
+                            <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+                          ))}
+                        </Pie>
+                      </PieChart>
+                    </ResponsiveContainer>
+                  )}
                 </CardContent>
               </Card>
             </div>
@@ -2014,15 +2078,24 @@ const AuditLog = () => {
                   <CardTitle className="text-base">Actions by Staff Member</CardTitle>
                 </CardHeader>
                 <CardContent>
-                  <ResponsiveContainer width="100%" height={250}>
-                    <BarChart data={staffPerformanceData}>
-                      <CartesianGrid strokeDasharray="3 3" className="opacity-30" />
-                      <XAxis dataKey="username" className="text-muted-foreground" fontSize={12} />
-                      <YAxis className="text-muted-foreground" fontSize={12} />
-                      {/* <Tooltip content={<CustomTooltip />} /> */}
-                      <Bar dataKey="totalActions" fill="#8884d8" style={{ filter: 'none' }} />
-                    </BarChart>
-                  </ResponsiveContainer>
+                  {!staffPerformanceData || staffPerformanceData.length === 0 ? (
+                    <div className="flex items-center justify-center h-[250px] text-muted-foreground">
+                      <div className="text-center">
+                        <Users className="h-8 w-8 mx-auto mb-2 opacity-50" />
+                        <p className="text-sm">No staff performance data available</p>
+                      </div>
+                    </div>
+                  ) : (
+                    <ResponsiveContainer width="100%" height={250}>
+                      <BarChart data={staffPerformanceData}>
+                        <CartesianGrid strokeDasharray="3 3" className="opacity-30" />
+                        <XAxis dataKey="username" className="text-muted-foreground" fontSize={12} />
+                        <YAxis className="text-muted-foreground" fontSize={12} />
+                        <Tooltip cursor={false} content={<CustomTooltip formatName={(name: any) => name === "totalActions" ? "Total Actions" : name} />} />
+                        <Bar dataKey="totalActions" fill="#8884d8" style={{ filter: 'none' }} />
+                      </BarChart>
+                    </ResponsiveContainer>
+                  )}
                 </CardContent>
               </Card>
               
@@ -2031,15 +2104,24 @@ const AuditLog = () => {
                   <CardTitle className="text-base">Ticket Responses</CardTitle>
                 </CardHeader>
                 <CardContent>
-                  <ResponsiveContainer width="100%" height={250}>
-                    <BarChart data={staffPerformanceData}>
-                      <CartesianGrid strokeDasharray="3 3" className="opacity-30" />
-                      <XAxis dataKey="username" className="text-muted-foreground" fontSize={12} />
-                      <YAxis className="text-muted-foreground" fontSize={12} />
-                      {/* <Tooltip content={<CustomTooltip />} /> */}
-                      <Bar dataKey="ticketResponses" fill="#82ca9d" style={{ filter: 'none' }} />
-                    </BarChart>
-                  </ResponsiveContainer>
+                  {!staffPerformanceData || staffPerformanceData.length === 0 ? (
+                    <div className="flex items-center justify-center h-[250px] text-muted-foreground">
+                      <div className="text-center">
+                        <FileText className="h-8 w-8 mx-auto mb-2 opacity-50" />
+                        <p className="text-sm">No staff ticket response data available</p>
+                      </div>
+                    </div>
+                  ) : (
+                    <ResponsiveContainer width="100%" height={250}>
+                      <BarChart data={staffPerformanceData}>
+                        <CartesianGrid strokeDasharray="3 3" className="opacity-30" />
+                        <XAxis dataKey="username" className="text-muted-foreground" fontSize={12} />
+                        <YAxis className="text-muted-foreground" fontSize={12} />
+                        <Tooltip cursor={false} content={<CustomTooltip formatName={(name: any) => name === "ticketResponses" ? "Ticket Responses" : name} />} />
+                        <Bar dataKey="ticketResponses" fill="#82ca9d" style={{ filter: 'none' }} />
+                      </BarChart>
+                    </ResponsiveContainer>
+                  )}
                 </CardContent>
               </Card>
             </div>
@@ -2062,7 +2144,7 @@ const AuditLog = () => {
                       </tr>
                     </thead>
                     <tbody>
-                      {staffPerformanceData.map((staff) => (
+                      {staffPerformanceData.map((staff: any) => (
                         <StaffDetailRow key={staff.id} staff={staff} />
                       ))}
                     </tbody>
@@ -2085,15 +2167,24 @@ const AuditLog = () => {
                   <CardTitle className="text-base">Punishments by Type</CardTitle>
                 </CardHeader>
                 <CardContent>
-                  <ResponsiveContainer width="100%" height={250}>
-                    <BarChart data={punishmentAnalytics?.byType || []}>
-                      <CartesianGrid strokeDasharray="3 3" className="opacity-30" />
-                      <XAxis dataKey="type" className="text-muted-foreground" fontSize={12} />
-                      <YAxis className="text-muted-foreground" fontSize={12} />
-                      <Tooltip cursor={false} content={<CustomTooltip />} />
-                      <Bar dataKey="count" fill="#ef4444" style={{ filter: 'none' }} />
-                    </BarChart>
-                  </ResponsiveContainer>
+                  {!punishmentAnalytics?.byType || punishmentAnalytics.byType.length === 0 ? (
+                    <div className="flex items-center justify-center h-[250px] text-muted-foreground">
+                      <div className="text-center">
+                        <Shield className="h-8 w-8 mx-auto mb-2 opacity-50" />
+                        <p className="text-sm">No punishment type data available</p>
+                      </div>
+                    </div>
+                  ) : (
+                    <ResponsiveContainer width="100%" height={250}>
+                      <BarChart data={punishmentAnalytics.byType}>
+                        <CartesianGrid strokeDasharray="3 3" className="opacity-30" />
+                        <XAxis dataKey="type" className="text-muted-foreground" fontSize={12} />
+                        <YAxis className="text-muted-foreground" fontSize={12} />
+                        <Tooltip cursor={false} content={<CustomTooltip formatName={(name: any) => name === "count" ? "Count" : name} />} />
+                        <Bar dataKey="count" fill="#ef4444" style={{ filter: 'none' }} />
+                      </BarChart>
+                    </ResponsiveContainer>
+                  )}
                 </CardContent>
               </Card>
               
@@ -2102,15 +2193,24 @@ const AuditLog = () => {
                   <CardTitle className="text-base">Daily Punishment Trend</CardTitle>
                 </CardHeader>
                 <CardContent>
-                  <ResponsiveContainer width="100%" height={250}>
-                    <LineChart data={punishmentAnalytics?.dailyTrend || []}>
-                      <CartesianGrid strokeDasharray="3 3" className="opacity-30" />
-                      <XAxis dataKey="date" className="text-muted-foreground" fontSize={12} />
-                      <YAxis className="text-muted-foreground" fontSize={12} />
-                      <Tooltip content={<CustomTooltip />} />
-                      <Line type="monotone" dataKey="count" stroke="#ef4444" strokeWidth={2} dot={{r:0}} activeDot={false} />
-                    </LineChart>
-                  </ResponsiveContainer>
+                  {!punishmentAnalytics?.dailyTrend || punishmentAnalytics.dailyTrend.length === 0 ? (
+                    <div className="flex items-center justify-center h-[250px] text-muted-foreground">
+                      <div className="text-center">
+                        <TrendingUp className="h-8 w-8 mx-auto mb-2 opacity-50" />
+                        <p className="text-sm">No punishment trend data available</p>
+                      </div>
+                    </div>
+                  ) : (
+                    <ResponsiveContainer width="100%" height={250}>
+                      <LineChart data={punishmentAnalytics.dailyTrend}>
+                        <CartesianGrid strokeDasharray="3 3" className="opacity-30" />
+                        <XAxis dataKey="date" className="text-muted-foreground" fontSize={12} />
+                        <YAxis className="text-muted-foreground" fontSize={12} />
+                        <Tooltip content={<CustomTooltip formatName={(name: any) => name === "count" ? "Count" : name} />} />
+                        <Line type="monotone" dataKey="count" stroke="#ef4444" strokeWidth={2} dot={{r:0}} activeDot={false} />
+                      </LineChart>
+                    </ResponsiveContainer>
+                  )}
                 </CardContent>
               </Card>
             </div>
@@ -2121,7 +2221,7 @@ const AuditLog = () => {
               </CardHeader>
               <CardContent>
                 <div className="space-y-2">
-                  {(punishmentAnalytics?.topPunishers || []).map((staff, index) => (
+                  {(punishmentAnalytics?.topPunishers || []).map((staff: any, index: number) => (
                     <div key={index} className="flex items-center justify-between p-2 border rounded">
                       <div className="flex items-center gap-2">
                         <Shield className="h-4 w-4 text-blue-600" />
@@ -2145,15 +2245,24 @@ const AuditLog = () => {
                   <CardTitle className="text-base">New Players Trend</CardTitle>
                 </CardHeader>
                 <CardContent>
-                  <ResponsiveContainer width="100%" height={250}>
-                    <AreaChart data={playerActivity?.newPlayersTrend || []}>
-                      <CartesianGrid strokeDasharray="3 3" className="opacity-30" />
-                      <XAxis dataKey="date" className="text-muted-foreground" fontSize={12} />
-                      <YAxis className="text-muted-foreground" fontSize={12} />
-                      <Tooltip content={<CustomTooltip />} />
-                      <Area type="monotone" dataKey="count" stroke="#10b981" fill="#10b981" fillOpacity={0.3} dot={false} activeDot={false} />
-                    </AreaChart>
-                  </ResponsiveContainer>
+                  {!playerActivity?.newPlayersTrend || playerActivity.newPlayersTrend.length === 0 ? (
+                    <div className="flex items-center justify-center h-[250px] text-muted-foreground">
+                      <div className="text-center">
+                        <Users className="h-8 w-8 mx-auto mb-2 opacity-50" />
+                        <p className="text-sm">No new player trend data available</p>
+                      </div>
+                    </div>
+                  ) : (
+                    <ResponsiveContainer width="100%" height={250}>
+                      <AreaChart data={playerActivity.newPlayersTrend}>
+                        <CartesianGrid strokeDasharray="3 3" className="opacity-30" />
+                        <XAxis dataKey="date" className="text-muted-foreground" fontSize={12} />
+                        <YAxis className="text-muted-foreground" fontSize={12} />
+                        <Tooltip content={<CustomTooltip />} />
+                        <Area type="monotone" dataKey="count" stroke="#10b981" fill="#10b981" fillOpacity={0.3} dot={false} activeDot={false} />
+                      </AreaChart>
+                    </ResponsiveContainer>
+                  )}
                 </CardContent>
               </Card>
               
@@ -2162,9 +2271,16 @@ const AuditLog = () => {
                   <CardTitle className="text-base">Logins by Country</CardTitle>
                 </CardHeader>
                 <CardContent>
-                  <div className="space-y-2">
-                    {(playerActivity?.loginsByCountry || []).length > 0 ? (
-                      (playerActivity?.loginsByCountry || []).slice(0, 8).map((country, index) => (
+                  {!playerActivity?.loginsByCountry || playerActivity.loginsByCountry.length === 0 ? (
+                    <div className="flex items-center justify-center h-[250px] text-muted-foreground">
+                      <div className="text-center">
+                        <User className="h-8 w-8 mx-auto mb-2 opacity-50" />
+                        <p className="text-sm">No login data available</p>
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="space-y-2 py-4">
+                      {playerActivity.loginsByCountry.slice(0, 8).map((country: any, index: number) => (
                         <div key={index} className="flex items-center justify-between">
                           <span>{country.country}</span>
                           <div className="flex items-center gap-2">
@@ -2172,20 +2288,16 @@ const AuditLog = () => {
                               <div 
                                 className="bg-blue-600 h-2 rounded-full" 
                                 style={{ 
-                                  width: `${(country.count / Math.max(...(playerActivity?.loginsByCountry || []).map(c => c.count))) * 100}%` 
+                                  width: `${(country.count / Math.max(...playerActivity.loginsByCountry.map((c: any) => c.count))) * 100}%` 
                                 }}
                               />
                             </div>
                             <span className="text-sm font-medium">{country.count}</span>
                           </div>
                         </div>
-                      ))
-                    ) : (
-                      <div className="text-center py-4 text-muted-foreground">
-                        No login data available
-                      </div>
-                    )}
-                  </div>
+                      ))}
+                    </div>
+                  )}
                 </CardContent>
               </Card>
             </div>
@@ -2223,39 +2335,7 @@ const AuditLog = () => {
           </TabsContent>
           
           <TabsContent value="audit" className="space-y-6">
-            <div className="flex items-center justify-between">
-              <h3 className="text-lg font-medium">System Audit Logs</h3>
-              <div className="flex gap-2">
-                <Popover>
-                  <PopoverTrigger asChild>
-                    <Button variant="outline" size="sm" disabled={isExporting}>
-                      <Download className="h-4 w-4 mr-2" />
-                      Export
-                    </Button>
-                  </PopoverTrigger>
-                  <PopoverContent className="w-40 p-2">
-                    <div className="flex flex-col gap-1">
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        className="justify-start"
-                        onClick={() => handleExport('csv')}
-                      >
-                        Export as CSV
-                      </Button>
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        className="justify-start"
-                        onClick={() => handleExport('json')}
-                      >
-                        Export as JSON
-                      </Button>
-                    </div>
-                  </PopoverContent>
-                </Popover>
-              </div>
-            </div>
+            <h3 className="text-lg font-medium">System Audit Logs</h3>
             
             {/* Audit Statistics */}
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
@@ -2315,24 +2395,33 @@ const AuditLog = () => {
                   <CardTitle className="text-base">Logs by Level</CardTitle>
                 </CardHeader>
                 <CardContent>
-                  <ResponsiveContainer width="100%" height={200}>
-                    <PieChart>
-                      <Pie
-                        data={auditLogsAnalytics?.byLevel || []}
-                        cx="50%"
-                        cy="50%"
-                        outerRadius={60}
-                        fill="#8884d8"
-                        dataKey="count"
-                        label={({ level, percent }) => `${level} ${(percent * 100).toFixed(0)}%`}
-                      >
-                        {(auditLogsAnalytics?.byLevel || []).map((entry: any, index: number) => (
-                          <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
-                        ))}
-                      </Pie>
-                      <Tooltip content={<CustomTooltip />} />
-                    </PieChart>
-                  </ResponsiveContainer>
+                  {!auditLogsAnalytics?.byLevel || auditLogsAnalytics.byLevel.length === 0 ? (
+                    <div className="flex items-center justify-center h-[200px] text-muted-foreground">
+                      <div className="text-center">
+                        <BarChart3 className="h-8 w-8 mx-auto mb-2 opacity-50" />
+                        <p className="text-sm">No log level data available</p>
+                      </div>
+                    </div>
+                  ) : (
+                    <ResponsiveContainer width="100%" height={200}>
+                      <PieChart>
+                        <Pie
+                          data={auditLogsAnalytics.byLevel}
+                          cx="50%"
+                          cy="50%"
+                          outerRadius={60}
+                          fill="#8884d8"
+                          dataKey="count"
+                          label={({ level, percent }) => `${level} ${((percent || 0) * 100).toFixed(0)}%`}
+                        >
+                          {auditLogsAnalytics.byLevel.map((entry: any, index: number) => (
+                            <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+                          ))}
+                        </Pie>
+                        <Tooltip content={<CustomTooltip />} />
+                      </PieChart>
+                    </ResponsiveContainer>
+                  )}
                 </CardContent>
               </Card>
               
@@ -2341,15 +2430,24 @@ const AuditLog = () => {
                   <CardTitle className="text-base">Hourly Activity (24h)</CardTitle>
                 </CardHeader>
                 <CardContent>
-                  <ResponsiveContainer width="100%" height={200}>
-                    <BarChart data={auditLogsAnalytics?.hourlyTrend || []}>
-                      <CartesianGrid strokeDasharray="3 3" className="opacity-30" />
-                      <XAxis dataKey="hour" className="text-muted-foreground" fontSize={12} />
-                      <YAxis className="text-muted-foreground" fontSize={12} />
-                      <Tooltip content={<CustomTooltip />} />
-                      <Bar dataKey="count" fill="#8884d8" style={{ filter: 'none' }} />
-                    </BarChart>
-                  </ResponsiveContainer>
+                  {!auditLogsAnalytics?.hourlyTrend || auditLogsAnalytics.hourlyTrend.length === 0 ? (
+                    <div className="flex items-center justify-center h-[200px] text-muted-foreground">
+                      <div className="text-center">
+                        <Clock className="h-8 w-8 mx-auto mb-2 opacity-50" />
+                        <p className="text-sm">No hourly activity data available</p>
+                      </div>
+                    </div>
+                  ) : (
+                    <ResponsiveContainer width="100%" height={200}>
+                      <BarChart data={auditLogsAnalytics.hourlyTrend}>
+                        <CartesianGrid strokeDasharray="3 3" className="opacity-30" />
+                        <XAxis dataKey="hour" className="text-muted-foreground" fontSize={12} />
+                        <YAxis className="text-muted-foreground" fontSize={12} />
+                        <Tooltip content={<CustomTooltip />} />
+                        <Bar dataKey="count" fill="#8884d8" style={{ filter: 'none' }} />
+                      </BarChart>
+                    </ResponsiveContainer>
+                  )}
                 </CardContent>
               </Card>
             </div>
@@ -2483,14 +2581,44 @@ const AuditLog = () => {
             {/* Enhanced Logs */}
             <Card>
               <CardHeader>
-                <CardTitle className="text-base font-medium">
-                  Activity Log
-                  {filteredLogs.length > 0 && (
-                    <span className="ml-2 text-sm text-muted-foreground">
-                      ({filteredLogs.length} entries)
-                    </span>
-                  )}
-                </CardTitle>
+                <div className="flex items-center justify-between">
+                  <CardTitle className="text-base font-medium">
+                    Activity Log
+                    {filteredLogs.length > 0 && (
+                      <span className="ml-2 text-sm text-muted-foreground">
+                        ({filteredLogs.length} entries)
+                      </span>
+                    )}
+                  </CardTitle>
+                  <Popover>
+                    <PopoverTrigger asChild>
+                      <Button variant="outline" size="sm" disabled={isExporting || filteredLogs.length <= 0}>
+                        <Download className="h-4 w-4 mr-2" />
+                        Export
+                      </Button>
+                    </PopoverTrigger>
+                    <PopoverContent className="w-40 p-2">
+                      <div className="flex flex-col gap-1">
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          className="justify-start"
+                          onClick={() => handleExport('csv')}
+                        >
+                          Export as CSV
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          className="justify-start"
+                          onClick={() => handleExport('json')}
+                        >
+                          Export as JSON
+                        </Button>
+                      </div>
+                    </PopoverContent>
+                  </Popover>
+                </div>
               </CardHeader>
               <CardContent className="p-0">
                 {isLoading && (
