@@ -800,6 +800,9 @@ router.post('/tickets/:id/submit', async (req: Request, res: Response) => {
       if (!ticket.data) {
         ticket.data = new Map();
       }
+      
+      // Debug: Log the form data to see what's being received
+      console.log('Form data received:', formData);
       // Store form data
       Object.entries(formData).forEach(([key, value]) => {
         ticket.data.set(key, value);
@@ -812,6 +815,9 @@ router.post('/tickets/:id/submit', async (req: Request, res: Response) => {
       
       // Create initial message content from form data
       let contentString = '';
+      
+      // Debug: Log the form data processing
+      console.log('Processing form data for message content:', Object.keys(formData));
       
       // Get ticket form configuration to get field labels
       let ticketForms = null;
@@ -830,7 +836,14 @@ router.post('/tickets/:id/submit', async (req: Request, res: Response) => {
       }
       
       Object.entries(formData).forEach(([key, value]) => {
+        // Skip email field from message content as it's used for notifications only
+        if (key === 'email' || key === 'contact_email') {
+          console.log(`Skipping email field: ${key} = ${value}`);
+          return;
+        }
+        
         if (value && value.toString().trim()) {
+          console.log(`Adding field to content: ${key} = ${value}`);
           // Special handling for chat reports
           if (ticket.type === 'chat' && key === 'chatlog' && ticket.chatMessages && ticket.chatMessages.length > 0) {
             // Format chat messages with timestamps and player links
@@ -866,6 +879,9 @@ router.post('/tickets/:id/submit', async (req: Request, res: Response) => {
           }
         }
       });
+      
+      // Debug: Log the final content string
+      console.log('Final content string:', contentString);
       
       // Add initial message if there's content and no existing replies
       if (contentString.trim() && (!ticket.replies || ticket.replies.length === 0)) {
