@@ -29,9 +29,9 @@ jobs:
 
     - name: Configure npm for GitHub Packages
       run: |
-        rm ~/.npmrc
-        echo "@modl-gg:registry=https://npm.pkg.github.com" >> ~/.npmrc
-        echo "//npm.pkg.github.com/:_authToken=${{ secrets.GITHUB_TOKEN }}" >> ~/.npmrc
+        rm .npmrc
+        echo "@modl-gg:registry=https://npm.pkg.github.com" >> .npmrc
+        echo "//npm.pkg.github.com/:_authToken=${{ secrets.GITHUB_TOKEN }}" >> .npmrc
       env:
         NODE_AUTH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
