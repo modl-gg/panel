@@ -99,28 +99,10 @@ export function MediaUpload({
   };
 
   const uploadFile = async (file: File): Promise<{ url: string; key: string } | null> => {
-    const formData = new FormData();
-    formData.append('file', file);
-    
-    // Add metadata to the form
-    Object.entries(metadata).forEach(([key, value]) => {
-      formData.append(key, value.toString());
-    });
-
     try {
-      const { csrfFetch } = await import('@/utils/csrf');
-      const response = await csrfFetch(`/api/panel/media/upload/${uploadType}`, {
-        method: 'POST',
-        body: formData,
-      });
-
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.error || 'Upload failed');
-      }
-
-      const result = await response.json();
-      return { url: result.url, key: result.key };
+      // Use the hook's uploadMedia function which handles public/authenticated endpoints
+      const result = await uploadMedia(file, uploadType, metadata);
+      return result;
     } catch (error) {
       console.error('Upload error:', error);
       throw error;

@@ -22,27 +22,65 @@ export function useMediaUploadConfig() {
   return useQuery<MediaUploadConfig>({
     queryKey: ['/api/media/config'],
     queryFn: async () => {
-      // Try authenticated endpoint first, then fall back to public endpoint
+      // Check if we're on a public page (player ticket, appeals, etc.)
+      const currentPath = window.location.pathname;
+      const isPublicPage = currentPath.startsWith('/ticket/') || 
+                          currentPath.startsWith('/appeal') || 
+                          currentPath === '/' ||
+                          currentPath.startsWith('/knowledgebase') ||
+                          currentPath.startsWith('/article/');
+
       try {
-        const response = await fetch('/api/panel/media/config');
-        if (response.ok) {
-          return response.json();
-        }
-        // If 401 (unauthorized), try public endpoint
-        if (response.status === 401) {
+        // If on public page, try public endpoint first to avoid 401 in network tab
+        if (isPublicPage) {
           const publicResponse = await fetch('/api/public/media/config');
           if (publicResponse.ok) {
             return publicResponse.json();
           }
+        } else {
+          // For panel pages, try authenticated endpoint first
+          const response = await fetch('/api/panel/media/config');
+          if (response.ok) {
+            return response.json();
+          }
+          // If 401 (unauthorized), try public endpoint
+          if (response.status === 401) {
+            const publicResponse = await fetch('/api/public/media/config');
+            if (publicResponse.ok) {
+              return publicResponse.json();
+            }
+          }
         }
-        throw new Error(`Failed to fetch media upload configuration: ${response.status}`);
+        throw new Error('Failed to fetch media upload configuration from all available endpoints');
       } catch (error) {
-        // If authenticated endpoint fails completely, try public endpoint
-        const publicResponse = await fetch('/api/public/media/config');
-        if (publicResponse.ok) {
-          return publicResponse.json();
+        // Last resort: try the other endpoint if one failed
+        try {
+          const fallbackUrl = isPublicPage ? '/api/panel/media/config' : '/api/public/media/config';
+          const fallbackResponse = await fetch(fallbackUrl);
+          if (fallbackResponse.ok) {
+            return fallbackResponse.json();
+          }
+        } catch (fallbackError) {
+          // If even fallback fails, use default values
+          return {
+            backblazeConfigured: false,
+            supportedTypes: {
+              evidence: [],
+              tickets: [],
+              appeals: [],
+              articles: [],
+              'server-icons': []
+            },
+            fileSizeLimits: {
+              evidence: 0,
+              tickets: 0,
+              appeals: 0,
+              articles: 0,
+              'server-icons': 0
+            }
+          };
         }
-        throw new Error('Failed to fetch media upload configuration from both endpoints');
+        throw error;
       }
     },
     staleTime: 5 * 60 * 1000, // 5 minutes
