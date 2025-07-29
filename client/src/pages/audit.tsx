@@ -37,7 +37,7 @@ import { Popover, PopoverContent, PopoverTrigger } from '@modl-gg/shared-web/com
 import { Calendar as CalendarComponent } from '@modl-gg/shared-web/components/ui/calendar';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@modl-gg/shared-web/components/ui/dialog';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@modl-gg/shared-web/components/ui/tabs';
-import { ScrollArea } from '@modl-gg/shared-web/components/ui/scrollarea';
+import { ScrollArea } from '@modl-gg/shared-web/components/ui/scroll-area';
 import { format, subDays, startOfDay, endOfDay } from 'date-fns';
 import { useLogs } from '@/hooks/use-data';
 import { useQuery } from '@tanstack/react-query';
@@ -73,6 +73,7 @@ interface StaffMember {
   totalActions: number;
   ticketResponses: number;
   punishmentsIssued: number;
+  notesAdded: number;
   avgResponseTime: number;
   lastActive: string;
   recentActions: TransformedLog[];
@@ -245,6 +246,30 @@ const fetchDatabaseData = async (table: string, limit = 100, skip = 0) => {
   return response.json();
 };
 
+// Custom themed tooltip component for charts
+const CustomTooltip = ({ active, payload, label, formatValue }: any) => {
+  if (active && payload && payload.length) {
+    return (
+      <div className="bg-background border border-border rounded-lg p-3 shadow-lg z-50 pointer-events-none">
+        {label && <p className="text-sm font-medium mb-2">{label}</p>}
+        {payload.map((entry: any, index: number) => (
+          <div key={index} className="flex items-center gap-2 text-sm">
+            <div 
+              className="w-3 h-3 rounded-full flex-shrink-0" 
+              style={{ backgroundColor: entry.color }}
+            />
+            <span className="text-muted-foreground">{entry.name || entry.dataKey}:</span>
+            <span className="font-medium">
+              {formatValue ? formatValue(entry.value, entry.name) : entry.value}
+            </span>
+          </div>
+        ))}
+      </div>
+    );
+  }
+  return null;
+};
+
 const rollbackPunishment = async (id: string, reason?: string) => {
   const { csrfFetch } = await import('@/utils/csrf');
   const response = await csrfFetch(`/api/panel/audit/punishments/${id}/rollback`, {
@@ -414,10 +439,10 @@ const StaffPerformanceModal = () => {
               <CardContent>
                 <ResponsiveContainer width="100%" height={200}>
                   <BarChart data={staffData}>
-                    <CartesianGrid strokeDasharray="3 3" />
-                    <XAxis dataKey="username" />
-                    <YAxis />
-                    <Tooltip />
+                    <CartesianGrid strokeDasharray="3 3" className="opacity-30" />
+                    <XAxis dataKey="username" className="text-muted-foreground" fontSize={12} />
+                    <YAxis className="text-muted-foreground" fontSize={12} />
+                    <Tooltip content={<CustomTooltip />} />
                     <Bar dataKey="totalActions" fill="#8884d8" />
                   </BarChart>
                 </ResponsiveContainer>
@@ -431,10 +456,10 @@ const StaffPerformanceModal = () => {
               <CardContent>
                 <ResponsiveContainer width="100%" height={200}>
                   <BarChart data={staffData}>
-                    <CartesianGrid strokeDasharray="3 3" />
-                    <XAxis dataKey="username" />
-                    <YAxis />
-                    <Tooltip />
+                    <CartesianGrid strokeDasharray="3 3" className="opacity-30" />
+                    <XAxis dataKey="username" className="text-muted-foreground" fontSize={12} />
+                    <YAxis className="text-muted-foreground" fontSize={12} />
+                    <Tooltip content={<CustomTooltip formatValue={(value: any, name: any) => name?.includes('ResponseTime') ? `${value}h` : value} />} />
                     <Bar dataKey="avgResponseTime" fill="#82ca9d" />
                   </BarChart>
                 </ResponsiveContainer>
@@ -461,7 +486,7 @@ const StaffPerformanceModal = () => {
                     </tr>
                   </thead>
                   <tbody>
-                    {staffData.map((staff) => (
+                    {staffData.map((staff: StaffMember) => (
                       <tr key={staff.id} className="border-b">
                         <td className="p-2 font-medium">{staff.username}</td>
                         <td className="p-2">
@@ -908,13 +933,13 @@ const StaffDetailModal = ({ staff, isOpen, onClose }: {
               <CardContent>
                 <ResponsiveContainer width="100%" height={300}>
                   <AreaChart data={staffActivityData}>
-                    <CartesianGrid strokeDasharray="3 3" />
-                    <XAxis dataKey="date" />
-                    <YAxis />
-                    <Tooltip />
-                    <Area type="monotone" dataKey="punishments" stackId="1" stroke="#ef4444" fill="#ef4444" />
-                    <Area type="monotone" dataKey="tickets" stackId="1" stroke="#3b82f6" fill="#3b82f6" />
-                    <Area type="monotone" dataKey="evidence" stackId="1" stroke="#10b981" fill="#10b981" />
+                    <CartesianGrid strokeDasharray="3 3" className="opacity-30" />
+                    <XAxis dataKey="date" className="text-muted-foreground" fontSize={12} />
+                    <YAxis className="text-muted-foreground" fontSize={12} />
+                    <Tooltip content={<CustomTooltip />} />
+                    <Area type="monotone" dataKey="punishments" stackId="1" stroke="#ef4444" fill="#ef4444" dot={false} activeDot={false} />
+                    <Area type="monotone" dataKey="tickets" stackId="1" stroke="#3b82f6" fill="#3b82f6" dot={false} activeDot={false} />
+                    <Area type="monotone" dataKey="evidence" stackId="1" stroke="#10b981" fill="#10b981" dot={false} activeDot={false} />
                   </AreaChart>
                 </ResponsiveContainer>
               </CardContent>
@@ -936,11 +961,11 @@ const StaffDetailModal = ({ staff, isOpen, onClose }: {
                       dataKey="count"
                       label={({ type, percent }) => `${type} ${(percent * 100).toFixed(0)}%`}
                     >
-                      {punishmentTypeData.map((entry, index) => (
+                      {punishmentTypeData.map((entry: any, index: number) => (
                         <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
                       ))}
                     </Pie>
-                    <Tooltip />
+                    <Tooltip content={<CustomTooltip />} />
                   </PieChart>
                 </ResponsiveContainer>
               </CardContent>
@@ -1253,30 +1278,15 @@ const fetchStaffDetails = async (username: string, period: string) => {
 // Ticket Analytics Section Component
 const TicketAnalyticsSection = ({ analyticsPeriod }: { analyticsPeriod: string }) => {
   // Define the correct ticket categories
-  const ticketCategories = ['Overall', 'Bug', 'Support', 'Appeal', 'Player Report', 'Chat Report', 'Application'];
+  const ticketCategories = ['Bug', 'Support', 'Appeal', 'Player Report', 'Chat Report', 'Application'];
+  
+  // State for selected categories
+  const [selectedCategories, setSelectedCategories] = useState<string[]>(ticketCategories);
   
   // Normalize category names for data keys (lowercase, spaces to underscores)
   const normalizeCategory = (category: string) => {
     return category.toLowerCase().replace(/\s+/g, '_');
   };
-
-  // Initialize with all categories selected
-  const [visibleLines, setVisibleLines] = useState(() => {
-    const initialState = {
-      responseTime: {} as Record<string, boolean>,
-      opened: {} as Record<string, boolean>,
-      closed: {} as Record<string, boolean>
-    };
-    
-    ticketCategories.forEach(category => {
-      const key = normalizeCategory(category);
-      initialState.responseTime[key] = true;
-      initialState.opened[key] = true;
-      initialState.closed[key] = true;
-    });
-    
-    return initialState;
-  });
 
   const { data: ticketAnalytics } = useQuery({
     queryKey: ['ticket-analytics', analyticsPeriod],
@@ -1288,124 +1298,96 @@ const TicketAnalyticsSection = ({ analyticsPeriod }: { analyticsPeriod: string }
   const chartData = useMemo(() => {
     if (!ticketAnalytics) return [];
 
-    // Debug: Log the raw data to see what categories we're getting
-    console.log('Raw ticket analytics data:', ticketAnalytics);
-    console.log('Daily trend by category:', ticketAnalytics.dailyTrendByCategory);
-    console.log('Response time by category:', ticketAnalytics.responseTimeByCategory);
-
     const dateMap = new Map();
     
     // Process daily trend data
-    ticketAnalytics.dailyTrendByCategory?.forEach(item => {
+    ticketAnalytics.dailyTrendByCategory?.forEach((item: any) => {
       const date = item._id.date;
       const rawCategory = item._id.category || 'Other';
       const category = normalizeCategory(rawCategory);
       const status = item._id.status?.toLowerCase();
       
+      // Only process if category is selected
+      if (!selectedCategories.some(cat => normalizeCategory(cat) === category)) {
+        return;
+      }
+      
       if (!dateMap.has(date)) {
-        dateMap.set(date, { date });
+        dateMap.set(date, { 
+          date, 
+          opened_overall: 0, 
+          closed_overall: 0, 
+          responseTime_overall: 0,
+          responseTimeCount: 0 
+        });
       }
       
       const dayData = dateMap.get(date);
       
-      // Initialize all categories with 0 if not present
-      ticketCategories.forEach(cat => {
-        const catKey = normalizeCategory(cat);
-        if (!dayData[`opened_${catKey}`]) dayData[`opened_${catKey}`] = 0;
-        if (!dayData[`closed_${catKey}`]) dayData[`closed_${catKey}`] = 0;
-        if (!dayData[`responseTime_${catKey}`]) dayData[`responseTime_${catKey}`] = 0;
-      });
-      
       // Count opened tickets
-      dayData[`opened_${category}`] = (dayData[`opened_${category}`] || 0) + item.count;
-      dayData[`opened_overall`] = (dayData[`opened_overall`] || 0) + item.count;
+      dayData.opened_overall = (dayData.opened_overall || 0) + item.count;
       
       // Count closed tickets
       if (status === 'resolved' || status === 'closed') {
-        dayData[`closed_${category}`] = (dayData[`closed_${category}`] || 0) + item.count;
-        dayData[`closed_overall`] = (dayData[`closed_overall`] || 0) + item.count;
+        dayData.closed_overall = (dayData.closed_overall || 0) + item.count;
       }
     });
 
     // Process response time data
-    ticketAnalytics.responseTimeByCategory?.forEach(item => {
+    ticketAnalytics.responseTimeByCategory?.forEach((item: any) => {
       const date = item._id.date;
       const rawCategory = item._id.category || 'Other';
       const category = normalizeCategory(rawCategory);
       const responseTimeHours = item.avgResponseTimeMs / (1000 * 60 * 60);
       
+      // Only process if category is selected
+      if (!selectedCategories.some(cat => normalizeCategory(cat) === category)) {
+        return;
+      }
+      
       if (!dateMap.has(date)) {
-        const newDayData = { date };
-        // Initialize all categories with 0
-        ticketCategories.forEach(cat => {
-          const catKey = normalizeCategory(cat);
-          newDayData[`opened_${catKey}`] = 0;
-          newDayData[`closed_${catKey}`] = 0;
-          newDayData[`responseTime_${catKey}`] = 0;
+        dateMap.set(date, { 
+          date, 
+          opened_overall: 0, 
+          closed_overall: 0, 
+          responseTime_overall: 0,
+          responseTimeCount: 0 
         });
-        dateMap.set(date, newDayData);
       }
       
       const dayData = dateMap.get(date);
-      dayData[`responseTime_${category}`] = responseTimeHours;
       
-      // Calculate overall response time as average
-      const responseTimes = ticketCategories
-        .map(cat => dayData[`responseTime_${normalizeCategory(cat)}`] || 0)
-        .filter(time => time > 0);
-      if (responseTimes.length > 0) {
-        dayData[`responseTime_overall`] = responseTimes.reduce((a, b) => a + b, 0) / responseTimes.length;
-      }
+      // Accumulate response times for averaging
+      dayData.responseTime_overall = (dayData.responseTime_overall || 0) + responseTimeHours;
+      dayData.responseTimeCount = (dayData.responseTimeCount || 0) + 1;
     });
 
-    // Fill in missing dates and ensure all categories have values
+    // Calculate averages and fill in missing dates
     const allDates = Array.from(dateMap.keys()).sort();
     const filledData = allDates.map(date => {
-      const dayData = dateMap.get(date) || { date };
+      const dayData = dateMap.get(date) || { 
+        date, 
+        opened_overall: 0, 
+        closed_overall: 0, 
+        responseTime_overall: 0,
+        responseTimeCount: 0 
+      };
       
-      // Ensure all categories have values (0 if missing)
-      ticketCategories.forEach(cat => {
-        const catKey = normalizeCategory(cat);
-        if (dayData[`opened_${catKey}`] === undefined) dayData[`opened_${catKey}`] = 0;
-        if (dayData[`closed_${catKey}`] === undefined) dayData[`closed_${catKey}`] = 0;
-        if (dayData[`responseTime_${catKey}`] === undefined) dayData[`responseTime_${catKey}`] = null;
-      });
+      // Calculate average response time
+      if (dayData.responseTimeCount > 0) {
+        dayData.responseTime_overall = dayData.responseTime_overall / dayData.responseTimeCount;
+      } else {
+        dayData.responseTime_overall = 0;
+      }
+      
+      // Clean up temporary count field
+      delete dayData.responseTimeCount;
       
       return dayData;
     });
 
     return filledData;
-  }, [ticketAnalytics]);
-
-  const toggleLine = (type: string, category: string) => {
-    setVisibleLines(prev => ({
-      ...prev,
-      [type]: {
-        ...prev[type],
-        [category]: !prev[type][category]
-      }
-    }));
-  };
-
-  const toggleAllLines = (type: string, checked: boolean) => {
-    setVisibleLines(prev => ({
-      ...prev,
-      [type]: ticketCategories.reduce((acc, category) => {
-        acc[normalizeCategory(category)] = checked;
-        return acc;
-      }, {} as Record<string, boolean>)
-    }));
-  };
-
-  const categoryColors = {
-    overall: '#6366f1',  // Indigo instead of black
-    bug: '#ef4444',
-    support: '#3b82f6', 
-    appeal: '#8b5cf6',
-    player_report: '#f59e0b',
-    chat_report: '#10b981',
-    application: '#ec4899'
-  };
+  }, [ticketAnalytics, selectedCategories]);
 
   return (
     <div className="space-y-6">
@@ -1441,135 +1423,164 @@ const TicketAnalyticsSection = ({ analyticsPeriod }: { analyticsPeriod: string }
         </CardContent>
       </Card>
 
-      {/* Toggleable Chart */}
+      {/* Overall Ticket Trends Chart */}
       <Card>
         <CardHeader>
-          <CardTitle className="text-base">Ticket Trends</CardTitle>
-          <div className="space-y-4">
-            {/* Line type dropdowns with checkboxes */}
-            {['responseTime', 'opened', 'closed'].map(type => {
-              const allSelected = ticketCategories.every(category => 
-                visibleLines[type][normalizeCategory(category)]
-              );
-              
-              return (
-                <div key={type} className="space-y-2">
-                  <h4 className="text-sm font-medium capitalize">{type.replace('Time', ' Time')}</h4>
-                  <Popover>
-                    <PopoverTrigger asChild>
-                      <Button variant="outline" size="sm" className="w-48 justify-between">
-                        Select Categories
-                        <ChevronDown className="h-4 w-4" />
-                      </Button>
-                    </PopoverTrigger>
-                    <PopoverContent className="w-56 p-2">
-                      <div className="space-y-2">
-                        {/* Select All checkbox */}
-                        <div className="flex items-center space-x-2">
-                          <Checkbox
-                            id={`select-all-${type}`}
-                            checked={allSelected}
-                            onCheckedChange={(checked) => toggleAllLines(type, checked as boolean)}
-                          />
-                          <label 
-                            htmlFor={`select-all-${type}`}
-                            className="text-sm font-medium cursor-pointer"
-                          >
-                            Select All
-                          </label>
-                        </div>
-                        <Separator />
-                        
-                        {/* Individual category checkboxes */}
-                        {ticketCategories.map(category => {
-                          const normalizedCategory = normalizeCategory(category);
-                          const isChecked = visibleLines[type][normalizedCategory];
-                          
-                          return (
-                            <div key={category} className="flex items-center space-x-2">
-                              <Checkbox
-                                id={`${type}-${normalizedCategory}`}
-                                checked={isChecked}
-                                onCheckedChange={() => toggleLine(type, normalizedCategory)}
-                              />
-                              <label 
-                                htmlFor={`${type}-${normalizedCategory}`}
-                                className="text-sm cursor-pointer flex items-center gap-2"
-                              >
-                                <div 
-                                  className="w-3 h-3 rounded" 
-                                  style={{ backgroundColor: categoryColors[normalizedCategory] || '#666' }}
-                                />
-                                {category}
-                              </label>
-                            </div>
-                          );
-                        })}
+          <CardTitle className="text-base">Overall Ticket Trends</CardTitle>
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-6 text-sm">
+              <div className="flex items-center gap-2">
+                <div className="w-3 h-0.5 bg-blue-500"></div>
+                <span>Average Response Time (hours)</span>
+              </div>
+              <div className="flex items-center gap-2">
+                <div className="w-3 h-0.5 bg-green-500"></div>
+                <span>Tickets Opened</span>
+              </div>
+              <div className="flex items-center gap-2">
+                <div className="w-3 h-0.5 bg-red-500"></div>
+                <span>Tickets Closed</span>
+              </div>
+            </div>
+            
+            {/* Category Selection */}
+            <Popover>
+              <PopoverTrigger asChild>
+                <Button variant="outline" size="sm" className="w-48 justify-between">
+                  Categories ({selectedCategories.length})
+                  <ChevronDown className="h-4 w-4" />
+                </Button>
+              </PopoverTrigger>
+              <PopoverContent className="w-56 p-2">
+                <div className="space-y-2">
+                  {/* Select All checkbox */}
+                  <div className="flex items-center space-x-2">
+                    <Checkbox
+                      id="select-all-categories"
+                      checked={selectedCategories.length === ticketCategories.length}
+                      onCheckedChange={(checked) => {
+                        if (checked) {
+                          setSelectedCategories(ticketCategories);
+                        } else {
+                          setSelectedCategories([]);
+                        }
+                      }}
+                    />
+                    <label 
+                      htmlFor="select-all-categories"
+                      className="text-sm font-medium cursor-pointer"
+                    >
+                      Select All
+                    </label>
+                  </div>
+                  <Separator />
+                  
+                  {/* Individual category checkboxes */}
+                  {ticketCategories.map(category => {
+                    const isSelected = selectedCategories.includes(category);
+                    
+                    return (
+                      <div key={category} className="flex items-center space-x-2">
+                        <Checkbox
+                          id={`category-${category}`}
+                          checked={isSelected}
+                          onCheckedChange={(checked) => {
+                            if (checked) {
+                              setSelectedCategories(prev => [...prev, category]);
+                            } else {
+                              setSelectedCategories(prev => prev.filter(c => c !== category));
+                            }
+                          }}
+                        />
+                        <label 
+                          htmlFor={`category-${category}`}
+                          className="text-sm cursor-pointer"
+                        >
+                          {category}
+                        </label>
                       </div>
-                    </PopoverContent>
-                  </Popover>
+                    );
+                  })}
                 </div>
-              );
-            })}
+              </PopoverContent>
+            </Popover>
           </div>
         </CardHeader>
         <CardContent>
           <ResponsiveContainer width="100%" height={400}>
             <LineChart data={chartData}>
-              <CartesianGrid strokeDasharray="3 3" />
-              <XAxis dataKey="date" />
-              <YAxis />
-              <Tooltip />
+              <CartesianGrid strokeDasharray="3 3" className="opacity-30" />
+              <XAxis 
+                dataKey="date" 
+                className="text-muted-foreground"
+                fontSize={12}
+              />
+              <YAxis 
+                className="text-muted-foreground"
+                fontSize={12}
+              />
+              <Tooltip 
+                content={({ active, payload, label }) => {
+                  if (active && payload && payload.length) {
+                    return (
+                      <div className="bg-background border border-border rounded-lg p-3 shadow-md">
+                        <p className="text-sm font-medium mb-2">{label}</p>
+                        {payload.map((entry, index) => (
+                          <div key={index} className="flex items-center gap-2 text-sm">
+                            <div 
+                              className="w-3 h-3 rounded-full" 
+                              style={{ backgroundColor: entry.color }}
+                            />
+                            <span className="text-muted-foreground">{entry.name}:</span>
+                            <span className="font-medium">
+                              {entry.name?.includes('Response Time') 
+                                ? `${Number(entry.value).toFixed(1)}h`
+                                : entry.value
+                              }
+                            </span>
+                          </div>
+                        ))}
+                      </div>
+                    );
+                  }
+                  return null;
+                }}
+                allowEscapeViewBox={{ x: false, y: false }}
+              />
               
-              {/* Response Time Lines */}
-              {ticketCategories.map(category => {
-                const normalizedCategory = normalizeCategory(category);
-                return visibleLines.responseTime[normalizedCategory] && (
-                  <Line
-                    key={`responseTime_${normalizedCategory}`}
-                    type="monotone"
-                    dataKey={`responseTime_${normalizedCategory}`}
-                    stroke={categoryColors[normalizedCategory] || '#666'}
-                    strokeWidth={2}
-                    strokeDasharray="5 5"
-                    name={`${category} Response Time (hours)`}
-                    connectNulls={true}
-                    dot={false}
-                  />
-                );
-              })}
+              {/* Average Response Time Line */}
+              <Line
+                type="monotone"
+                dataKey="responseTime_overall"
+                stroke="#3b82f6"
+                strokeWidth={2}
+                name="Average Response Time (hours)"
+                connectNulls={true}
+                dot={false}
+                activeDot={false}
+              />
               
-              {/* Opened Lines */}
-              {ticketCategories.map(category => {
-                const normalizedCategory = normalizeCategory(category);
-                return visibleLines.opened[normalizedCategory] && (
-                  <Line
-                    key={`opened_${normalizedCategory}`}
-                    type="monotone"
-                    dataKey={`opened_${normalizedCategory}`}
-                    stroke={categoryColors[normalizedCategory] || '#666'}
-                    strokeWidth={2}
-                    name={`${category} Opened`}
-                    dot={false}
-                  />
-                );
-              })}
+              {/* Opened Tickets Line */}
+              <Line
+                type="monotone"
+                dataKey="opened_overall"
+                stroke="#10b981"
+                strokeWidth={2}
+                name="Tickets Opened"
+                dot={false}
+                activeDot={false}
+              />
               
-              {/* Closed Lines */}
-              {ticketCategories.map(category => {
-                const normalizedCategory = normalizeCategory(category);
-                return visibleLines.closed[normalizedCategory] && (
-                  <Line
-                    key={`closed_${normalizedCategory}`}
-                    type="monotone"
-                    dataKey={`closed_${normalizedCategory}`}
-                    stroke={categoryColors[normalizedCategory] || '#666'}
-                    strokeWidth={3}
-                    name={`${category} Closed`}
-                    dot={false}
-                  />
-                );
-              })}
+              {/* Closed Tickets Line */}
+              <Line
+                type="monotone"
+                dataKey="closed_overall"
+                stroke="#ef4444"
+                strokeWidth={2}
+                name="Tickets Closed"
+                dot={false}
+                activeDot={false}
+              />
             </LineChart>
           </ResponsiveContainer>
         </CardContent>
@@ -1951,11 +1962,11 @@ const AuditLog = () => {
                 <CardContent>
                   <ResponsiveContainer width="100%" height={200}>
                     <LineChart data={ticketAnalytics?.dailyTrend || []}>
-                      <CartesianGrid strokeDasharray="3 3" />
-                      <XAxis dataKey="date" />
-                      <YAxis />
-                      <Tooltip />
-                      <Line type="monotone" dataKey="count" stroke="#3b82f6" strokeWidth={2} />
+                      <CartesianGrid strokeDasharray="3 3" className="opacity-30" />
+                      <XAxis dataKey="date" className="text-muted-foreground" fontSize={12} />
+                      <YAxis className="text-muted-foreground" fontSize={12} />
+                      <Tooltip content={<CustomTooltip />} />
+                      <Line type="monotone" dataKey="count" stroke="#3b82f6" strokeWidth={2} dot={false} activeDot={false} />
                     </LineChart>
                   </ResponsiveContainer>
                 </CardContent>
@@ -1977,11 +1988,11 @@ const AuditLog = () => {
                         dataKey="count"
                         label={({ type, percent }) => `${type} ${(percent * 100).toFixed(0)}%`}
                       >
-                        {(punishmentAnalytics?.byType || []).map((entry, index) => (
+                        {(punishmentAnalytics?.byType || []).map((entry: any, index: number) => (
                           <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
                         ))}
                       </Pie>
-                      <Tooltip />
+                      {/* <Tooltip content={<CustomTooltip />} /> */}
                     </PieChart>
                   </ResponsiveContainer>
                 </CardContent>
@@ -2005,11 +2016,11 @@ const AuditLog = () => {
                 <CardContent>
                   <ResponsiveContainer width="100%" height={250}>
                     <BarChart data={staffPerformanceData}>
-                      <CartesianGrid strokeDasharray="3 3" />
-                      <XAxis dataKey="username" />
-                      <YAxis />
-                      <Tooltip />
-                      <Bar dataKey="totalActions" fill="#8884d8" />
+                      <CartesianGrid strokeDasharray="3 3" className="opacity-30" />
+                      <XAxis dataKey="username" className="text-muted-foreground" fontSize={12} />
+                      <YAxis className="text-muted-foreground" fontSize={12} />
+                      {/* <Tooltip content={<CustomTooltip />} /> */}
+                      <Bar dataKey="totalActions" fill="#8884d8" style={{ filter: 'none' }} />
                     </BarChart>
                   </ResponsiveContainer>
                 </CardContent>
@@ -2022,11 +2033,11 @@ const AuditLog = () => {
                 <CardContent>
                   <ResponsiveContainer width="100%" height={250}>
                     <BarChart data={staffPerformanceData}>
-                      <CartesianGrid strokeDasharray="3 3" />
-                      <XAxis dataKey="username" />
-                      <YAxis />
-                      <Tooltip />
-                      <Bar dataKey="ticketResponses" fill="#82ca9d" />
+                      <CartesianGrid strokeDasharray="3 3" className="opacity-30" />
+                      <XAxis dataKey="username" className="text-muted-foreground" fontSize={12} />
+                      <YAxis className="text-muted-foreground" fontSize={12} />
+                      {/* <Tooltip content={<CustomTooltip />} /> */}
+                      <Bar dataKey="ticketResponses" fill="#82ca9d" style={{ filter: 'none' }} />
                     </BarChart>
                   </ResponsiveContainer>
                 </CardContent>
@@ -2076,11 +2087,11 @@ const AuditLog = () => {
                 <CardContent>
                   <ResponsiveContainer width="100%" height={250}>
                     <BarChart data={punishmentAnalytics?.byType || []}>
-                      <CartesianGrid strokeDasharray="3 3" />
-                      <XAxis dataKey="type" />
-                      <YAxis />
-                      <Tooltip />
-                      <Bar dataKey="count" fill="#ef4444" />
+                      <CartesianGrid strokeDasharray="3 3" className="opacity-30" />
+                      <XAxis dataKey="type" className="text-muted-foreground" fontSize={12} />
+                      <YAxis className="text-muted-foreground" fontSize={12} />
+                      <Tooltip cursor={false} content={<CustomTooltip />} />
+                      <Bar dataKey="count" fill="#ef4444" style={{ filter: 'none' }} />
                     </BarChart>
                   </ResponsiveContainer>
                 </CardContent>
@@ -2093,11 +2104,11 @@ const AuditLog = () => {
                 <CardContent>
                   <ResponsiveContainer width="100%" height={250}>
                     <LineChart data={punishmentAnalytics?.dailyTrend || []}>
-                      <CartesianGrid strokeDasharray="3 3" />
-                      <XAxis dataKey="date" />
-                      <YAxis />
-                      <Tooltip />
-                      <Line type="monotone" dataKey="count" stroke="#ef4444" strokeWidth={2} />
+                      <CartesianGrid strokeDasharray="3 3" className="opacity-30" />
+                      <XAxis dataKey="date" className="text-muted-foreground" fontSize={12} />
+                      <YAxis className="text-muted-foreground" fontSize={12} />
+                      <Tooltip content={<CustomTooltip />} />
+                      <Line type="monotone" dataKey="count" stroke="#ef4444" strokeWidth={2} dot={{r:0}} activeDot={false} />
                     </LineChart>
                   </ResponsiveContainer>
                 </CardContent>
@@ -2136,11 +2147,11 @@ const AuditLog = () => {
                 <CardContent>
                   <ResponsiveContainer width="100%" height={250}>
                     <AreaChart data={playerActivity?.newPlayersTrend || []}>
-                      <CartesianGrid strokeDasharray="3 3" />
-                      <XAxis dataKey="date" />
-                      <YAxis />
-                      <Tooltip />
-                      <Area type="monotone" dataKey="count" stroke="#10b981" fill="#10b981" fillOpacity={0.3} />
+                      <CartesianGrid strokeDasharray="3 3" className="opacity-30" />
+                      <XAxis dataKey="date" className="text-muted-foreground" fontSize={12} />
+                      <YAxis className="text-muted-foreground" fontSize={12} />
+                      <Tooltip content={<CustomTooltip />} />
+                      <Area type="monotone" dataKey="count" stroke="#10b981" fill="#10b981" fillOpacity={0.3} dot={false} activeDot={false} />
                     </AreaChart>
                   </ResponsiveContainer>
                 </CardContent>
@@ -2315,11 +2326,11 @@ const AuditLog = () => {
                         dataKey="count"
                         label={({ level, percent }) => `${level} ${(percent * 100).toFixed(0)}%`}
                       >
-                        {(auditLogsAnalytics?.byLevel || []).map((entry, index) => (
+                        {(auditLogsAnalytics?.byLevel || []).map((entry: any, index: number) => (
                           <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
                         ))}
                       </Pie>
-                      <Tooltip />
+                      <Tooltip content={<CustomTooltip />} />
                     </PieChart>
                   </ResponsiveContainer>
                 </CardContent>
@@ -2332,11 +2343,11 @@ const AuditLog = () => {
                 <CardContent>
                   <ResponsiveContainer width="100%" height={200}>
                     <BarChart data={auditLogsAnalytics?.hourlyTrend || []}>
-                      <CartesianGrid strokeDasharray="3 3" />
-                      <XAxis dataKey="hour" />
-                      <YAxis />
-                      <Tooltip />
-                      <Bar dataKey="count" fill="#8884d8" />
+                      <CartesianGrid strokeDasharray="3 3" className="opacity-30" />
+                      <XAxis dataKey="hour" className="text-muted-foreground" fontSize={12} />
+                      <YAxis className="text-muted-foreground" fontSize={12} />
+                      <Tooltip content={<CustomTooltip />} />
+                      <Bar dataKey="count" fill="#8884d8" style={{ filter: 'none' }} />
                     </BarChart>
                   </ResponsiveContainer>
                 </CardContent>

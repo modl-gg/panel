@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, memo } from 'react';
 import { useLocation, Link } from 'wouter';
 import { Popover, PopoverContent, PopoverTrigger } from '@modl-gg/shared-web/components/ui/popover';
 import { queryClient } from '@/lib/queryClient';
@@ -195,6 +195,98 @@ export interface TicketDetails {
   aiAnalysis?: AIAnalysis;
   punishmentData?: PlayerPunishmentData; // New field for punishment interface data
 }
+
+// Avatar component for messages - moved outside to prevent recreation on re-renders
+const MessageAvatar = memo(({ message, ticketData, staffData }: { 
+  message: TicketMessage; 
+  ticketData?: any; 
+  staffData?: any; 
+}) => {
+  const [avatarError, setAvatarError] = useState(false);
+  const [avatarLoading, setAvatarLoading] = useState(true);
+
+  // For player messages, use the ticket creator's UUID if available
+  if (message.senderType === 'user') {
+    const creatorUuid = ticketData?.creatorUuid;
+    if (creatorUuid && !avatarError) {
+      return (
+        <div className="relative h-8 w-8 bg-muted rounded-md flex items-center justify-center overflow-hidden flex-shrink-0">
+          <img 
+            src={`/api/panel/players/avatar/${creatorUuid}?size=32&overlay=true`}
+            alt={`${message.sender} Avatar`}
+            className={`w-full h-full object-cover transition-opacity duration-200 ${avatarLoading ? 'opacity-0' : 'opacity-100'}`}
+            onError={() => {
+              setAvatarError(true);
+              setAvatarLoading(false);
+            }}
+            onLoad={() => {
+              setAvatarError(false);
+              setAvatarLoading(false);
+            }}
+          />
+          {avatarLoading && (
+            <div className="absolute inset-0 flex items-center justify-center">
+              <span className="text-xs font-bold text-primary">{message.sender?.substring(0, 2) || 'U'}</span>
+            </div>
+          )}
+        </div>
+      );
+    }
+    // Fallback for player without UUID
+    return (
+      <div className="h-8 w-8 bg-blue-100 rounded-md flex items-center justify-center flex-shrink-0">
+        <span className="text-xs font-bold text-blue-600">{message.sender?.substring(0, 2) || 'U'}</span>
+      </div>
+    );
+  }
+
+  // For staff messages, check if they have an assigned Minecraft account
+  if (message.senderType === 'staff' || message.staff) {
+    const staffMember = staffData?.find((staff: any) => staff.username === message.sender);
+    const minecraftUuid = staffMember?.assignedMinecraftUuid;
+    
+    if (minecraftUuid && !avatarError) {
+      return (
+        <div className="relative h-8 w-8 bg-muted rounded-md flex items-center justify-center overflow-hidden flex-shrink-0">
+          <img 
+            src={`/api/panel/players/avatar/${minecraftUuid}?size=32&overlay=true`}
+            alt={`${message.sender} Avatar`}
+            className={`w-full h-full object-cover transition-opacity duration-200 ${avatarLoading ? 'opacity-0' : 'opacity-100'}`}
+            onError={() => {
+              setAvatarError(true);
+              setAvatarLoading(false);
+            }}
+            onLoad={() => {
+              setAvatarError(false);
+              setAvatarLoading(false);
+            }}
+          />
+          {avatarLoading && (
+            <div className="absolute inset-0 flex items-center justify-center">
+              <span className="text-xs font-bold text-primary">{message.sender?.substring(0, 2) || 'S'}</span>
+            </div>
+          )}
+        </div>
+      );
+    }
+    
+    // Fallback for staff without assigned Minecraft account
+    return (
+      <div className="h-8 w-8 bg-green-100 rounded-md flex items-center justify-center flex-shrink-0">
+        <span className="text-xs font-bold text-green-600">{message.sender?.substring(0, 2) || 'S'}</span>
+      </div>
+    );
+  }
+
+  // System messages
+  return (
+    <div className="h-8 w-8 bg-gray-100 rounded-md flex items-center justify-center flex-shrink-0">
+      <span className="text-xs font-bold text-gray-600">SY</span>
+    </div>
+  );
+});
+
+MessageAvatar.displayName = 'MessageAvatar';
 
 const TicketDetail = () => {
   const [, setLocation] = useLocation();
@@ -468,91 +560,7 @@ const TicketDetail = () => {
     }
   }, [settingsData]);
 
-  // Avatar component for messages
-  const MessageAvatar = ({ message }: { message: TicketMessage }) => {
-    const [avatarError, setAvatarError] = useState(false);
-    const [avatarLoading, setAvatarLoading] = useState(true);
 
-    // For player messages, use the ticket creator's UUID if available
-    if (message.senderType === 'user') {
-      const creatorUuid = ticketData?.creatorUuid;
-      if (creatorUuid && !avatarError) {
-        return (
-          <div className="relative h-8 w-8 bg-muted rounded-md flex items-center justify-center overflow-hidden flex-shrink-0">
-            <img 
-              src={`/api/panel/players/avatar/${creatorUuid}?size=32&overlay=true`}
-              alt={`${message.sender} Avatar`}
-              className={`w-full h-full object-cover transition-opacity duration-200 ${avatarLoading ? 'opacity-0' : 'opacity-100'}`}
-              onError={() => {
-                setAvatarError(true);
-                setAvatarLoading(false);
-              }}
-              onLoad={() => {
-                setAvatarError(false);
-                setAvatarLoading(false);
-              }}
-            />
-            {avatarLoading && (
-              <div className="absolute inset-0 flex items-center justify-center">
-                <span className="text-xs font-bold text-primary">{message.sender?.substring(0, 2) || 'U'}</span>
-              </div>
-            )}
-          </div>
-        );
-      }
-      // Fallback for player without UUID
-      return (
-        <div className="h-8 w-8 bg-blue-100 rounded-md flex items-center justify-center flex-shrink-0">
-          <span className="text-xs font-bold text-blue-600">{message.sender?.substring(0, 2) || 'U'}</span>
-        </div>
-      );
-    }
-
-    // For staff messages, check if they have an assigned Minecraft account
-    if (message.senderType === 'staff' || message.staff) {
-      const staffMember = staffData?.find((staff: any) => staff.username === message.sender);
-      const minecraftUuid = staffMember?.assignedMinecraftUuid;
-      
-      if (minecraftUuid && !avatarError) {
-        return (
-          <div className="relative h-8 w-8 bg-muted rounded-md flex items-center justify-center overflow-hidden flex-shrink-0">
-            <img 
-              src={`/api/panel/players/avatar/${minecraftUuid}?size=32&overlay=true`}
-              alt={`${message.sender} Avatar`}
-              className={`w-full h-full object-cover transition-opacity duration-200 ${avatarLoading ? 'opacity-0' : 'opacity-100'}`}
-              onError={() => {
-                setAvatarError(true);
-                setAvatarLoading(false);
-              }}
-              onLoad={() => {
-                setAvatarError(false);
-                setAvatarLoading(false);
-              }}
-            />
-            {avatarLoading && (
-              <div className="absolute inset-0 flex items-center justify-center">
-                <span className="text-xs font-bold text-primary">{message.sender?.substring(0, 2) || 'S'}</span>
-              </div>
-            )}
-          </div>
-        );
-      }
-      
-      // Fallback for staff without assigned Minecraft account
-      return (
-        <div className="h-8 w-8 bg-green-100 rounded-md flex items-center justify-center flex-shrink-0">
-          <span className="text-xs font-bold text-green-600">{message.sender?.substring(0, 2) || 'S'}</span>
-        </div>
-      );
-    }
-
-    // System messages
-    return (
-      <div className="h-8 w-8 bg-gray-100 rounded-md flex items-center justify-center flex-shrink-0">
-        <span className="text-xs font-bold text-gray-600">SY</span>
-      </div>
-    );
-  };
 
   // Function to apply AI-suggested punishment
   const applyAISuggestion = async () => {
@@ -1549,7 +1557,7 @@ const TicketDetail = () => {
                     {ticketDetails.messages.map((message) => (
                       <div key={message.id} className="p-4">
                         <div className="flex items-start gap-3">
-                          <MessageAvatar message={message} />
+                          <MessageAvatar message={message} ticketData={ticketData} staffData={staffData} />
                           <div className="flex-1 min-w-0">
                             <div className="flex items-center gap-2 mb-1">
                               <span className="font-medium text-sm">

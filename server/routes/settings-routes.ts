@@ -2860,15 +2860,8 @@ router.get('/api-key', async (req: Request, res: Response) => {
   if (!(await checkRoutePermission(req, res, 'admin.settings.view'))) return;
   try {
     
-    console.log('[Unified API Key GET] Server name:', req.serverName);
-    console.log('[Unified API Key GET] DB connection exists:', !!req.serverDbConnection);
-    
     const apiKeysData = await getSettingsValue(req.serverDbConnection!, 'apiKeys');
     const apiKey = apiKeysData?.api_key;
-    
-    console.log('[Unified API Key GET] API key found:', !!apiKey);
-    console.log('[Unified API Key GET] API key exists:', !!apiKey);
-    console.log('[Unified API Key GET] API key length:', apiKey ? apiKey.length : 0);
     
     if (!apiKey) {
       return res.json({ 
@@ -2881,8 +2874,6 @@ router.get('/api-key', async (req: Request, res: Response) => {
     const maskedKey = apiKey.length > 12 
       ? `${apiKey.substring(0, 8)}...${apiKey.substring(apiKey.length - 4)}`
       : apiKey; // For very short keys, don't mask
-    
-    console.log('[Unified API Key GET] Returning masked key:', maskedKey);
     
     res.json({ 
       hasApiKey: true,
@@ -2898,15 +2889,10 @@ router.get('/api-key', async (req: Request, res: Response) => {
 router.post('/api-key/generate', async (req: Request, res: Response) => {
   if (!(await checkRoutePermission(req, res, 'admin.settings.modify'))) return;
   try {
-    
-    console.log('[Unified API Key GENERATE] Server name:', req.serverName);
-    console.log('[Unified API Key GENERATE] DB connection exists:', !!req.serverDbConnection);
-    
     const Settings = req.serverDbConnection!.model('Settings');
     
     // Generate new API key
     const newApiKey = generateTicketApiKey();
-    console.log('[Unified API Key GENERATE] Generated new API key with length:', newApiKey.length);
     
     // Update or create API keys document (only store unified api_key)
     const apiKeysDoc = await Settings.findOneAndUpdate(
@@ -2919,14 +2905,7 @@ router.post('/api-key/generate', async (req: Request, res: Response) => {
       },
       { upsert: true, new: true }
     );
-    
-    console.log(`[Unified API Key GENERATE] Created/Updated API Keys Document:`, apiKeysDoc ? 'Success' : 'Failed');
-    console.log(`[Unified API Key GENERATE] Stored API Key:`, apiKeysDoc?.data?.api_key ? 'Success' : 'Failed');
-    
-    
-    
-    
-    
+  
     // Return the full key only once (for copying)
     res.json({ 
       apiKey: newApiKey,
@@ -2942,9 +2921,6 @@ router.post('/api-key/generate', async (req: Request, res: Response) => {
 router.get('/api-key/reveal', async (req: Request, res: Response) => {
   if (!(await checkRoutePermission(req, res, 'admin.settings.view'))) return;
   try {
-    
-    console.log('[Unified API Key REVEAL] Server name:', req.serverName);
-    
     const apiKeysData = await getSettingsValue(req.serverDbConnection!, 'apiKeys');
     const apiKey = apiKeysData?.api_key;
     
