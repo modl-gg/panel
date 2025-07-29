@@ -1,4 +1,7 @@
-import { WindowPosition, WindowState, Window } from '@modl-gg/shared-web/types';
+export interface WindowPosition {
+  x: number | string;
+  y: number | string;
+}
 
 export interface Window {
   id: string;
