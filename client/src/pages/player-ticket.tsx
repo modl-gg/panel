@@ -558,8 +558,30 @@ const PlayerTicket = () => {
       );
     }
     
-    const fields = formConfig.fields || [];
+    let fields = formConfig.fields || [];
     const sectionDefinitions = formConfig.sections || [];
+    
+    
+    const emailField = {
+      id: 'email',
+      type: 'text' as const,
+      label: 'Email Address',
+      description: 'Your email address for response notifications',
+      required: true,
+      order: 1,
+      sectionId: undefined,
+      options: undefined
+    };
+    
+    // Adjust order of existing fields to make room for email field
+    const adjustedFields = fields.map(field => ({
+      ...field,
+      order: field.order >= 1 ? field.order + 1 : field.order
+    }));
+    
+    // Add email field and sort by order
+    fields = [emailField, ...adjustedFields].sort((a, b) => a.order - b.order);
+  
     
     // Ensure we have fields to render
     if (fields.length === 0) {
