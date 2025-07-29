@@ -1,7 +1,7 @@
 import { useQuery } from '@tanstack/react-query';
 
 export interface MediaUploadConfig {
-  wasabiConfigured: boolean;
+  backblazeConfigured: boolean;
   supportedTypes: {
     evidence: string[];
     tickets: string[];
@@ -41,7 +41,7 @@ export function useMediaUpload() {
     uploadType: 'evidence' | 'ticket' | 'appeal' | 'article' | 'server-icon',
     metadata: Record<string, any> = {}
   ): Promise<{ url: string; key: string }> => {
-    if (!config.data?.wasabiConfigured) {
+    if (!config.data?.backblazeConfigured) {
       throw new Error('Media storage is not configured');
     }
 

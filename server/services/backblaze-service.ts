@@ -2,9 +2,9 @@ import { v4 as uuidv4 } from 'uuid';
 import path from 'path';
 import crypto from 'crypto';
 
-// Wasabi S3 Configuration
-const WASABI_ENDPOINT = 'https://s3.wasabisys.com';
-const WASABI_REGION = 'us-east-1'; // Wasabi uses us-east-1 as default region
+// Backblaze B2 Configuration
+const BACKBLAZE_ENDPOINT = 'https://s3.us-east-005.backblazeb2.com';
+const BACKBLAZE_REGION = 'us-east-1'; // AWS SDK compatible region
 
 // Dynamic imports for AWS SDK to avoid constructor issues
 let S3Client: any;
@@ -31,13 +31,13 @@ async function initializeAwsSdk() {
     getSignedUrl = signUrl;
     
     s3Client = new S3Client({
-      region: WASABI_REGION,
-      endpoint: WASABI_ENDPOINT,
+      region: BACKBLAZE_REGION,
+      endpoint: BACKBLAZE_ENDPOINT,
       credentials: {
-        accessKeyId: process.env.WASABI_ACCESS_KEY || '',
-        secretAccessKey: process.env.WASABI_SECRET_KEY || '',
+        accessKeyId: process.env.BACKBLAZE_KEY_ID || '',
+        secretAccessKey: process.env.BACKBLAZE_APPLICATION_KEY || '',
       },
-      forcePathStyle: true, // Required for Wasabi compatibility
+      forcePathStyle: true, // Required for Backblaze B2 compatibility
     });
   } catch (error) {
     console.error('Failed to initialize AWS SDK:', error);
@@ -45,18 +45,21 @@ async function initializeAwsSdk() {
   }
 }
 
-const BUCKET_NAME = process.env.WASABI_BUCKET_NAME || '';
+const BUCKET_NAME = process.env.BACKBLAZE_BUCKET_NAME || 'storage-modl-gg';
 
 // Validate environment variables
-if (!process.env.WASABI_ACCESS_KEY || !process.env.WASABI_SECRET_KEY || !process.env.WASABI_BUCKET_NAME) {
-  console.warn('Warning: Wasabi environment variables not configured. Media uploads will be disabled.');
+if (!process.env.BACKBLAZE_KEY_ID || !process.env.BACKBLAZE_APPLICATION_KEY) {
+  console.warn('Warning: Backblaze environment variables not configured. Media uploads will be disabled.');
 }
+
+// Define valid folder types
+type FolderType = 'evidence' | 'tickets' | 'appeals' | 'articles' | 'server-icons';
 
 export interface MediaUploadOptions {
   file: Buffer;
   fileName: string;
   contentType: string;
-  folder: 'evidence' | 'tickets' | 'appeals' | 'articles' | 'server-icons';
+  folder: FolderType;
   subFolder?: string; // For organizing files within folders
   serverName?: string; // Server name for folder hierarchy
   maxSizeBytes?: number;
@@ -72,7 +75,7 @@ export interface MediaUploadResult {
 }
 
 // Supported file types for different use cases
-export const SUPPORTED_FILE_TYPES = {
+export const SUPPORTED_FILE_TYPES: Record<FolderType, string[]> = {
   evidence: ['image/jpeg', 'image/png', 'image/gif', 'image/webp', 'video/mp4', 'video/webm', 'video/quicktime'],
   tickets: ['image/jpeg', 'image/png', 'image/gif', 'image/webp', 'application/pdf', 'text/plain', 'application/msword', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document'],
   appeals: ['image/jpeg', 'image/png', 'image/gif', 'image/webp', 'application/pdf', 'text/plain', 'application/msword', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document'],
@@ -81,7 +84,7 @@ export const SUPPORTED_FILE_TYPES = {
 };
 
 // File size limits (in bytes)
-export const FILE_SIZE_LIMITS = {
+export const FILE_SIZE_LIMITS: Record<FolderType, number> = {
   evidence: 100 * 1024 * 1024, // 100MB for evidence (videos can be large)
   tickets: 10 * 1024 * 1024,   // 10MB for ticket attachments
   appeals: 10 * 1024 * 1024,   // 10MB for appeal attachments
@@ -143,7 +146,7 @@ function generateSecureFileName(originalName: string, folder: string, subFolder?
 /**
  * Validate file type and size
  */
-function validateFile(file: Buffer, contentType: string, folder: string, options: MediaUploadOptions): string | null {
+function validateFile(file: Buffer, contentType: string, folder: FolderType, options: MediaUploadOptions): string | null {
   // Check file size
   const maxSize = options.maxSizeBytes || FILE_SIZE_LIMITS[folder];
   if (file.length > maxSize) {
@@ -160,7 +163,7 @@ function validateFile(file: Buffer, contentType: string, folder: string, options
 }
 
 /**
- * Upload media file to Wasabi S3
+ * Upload media file to Backblaze B2
  */
 export async function uploadMedia(options: MediaUploadOptions): Promise<MediaUploadResult> {
   try {
@@ -169,7 +172,7 @@ export async function uploadMedia(options: MediaUploadOptions): Promise<MediaUpl
     
     // Validate environment variables
     if (!BUCKET_NAME) {
-      return { success: false, error: 'Wasabi bucket not configured' };
+      return { success: false, error: 'Backblaze bucket not configured' };
     }
 
     // Check if S3 client is properly initialized
@@ -186,7 +189,7 @@ export async function uploadMedia(options: MediaUploadOptions): Promise<MediaUpl
     // Generate secure file name with server hierarchy and random UUID folder
     const { key, folderUuid } = generateSecureFileNameWithUuid(options.fileName, options.folder, options.subFolder, options.serverName);
 
-    // Upload to Wasabi
+    // Upload to Backblaze B2
     const uploadCommand = new PutObjectCommand({
       Bucket: BUCKET_NAME,
       Key: key,
@@ -205,8 +208,11 @@ export async function uploadMedia(options: MediaUploadOptions): Promise<MediaUpl
 
     await s3Client.send(uploadCommand);
 
-    // Generate public URL using bucket name as domain (CDN)
-    const url = `https://${BUCKET_NAME}/${key}`;
+    // Generate public URL using CloudFlare CDN domain (if configured) or Backblaze domain
+    const cdnDomain = process.env.CLOUDFLARE_CDN_DOMAIN;
+    const url = cdnDomain 
+      ? `https://${cdnDomain}/${key}`
+      : `https://${BUCKET_NAME}.s3.us-east-005.backblazeb2.com/${key}`;
 
     return {
       success: true,
@@ -216,7 +222,7 @@ export async function uploadMedia(options: MediaUploadOptions): Promise<MediaUpl
     };
 
   } catch (error) {
-    console.error('Error uploading media to Wasabi:', error);
+    console.error('Error uploading media to Backblaze B2:', error);
     return {
       success: false,
       error: error instanceof Error ? error.message : 'Unknown upload error'
@@ -225,7 +231,7 @@ export async function uploadMedia(options: MediaUploadOptions): Promise<MediaUpl
 }
 
 /**
- * Delete media file from Wasabi S3
+ * Delete media file from Backblaze B2
  */
 export async function deleteMedia(key: string): Promise<boolean> {
   try {
@@ -233,7 +239,7 @@ export async function deleteMedia(key: string): Promise<boolean> {
     await initializeAwsSdk();
     
     if (!BUCKET_NAME) {
-      console.warn('Wasabi bucket not configured');
+      console.warn('Backblaze bucket not configured');
       return false;
     }
 
@@ -246,7 +252,7 @@ export async function deleteMedia(key: string): Promise<boolean> {
     return true;
 
   } catch (error) {
-    console.error('Error deleting media from Wasabi:', error);
+    console.error('Error deleting media from Backblaze B2:', error);
     return false;
   }
 }
@@ -372,8 +378,8 @@ export function isSecureFileKey(key: string): boolean {
 }
 
 /**
- * Check if Wasabi is configured and available
+ * Check if Backblaze B2 is configured and available
  */
-export function isWasabiConfigured(): boolean {
-  return !!(process.env.WASABI_ACCESS_KEY && process.env.WASABI_SECRET_KEY && process.env.WASABI_BUCKET_NAME);
+export function isBackblazeConfigured(): boolean {
+  return !!(process.env.BACKBLAZE_KEY_ID && process.env.BACKBLAZE_APPLICATION_KEY);
 }
