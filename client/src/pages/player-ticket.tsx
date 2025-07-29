@@ -265,17 +265,29 @@ const PlayerTicket = () => {
       }
 
       // Process messages and ensure valid timestamps
-      const processedMessages = (ticketData.replies || ticketData.messages || []).map((message: any) => ({
-        id: message.id || message._id || `msg-${Date.now()}-${Math.random().toString(36).substring(2, 7)}`,
-        sender: message.sender || message.name || 'Unknown',
-        senderType: message.senderType || (message.type === 'staff' ? 'staff' : message.type === 'system' ? 'system' : 'user'),
-        content: message.content || '',
-        timestamp: message.timestamp || message.created || new Date().toISOString(),
-        staff: message.staff,
-        attachments: message.attachments,
-        closedAs: (message.action === "Comment" || message.action === "Reopen") ? undefined : message.action,
-        staffMinecraftUuid: message.staffMinecraftUuid // Preserve staff Minecraft UUID for avatars
-      }));
+      const processedMessages = (ticketData.replies || ticketData.messages || []).map((message: any) => {
+        const processed = {
+          id: message.id || message._id || `msg-${Date.now()}-${Math.random().toString(36).substring(2, 7)}`,
+          sender: message.sender || message.name || 'Unknown',
+          senderType: message.senderType || (message.type === 'staff' ? 'staff' : message.type === 'system' ? 'system' : 'user'),
+          content: message.content || '',
+          timestamp: message.timestamp || message.created || new Date().toISOString(),
+          staff: message.staff,
+          attachments: message.attachments,
+          closedAs: (message.action === "Comment" || message.action === "Reopen") ? undefined : message.action,
+          staffMinecraftUuid: message.staffMinecraftUuid // Preserve staff Minecraft UUID for avatars
+        };
+        
+        if (message.attachments && message.attachments.length > 0) {
+          console.log('Message with attachments found:', {
+            messageId: processed.id,
+            sender: processed.sender,
+            attachments: message.attachments
+          });
+        }
+        
+        return processed;
+      });
           
       setTicketDetails({
         id: ticketData.id || ticketData._id,
@@ -310,6 +322,8 @@ const PlayerTicket = () => {
     const tempId = Date.now().toString();
     const timestamp = new Date().toISOString();
     
+    console.log('Sending reply with attachments:', replyAttachments);
+    
     // Create new message for immediate display
     const newMessage: TicketMessage = {
       id: tempId,
@@ -320,6 +334,8 @@ const PlayerTicket = () => {
       staff: false,
       attachments: replyAttachments.map(att => att.url) // Include attachment URLs
     };
+    
+    console.log('Optimistic message with attachments:', newMessage.attachments);
     
     // Update UI immediately with the new message
     setTicketDetails(prev => ({
@@ -337,7 +353,12 @@ const PlayerTicket = () => {
       attachments: replyAttachments.map(att => att.url) // Include attachment URLs for API
     };
     
-    // Clear the reply field and attachments
+    console.log('Sending API reply with attachments:', reply.attachments);
+    
+    // Store current attachments for potential restoration
+    const currentAttachments = [...replyAttachments];
+    
+    // Clear the reply field and attachments optimistically
     setNewReply('');
     setReplyAttachments([]);
       try {
@@ -347,8 +368,13 @@ const PlayerTicket = () => {
         reply: reply
       });
       
-      // Manually invalidate the cache for background refresh
-      queryClient.invalidateQueries({ queryKey: ['/api/public/tickets', ticketDetails.id] });
+      console.log('Reply sent successfully, scheduling cache invalidation');
+      
+      // Small delay to ensure backend has saved the data, then invalidate cache
+      setTimeout(() => {
+        console.log('Invalidating cache to refresh data');
+        queryClient.invalidateQueries({ queryKey: ['/api/public/tickets', ticketDetails.id] });
+      }, 1500); // Increased delay to give backend more time
     } catch (error) {
       console.error('Error sending reply:', error);
       toast({
@@ -363,7 +389,7 @@ const PlayerTicket = () => {
       }));
       // Restore the reply content and attachments on failure
       setNewReply(newReply);
-      setReplyAttachments(replyAttachments);
+      setReplyAttachments(currentAttachments);
     } finally {
       setIsSubmitting(false);
     }
@@ -994,12 +1020,31 @@ const PlayerTicket = () => {
                         </div>
                         {message.attachments && message.attachments.length > 0 && (
                           <div className="mt-2 space-y-1">
-                            {message.attachments.map((attachment, i) => (
-                              <div key={i} className="flex items-center gap-2 text-sm text-muted-foreground">
-                                <Link2 className="h-4 w-4" />
-                                <span>{attachment}</span>
-                              </div>
-                            ))}
+                            {message.attachments.map((attachment: string | any, i: number) => {
+                              // Extract filename from URL or use a fallback
+                              const fileName = typeof attachment === 'string' 
+                                ? attachment.split('/').pop() || `attachment-${i + 1}`
+                                : attachment.fileName || `attachment-${i + 1}`;
+                              
+                              const attachmentUrl = typeof attachment === 'string' 
+                                ? attachment 
+                                : attachment.url || attachment;
+                              
+                              return (
+                                <div key={i} className="flex items-center gap-2 text-sm">
+                                  <Link2 className="h-4 w-4 text-muted-foreground" />
+                                  <a 
+                                    href={attachmentUrl}
+                                    target="_blank" 
+                                    rel="noopener noreferrer"
+                                    className="text-primary hover:text-primary/80 underline underline-offset-2"
+                                    title={`Download ${fileName}`}
+                                  >
+                                    {fileName}
+                                  </a>
+                                </div>
+                              );
+                            })}
                           </div>
                         )}
                       </div>
