@@ -99,25 +99,6 @@ const BillingSettings = () => {
   const [isSpinning, setIsSpinning] = useState(false);
   const queryClient = useQueryClient();
 
-  useEffect(() => {
-    const urlParams = new URLSearchParams(window.location.search);
-    const sessionId = urlParams.get('session_id');
-
-    if (sessionId) {
-      toast({
-        title: 'Payment Successful!',
-        description: 'Your subscription has been activated.',
-        variant: 'default',
-      });
-      queryClient.invalidateQueries({ queryKey: ['/api/panel/billing/status'] });
-      
-      // Clean up the URL by removing the session_id query parameter
-      urlParams.delete('session_id');
-      const newUrl = `${window.location.pathname}${urlParams.toString() ? `?${urlParams.toString()}` : ''}`;
-      window.history.replaceState({}, '', newUrl);
-    }
-  }, [queryClient, toast]);
-
   const handleCreateCheckoutSession = async () => {
     setIsLoading(true);
     try {

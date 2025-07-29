@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { CreditCard, SettingsIcon, Globe, Key, Upload, Eye, EyeOff, Check, Copy, RefreshCw, Trash2, Plus, ChevronDown, ChevronRight, HardDrive } from 'lucide-react';
 import { Button } from '@modl-gg/shared-web/components/ui/button';
 import { Input } from '@modl-gg/shared-web/components/ui/input';
@@ -11,6 +11,8 @@ import { usePermissions } from '@/hooks/use-permissions';
 import BillingSettings from './BillingSettings';
 import DomainSettings from './DomainSettings';
 import UsageSettings from './UsageSettings';
+import { toast } from '@modl-gg/shared-web';
+import { queryClient } from '@/lib/queryClient';
 
 interface GeneralSettingsProps {
   // Server Configuration
@@ -80,6 +82,26 @@ const GeneralSettings = ({
   const [isUsageExpanded, setIsUsageExpanded] = useState(false);
   const [isServerConfigExpanded, setIsServerConfigExpanded] = useState(false);
   const [isDomainExpanded, setIsDomainExpanded] = useState(false);
+
+  useEffect(() => {
+    const urlParams = new URLSearchParams(window.location.search);
+    const sessionId = urlParams.get('session_id');
+
+    if (sessionId) {
+      setIsBillingExpanded(true);
+      toast({
+        title: 'Payment Successful!',
+        description: 'Your subscription has been activated.',
+        variant: 'default',
+      });
+      queryClient.invalidateQueries({ queryKey: ['/api/panel/billing/status'] });
+      
+      // Clean up the URL by removing the session_id query parameter
+      urlParams.delete('session_id');
+      const newUrl = `${window.location.pathname}${urlParams.toString() ? `?${urlParams.toString()}` : ''}`;
+      window.history.replaceState({}, '', newUrl);
+    }
+  }, []);
 
   return (
     <div className="space-y-6 p-6">
