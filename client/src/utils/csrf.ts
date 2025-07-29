@@ -55,6 +55,14 @@ export async function csrfFetch(url: string, options: RequestInit = {}): Promise
       throw new Error('Rate limit exceeded - redirecting to rate limit page');
     }
     
+    // Update cached token from response headers for successful requests
+    if (response.ok && response.headers.has('X-CSRF-Token')) {
+      const newToken = response.headers.get('X-CSRF-Token');
+      if (newToken) {
+        csrfToken = newToken;
+      }
+    }
+    
     // If we get a CSRF error, clear the token and retry once
     if (response.status === 403) {
       const errorData = await response.clone().json().catch(() => ({}));
@@ -75,6 +83,14 @@ export async function csrfFetch(url: string, options: RequestInit = {}): Promise
           const { handleRateLimitResponse, getCurrentPath } = await import('./rate-limit-handler');
           await handleRateLimitResponse(retryResponse, getCurrentPath());
           throw new Error('Rate limit exceeded - redirecting to rate limit page');
+        }
+        
+        // Update cached token from retry response headers
+        if (retryResponse.ok && retryResponse.headers.has('X-CSRF-Token')) {
+          const retryNewToken = retryResponse.headers.get('X-CSRF-Token');
+          if (retryNewToken) {
+            csrfToken = retryNewToken;
+          }
         }
         
         return retryResponse;
