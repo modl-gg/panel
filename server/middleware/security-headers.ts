@@ -70,7 +70,8 @@ export function securityHeaders(req: Request, res: Response, next: NextFunction)
   res.setHeader('Permissions-Policy', permissionsPolicy);
 
   // Cross-Origin-Embedder-Policy and Cross-Origin-Opener-Policy for isolation
-  res.setHeader('Cross-Origin-Embedder-Policy', 'require-corp');
+  // Using 'credentialless' instead of 'require-corp' to allow external scripts like Stripe
+  res.setHeader('Cross-Origin-Embedder-Policy', 'credentialless');
   res.setHeader('Cross-Origin-Opener-Policy', 'same-origin');
 
   // Remove potentially revealing headers
