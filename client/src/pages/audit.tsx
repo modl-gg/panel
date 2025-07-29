@@ -43,6 +43,9 @@ import { useLogs } from '@/hooks/use-data';
 import { useQuery } from '@tanstack/react-query';
 import PageContainer from '@/components/layout/PageContainer';
 import { useToast } from '@modl-gg/shared-web/hooks/use-toast';
+import { PermissionWrapper } from '@/components/PermissionWrapper';
+import { PERMISSIONS } from '@/hooks/use-permissions';
+import { Alert, AlertDescription } from '@modl-gg/shared-web/components/ui/alert';
 import { cn } from '@modl-gg/shared-web/lib/utils';
 import { usePlayerWindow } from '@/contexts/PlayerWindowContext';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell, LineChart, Line, Area, AreaChart } from 'recharts';
@@ -2788,4 +2791,22 @@ const AuditLog = () => {
   );
 };
 
-export default AuditLog;
+export default function AuditPage() {
+  return (
+    <PermissionWrapper 
+      permissions={[PERMISSIONS.ADMIN_AUDIT_VIEW]}
+      fallback={
+        <PageContainer title="Audit">
+          <Alert variant="destructive">
+            <AlertTriangle className="h-4 w-4" />
+            <AlertDescription>
+              You do not have permission to view audit logs. Only administrators can access this page.
+            </AlertDescription>
+          </Alert>
+        </PageContainer>
+      }
+    >
+      <AuditLog />
+    </PermissionWrapper>
+  );
+}

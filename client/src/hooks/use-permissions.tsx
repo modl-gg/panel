@@ -9,6 +9,7 @@ export const PERMISSIONS = {
   ADMIN_SETTINGS_MODIFY: 'admin.settings.modify',
   ADMIN_STAFF_MANAGE: 'admin.staff.manage',
   ADMIN_ANALYTICS_VIEW: 'admin.analytics.view',
+  ADMIN_AUDIT_VIEW: 'admin.audit.view',
   
   // Punishment permissions
   PUNISHMENT_MODIFY: 'punishment.modify',
