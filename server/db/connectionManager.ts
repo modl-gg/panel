@@ -96,7 +96,7 @@ const log = {
   },
   metrics: (message: string, meta?: any) => {
     // Always log metrics for monitoring
-    console.log(`[ConnectionManager:METRICS] ${message}`, meta ? JSON.stringify(meta) : '');
+    //console.log(`[ConnectionManager:METRICS] ${message}`, meta ? JSON.stringify(meta) : '');
   }
 };
 
@@ -236,7 +236,7 @@ function setupConnectionEventHandlers(connection: Connection, connectionKey: str
   });
 
   connection.on('disconnected', () => {
-    log.warn(`Database disconnected`, { connectionKey });
+    log.info(`Database disconnected`, { connectionKey });
   });
 
   connection.on('reconnected', () => {
