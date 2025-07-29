@@ -2621,7 +2621,7 @@ const Settings = () => {
             <TabsList className="w-full h-full justify-start rounded-none bg-transparent border-b border-border overflow-x-auto mx-1">
               <TabsTrigger
                 value="account"
-                className="data-[state=active]:border-b-2 data-[state=active]:border-primary data-[state=active]:text-primary rounded-none px-6 py-2"
+                className="border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:text-primary rounded-none px-6 py-2"
               >
                 <UserIcon className="h-4 w-4 mr-2" />
                 Account
@@ -2629,7 +2629,7 @@ const Settings = () => {
               {canAccessSettingsTab('general') && (
                 <TabsTrigger
                   value="general"
-                  className="data-[state=active]:border-b-2 data-[state=active]:border-primary data-[state=active]:text-primary rounded-none px-6 py-2"
+                  className="border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:text-primary rounded-none px-6 py-2"
                 >
                   <SettingsIcon className="h-4 w-4 mr-2" />
                   Server & Billing
@@ -2638,7 +2638,7 @@ const Settings = () => {
               {canAccessSettingsTab('punishment') && (
                 <TabsTrigger
                   value="punishment"
-                  className="data-[state=active]:border-b-2 data-[state=active]:border-primary data-[state=active]:text-primary rounded-none px-6 py-2"
+                  className="border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:text-primary rounded-none px-6 py-2"
                 >
                   <Scale className="h-4 w-4 mr-2" />
                   Punishment Types
@@ -2647,7 +2647,7 @@ const Settings = () => {
               {canAccessSettingsTab('tags') && (
                 <TabsTrigger
                   value="tags"
-                  className="data-[state=active]:border-b-2 data-[state=active]:border-primary data-[state=active]:text-primary rounded-none px-6 py-2"
+                  className="border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:text-primary rounded-none px-6 py-2"
                 >
                   <Tag className="h-4 w-4 mr-2" />
                   Tickets
@@ -2656,7 +2656,7 @@ const Settings = () => {
               {canAccessSettingsTab('staff') && (
                 <TabsTrigger
                   value="staff"
-                  className="data-[state=active]:border-b-2 data-[state=active]:border-primary data-[state=active]:text-primary rounded-none px-6 py-2"
+                  className="border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:text-primary rounded-none px-6 py-2"
                 >
                   <Shield className="h-4 w-4 mr-2" />
                   Staff Management
@@ -2665,7 +2665,7 @@ const Settings = () => {
               {canAccessSettingsTab('knowledgebase') && (
                 <TabsTrigger
                   value="knowledgebase"
-                  className="data-[state=active]:border-b-2 data-[state=active]:border-primary data-[state=active]:text-primary rounded-none px-6 py-2"
+                  className="border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:text-primary rounded-none px-6 py-2"
                 >
                   <BookOpen className="h-4 w-4 mr-2" />
                   Knowledgebase
@@ -2674,7 +2674,7 @@ const Settings = () => {
               {canAccessSettingsTab('homepage') && (
                 <TabsTrigger
                   value="homepage"
-                  className="data-[state=active]:border-b-2 data-[state=active]:border-primary data-[state=active]:text-primary rounded-none px-6 py-2"
+                  className="border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:text-primary rounded-none px-6 py-2"
                 >
                   <Globe className="h-4 w-4 mr-2" />
                   Homepage Cards
