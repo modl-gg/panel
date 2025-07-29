@@ -80,7 +80,7 @@ router.get('/info', isAuthenticated, async (req, res) => {
 // Get storage quota for current server
 router.get('/quota', isAuthenticated, async (req, res) => {
   try {
-    const { serverName } = req.user as any;
+    const serverName = (req as any).serverName;
     
     if (!serverName) {
       return res.status(400).json({ error: 'Server name required' });
@@ -104,7 +104,7 @@ router.get('/quota', isAuthenticated, async (req, res) => {
 // Get storage breakdown
 router.get('/breakdown', isAuthenticated, async (req, res) => {
   try {
-    const { serverName } = req.user as any;
+    const serverName = (req as any).serverName;
     
     if (!serverName) {
       return res.status(400).json({ error: 'Server name required' });
@@ -122,7 +122,7 @@ router.get('/breakdown', isAuthenticated, async (req, res) => {
 // Get list of files in server's storage
 router.get('/files', isAuthenticated, async (req, res) => {
   try {
-    const { serverName } = req.user as any;
+    const serverName = (req as any).serverName;
     const { folder, page = 1, limit = 50 } = req.query;
     
     if (!serverName) {
@@ -169,7 +169,7 @@ router.get('/files', isAuthenticated, async (req, res) => {
 // Get AI usage quota in addition to storage
 router.get('/quota-with-ai', isAuthenticated, async (req, res) => {
   try {
-    const { serverName } = req.user as any;
+    const serverName = (req as any).serverName;
     
     if (!serverName) {
       return res.status(400).json({ error: 'Server name required' });
@@ -225,7 +225,7 @@ router.get('/quota-with-ai', isAuthenticated, async (req, res) => {
 // Delete a file from storage
 router.delete('/file/:key(*)', isAuthenticated, async (req, res) => {
   try {
-    const { serverName } = req.user as any;
+    const serverName = (req as any).serverName;
     const fileKey = req.params.key;
     
     if (!serverName) {
@@ -270,7 +270,7 @@ router.get('/config', isAuthenticated, async (req, res) => {
 // Bulk delete files
 router.post('/bulk-delete', isAuthenticated, async (req, res) => {
   try {
-    const { serverName } = req.user as any;
+    const serverName = (req as any).serverName;
     const { keys } = req.body;
     
     if (!serverName) {
@@ -355,7 +355,7 @@ router.get('/test', isAuthenticated, async (req, res) => {
 // Get presigned URL for file download
 router.get('/download/:key(*)', isAuthenticated, async (req, res) => {
   try {
-    const { serverName } = req.user as any;
+    const serverName = (req as any).serverName;
     const fileKey = req.params.key;
     
     if (!serverName) {
@@ -390,7 +390,7 @@ router.get('/download/:key(*)', isAuthenticated, async (req, res) => {
 // Upload file directly to storage (for admin use)
 router.post('/upload', isAuthenticated, async (req, res) => {
   try {
-    const { serverName } = req.user as any;
+    const serverName = (req as any).serverName;
     
     if (!serverName) {
       return res.status(400).json({ error: 'Server name required' });
