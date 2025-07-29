@@ -19,7 +19,7 @@ export function PermissionWrapper({
   // Check permissions based on provided criteria
   const hasAccess = settingsTab 
     ? canAccessSettingsTab(settingsTab as any)
-    : permissions.length === 0 || hasAllPermissions(permissions);
+    : (permissions && permissions.length === 0) || hasAllPermissions(permissions || []);
 
   return hasAccess ? <>{children}</> : <>{fallback}</>;
 }
@@ -35,7 +35,7 @@ export function withPermissionCheck<T extends object>(
     
     const hasAccess = settingsTab 
       ? canAccessSettingsTab(settingsTab as any)
-      : requiredPermissions.length === 0 || hasAllPermissions(requiredPermissions);
+      : (requiredPermissions && requiredPermissions.length === 0) || hasAllPermissions(requiredPermissions || []);
 
     if (!hasAccess) {
       return (
