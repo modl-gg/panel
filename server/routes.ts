@@ -108,28 +108,24 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.json({
           serverDisplayName: 'modl',
           panelIconUrl: null,
-          homepageIconUrl: null
-        });
-      }
-
-      const SettingsModel = req.serverDbConnection.model('Settings');
-      let settingsDoc = await SettingsModel.findOne({});
-      
-      if (!settingsDoc || !settingsDoc.settings) {
-        return res.json({
-          serverDisplayName: 'modl',
-          panelIconUrl: null,
           homepageIconUrl: null,
           ticketForms: {}
         });
       }
 
-      const settings = Object.fromEntries(settingsDoc.settings);
+      // Import settings utilities to get settings properly
+      const { getMultipleSettingsValues } = await import('./routes/settings-routes');
+      
+      // Get the settings we need for public access
+      const settings = await getMultipleSettingsValues(req.serverDbConnection, [
+        'general',
+        'ticketForms'
+      ]);
       
       const result = {
-        serverDisplayName: settings.general?.serverDisplayName || settings.serverDisplayName || 'modl',
-        panelIconUrl: settings.general?.panelIconUrl || settings.panelIconUrl || null,
-        homepageIconUrl: settings.general?.homepageIconUrl || settings.homepageIconUrl || null,
+        serverDisplayName: settings.general?.serverDisplayName || 'modl',
+        panelIconUrl: settings.general?.panelIconUrl || null,
+        homepageIconUrl: settings.general?.homepageIconUrl || null,
         ticketForms: settings.ticketForms || {}
       };
       
