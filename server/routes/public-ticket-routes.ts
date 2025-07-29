@@ -835,6 +835,9 @@ router.post('/tickets/:id/submit', async (req: Request, res: Response) => {
         });
       }
       
+      // Debug: Log the field labels mapping
+      console.log('Field labels mapping:', fieldLabels);
+      
       Object.entries(formData).forEach(([key, value]) => {
         // Skip email field from message content as it's used for notifications only
         if (key === 'email' || key === 'contact_email') {
@@ -873,8 +876,23 @@ router.post('/tickets/:id/submit', async (req: Request, res: Response) => {
             }
             contentString += `\n`;
           } else {
-            // Get the field label from form configuration or format the key as fallback
-            const fieldLabel = fieldLabels[key] || key.charAt(0).toUpperCase() + key.slice(1).replace(/([A-Z])/g, ' $1');
+            // Get the field label from form configuration or use better fallbacks
+            let fieldLabel = fieldLabels[key];
+            
+            // If no label found, check for common field patterns or use formatted key
+            if (!fieldLabel) {
+              if (key.includes('description') || key.toLowerCase().includes('desc')) {
+                fieldLabel = 'Description';
+              } else if (key.includes('attachment') || key.toLowerCase().includes('file')) {
+                fieldLabel = 'Attachments';
+              } else if (value.includes('http') && (value.includes('.pdf') || value.includes('.png') || value.includes('.jpg'))) {
+                fieldLabel = 'Attachments';
+              } else {
+                fieldLabel = key.charAt(0).toUpperCase() + key.slice(1).replace(/([A-Z])/g, ' $1');
+              }
+            }
+            
+            console.log(`Field ${key} mapped to label: "${fieldLabel}"`);
             contentString += `**${fieldLabel}:**\n${value}\n\n`;
           }
         }
@@ -883,8 +901,25 @@ router.post('/tickets/:id/submit', async (req: Request, res: Response) => {
       // Debug: Log the final content string
       console.log('Final content string:', contentString);
       
-      // Add initial message if there's content and no existing replies
-      if (contentString.trim() && (!ticket.replies || ticket.replies.length === 0)) {
+      // Add initial message if there's content
+      // For Unfinished tickets, we want to create/replace the initial user message
+      if (contentString.trim()) {
+        console.log('Existing replies count:', ticket.replies?.length || 0);
+        
+        // Check if the first message is from the user and replace it, or add new message
+        let shouldAddMessage = true;
+        if (ticket.replies && ticket.replies.length > 0) {
+          const firstReply = ticket.replies[0];
+          if (firstReply.senderType === 'user' || firstReply.type === 'user') {
+            console.log('Replacing existing user message');
+            ticket.replies[0].content = contentString.trim();
+            ticket.replies[0].timestamp = new Date().toISOString();
+            ticket.replies[0].created = new Date();
+            shouldAddMessage = false;
+          }
+        }
+        
+        if (shouldAddMessage) {
         const initialMessage = {
           id: Date.now().toString(),
           name: ticket.creator || 'User',
@@ -902,13 +937,32 @@ router.post('/tickets/:id/submit', async (req: Request, res: Response) => {
           ticket.replies = [];
         }
         ticket.replies.push(initialMessage);
+        
+        // Debug: Log what's being saved to the database
+        console.log('Saving initial message to database:');
+        console.log('- Content length:', initialMessage.content.length);
+        console.log('- Content preview (first 200 chars):', initialMessage.content.substring(0, 200));
+        console.log('- Content full:', JSON.stringify(initialMessage.content));
+        }
       }
     }
+    
+    // Debug: Log ticket state before saving
+    console.log('Ticket replies count before save:', ticket.replies?.length || 0);
     
     // Change status from Unfinished to Open
     ticket.status = 'Open';
     
     await ticket.save();
+    
+    // Debug: Verify what was actually saved
+    const savedTicket = await Ticket.findById(ticket._id);
+    if (savedTicket && savedTicket.replies && savedTicket.replies.length > 0) {
+      const lastReply = savedTicket.replies[savedTicket.replies.length - 1];
+      console.log('Verified saved content in database:');
+      console.log('- Saved content length:', lastReply.content?.length || 0);
+      console.log('- Saved content preview:', lastReply.content?.substring(0, 200) || 'NO CONTENT');
+    }
     
     res.json({
       success: true,
