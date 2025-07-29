@@ -1,22 +1,20 @@
 import { Router } from 'express';
-import { Request, Response } from 'express';
-import { z } from 'zod';
-import { getStorageQuota, getStorageBreakdown, formatBytes, STORAGE_LIMITS } from '../services/storage-quota-service';
-import { getStorageSettings, updateStorageSettings, getCurrentMonthAIUsage } from '../services/storage-settings-service';
+import multer from 'multer';
+import { v4 as uuidv4 } from 'uuid';
+import path from 'path';
+import fs from 'fs';
 
-const router = Router();
-
-// Wasabi S3 Configuration
-const WASABI_ENDPOINT = 'https://s3.wasabisys.com';
-const WASABI_REGION = 'us-east-1';
+// Backblaze B2 Configuration
+const BACKBLAZE_ENDPOINT = 'https://s3.us-east-005.backblazeb2.com';
+const BACKBLAZE_REGION = 'us-east-1';
 
 // Dynamic imports for AWS SDK to avoid constructor issues
 let S3Client: any;
-let DeleteObjectCommand: any;
-let DeleteObjectsCommand: any;
 let ListObjectsV2Command: any;
-let HeadObjectCommand: any;
+let PutObjectCommand: any;
+let DeleteObjectCommand: any;
 let GetObjectCommand: any;
+let HeadObjectCommand: any;
 let getSignedUrl: any;
 let s3Client: any;
 
@@ -25,32 +23,25 @@ async function initializeAwsSdk() {
   if (S3Client) return; // Already initialized
   
   try {
-    const { 
-      S3Client: S3, 
-      DeleteObjectCommand: Delete, 
-      DeleteObjectsCommand: DeleteMultiple,
-      ListObjectsV2Command: List,
-      HeadObjectCommand: Head,
-      GetObjectCommand: Get 
-    } = await import('@aws-sdk/client-s3');
+    const { S3Client: S3, ListObjectsV2Command: List, PutObjectCommand: Put, DeleteObjectCommand: Delete, GetObjectCommand: Get, HeadObjectCommand: Head } = await import('@aws-sdk/client-s3');
     const { getSignedUrl: signUrl } = await import('@aws-sdk/s3-request-presigner');
     
     S3Client = S3;
-    DeleteObjectCommand = Delete;
-    DeleteObjectsCommand = DeleteMultiple;
     ListObjectsV2Command = List;
-    HeadObjectCommand = Head;
+    PutObjectCommand = Put;
+    DeleteObjectCommand = Delete;
     GetObjectCommand = Get;
+    HeadObjectCommand = Head;
     getSignedUrl = signUrl;
     
     s3Client = new S3Client({
-      region: WASABI_REGION,
-      endpoint: WASABI_ENDPOINT,
+      region: BACKBLAZE_REGION,
+      endpoint: BACKBLAZE_ENDPOINT,
       credentials: {
-        accessKeyId: process.env.WASABI_ACCESS_KEY || '',
-        secretAccessKey: process.env.WASABI_SECRET_KEY || '',
+        accessKeyId: process.env.BACKBLAZE_KEY_ID || '',
+        secretAccessKey: process.env.BACKBLAZE_APPLICATION_KEY || '',
       },
-      forcePathStyle: true, // Required for Wasabi compatibility
+      forcePathStyle: true, // Required for Backblaze B2 compatibility
     });
   } catch (error) {
     console.error('Failed to initialize AWS SDK:', error);
@@ -58,644 +49,364 @@ async function initializeAwsSdk() {
   }
 }
 
-const BUCKET_NAME = process.env.WASABI_BUCKET_NAME || '';
+const BUCKET_NAME = process.env.BACKBLAZE_BUCKET_NAME || 'storage-modl-gg';
 
-// Debug endpoint to check configuration
-router.get('/debug', async (req: Request, res: Response) => {
+import { isAuthenticated } from '../middleware/auth-middleware';
+import { getStorageQuota, getStorageBreakdown } from '../services/storage-quota-service';
+import { getCurrentMonthAIUsage } from '../services/storage-settings-service';
+
+const router = Router();
+
+// Check storage configuration
+const hasCredentials = !!(process.env.BACKBLAZE_KEY_ID && process.env.BACKBLAZE_APPLICATION_KEY);
+
+// Storage system info
+router.get('/info', isAuthenticated, async (req, res) => {
   try {
-    const serverName = getServerName(req);
-    const isPaidUser = isPremiumUser(req);
-    const hasCredentials = !!(process.env.WASABI_ACCESS_KEY && process.env.WASABI_SECRET_KEY);
-    const server = (req as any).modlServer;
+    res.json({
+      configured: hasCredentials,
+      hasAccessKey: !!process.env.BACKBLAZE_KEY_ID,
+      hasSecretKey: !!process.env.BACKBLAZE_APPLICATION_KEY,
+      endpoint: BACKBLAZE_ENDPOINT,
+      region: BACKBLAZE_REGION,
+      bucket: BUCKET_NAME
+    });
+  } catch (error) {
+    console.error('Error getting storage info:', error);
+    res.status(500).json({ error: 'Failed to get storage info' });
+  }
+});
+
+// Get storage quota for current server
+router.get('/quota', isAuthenticated, async (req, res) => {
+  try {
+    const { serverName } = req.user as any;
+    
+    if (!serverName) {
+      return res.status(400).json({ error: 'Server name required' });
+    }
+
+    // Check if user has paid subscription
+    const isPaidUser = req.user?.isPaidUser || false;
+    
+    const quota = await getStorageQuota(serverName, isPaidUser);
     
     res.json({
-      configured: hasCredentials && !!BUCKET_NAME,
-      serverName,
-      bucketName: BUCKET_NAME || 'Not configured',
-      hasAccessKey: !!process.env.WASABI_ACCESS_KEY,
-      hasSecretKey: !!process.env.WASABI_SECRET_KEY,
-      endpoint: WASABI_ENDPOINT,
-      region: WASABI_REGION,
-      // Billing/subscription debug info
-      billing: {
-        isPremium: isPaidUser,
-        subscriptionStatus: server?.subscription_status || 'unknown',
-        plan: server?.plan || 'unknown',
-        currentPeriodEnd: server?.current_period_end || null,
-        hasModlServer: !!server,
-      },
+      quota,
+      configured: hasCredentials,
     });
   } catch (error) {
-    res.status(500).json({ 
-      error: 'Debug failed',
-      details: error instanceof Error ? error.message : 'Unknown error'
-    });
+    console.error('Error getting storage quota:', error);
+    res.status(500).json({ error: 'Failed to get storage quota' });
   }
 });
 
-// Validation schemas
-const deleteFilesSchema = z.object({
-  fileIds: z.array(z.string()).min(1).max(100),
-});
-
-const updateStorageSettingsSchema = z.object({
-  overageLimit: z.number().min(0).max(1000 * 1024 * 1024 * 1024), // Max 1TB overage
-  overageEnabled: z.boolean(),
-});
-
-interface StorageFile {
-  id: string;
-  name: string;
-  path: string;
-  size: number;
-  type: 'ticket' | 'evidence' | 'logs' | 'backup' | 'other';
-  createdAt: string;
-  lastModified: string;
-  url: string;
-}
-
-interface StorageUsage {
-  totalUsed: number;
-  totalQuota: number;
-  byType: {
-    ticket: number;
-    evidence: number;
-    logs: number;
-    backup: number;
-    other: number;
-  };
-}
-
-// Helper function to determine file type from path
-const getFileType = (path: string): StorageFile['type'] => {
-  const pathLower = path.toLowerCase();
-  if (pathLower.includes('/tickets/') || pathLower.includes('ticket')) return 'ticket';
-  if (pathLower.includes('/evidence/') || pathLower.includes('evidence')) return 'evidence';
-  if (pathLower.includes('/logs/') || pathLower.includes('log')) return 'logs';
-  if (pathLower.includes('/backup/') || pathLower.includes('backup')) return 'backup';
-  return 'other';
-};
-
-// Helper function to get server name from request
-const getServerName = (req: Request): string => {
-  // Extract server name from modlServer or subdomain
-  const serverName = (req as any).modlServer?.customDomain || req.headers.host?.split('.')[0] || 'default';
-  return serverName;
-};
-
-// Helper function to check if user has premium subscription
-const isPremiumUser = (req: Request): boolean => {
-  const server = (req as any).modlServer;
-  if (!server) return false;
-  
-  // Check for active premium subscription
-  if (server.subscription_status === 'active' && server.plan === 'premium') {
-    return true;
-  }
-  
-  // Check for canceled subscription within grace period
-  if (server.subscription_status === 'canceled' && server.plan === 'premium' && server.current_period_end) {
-    const periodEnd = new Date(server.current_period_end);
-    const now = new Date();
-    return periodEnd > now; // Still within grace period
-  }
-  
-  return false;
-};
-
-// Get storage usage statistics with quota information
-router.get('/usage', async (req: Request, res: Response) => {
+// Get storage breakdown
+router.get('/breakdown', isAuthenticated, async (req, res) => {
   try {
-    const serverName = getServerName(req);
+    const { serverName } = req.user as any;
     
-    // Always get AI usage data, even if Wasabi is not configured
-    const isPaidUser = isPremiumUser(req);
-    const aiUsage = await getCurrentMonthAIUsage(serverName);
-    
-    // Calculate AI quota and costs
-    const aiQuota = {
-      totalUsed: aiUsage.totalRequests,
-      baseLimit: isPaidUser ? 1000 : 0, // 1000 for premium, 0 for free
-      overageUsed: Math.max(0, aiUsage.totalRequests - (isPaidUser ? 1000 : 0)),
-      overageCost: Math.max(0, (aiUsage.totalRequests - (isPaidUser ? 1000 : 0)) * 0.01),
-      canUseAI: isPaidUser || aiUsage.totalRequests === 0,
-      usagePercentage: isPaidUser ? Math.round((aiUsage.totalRequests / 1000) * 100) : 0,
-    };
-
-    if (!BUCKET_NAME) {
-      // Return minimal response with AI quota when Wasabi is not configured
-      return res.json({
-        totalUsed: 0,
-        totalQuota: isPaidUser ? STORAGE_LIMITS.PAID_TIER : STORAGE_LIMITS.FREE_TIER,
-        byType: {
-          ticket: 0,
-          evidence: 0,
-          logs: 0,
-          backup: 0,
-          other: 0,
-        },
-        quota: {
-          totalUsed: 0,
-          totalUsedFormatted: '0 B',
-          baseLimit: isPaidUser ? STORAGE_LIMITS.PAID_TIER : STORAGE_LIMITS.FREE_TIER,
-          baseLimitFormatted: formatBytes(isPaidUser ? STORAGE_LIMITS.PAID_TIER : STORAGE_LIMITS.FREE_TIER),
-          overageLimit: isPaidUser ? STORAGE_LIMITS.DEFAULT_OVERAGE_LIMIT : 0,
-          overageLimitFormatted: formatBytes(isPaidUser ? STORAGE_LIMITS.DEFAULT_OVERAGE_LIMIT : 0),
-          totalLimit: isPaidUser ? STORAGE_LIMITS.PAID_TIER + STORAGE_LIMITS.DEFAULT_OVERAGE_LIMIT : STORAGE_LIMITS.FREE_TIER,
-          totalLimitFormatted: formatBytes(isPaidUser ? STORAGE_LIMITS.PAID_TIER + STORAGE_LIMITS.DEFAULT_OVERAGE_LIMIT : STORAGE_LIMITS.FREE_TIER),
-          overageUsed: 0,
-          overageUsedFormatted: '0 B',
-          overageCost: 0,
-          isPaid: isPaidUser,
-          canUpload: true,
-          usagePercentage: 0,
-          baseUsagePercentage: 0,
-        },
-        aiQuota: {
-          totalUsed: aiQuota.totalUsed,
-          baseLimit: aiQuota.baseLimit,
-          overageUsed: aiQuota.overageUsed,
-          overageCost: aiQuota.overageCost,
-          canUseAI: aiQuota.canUseAI,
-          usagePercentage: aiQuota.usagePercentage,
-          byService: aiUsage.byService,
-        },
-        pricing: {
-          storage: {
-            overagePricePerGB: 0.05,
-            currency: 'USD',
-            period: 'month',
-          },
-          ai: {
-            overagePricePerRequest: 0.01,
-            currency: 'USD',
-            period: 'month',
-          },
-        },
-      });
+    if (!serverName) {
+      return res.status(400).json({ error: 'Server name required' });
     }
-    
-    // Get custom overage limit from user settings
-    const storageSettings = await getStorageSettings(serverName);
-    const customOverageLimit = storageSettings.overageEnabled ? storageSettings.overageLimit : undefined;
-    
-    // Get storage quota information
-    const quota = await getStorageQuota(serverName, isPaidUser, customOverageLimit);
-    
-    // Get detailed breakdown
+
     const breakdown = await getStorageBreakdown(serverName);
     
-    const response = {
-      // Quota information
-      quota: {
-        totalUsed: quota.totalUsed,
-        totalUsedFormatted: formatBytes(quota.totalUsed),
-        baseLimit: quota.baseLimit,
-        baseLimitFormatted: formatBytes(quota.baseLimit),
-        overageLimit: quota.overageLimit,
-        overageLimitFormatted: formatBytes(quota.overageLimit),
-        totalLimit: quota.totalLimit,
-        totalLimitFormatted: formatBytes(quota.totalLimit),
-        overageUsed: quota.overageUsed,
-        overageUsedFormatted: formatBytes(quota.overageUsed),
-        overageCost: quota.overageCost,
-        isPaid: quota.isPaid,
-        canUpload: quota.canUpload,
-        usagePercentage: Math.round((quota.totalUsed / quota.totalLimit) * 100),
-        baseUsagePercentage: Math.round((quota.totalUsed / quota.baseLimit) * 100),
-      },
-      
-      // Legacy format for backward compatibility
-      totalUsed: quota.totalUsed,
-      totalQuota: quota.totalLimit,
-      byType: {
-        ticket: breakdown.byType.tickets || 0,
-        evidence: breakdown.byType.evidence || 0,
-        logs: breakdown.byType.other || 0, // Map other to logs for compatibility
-        backup: 0, // Not used currently
-        other: breakdown.byType.articles + breakdown.byType.appeals + breakdown.byType['server-icons'],
-      },
-      
-      // Detailed breakdown
-      breakdown: breakdown.byType,
-      
-      // AI usage information
-      aiQuota: {
-        totalUsed: aiQuota.totalUsed,
-        baseLimit: aiQuota.baseLimit,
-        overageUsed: aiQuota.overageUsed,
-        overageCost: aiQuota.overageCost,
-        canUseAI: aiQuota.canUseAI,
-        usagePercentage: aiQuota.usagePercentage,
-        byService: aiUsage.byService,
-      },
-      
-      // Pricing information
-      pricing: {
-        storage: {
-          overagePricePerGB: 0.05,
-          currency: 'USD',
-          period: 'month',
-        },
-        ai: {
-          overagePricePerRequest: 0.01,
-          currency: 'USD',
-          period: 'month',
-        },
-      },
-    };
-
-    res.json(response);
+    res.json({ breakdown });
   } catch (error) {
-    console.error('Error fetching storage usage:', error);
-    console.error('Server name:', getServerName(req));
-    console.error('Bucket name:', BUCKET_NAME);
-    res.status(500).json({ 
-      error: 'Failed to fetch storage usage',
-      details: error instanceof Error ? error.message : 'Unknown error'
-    });
+    console.error('Error getting storage breakdown:', error);
+    res.status(500).json({ error: 'Failed to get storage breakdown' });
   }
 });
 
-// Get list of files
-router.get('/files', async (req: Request, res: Response) => {
+// Get list of files in server's storage
+router.get('/files', isAuthenticated, async (req, res) => {
   try {
-    // Initialize AWS SDK
-    await initializeAwsSdk();
+    const { serverName } = req.user as any;
+    const { folder, page = 1, limit = 50 } = req.query;
     
-    if (!BUCKET_NAME) {
-      return res.status(500).json({ error: 'Wasabi storage not configured' });
+    if (!serverName) {
+      return res.status(400).json({ error: 'Server name required' });
     }
 
-    const serverName = getServerName(req);
+    await initializeAwsSdk();
+    
+    // Construct prefix based on folder filter
+    let prefix = serverName;
+    if (folder && folder !== 'all') {
+      prefix += `/${folder}`;
+    }
+    
+    const maxKeys = Math.min(parseInt(limit as string) || 50, 100);
     
     const listParams = {
       Bucket: BUCKET_NAME,
-      Prefix: serverName,
-      MaxKeys: 1000,
+      Prefix: prefix,
+      MaxKeys: maxKeys,
     };
-
+    
     const command = new ListObjectsV2Command(listParams);
     const response = await s3Client.send(command);
     
-    const objects = response.Contents || [];
+    const files = (response.Contents || []).map((obj: any) => ({
+      key: obj.Key,
+      size: obj.Size,
+      lastModified: obj.LastModified,
+      url: `https://${BUCKET_NAME}.s3.us-east-005.backblazeb2.com/${obj.Key}`,
+    }));
     
-    const files: StorageFile[] = await Promise.all(
-      objects.map(async (obj) => {
-        const key = obj.Key || '';
-        const pathWithoutServer = key.replace(`${serverName}/`, '');
-        const fileName = pathWithoutServer.split('/').pop() || '';
-        
-        // Generate presigned URL for download
-        const getObjectCommand = new GetObjectCommand({
-          Bucket: BUCKET_NAME,
-          Key: key,
-        });
-        
-        const url = await getSignedUrl(s3Client, getObjectCommand, { expiresIn: 3600 });
-        
-        return {
-          id: key,
-          name: fileName,
-          path: pathWithoutServer,
-          size: obj.Size || 0,
-          type: getFileType(key),
-          createdAt: obj.LastModified?.toISOString() || new Date().toISOString(),
-          lastModified: obj.LastModified?.toISOString() || new Date().toISOString(),
-          url,
-        };
-      })
-    );
-
-    res.json(files);
-  } catch (error) {
-    console.error('Error fetching files:', error);
-    console.error('Server name:', getServerName(req));
-    console.error('Bucket name:', BUCKET_NAME);
-    res.status(500).json({ 
-      error: 'Failed to fetch files',
-      details: error instanceof Error ? error.message : 'Unknown error'
+    res.json({
+      files,
+      hasMore: response.IsTruncated,
+      nextToken: response.NextContinuationToken,
     });
+  } catch (error) {
+    console.error('Error listing files:', error);
+    res.status(500).json({ error: 'Failed to list files' });
   }
 });
 
-// Delete single file
-router.delete('/files/:fileId(*)', async (req: Request, res: Response) => {
+// Get AI usage quota in addition to storage
+router.get('/quota-with-ai', isAuthenticated, async (req, res) => {
   try {
-    // Initialize AWS SDK
+    const { serverName } = req.user as any;
+    
+    if (!serverName) {
+      return res.status(400).json({ error: 'Server name required' });
+    }
+
+    // Always get AI usage data, even if Backblaze B2 is not configured
+    const aiUsage = await getCurrentMonthAIUsage(serverName);
+    const isPaidUser = (req as any).user?.isPaidUser || false;
+    const baseLimit = isPaidUser ? 1000 : 0;
+    const overageUsed = Math.max(0, aiUsage.totalRequests - baseLimit);
+    const aiQuota = {
+      totalUsed: aiUsage.totalRequests,
+      baseLimit,
+      overageUsed,
+      overageCost: overageUsed * 0.01,
+      canUseAI: isPaidUser,
+      usagePercentage: isPaidUser ? Math.round((aiUsage.totalRequests / baseLimit) * 100) : 0,
+      byService: aiUsage.byService,
+    };
+    
+    if (!hasCredentials) {
+      // Return minimal response with AI quota when Backblaze B2 is not configured
+      return res.json({
+        quota: {
+          totalUsed: 0,
+          baseLimit: 0,
+          overageLimit: 0,
+          totalLimit: 0,
+          isPaid: false,
+          canUpload: false,
+          overageUsed: 0,
+          overageCost: 0,
+        },
+        aiQuota,
+        configured: false,
+      });
+    }
+
+    // Check if user has paid subscription (already declared above)
+    const quota = await getStorageQuota(serverName, isPaidUser);
+    
+    res.json({
+      quota,
+      aiQuota,
+      configured: true,
+    });
+  } catch (error) {
+    console.error('Error getting storage and AI quota:', error);
+    res.status(500).json({ error: 'Failed to get quota information' });
+  }
+});
+
+// Delete a file from storage
+router.delete('/file/:key(*)', isAuthenticated, async (req, res) => {
+  try {
+    const { serverName } = req.user as any;
+    const fileKey = req.params.key;
+    
+    if (!serverName) {
+      return res.status(400).json({ error: 'Server name required' });
+    }
+
+    // Verify the file belongs to this server
+    if (!fileKey.startsWith(serverName + '/')) {
+      return res.status(403).json({ error: 'Cannot delete files from other servers' });
+    }
+
     await initializeAwsSdk();
     
-    if (!BUCKET_NAME) {
-      return res.status(500).json({ error: 'Wasabi storage not configured' });
-    }
-
-    const fileId = req.params.fileId;
-    const serverName = getServerName(req);
-    
-    // Ensure the file belongs to the current server
-    if (!fileId.startsWith(serverName)) {
-      return res.status(403).json({ error: 'Access denied' });
-    }
-
-    const deleteParams = {
+    const deleteCommand = new DeleteObjectCommand({
       Bucket: BUCKET_NAME,
-      Key: fileId,
-    };
-
-    const command = new DeleteObjectCommand(deleteParams);
-    await s3Client.send(command);
+      Key: fileKey,
+    });
     
-    res.json({ success: true, message: 'File deleted successfully' });
+    await s3Client.send(deleteCommand);
+    
+    res.json({ success: true });
   } catch (error) {
     console.error('Error deleting file:', error);
     res.status(500).json({ error: 'Failed to delete file' });
   }
 });
 
-// Delete multiple files
-router.delete('/files/batch', async (req: Request, res: Response) => {
+// Configuration check
+router.get('/config', isAuthenticated, async (req, res) => {
   try {
-    // Initialize AWS SDK
-    await initializeAwsSdk();
-    
-    if (!BUCKET_NAME) {
-      return res.status(500).json({ error: 'Wasabi storage not configured' });
-    }
-
-    const { fileIds } = deleteFilesSchema.parse(req.body);
-    const serverName = getServerName(req);
-    
-    // Ensure all files belong to the current server
-    const invalidFiles = fileIds.filter(id => !id.startsWith(serverName));
-    if (invalidFiles.length > 0) {
-      return res.status(403).json({ error: 'Access denied to some files' });
-    }
-
-    const deleteParams = {
-      Bucket: BUCKET_NAME,
-      Delete: {
-        Objects: fileIds.map(id => ({ Key: id })),
-        Quiet: false,
-      },
-    };
-
-    const command = new DeleteObjectsCommand(deleteParams);
-    const response = await s3Client.send(command);
-    
-    const deleted = response.Deleted || [];
-    const errors = response.Errors || [];
-    
-    if (errors.length > 0) {
-      console.error('Some files failed to delete:', errors);
-      return res.status(207).json({
-        success: true,
-        message: `${deleted.length} files deleted successfully, ${errors.length} failed`,
-        deleted: deleted.length,
-        errors: errors.length,
-      });
-    }
-    
     res.json({
-      success: true,
-      message: `${deleted.length} files deleted successfully`,
-      deleted: deleted.length,
+      configured: hasCredentials,
+      bucket: BUCKET_NAME,
+      endpoint: BACKBLAZE_ENDPOINT,
     });
   } catch (error) {
-    console.error('Error deleting files:', error);
+    console.error('Error getting storage config:', error);
+    res.status(500).json({ error: 'Failed to get storage config' });
+  }
+});
+
+// Bulk delete files
+router.post('/bulk-delete', isAuthenticated, async (req, res) => {
+  try {
+    const { serverName } = req.user as any;
+    const { keys } = req.body;
+    
+    if (!serverName) {
+      return res.status(400).json({ error: 'Server name required' });
+    }
+
+    if (!Array.isArray(keys) || keys.length === 0) {
+      return res.status(400).json({ error: 'File keys array required' });
+    }
+
+    // Verify all files belong to this server
+    const invalidKeys = keys.filter(key => !key.startsWith(serverName + '/'));
+    if (invalidKeys.length > 0) {
+      return res.status(403).json({ 
+        error: 'Cannot delete files from other servers',
+        invalidKeys 
+      });
+    }
+
+    await initializeAwsSdk();
+    
+    const deletePromises = keys.map(async (key: string) => {
+      try {
+        const deleteCommand = new DeleteObjectCommand({
+          Bucket: BUCKET_NAME,
+          Key: key,
+        });
+        await s3Client.send(deleteCommand);
+        return { key, success: true };
+      } catch (error) {
+        console.error(`Error deleting file ${key}:`, error);
+        return { key, success: false, error: (error as Error).message };
+      }
+    });
+    
+    const results = await Promise.all(deletePromises);
+    
+    res.json({
+      results,
+      totalDeleted: results.filter(r => r.success).length,
+      totalFailed: results.filter(r => !r.success).length,
+    });
+  } catch (error) {
+    console.error('Error in bulk delete:', error);
     res.status(500).json({ error: 'Failed to delete files' });
   }
 });
 
-// Get file metadata
-router.get('/files/:fileId(*)/metadata', async (req: Request, res: Response) => {
+// Test storage connection
+router.get('/test', isAuthenticated, async (req, res) => {
   try {
-    // Initialize AWS SDK
+    if (!hasCredentials) {
+      return res.status(500).json({ error: 'Backblaze B2 storage not configured' });
+    }
+
     await initializeAwsSdk();
     
-    if (!BUCKET_NAME) {
-      return res.status(500).json({ error: 'Wasabi storage not configured' });
-    }
-
-    const fileId = req.params.fileId;
-    const serverName = getServerName(req);
-    
-    // Ensure the file belongs to the current server
-    if (!fileId.startsWith(serverName)) {
-      return res.status(403).json({ error: 'Access denied' });
-    }
-
-    const headParams = {
+    // Try to list objects (minimal test)
+    const command = new ListObjectsV2Command({
       Bucket: BUCKET_NAME,
-      Key: fileId,
-    };
-
-    const command = new HeadObjectCommand(headParams);
-    const response = await s3Client.send(command);
+      MaxKeys: 1,
+    });
     
-    const pathWithoutServer = fileId.replace(`${serverName}/`, '');
-    const fileName = pathWithoutServer.split('/').pop() || '';
+    await s3Client.send(command);
     
-    const metadata = {
-      id: fileId,
-      name: fileName,
-      path: pathWithoutServer,
-      size: response.ContentLength || 0,
-      type: getFileType(fileId),
-      contentType: response.ContentType,
-      lastModified: response.LastModified?.toISOString() || new Date().toISOString(),
-      etag: response.ETag,
-    };
-
-    res.json(metadata);
+    res.json({ 
+      success: true, 
+      message: 'Storage connection successful',
+      endpoint: BACKBLAZE_ENDPOINT,
+      bucket: BUCKET_NAME,
+    });
   } catch (error) {
-    console.error('Error fetching file metadata:', error);
-    res.status(500).json({ error: 'Failed to fetch file metadata' });
-  }
-});
-
-// Get storage settings for the current user
-router.get('/settings', async (req: Request, res: Response) => {
-  try {
-    const serverName = getServerName(req);
-    const isPaidUser = isPremiumUser(req);
-    
-    // Get actual settings from database
-    const storageSettings = await getStorageSettings(serverName);
-    
-    const settings = {
-      overageLimit: storageSettings.overageLimit,
-      overageEnabled: storageSettings.overageEnabled && isPaidUser,
-      isPaid: isPaidUser,
-      limits: {
-        freeLimit: STORAGE_LIMITS.FREE_TIER,
-        paidLimit: STORAGE_LIMITS.PAID_TIER,
-        defaultOverageLimit: STORAGE_LIMITS.DEFAULT_OVERAGE_LIMIT,
-      },
-      lastUpdated: storageSettings.updatedAt,
-    };
-    
-    res.json(settings);
-  } catch (error) {
-    console.error('Error fetching storage settings:', error);
+    console.error('Storage connection test failed:', error);
     res.status(500).json({ 
-      error: 'Failed to fetch storage settings',
-      details: error instanceof Error ? error.message : 'Unknown error'
+      success: false, 
+      error: 'Storage connection failed',
+      details: (error as Error).message,
     });
   }
 });
 
-// Update storage settings (paid users only)
-router.put('/settings', async (req: Request, res: Response) => {
+// Get presigned URL for file download
+router.get('/download/:key(*)', isAuthenticated, async (req, res) => {
   try {
-    const serverName = getServerName(req);
-    const isPaidUser = isPremiumUser(req);
+    const { serverName } = req.user as any;
+    const fileKey = req.params.key;
     
-    if (!isPaidUser) {
-      return res.status(403).json({ error: 'Storage settings are only available for paid users' });
+    if (!serverName) {
+      return res.status(400).json({ error: 'Server name required' });
     }
-    
-    const { overageLimit, overageEnabled } = updateStorageSettingsSchema.parse(req.body);
-    
-    // Save settings to database
-    const updatedSettings = await updateStorageSettings(serverName, {
-      overageLimit,
-      overageEnabled,
-    });
-    
-    res.json({
-      success: true,
-      message: 'Storage settings updated successfully',
-      settings: {
-        overageLimit: updatedSettings.overageLimit,
-        overageEnabled: updatedSettings.overageEnabled,
-        overageLimitFormatted: formatBytes(updatedSettings.overageLimit),
-        lastUpdated: updatedSettings.updatedAt,
-      },
-    });
-  } catch (error) {
-    console.error('Error updating storage settings:', error);
-    res.status(500).json({ 
-      error: 'Failed to update storage settings',
-      details: error instanceof Error ? error.message : 'Unknown error'
-    });
-  }
-});
 
-// Check if a file can be uploaded
-router.post('/check-upload', async (req: Request, res: Response) => {
-  try {
-    const { fileSize } = z.object({ fileSize: z.number().min(0) }).parse(req.body);
-    
-    const serverName = getServerName(req);
-    const isPaidUser = isPremiumUser(req);
-    
-    // Get custom overage limit from user settings
-    const storageSettings = await getStorageSettings(serverName);
-    const customOverageLimit = storageSettings.overageEnabled ? storageSettings.overageLimit : undefined;
-    
-    const { canUploadFile } = await import('../services/storage-quota-service');
-    const result = await canUploadFile(serverName, isPaidUser, fileSize, customOverageLimit);
-    
-    res.json({
-      allowed: result.allowed,
-      reason: result.reason,
-      quota: result.quota ? {
-        totalUsed: result.quota.totalUsed,
-        totalUsedFormatted: formatBytes(result.quota.totalUsed),
-        totalLimit: result.quota.totalLimit,
-        totalLimitFormatted: formatBytes(result.quota.totalLimit),
-        canUpload: result.quota.canUpload,
-        isPaid: result.quota.isPaid,
-        afterUpload: result.quota.totalUsed + fileSize,
-        afterUploadFormatted: formatBytes(result.quota.totalUsed + fileSize),
-      } : undefined,
-    });
-  } catch (error) {
-    console.error('Error checking upload permission:', error);
-    res.status(500).json({ 
-      error: 'Failed to check upload permission',
-      details: error instanceof Error ? error.message : 'Unknown error'
-    });
-  }
-});
-
-// Get AI usage history
-router.get('/ai-usage', async (req: Request, res: Response) => {
-  try {
-    const serverName = getServerName(req);
-    const isPaidUser = isPremiumUser(req);
-    
-    if (!isPaidUser) {
-      return res.status(403).json({ error: 'AI usage tracking is only available for premium users' });
+    // Verify the file belongs to this server
+    if (!fileKey.startsWith(serverName + '/')) {
+      return res.status(403).json({ error: 'Cannot access files from other servers' });
     }
+
+    if (!hasCredentials) {
+      return res.status(500).json({ error: 'Backblaze B2 storage not configured' });
+    }
+
+    await initializeAwsSdk();
     
-    const { getAIUsage } = await import('../services/storage-settings-service');
-    const { startDate, endDate } = req.query;
-    
-    const usage = await getAIUsage(
-      serverName, 
-      startDate as string, 
-      endDate as string
-    );
-    
-    const currentMonth = await getCurrentMonthAIUsage(serverName);
-    
-    res.json({
-      currentMonth: {
-        totalRequests: currentMonth.totalRequests,
-        totalCost: currentMonth.totalCost,
-        byService: currentMonth.byService,
-        baseLimit: 1000,
-        overageRequests: Math.max(0, currentMonth.totalRequests - 1000),
-        overageCost: Math.max(0, (currentMonth.totalRequests - 1000) * 0.01),
-      },
-      history: usage,
-      pricing: {
-        baseRequests: 1000,
-        overagePricePerRequest: 0.01,
-        currency: 'USD',
-      },
+    const command = new GetObjectCommand({
+      Bucket: BUCKET_NAME,
+      Key: fileKey,
     });
+    
+    const url = await getSignedUrl(s3Client, command, { expiresIn: 3600 }); // 1 hour
+    
+    res.json({ url });
   } catch (error) {
-    console.error('Error fetching AI usage:', error);
-    res.status(500).json({ 
-      error: 'Failed to fetch AI usage',
-      details: error instanceof Error ? error.message : 'Unknown error'
-    });
+    console.error('Error generating download URL:', error);
+    res.status(500).json({ error: 'Failed to generate download URL' });
   }
 });
 
-// Manual AI request logging endpoint (for testing)
-router.post('/log-ai-request', async (req: Request, res: Response) => {
+// Upload file directly to storage (for admin use)
+router.post('/upload', isAuthenticated, async (req, res) => {
   try {
-    const serverName = getServerName(req);
-    const isPaidUser = isPremiumUser(req);
+    const { serverName } = req.user as any;
     
-    if (!isPaidUser) {
-      return res.status(403).json({ error: 'AI features are only available for premium users' });
+    if (!serverName) {
+      return res.status(400).json({ error: 'Server name required' });
     }
+
+    if (!hasCredentials) {
+      return res.status(500).json({ error: 'Backblaze B2 storage not configured' });
+    }
+
+    // This would need multer middleware setup for file upload
+    // Implementation depends on specific requirements
     
-    const { service, tokensUsed } = z.object({
-      service: z.enum(['moderation', 'ticket_analysis', 'appeal_analysis', 'other']),
-      tokensUsed: z.number().min(1).max(1000).optional().default(1),
-    }).parse(req.body);
-    
-    const { logAIRequest } = await import('../services/storage-settings-service');
-    await logAIRequest(serverName, service, tokensUsed, 0.01);
-    
-    res.json({
-      success: true,
-      message: 'AI request logged successfully',
-      service,
-      tokensUsed,
-      cost: 0.01,
-    });
+    res.status(501).json({ error: 'Direct upload not implemented yet' });
   } catch (error) {
-    console.error('Error logging AI request:', error);
-    res.status(500).json({ 
-      error: 'Failed to log AI request',
-      details: error instanceof Error ? error.message : 'Unknown error'
-    });
+    console.error('Error uploading file:', error);
+    res.status(500).json({ error: 'Failed to upload file' });
   }
 });
 

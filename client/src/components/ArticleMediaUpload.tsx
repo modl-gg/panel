@@ -135,7 +135,7 @@ export function ArticleMediaUpload({
   const isImage = (type: string) => type.startsWith('image/');
   const isVideo = (type: string) => type.startsWith('video/');
 
-  if (!config?.wasabiConfigured) {
+  if (!config?.backblazeConfigured) {
     return (
       <Card>
         <CardHeader>

@@ -15,12 +15,12 @@ async function initializeAwsSdk() {
     
     s3Client = new S3Client({
       region: 'us-east-1',
-      endpoint: 'https://s3.wasabisys.com',
+      endpoint: 'https://s3.us-east-005.backblazeb2.com',
       credentials: {
-        accessKeyId: process.env.WASABI_ACCESS_KEY || '',
-        secretAccessKey: process.env.WASABI_SECRET_KEY || '',
+        accessKeyId: process.env.BACKBLAZE_KEY_ID || '',
+        secretAccessKey: process.env.BACKBLAZE_APPLICATION_KEY || '',
       },
-      forcePathStyle: true, // Required for Wasabi compatibility
+      forcePathStyle: true, // Required for Backblaze B2 compatibility
     });
   } catch (error) {
     console.error('Failed to initialize AWS SDK:', error);
@@ -61,7 +61,7 @@ export async function getStorageQuota(
   customOverageLimit?: number
 ): Promise<StorageQuota> {
   try {
-    // Get current usage from Wasabi
+    // Get current usage from Backblaze B2
     const currentUsage = await getCurrentStorageUsage(serverName);
     
     // Calculate limits
@@ -102,7 +102,7 @@ export async function getStorageQuota(
   }
 }
 
-// Get current storage usage from Wasabi
+// Get current storage usage from Backblaze B2
 async function getCurrentStorageUsage(serverName: string): Promise<number> {
   try {
     // Initialize AWS SDK
@@ -110,7 +110,7 @@ async function getCurrentStorageUsage(serverName: string): Promise<number> {
     
     // AWS SDK already initialized in initializeAwsSdk function
     
-    const BUCKET_NAME = process.env.WASABI_BUCKET_NAME || '';
+    const BUCKET_NAME = process.env.BACKBLAZE_BUCKET_NAME || 'storage-modl-gg';
     if (!BUCKET_NAME) {
       return 0;
     }
@@ -135,7 +135,7 @@ async function getCurrentStorageUsage(serverName: string): Promise<number> {
       const response = await s3Client.send(command);
       const objects = response.Contents || [];
       
-      totalSize += objects.reduce((sum, obj) => sum + (obj.Size || 0), 0);
+      totalSize += objects.reduce((sum: number, obj: any) => sum + (obj.Size || 0), 0);
       continuationToken = response.NextContinuationToken;
     } while (continuationToken);
     
@@ -213,7 +213,7 @@ export async function getStorageBreakdown(serverName: string): Promise<{
     
     // AWS SDK already initialized in initializeAwsSdk function
     
-    const BUCKET_NAME = process.env.WASABI_BUCKET_NAME || '';
+    const BUCKET_NAME = process.env.BACKBLAZE_BUCKET_NAME || 'storage-modl-gg';
     if (!BUCKET_NAME) {
       return { total: 0, byType: {} };
     }
@@ -247,7 +247,7 @@ export async function getStorageBreakdown(serverName: string): Promise<{
       const response = await s3Client.send(command);
       const objects = response.Contents || [];
       
-      objects.forEach(obj => {
+      objects.forEach((obj: any) => {
         const size = obj.Size || 0;
         const key = obj.Key || '';
         

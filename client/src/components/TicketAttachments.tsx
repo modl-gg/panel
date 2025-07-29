@@ -120,7 +120,7 @@ export function TicketAttachments({
   const isVideo = (type: string) => type.startsWith('video/');
   const isPdf = (type: string) => type === 'application/pdf';
 
-  if (!config?.wasabiConfigured) {
+  if (!config?.backblazeConfigured) {
     return (
       <div className="p-4 bg-muted/50 rounded-lg">
         <p className="text-sm text-muted-foreground">
