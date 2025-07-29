@@ -27,12 +27,15 @@ function verifyToken(sessionToken: string, requestToken: string): boolean {
 
 // CSRF protection middleware
 export function csrfProtection(req: CSRFRequest, res: Response, next: NextFunction) {
-  // Skip CSRF for routes that use API key authentication
+  // Skip CSRF for routes that use API key authentication or webhooks
   const isApiKeyRoute = req.path.startsWith('/api/minecraft') || 
                        (req.path.startsWith('/api/public') && 
                         (req.headers['x-api-key'] || req.headers['x-ticket-api-key']));
   
-  if (isApiKeyRoute) {
+  // Skip CSRF for Stripe webhooks (server-to-server, authenticated via webhook signatures)
+  const isWebhookRoute = req.path.startsWith('/stripe-webhooks');
+  
+  if (isApiKeyRoute || isWebhookRoute) {
     return next();
   }
 
