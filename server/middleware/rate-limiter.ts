@@ -45,7 +45,7 @@ export const globalRateLimit: RateLimitRequestHandler = rateLimit({
   // Add handler for when rate limit is exceeded
   handler: (req, res) => {
     const clientIP = getRealClientIP(req);
-    console.log(`[RATE LIMIT] Global rate limit exceeded for IP: ${clientIP} on ${req.method} ${req.path}`);
+    
     res.status(429).json({
       error: 'You have exceeded the maximum number of API requests allowed. Please slow down and try again in a minute.',
       retryAfter: 60,
@@ -94,7 +94,7 @@ export const strictRateLimit: RateLimitRequestHandler = rateLimit({
     }
 
     const clientIP = getRealClientIP(req);
-    console.log(`[RATE LIMIT] Strict rate limit exceeded for IP: ${clientIP} on ${req.method} ${req.path}`);
+    
     res.status(429).json({
       error: userFriendlyMessage,
       retryAfter: 60,
@@ -149,7 +149,7 @@ export const authRateLimit: RateLimitRequestHandler = rateLimit({
     }
 
     const clientIP = getRealClientIP(req);
-    console.log(`[RATE LIMIT] Auth rate limit exceeded for IP: ${clientIP} on ${req.method} ${req.path}`);
+    
     res.status(429).json({
       error: userFriendlyMessage,
       retryAfter: 60,

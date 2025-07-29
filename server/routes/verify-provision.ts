@@ -285,7 +285,7 @@ async function createSuperAdminUser(dbConnection: Connection, globalConnection: 
     // Check if superadmin already exists
     const existingSuperAdmin = await StaffModel.findOne({ username: 'Dr. Doofenshmirtz' });
     if (existingSuperAdmin) {
-      console.log('[Provisioning] Superadmin user already exists, skipping creation');
+      
       return;
     }
 
@@ -297,8 +297,8 @@ async function createSuperAdminUser(dbConnection: Connection, globalConnection: 
 
     await superAdmin.save();
     
-    console.log(`[Provisioning] Created superadmin user with email: ${serverConfig.adminEmail}`);
-    console.log(`[Provisioning] Admin can login using email verification codes sent to this address`);
+    
+    
     
   } catch (error) {
     console.error('[Provisioning] Error creating superadmin user:', error);
@@ -317,7 +317,7 @@ async function createDefaultTicketForms(dbConnection: Connection) {
     // Check if ticket forms already exist
     const existingForms = await SettingsModel.findOne({ type: 'ticketForms' });
     if (existingForms) {
-      console.log('[Provisioning] Ticket forms already exist, skipping creation');
+      
       return;
     }
 
@@ -692,7 +692,7 @@ async function createDefaultTicketForms(dbConnection: Connection) {
 
     await formsDocument.save();
 
-    console.log('[Provisioning] Created default ticket forms: bug, support, application');
+    
     
   } catch (error) {
     console.error('[Provisioning] Error creating default ticket forms:', error);

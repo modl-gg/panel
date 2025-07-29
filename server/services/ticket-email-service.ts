@@ -51,7 +51,7 @@ class TicketEmailService {
       };
 
       await transporter.sendMail(mailOptions);
-      console.log(`[Ticket Email] Notification sent to ${data.playerEmail} for ticket ${data.ticketId}`);
+      
     } catch (error) {
       console.error(`[Ticket Email] Failed to send notification for ticket ${data.ticketId}:`, error);
       throw error;
@@ -116,7 +116,7 @@ This is an automated message. Please do not reply to this email.`;
   async testEmailConfiguration(): Promise<boolean> {
     try {
       await transporter.verify();
-      console.log('[Ticket Email] SMTP configuration verified successfully');
+      
       return true;
     } catch (error) {
       console.error('[Ticket Email] SMTP configuration failed:', error);

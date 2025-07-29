@@ -73,7 +73,7 @@ export class AIModerationService {
         return null;
       }
       
-      console.log(`[AI Moderation] Providing ${punishmentTypes.length} punishment types to AI:`);
+      
       punishmentTypes.forEach(pt => {
         console.log(`  - ID: ${pt.id}, Name: ${pt.name}, Description: ${pt.aiDescription}`);
       });
@@ -94,8 +94,8 @@ export class AIModerationService {
       // Map AI punishment type ID to actual punishment type ID for storage
       let mappedPunishmentTypeId: number | null = null;
       if (geminiResponse.suggestedAction) {
-        console.log(`[AI Moderation] AI returned punishment type ID: ${geminiResponse.suggestedAction.punishmentTypeId} (type: ${typeof geminiResponse.suggestedAction.punishmentTypeId})`);
-        console.log(`[AI Moderation] Full AI response: ${JSON.stringify(geminiResponse)}`);
+        
+        
         
         mappedPunishmentTypeId = await this.mapAIPunishmentTypeToActual(geminiResponse.suggestedAction.punishmentTypeId);
         if (!mappedPunishmentTypeId) {
@@ -133,7 +133,7 @@ export class AIModerationService {
             // Create an "Accept Report" reply for automated actions
             await this.createAcceptReportReply(ticketId, geminiResponse.suggestedAction.severity, geminiResponse.analysis, punishmentResult.punishmentId, 'AI Moderation System');
             
-            console.log(`[AI Moderation] Automatically applied punishment ${punishmentResult.punishmentId} for ticket ${ticketId}`);
+            
           } else {
             console.error(`[AI Moderation] Failed to apply automatic punishment for ticket ${ticketId}: ${punishmentResult.error}`);
           }
@@ -169,7 +169,7 @@ export class AIModerationService {
         }
       );
 
-      console.log(`[AI Moderation] Stored analysis result for ticket ${ticketId}`);
+      
     } catch (error) {
       console.error(`[AI Moderation] Error storing analysis for ticket ${ticketId}:`, error);
     }
@@ -228,13 +228,13 @@ export class AIModerationService {
       }
 
       console.log(`[AI Moderation] AI punishment configs:`, JSON.stringify(aiPunishmentConfigs, null, 2));
-      console.log(`[AI Moderation] Found ${Object.keys(aiPunishmentConfigs).length} AI punishment configurations`);
+      
 
       // Map AI punishment configs to actual punishment types
       const enabledAIPunishmentTypes: AIPunishmentType[] = [];
       
       Object.values(aiPunishmentConfigs).forEach((config: any) => {
-        console.log(`[AI Moderation] Checking AI config '${config.name}' (id: ${config.id}): enabled=${config.enabled}`);
+        
         
         if (config.enabled === true) {
           let actualPunishmentType = null;
@@ -274,7 +274,7 @@ export class AIModerationService {
               aiDescription: config.aiDescription || `Apply ${actualPunishmentType.name} punishment`,
               enabled: true
             });
-            console.log(`[AI Moderation] Mapped AI config '${config.name}' to punishment type '${actualPunishmentType.name}' (ordinal: ${actualPunishmentType.ordinal})`);
+            
           } else {
             console.warn(`[AI Moderation] Could not find actual punishment type for AI config: ${config.name} (id: ${config.id})`);
           }
@@ -288,8 +288,8 @@ export class AIModerationService {
         return [];
       }
 
-      console.log(`[AI Moderation] Found ${enabledAIPunishmentTypes.length} enabled AI punishment types.`);
-      console.log(`[AI Moderation] AI punishment types: ${JSON.stringify(enabledAIPunishmentTypes.map(pt => ({ id: pt.id, name: pt.name })))}`);
+      
+      
 
       return enabledAIPunishmentTypes;
     } catch (error) {
@@ -319,7 +319,7 @@ export class AIModerationService {
       if (punishmentTypesDoc?.data) {
         const punishmentType = punishmentTypesDoc.data.find((pt: any) => pt.ordinal === numericId);
         if (punishmentType) {
-          console.log(`[AI Moderation] Successfully mapped AI punishment type ${aiPunishmentTypeId} to ${punishmentType.name} (ordinal: ${numericId})`);
+          
           return numericId;
         }
       }
@@ -380,7 +380,7 @@ export class AIModerationService {
       
       await ticket.save();
       
-      console.log(`[AI Moderation] Added Accept Report reply to ticket ${ticketId} by ${staffName}`);
+      
     } catch (error) {
       console.error(`[AI Moderation] Error creating accept report reply for ticket ${ticketId}:`, error);
     }
@@ -397,12 +397,12 @@ export class AIModerationService {
       // Test Gemini connection
       const connectionTest = await this.geminiService.testConnection();
       if (connectionTest) {
-        console.log('[AI Moderation] Successfully connected to Gemini API');
+        
       } else {
         console.warn('[AI Moderation] Failed to connect to Gemini API - check API key');
       }
       
-      console.log('[AI Moderation] Service initialized');
+      
     } catch (error) {
       console.error('[AI Moderation] Error during initialization:', error);
     }
@@ -416,7 +416,7 @@ export class AIModerationService {
       // Check if AI review is enabled
       const aiSettings = await this.getAISettings();
       if (!aiSettings || !aiSettings.enableAIReview) {
-        console.log(`[AI Moderation] AI review is disabled, skipping analysis for ticket ${ticketId}`);
+        
         return;
       }
 
@@ -433,7 +433,7 @@ export class AIModerationService {
       }
 
       if (!chatMessagesRaw || !Array.isArray(chatMessagesRaw) || chatMessagesRaw.length === 0) {
-        console.log(`[AI Moderation] No chat messages found for ticket ${ticketId}, skipping analysis`);
+        
         return;
       }
 
@@ -451,7 +451,7 @@ export class AIModerationService {
       }).filter((msg): msg is ChatMessage => msg !== null);
 
       if (chatMessages.length === 0) {
-        console.log(`[AI Moderation] No valid chat messages found after parsing for ticket ${ticketId}, skipping analysis`);
+        
         return;
       }
 
@@ -460,7 +460,7 @@ export class AIModerationService {
       const reportedPlayerIdentifier = ticketData.reportedPlayerUuid || ticketData.relatedPlayerUuid || reportedPlayerName;
 
       if (!reportedPlayerIdentifier) {
-        console.log(`[AI Moderation] No reported player identifier found for ticket ${ticketId}, skipping punishment application.`);
+        
       }
 
       // Run analysis asynchronously
@@ -471,7 +471,7 @@ export class AIModerationService {
           });
       });
 
-      console.log(`[AI Moderation] Queued analysis for ticket ${ticketId}`);
+      
     } catch (error) {
       console.error(`[AI Moderation] Error processing new ticket ${ticketId}:`, error);
     }

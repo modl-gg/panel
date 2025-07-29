@@ -418,20 +418,13 @@ router.post('/logout', (req: Request, res: Response) => {
 
 // Profile update endpoint
 router.patch('/profile', async (req: Request, res: Response) => {
-  console.log('[PROFILE ENDPOINT] Profile update request received');
-  console.log('[PROFILE ENDPOINT] Request method:', req.method);
-  console.log('[PROFILE ENDPOINT] Request path:', req.path);
-  console.log('[PROFILE ENDPOINT] Request body:', req.body);
-  console.log('[PROFILE ENDPOINT] Session data:', req.session);
     try {
     const { username } = req.body;
     
     // Get user from session
     const userId = (req.session as any)?.userId;
-    console.log('[PROFILE ENDPOINT] User ID from session:', userId);
     
     if (!userId) {
-      console.log('[PROFILE ENDPOINT] No userId in session - returning 401');
       return res.status(401).json({ message: 'Not authenticated' });
     }
     
@@ -447,10 +440,6 @@ router.patch('/profile', async (req: Request, res: Response) => {
       // Determine if userId is an email (for Super Admin) or an ObjectId (for regular staff)
     const isEmail = userId.includes('@');
     const userQuery = isEmail ? { email: userId } : { _id: userId };
-    
-    console.log('[PROFILE ENDPOINT] Is email:', isEmail);
-    console.log('[PROFILE ENDPOINT] User query:', userQuery);
-    console.log('[PROFILE ENDPOINT] Update data:', updateData);
     
     // Check if username is already taken (if updating username)
     if (username) {
@@ -472,7 +461,6 @@ router.patch('/profile', async (req: Request, res: Response) => {
     
     // If user not found and it's an email (Super Admin), handle session-only update
     if (!updatedUser && isEmail) {
-      console.log('[PROFILE ENDPOINT] Super Admin not found in Staff collection - updating session only');
       // Super Admin should not be auto-created in Staff collection
       // Update session data directly for Super Admin
       if (username !== undefined) {
@@ -488,7 +476,6 @@ router.patch('/profile', async (req: Request, res: Response) => {
         role: 'Super Admin'
       };
       
-      console.log('[PROFILE ENDPOINT] Super Admin session updated:', sessionUser);
       return res.json({ 
         message: 'Profile updated successfully',
         user: sessionUser
@@ -518,17 +505,11 @@ router.patch('/profile', async (req: Request, res: Response) => {
 
 // Profile update endpoint
 router.patch('/profile', async (req: Request, res: Response) => {
-  console.log('[PROFILE UPDATE] Profile update request received');
-  
   try {
     const session = req.session as any;
     const userId = session?.userId;
     
-    console.log('[PROFILE UPDATE] User ID from session:', userId);
-    console.log('[PROFILE UPDATE] Request body:', req.body);
-    
     if (!userId) {
-      console.log('[PROFILE UPDATE] No userId in session - returning 401');
       return res.status(401).json({ message: 'Not authenticated' });
     }    const { username } = req.body;
 
@@ -548,7 +529,6 @@ router.patch('/profile', async (req: Request, res: Response) => {
         role: session.role
       };
       
-      console.log('[PROFILE UPDATE] Super Admin profile updated:', user);
       return res.json({ 
         message: 'Profile updated successfully',
         user 
@@ -568,7 +548,6 @@ router.patch('/profile', async (req: Request, res: Response) => {
     );
 
     if (!updatedUser) {
-      console.log('[PROFILE UPDATE] User not found in database for ID:', userId);
       return res.status(404).json({ message: 'User not found' });
     }
 
@@ -585,8 +564,6 @@ router.patch('/profile', async (req: Request, res: Response) => {
       username: updatedUser.username,
       role: updatedUser.role
     };
-
-    console.log('[PROFILE UPDATE] Profile updated successfully:', userData);
     
     res.json({ 
       message: 'Profile updated successfully',
@@ -599,8 +576,6 @@ router.patch('/profile', async (req: Request, res: Response) => {
 
 // Session endpoint - get current user information
 router.get('/session', async (req: Request, res: Response) => {
-  console.log('[SESSION] Session check request received');
-
   if ((req.hostname === "localhost" || req.hostname === "127.0.0.1") && process.env.NODE_ENV === "staging") {
     req.currentUser = {
       userId: "developer",
@@ -619,18 +594,11 @@ router.get('/session', async (req: Request, res: Response) => {
     const session = req.session as any;
     
     if (!session?.userId) {
-      console.log('[SESSION] No userId in session');
       return res.json({ 
         isAuthenticated: false, 
         user: null 
       });
-    }    console.log('[SESSION] Session found for user:', session.userId);
-    console.log('[SESSION] Session data:', {
-      userId: session.userId,
-      email: session.email,
-      username: session.username,
-      role: session.role
-    });    
+    } 
     
     // If this is the server admin (identified by admin email), return admin data
     const adminEmail = req.modlServer?.adminEmail?.toLowerCase();
@@ -642,7 +610,6 @@ router.get('/session', async (req: Request, res: Response) => {
         role: session.role
       };
       
-      console.log('[SESSION] Returning Super Admin user:', user);
       return res.json({ 
         isAuthenticated: true, 
         user 
@@ -654,7 +621,6 @@ router.get('/session', async (req: Request, res: Response) => {
     const user = await Staff.findById(session.userId);
     
     if (!user) {
-      console.log('[SESSION] User not found in database for ID:', session.userId);
       return res.status(401).json({ 
         isAuthenticated: false, 
         user: null 
@@ -665,8 +631,6 @@ router.get('/session', async (req: Request, res: Response) => {
       username: user.username,
       role: user.role
     };
-
-    console.log('[SESSION] Returning user data:', userData);
     
     res.json({ 
       isAuthenticated: true, 

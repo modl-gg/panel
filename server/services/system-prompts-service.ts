@@ -144,7 +144,7 @@ export class SystemPromptsService {
 
         if (!existing) {
           await SystemPromptModel.create(promptData);
-          console.log(`[System Prompts] Created default prompt for ${promptData.strictnessLevel} level`);
+          
         }
       }
     } catch (error) {

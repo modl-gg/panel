@@ -165,7 +165,7 @@ This is an automated message. Please do not reply to this email.`;
   async testEmailConfiguration(): Promise<boolean> {
     try {
       await transporter.verify();
-      console.log('[Email Template] SMTP configuration verified successfully');
+      
       return true;
     } catch (error) {
       console.error('[Email Template] SMTP configuration failed:', error);

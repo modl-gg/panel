@@ -2859,7 +2859,7 @@ router.post('/migrate-ticket-forms', async (req: Request, res: Response) => {
 router.get('/api-key', async (req: Request, res: Response) => {
   if (!(await checkRoutePermission(req, res, 'admin.settings.view'))) return;
   try {
-    console.log('[Unified API Key GET] Request received');
+    
     console.log('[Unified API Key GET] Server name:', req.serverName);
     console.log('[Unified API Key GET] DB connection exists:', !!req.serverDbConnection);
     
@@ -2898,7 +2898,7 @@ router.get('/api-key', async (req: Request, res: Response) => {
 router.post('/api-key/generate', async (req: Request, res: Response) => {
   if (!(await checkRoutePermission(req, res, 'admin.settings.modify'))) return;
   try {
-    console.log('[Unified API Key GENERATE] Request received');
+    
     console.log('[Unified API Key GENERATE] Server name:', req.serverName);
     console.log('[Unified API Key GENERATE] DB connection exists:', !!req.serverDbConnection);
     
@@ -2923,9 +2923,9 @@ router.post('/api-key/generate', async (req: Request, res: Response) => {
     console.log(`[Unified API Key GENERATE] Created/Updated API Keys Document:`, apiKeysDoc ? 'Success' : 'Failed');
     console.log(`[Unified API Key GENERATE] Stored API Key:`, apiKeysDoc?.data?.api_key ? 'Success' : 'Failed');
     
-    console.log('[Unified API Key GENERATE] Saved new API key to apiKeys document');
     
-    console.log('[Unified API Key GENERATE] Saved new API key to settings');
+    
+    
     
     // Return the full key only once (for copying)
     res.json({ 
@@ -2942,7 +2942,7 @@ router.post('/api-key/generate', async (req: Request, res: Response) => {
 router.get('/api-key/reveal', async (req: Request, res: Response) => {
   if (!(await checkRoutePermission(req, res, 'admin.settings.view'))) return;
   try {
-    console.log('[Unified API Key REVEAL] Request received');
+    
     console.log('[Unified API Key REVEAL] Server name:', req.serverName);
     
     const apiKeysData = await getSettingsValue(req.serverDbConnection!, 'apiKeys');
@@ -2996,7 +2996,7 @@ router.delete('/api-key', async (req: Request, res: Response) => {
 router.get('/ticket-api-key', async (req: Request, res: Response) => {
   if (!(await checkRoutePermission(req, res, 'admin.settings.view'))) return;
   try {
-    console.log('[Ticket API Key GET] Request received');
+    
     console.log('[Ticket API Key GET] Server name:', req.serverName);
     console.log('[Ticket API Key GET] DB connection exists:', !!req.serverDbConnection);
     
@@ -3007,7 +3007,7 @@ router.get('/ticket-api-key', async (req: Request, res: Response) => {
     console.log('[Ticket API Key GET] Settings map exists:', !!settingsDoc?.settings);
     
     if (!settingsDoc || !settingsDoc.settings) {
-      console.log('[Ticket API Key GET] No settings found, returning 404');
+      
       return res.status(404).json({ error: 'Settings not found' });
     }
     
@@ -3016,7 +3016,7 @@ router.get('/ticket-api-key', async (req: Request, res: Response) => {
     console.log('[Ticket API Key GET] API key length:', apiKey ? apiKey.length : 0);
     
     if (!apiKey) {
-      console.log('[Ticket API Key GET] No API key found, returning hasApiKey: false');
+      
       return res.json({ 
         hasApiKey: false,
         maskedKey: null
@@ -3043,7 +3043,7 @@ router.get('/ticket-api-key', async (req: Request, res: Response) => {
 router.post('/ticket-api-key/generate', async (req: Request, res: Response) => {
   if (!(await checkRoutePermission(req, res, 'admin.settings.modify'))) return;
   try {
-    console.log('[Ticket API Key GENERATE] Request received');
+    
     console.log('[Ticket API Key GENERATE] Server name:', req.serverName);
     console.log('[Ticket API Key GENERATE] DB connection exists:', !!req.serverDbConnection);
     
@@ -3069,7 +3069,7 @@ router.post('/ticket-api-key/generate', async (req: Request, res: Response) => {
       },
       { upsert: true, new: true }
     );
-    console.log('[Ticket API Key GENERATE] Saved API key to database');
+    
     
     // Verify it was saved
     const verifyDoc = await Settings.findOne({});
@@ -3624,8 +3624,8 @@ router.post('/ai-apply-punishment/:ticketId', async (req: Request, res: Response
   let aiAnalysis;
   
   try {
-    console.log(`[AI Apply] Starting AI punishment application for ticket ${ticketId}`);
-    console.log(`[AI Apply] Database connection available: ${!!req.serverDbConnection}`);
+    
+    
     
     if (!req.serverDbConnection) {
       console.error(`[AI Apply] No database connection available`);
@@ -3698,7 +3698,7 @@ router.post('/ai-apply-punishment/:ticketId', async (req: Request, res: Response
     }
 
     // Update the AI analysis to mark it as manually applied
-    console.log(`[AI Apply] Updating AI analysis for ticket ${ticketId}: wasAppliedAutomatically=true`);
+    
     console.log(`[AI Apply] AI analysis before update:`, JSON.stringify(aiAnalysis, null, 2));
     
     // Create a new object to ensure MongoDB detects the change
@@ -3727,7 +3727,7 @@ router.post('/ai-apply-punishment/:ticketId', async (req: Request, res: Response
     };
     
     // Add the reply to the ticket
-    console.log(`[AI Apply] Adding Accept Report reply to ticket ${ticketId}`);
+    
     ticket.replies.push(acceptReply);
     
     // Add staff note with AI analysis details
@@ -3742,20 +3742,20 @@ router.post('/ai-apply-punishment/:ticketId', async (req: Request, res: Response
     if (!ticket.notes) {
       ticket.notes = [];
     }
-    console.log(`[AI Apply] Adding staff note to ticket ${ticketId}`);
+    
     ticket.notes.push(staffNote);
     
-    console.log(`[AI Apply] Saving ticket ${ticketId} with ${ticket.replies.length} replies and ${ticket.notes.length} notes`);
+    
     await ticket.save();
     
-    console.log(`[AI Apply] Successfully updated ticket ${ticketId}`);
+    
     
     // Verify the changes were saved
     const verifyTicket = await TicketModel.findById(ticketId);
     const verifyAiAnalysis = verifyTicket.data?.get ? verifyTicket.data.get('aiAnalysis') : verifyTicket.data?.aiAnalysis;
-    console.log(`[AI Apply] Verification - wasAppliedAutomatically: ${verifyAiAnalysis?.wasAppliedAutomatically}, replies: ${verifyTicket.replies.length}, notes: ${verifyTicket.notes.length}`);
+    
 
-    console.log(`[AI Moderation] Manual punishment application approved for ticket ${ticketId} by ${staffName} (${staffRole}), punishment ID: ${punishmentResult.punishmentId}`);
+    
 
     res.json({ 
       success: true, 
@@ -3791,8 +3791,8 @@ router.post('/ai-apply-punishment/:ticketId', async (req: Request, res: Response
 // Dismiss AI suggestion for a ticket
 router.post('/ai-dismiss-suggestion/:ticketId', async (req: Request, res: Response) => {
   try {
-    console.log(`[AI Dismiss] Starting AI suggestion dismissal for ticket ${req.params.ticketId}`);
-    console.log(`[AI Dismiss] Database connection available: ${!!req.serverDbConnection}`);
+    
+    
     
     if (!req.serverDbConnection) {
       console.error(`[AI Dismiss] No database connection available`);
@@ -3837,7 +3837,7 @@ router.post('/ai-dismiss-suggestion/:ticketId', async (req: Request, res: Respon
     }
 
     // Mark the suggestion as dismissed
-    console.log(`[AI Dismiss] Marking AI suggestion as dismissed for ticket ${ticketId}`);
+    
     
     // Create a new object to ensure MongoDB detects the change
     const dismissedAiAnalysis = {
@@ -3854,15 +3854,15 @@ router.post('/ai-dismiss-suggestion/:ticketId', async (req: Request, res: Respon
     ticket.data.set('aiAnalysis', dismissedAiAnalysis);
     ticket.markModified('data');
     
-    console.log(`[AI Dismiss] Saving ticket ${ticketId}`);
+    
     await ticket.save();
     
     // Verify the changes were saved
     const verifyDismissTicket = await TicketModel.findById(ticketId);
     const verifyDismissAiAnalysis = verifyDismissTicket.data?.get ? verifyDismissTicket.data.get('aiAnalysis') : verifyDismissTicket.data?.aiAnalysis;
-    console.log(`[AI Dismiss] Verification - dismissed: ${verifyDismissAiAnalysis?.dismissed}`);
+    
 
-    console.log(`[AI Moderation] AI suggestion dismissed for ticket ${ticketId} by ${staffName} (${staffRole}). Reason: ${dismissedAiAnalysis.dismissalReason}`);
+    
 
     res.json({ 
       success: true, 

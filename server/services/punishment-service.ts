@@ -59,18 +59,18 @@ export class PunishmentService {
     altBlocking: boolean = false
   ): Promise<{ success: boolean; punishmentId?: string; error?: string }> {
     try {
-      console.log(`[Punishment Service] Attempting to apply punishment - Player: ${playerIdentifier}, Type: ${punishmentTypeId}, Severity: ${severity}, Issuer: ${issuerName}`);
+      
       
       const Player = this.dbConnection.model('Player');
       
       // Find player by UUID or username
       const player = await this.findPlayer(playerIdentifier);
       if (!player) {
-        console.log(`[Punishment Service] Player not found: ${playerIdentifier}`);
+        
         return { success: false, error: `Player ${playerIdentifier} not found` };
       }
 
-      console.log(`[Punishment Service] Found player: ${player.usernames?.[0]?.username || 'Unknown'} (${player.minecraftUuid})`);
+      
 
       // Get punishment type details and calculate duration
       const punishmentData = await this.calculatePunishmentData(
@@ -82,15 +82,15 @@ export class PunishmentService {
       );
 
       if (!punishmentData) {
-        console.log(`[Punishment Service] Failed to calculate punishment data for type ${punishmentTypeId}`);
+        
         return { success: false, error: 'Failed to calculate punishment data' };
       }
 
-      console.log(`[Punishment Service] Calculated punishment data: ${JSON.stringify(punishmentData)}`);
+      
       
       // Validate punishment data
       if (punishmentData.duration === undefined || punishmentData.duration === null) {
-        console.log(`[Punishment Service] Invalid duration calculated: ${punishmentData.duration}`);
+        
         return { success: false, error: 'Invalid punishment duration calculated' };
       }
 
@@ -144,14 +144,14 @@ export class PunishmentService {
         issuerName === 'AI Moderation System' ? 'ai-moderation' : 'player-api'
       );
 
-      console.log(`[Punishment Service] Successfully applied punishment ${punishmentId} to ${playerIdentifier}`);
+      
       
       // Apply alt-blocking if enabled and trigger account linking
       if (altBlocking) {
         // First, trigger account linking to ensure we have the most up-to-date linked accounts
         const playerIPs = player.ipList?.map((ip: any) => ip.ipAddress) || [];
         if (playerIPs.length > 0) {
-          console.log(`[Alt-Blocking] Triggering account linking for alt-blocking punishment ${punishmentId}`);
+          
           await this.findAndLinkAccountsForAltBlocking(playerIPs, player.minecraftUuid);
         }
         
@@ -200,30 +200,30 @@ export class PunishmentService {
     ticketId: string
   ): Promise<{ duration: number; typeName: string } | null> {
     try {
-      console.log(`[Punishment Service] Calculating punishment data for type ${punishmentTypeId}, severity ${severity}`);
+      
       
       const Settings = this.dbConnection.model('Settings');
       const punishmentTypesDoc = await Settings.findOne({ type: 'punishmentTypes' });
       
       if (!punishmentTypesDoc?.data) {
-        console.log(`[Punishment Service] No punishment types found in settings`);
+        
         return null;
       }
 
       const punishmentTypes = punishmentTypesDoc.data;
       
-      console.log(`[Punishment Service] Available punishment types: ${JSON.stringify(punishmentTypes.map((pt: any) => ({ id: pt.id, ordinal: pt.ordinal, name: pt.name })))}`);
+      
       
       const punishmentType = punishmentTypes.find((pt: any) => 
         pt.id === punishmentTypeId || pt.ordinal === punishmentTypeId
       );
       
       if (!punishmentType) {
-        console.log(`[Punishment Service] Punishment type not found for ID ${punishmentTypeId}`);
+        
         return null;
       }
       
-      console.log(`[Punishment Service] Found punishment type: ${JSON.stringify({ id: punishmentType.id, ordinal: punishmentType.ordinal, name: punishmentType.name, category: punishmentType.category })}`);
+      
 
       // Calculate player status to determine appropriate offense level
       let offenseLevel = 'first'; // Default to first offense
@@ -274,44 +274,44 @@ export class PunishmentService {
       // Get duration based on punishment type configuration
       let duration = -1; // Default to permanent
 
-      console.log(`[Punishment Service] Calculating duration for offense level: ${offenseLevel}`);
-      console.log(`[Punishment Service] Punishment type config: singleSeverityPunishment=${punishmentType.singleSeverityPunishment}, has durations=${!!punishmentType.durations}`);
+      
+      
 
       if (punishmentType.singleSeverityPunishment && punishmentType.singleSeverityDurations) {
         // Single-severity punishment - use duration from offense level
-        console.log(`[Punishment Service] Using single-severity durations: ${JSON.stringify(punishmentType.singleSeverityDurations)}`);
+        
         const durationConfig = punishmentType.singleSeverityDurations[offenseLevel as 'first' | 'medium' | 'habitual'];
         if (durationConfig) {
           duration = this.convertDurationToMilliseconds(durationConfig);
-          console.log(`[Punishment Service] Single-severity duration: ${duration}ms from config ${JSON.stringify(durationConfig)}`);
+          
         } else {
-          console.log(`[Punishment Service] No single-severity duration config found for offense level: ${offenseLevel}`);
+          
         }
       } else if (punishmentType.durations?.[severity]) {
         // Multi-severity punishment - use duration from punishment type config based on severity and offense level
-        console.log(`[Punishment Service] Using multi-severity durations for severity: ${severity}`);
+        
         const severityDuration = punishmentType.durations[severity];
-        console.log(`[Punishment Service] Severity duration config: ${JSON.stringify(severityDuration)}`);
+        
         const durationConfig = severityDuration[offenseLevel as 'first' | 'medium' | 'habitual'];
         if (durationConfig) {
           duration = this.convertDurationToMilliseconds(durationConfig);
-          console.log(`[Punishment Service] Multi-severity duration: ${duration}ms from config ${JSON.stringify(durationConfig)}`);
+          
         } else {
           // Try with 'first' as fallback
-          console.log(`[Punishment Service] No duration config for offense level ${offenseLevel}, trying fallback to 'first'`);
+          
           const fallbackDuration = severityDuration.first;
           if (fallbackDuration) {
             duration = this.convertDurationToMilliseconds(fallbackDuration);
-            console.log(`[Punishment Service] Fallback duration: ${duration}ms from config ${JSON.stringify(fallbackDuration)}`);
+            
           } else {
-            console.log(`[Punishment Service] No fallback duration config found`);
+            
           }
         }
       } else {
-        console.log(`[Punishment Service] No duration configuration found for punishment type`);
+        
       }
 
-      console.log(`[Punishment Service] Final calculated duration: ${duration}ms`);
+      
 
       return {
         duration,
@@ -355,7 +355,7 @@ export class PunishmentService {
         return;
       }
 
-      console.log(`[Alt-Blocking Account Linking] Checking for linked accounts with IPs: ${ipAddresses.join(', ')}`);
+      
       
       // Find all players that have used any of these IP addresses
       const potentialLinkedPlayers = await Player.find({
@@ -418,7 +418,7 @@ export class PunishmentService {
           await this.updatePlayerLinkedAccounts(currentPlayer.minecraftUuid, player.minecraftUuid);
           await this.updatePlayerLinkedAccounts(player.minecraftUuid, currentPlayer.minecraftUuid);
           
-          console.log(`[Alt-Blocking Account Linking] Linked ${currentPlayer.minecraftUuid} with ${player.minecraftUuid} via IPs: ${matchingIPs.join(', ')}`);
+          
           
           // Create system log
           await this.createSystemLog(
@@ -430,9 +430,9 @@ export class PunishmentService {
       }
 
       if (linkedAccounts.length > 0) {
-        console.log(`[Alt-Blocking Account Linking] Found ${linkedAccounts.length} linked accounts for ${currentPlayerUuid}`);
+        
       } else {
-        console.log(`[Alt-Blocking Account Linking] No linked accounts found for ${currentPlayerUuid}`);
+        
       }
     } catch (error) {
       console.error(`[Alt-Blocking Account Linking] Error finding linked accounts:`, error);
@@ -470,7 +470,7 @@ export class PunishmentService {
         player.data.set('lastLinkedAccountUpdate', new Date());
         await player.save();
         
-        console.log(`[Alt-Blocking Account Linking] Updated ${playerUuid} linked accounts: added ${linkedUuid}`);
+        
       }
     } catch (error) {
       console.error(`[Alt-Blocking Account Linking] Error updating player linked accounts:`, error);
@@ -497,11 +497,11 @@ export class PunishmentService {
       const linkedAccountUuids = originalPlayer.data?.get('linkedAccounts') || [];
       
       if (linkedAccountUuids.length === 0) {
-        console.log(`[Alt-Blocking] No linked accounts found for ${originalPlayer.minecraftUuid}`);
+        
         return;
       }
       
-      console.log(`[Alt-Blocking] Applying alt-blocking bans to ${linkedAccountUuids.length} linked accounts`);
+      
       
       // Apply alt-blocking ban to each linked account
       for (const linkedUuid of linkedAccountUuids) {
@@ -549,13 +549,13 @@ export class PunishmentService {
             'alt-blocking'
           );
           
-          console.log(`[Alt-Blocking] Applied ban ${altBlockingPunishmentId} to linked account ${linkedUuid}`);
+          
         } catch (error) {
           console.error(`[Alt-Blocking] Error applying punishment to linked account ${linkedUuid}:`, error);
         }
       }
       
-      console.log(`[Alt-Blocking] Completed alt-blocking enforcement for punishment ${originalPunishmentId}`);
+      
     } catch (error) {
       console.error(`[Alt-Blocking] Error applying alt-blocking punishments:`, error);
     }
@@ -608,11 +608,11 @@ export class PunishmentService {
       const linkedAccountUuids = originalPlayer.data?.get('linkedAccounts') || [];
       
       if (linkedAccountUuids.length === 0) {
-        console.log(`[Linked Bans] No linked accounts found for ${originalPlayer.minecraftUuid}`);
+        
         return;
       }
       
-      console.log(`[Linked Bans] Issuing linked bans to ${linkedAccountUuids.length} accounts based on alt-blocking punishment ${originalPunishmentId}`);
+      
       
       // Issue linked bans to each linked account
       for (const linkedUuid of linkedAccountUuids) {
@@ -630,7 +630,7 @@ export class PunishmentService {
           });
 
           if (existingLinkedBan) {
-            console.log(`[Linked Bans] Player ${linkedUuid} already has linked ban for source punishment ${originalPunishmentId}`);
+            
             continue;
           }
           
@@ -677,13 +677,13 @@ export class PunishmentService {
             'linked-ban'
           );
           
-          console.log(`[Linked Bans] Issued linked ban ${linkedBanId} to linked account ${linkedUuid}`);
+          
         } catch (error) {
           console.error(`[Linked Bans] Error issuing linked ban to ${linkedUuid}:`, error);
         }
       }
       
-      console.log(`[Linked Bans] Completed linked ban issuance for alt-blocking punishment ${originalPunishmentId}`);
+      
     } catch (error) {
       console.error(`[Linked Bans] Error issuing linked bans for alt-blocking:`, error);
     }
