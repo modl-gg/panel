@@ -116,12 +116,14 @@ export function usePermissions() {
   // Check if user has all required permissions
   const hasAllPermissions = (permissions: string[]): boolean => {
     if (!user) return false;
+    if (!permissions || !Array.isArray(permissions)) return false; // Defensive check
     return permissions.every(permission => hasPermission(permission));
   };
 
   // Check if user has any of the required permissions
   const hasAnyPermission = (permissions: string[]): boolean => {
     if (!user) return false;
+    if (!permissions || !Array.isArray(permissions)) return false; // Defensive check
     return permissions.some(permission => hasPermission(permission));
   };
 
@@ -129,6 +131,7 @@ export function usePermissions() {
   const canAccessSettingsTab = (tabName: keyof typeof SETTINGS_PERMISSIONS): boolean => {
     if (!user) return false;
     const requiredPermissions = SETTINGS_PERMISSIONS[tabName];
+    if (!requiredPermissions || !Array.isArray(requiredPermissions)) return false; // Defensive check
     return requiredPermissions.length === 0 || hasAllPermissions(requiredPermissions);
   };
 
