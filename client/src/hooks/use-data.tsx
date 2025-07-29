@@ -330,24 +330,19 @@ export function useLogs() {
 // Settings-related hooks
 export function useSettings() {
   return useQuery({
-    queryKey: ['/api/panel/settings'],
+    queryKey: ['/api/settings'],
     queryFn: async () => {
+      // Check if we're on a public page (player ticket, appeals, etc.)
+      const currentPath = window.location.pathname;
+      const isPublicPage = currentPath.startsWith('/ticket/') || 
+                          currentPath.startsWith('/appeal') || 
+                          currentPath === '/' ||
+                          currentPath.startsWith('/knowledgebase') ||
+                          currentPath.startsWith('/article/');
+
       try {
-        // First try the authenticated endpoint
-        const res = await fetch('/api/panel/settings');
-
-        if (res.ok) {
-          const responseText = await res.text();
-          const data = JSON.parse(responseText);
-          
-          // Return the settings directly as an object
-          return {
-            settings: data.settings || {}
-          };
-        }
-
-        // If we get a 401 (unauthorized), try the public endpoint
-        if (res.status === 401) {
+        // If on public page, try public endpoint first to avoid 401 in network tab
+        if (isPublicPage) {
           const publicRes = await fetch('/api/public/settings');
           
           if (publicRes.ok) {
@@ -364,13 +359,84 @@ export function useSettings() {
               }
             };
           }
+        } else {
+          // For panel pages, try authenticated endpoint first
+          const res = await fetch('/api/panel/settings');
+
+          if (res.ok) {
+            const responseText = await res.text();
+            const data = JSON.parse(responseText);
+            
+            // Return the settings directly as an object
+            return {
+              settings: data.settings || {}
+            };
+          }
+
+          // If we get a 401 (unauthorized), try the public endpoint
+          if (res.status === 401) {
+            const publicRes = await fetch('/api/public/settings');
+            
+            if (publicRes.ok) {
+              const publicData = await publicRes.json();
+              // Return public data as direct object
+              return {
+                settings: {
+                  general: {
+                    serverDisplayName: publicData.serverDisplayName,
+                    panelIconUrl: publicData.panelIconUrl,
+                    homepageIconUrl: publicData.homepageIconUrl
+                  },
+                  ticketForms: publicData.ticketForms || {}
+                }
+              };
+            }
+          }
         }
 
-        // If both endpoints fail, throw an error
-        const errorText = await res.text().catch(() => 'Could not read error response text');
-        throw new Error(`Failed to fetch settings. Status: ${res.status}. Response: ${errorText}`);
+        // If all attempts fail, throw an error
+        throw new Error('Failed to fetch settings from all available endpoints');
       } catch (error) {
-        throw error; // Re-throw to let React Query handle it
+        // Last resort: try the other endpoint if one failed
+        try {
+          const fallbackUrl = isPublicPage ? '/api/panel/settings' : '/api/public/settings';
+          const fallbackRes = await fetch(fallbackUrl);
+          
+          if (fallbackRes.ok) {
+            if (isPublicPage) {
+              // Fallback to panel endpoint (though this might fail)
+              const data = JSON.parse(await fallbackRes.text());
+              return { settings: data.settings || {} };
+            } else {
+              // Fallback to public endpoint
+              const publicData = await fallbackRes.json();
+              return {
+                settings: {
+                  general: {
+                    serverDisplayName: publicData.serverDisplayName,
+                    panelIconUrl: publicData.panelIconUrl,
+                    homepageIconUrl: publicData.homepageIconUrl
+                  },
+                  ticketForms: publicData.ticketForms || {}
+                }
+              };
+            }
+          }
+        } catch (fallbackError) {
+          // If even fallback fails, use default values
+          return {
+            settings: {
+              general: {
+                serverDisplayName: 'modl',
+                panelIconUrl: null,
+                homepageIconUrl: null
+              },
+              ticketForms: {}
+            }
+          };
+        }
+        
+        throw error; // Re-throw original error if fallback also failed
       }
     },
     // Modified options to improve behavior when returning to settings page
