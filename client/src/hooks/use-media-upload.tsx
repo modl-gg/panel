@@ -20,13 +20,30 @@ export interface MediaUploadConfig {
 
 export function useMediaUploadConfig() {
   return useQuery<MediaUploadConfig>({
-    queryKey: ['/api/panel/media/config'],
+    queryKey: ['/api/media/config'],
     queryFn: async () => {
-      const response = await fetch('/api/panel/media/config');
-      if (!response.ok) {
-        throw new Error('Failed to fetch media upload configuration');
+      // Try authenticated endpoint first, then fall back to public endpoint
+      try {
+        const response = await fetch('/api/panel/media/config');
+        if (response.ok) {
+          return response.json();
+        }
+        // If 401 (unauthorized), try public endpoint
+        if (response.status === 401) {
+          const publicResponse = await fetch('/api/public/media/config');
+          if (publicResponse.ok) {
+            return publicResponse.json();
+          }
+        }
+        throw new Error(`Failed to fetch media upload configuration: ${response.status}`);
+      } catch (error) {
+        // If authenticated endpoint fails completely, try public endpoint
+        const publicResponse = await fetch('/api/public/media/config');
+        if (publicResponse.ok) {
+          return publicResponse.json();
+        }
+        throw new Error('Failed to fetch media upload configuration from both endpoints');
       }
-      return response.json();
     },
     staleTime: 5 * 60 * 1000, // 5 minutes
     refetchOnWindowFocus: false,

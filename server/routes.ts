@@ -144,6 +144,88 @@ export async function registerRoutes(app: Express): Promise<Server> {
       });
     }
   });
+
+  // Public media config endpoint - no authentication required
+  app.get('/api/public/media/config', async (req, res) => {
+    try {
+      const { isBackblazeConfigured } = await import('./services/backblaze-service');
+      res.json({
+        backblazeConfigured: isBackblazeConfigured(),
+        supportedTypes: {
+          evidence: ['image/png', 'image/jpeg', 'image/gif', 'video/mp4', 'application/pdf'],
+          tickets: ['image/png', 'image/jpeg', 'image/gif', 'video/mp4', 'application/pdf'],
+          appeals: ['image/png', 'image/jpeg', 'image/gif', 'video/mp4', 'application/pdf'],
+          articles: ['image/png', 'image/jpeg', 'image/gif'],
+          'server-icons': ['image/png', 'image/jpeg']
+        },
+        fileSizeLimits: {
+          evidence: 50 * 1024 * 1024, // 50MB
+          tickets: 50 * 1024 * 1024, // 50MB
+          appeals: 50 * 1024 * 1024, // 50MB
+          articles: 10 * 1024 * 1024, // 10MB
+          'server-icons': 5 * 1024 * 1024 // 5MB
+        }
+      });
+    } catch (error) {
+      console.error('[Public Media Config] Error occurred:', error);
+      res.json({
+        backblazeConfigured: false,
+        supportedTypes: {
+          evidence: [],
+          tickets: [],
+          appeals: [],
+          articles: [],
+          'server-icons': []
+        },
+        fileSizeLimits: {
+          evidence: 0,
+          tickets: 0,
+          appeals: 0,
+          articles: 0,
+          'server-icons': 0
+        }
+      });
+    }
+  });
+
+  // Public player avatar endpoint - no authentication required
+  app.get('/api/public/players/avatar/:uuid', async (req, res) => {
+    try {
+      const { uuid } = req.params;
+      const { size = '32', overlay = 'true' } = req.query;
+      
+      // Validate UUID format (basic check)
+      if (!uuid || !/^[a-f0-9\-]{32,36}$/i.test(uuid)) {
+        return res.status(400).json({ error: 'Invalid UUID format' });
+      }
+      
+      // Construct Crafatar URL
+      const crafatarUrl = `https://crafatar.com/avatars/${uuid}?size=${size}&default=MHF_Steve${overlay === 'true' ? '&overlay' : ''}`;
+      
+      // Fetch the image from Crafatar
+      const response = await fetch(crafatarUrl);
+      
+      if (!response.ok) {
+        return res.status(404).json({ error: 'Avatar not found' });
+      }
+      
+      // Get the image buffer
+      const imageBuffer = await response.arrayBuffer();
+      
+      // Set appropriate headers
+      res.set({
+        'Content-Type': 'image/png',
+        'Cache-Control': 'public, max-age=3600', // Cache for 1 hour
+        'Cross-Origin-Resource-Policy': 'cross-origin'
+      });
+      
+      // Send the image
+      res.send(Buffer.from(imageBuffer));
+    } catch (error) {
+      console.error('[Public Avatar] Error proxying avatar:', error);
+      res.status(500).json({ error: 'Failed to fetch avatar' });
+    }
+  });
   // Panel specific API routes
   const panelRouter = express.Router();
   
