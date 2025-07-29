@@ -753,7 +753,7 @@ const Settings = () => {
   useEffect(() => {
     const urlParams = new URLSearchParams(window.location.search);
     if (urlParams.has('session_id') && user?.role === 'Super Admin') {
-      setActiveTab('billing');
+      setActiveTab('general');
     }
   }, [user]);
 
