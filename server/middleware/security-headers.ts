@@ -15,7 +15,7 @@ export function securityHeaders(req: Request, res: Response, next: NextFunction)
     "connect-src 'self' https:", // Allow connections to self and HTTPS
     "media-src 'self'", // Allow media from self
     "object-src 'none'", // Disable plugins
-    "frame-src 'none'", // Disable framing
+    "frame-src 'self' https://js.stripe.com https://*.stripe.com", // Allow Stripe frames for payment processing
     "base-uri 'self'", // Restrict base tag
     "form-action 'self'", // Restrict form actions
     "frame-ancestors 'none'", // Prevent framing by other sites
@@ -56,7 +56,7 @@ export function securityHeaders(req: Request, res: Response, next: NextFunction)
     'camera=()',
     'microphone=()',
     'geolocation=()',
-    'payment=()',
+    'payment=*', // Allow payment processing for Stripe
     'usb=()',
     'bluetooth=()',
     'midi=()',
