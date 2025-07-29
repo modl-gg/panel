@@ -803,8 +803,8 @@ router.post('/tickets/:id/submit', async (req: Request, res: Response) => {
       // Store form data
       Object.entries(formData).forEach(([key, value]) => {
         ticket.data.set(key, value);
-        // Map contact_email to creatorEmail for email notifications
-        if (key === 'contact_email') {
+        // Map contact_email or email to creatorEmail for email notifications
+        if (key === 'contact_email' || key === 'email') {
           ticket.data.set('creatorEmail', value);
         }
       });
