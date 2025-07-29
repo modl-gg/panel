@@ -1039,10 +1039,12 @@ const Settings = () => {
     }
   }, [user]);
 
-  // Load API key on component mount
+  // Load API key on component mount (only for users with appropriate permissions)
   useEffect(() => {
-    loadApiKey();
-  }, []);
+    if (canAccessSettingsTab('general')) {
+      loadApiKey();
+    }
+  }, [canAccessSettingsTab]);
 
   // File upload functions
   const uploadIcon = async (file: File, iconType: 'homepage' | 'panel'): Promise<string | null> => {
@@ -1444,31 +1446,33 @@ const Settings = () => {
     }
   };
 
-  // Load AI moderation settings on component mount
+  // Load AI moderation settings on component mount (only for users with appropriate permissions)
   useEffect(() => {
-    loadAiModerationSettings();
-    loadAvailablePunishmentTypes();
-  }, []);
+    if (canAccessSettingsTab('tags')) {
+      loadAiModerationSettings();
+      loadAvailablePunishmentTypes();
+    }
+  }, [canAccessSettingsTab]);
 
   // Auto-save AI moderation settings when they change
   useEffect(() => {
-    if (!isLoadingAiSettings && initialLoadCompletedRef.current) {
+    if (!isLoadingAiSettings && initialLoadCompletedRef.current && canAccessSettingsTab('tags')) {
       const saveTimeout = setTimeout(() => {
         saveAiModerationSettings(aiModerationSettings);
       }, 1000);
       return () => clearTimeout(saveTimeout);
     }
-  }, [aiModerationSettings, isLoadingAiSettings]);
+  }, [aiModerationSettings, isLoadingAiSettings, canAccessSettingsTab]);
 
   // Auto-save AI punishment configs when they change
   useEffect(() => {
-    if (!isLoadingAiSettings && initialLoadCompletedRef.current && aiModerationSettings.aiPunishmentConfigs) {
+    if (!isLoadingAiSettings && initialLoadCompletedRef.current && canAccessSettingsTab('tags') && aiModerationSettings.aiPunishmentConfigs) {
       const saveTimeout = setTimeout(() => {
         saveAiModerationSettings(aiModerationSettings);
       }, 1000);
       return () => clearTimeout(saveTimeout);
     }
-  }, [aiModerationSettings.aiPunishmentConfigs, aiModerationSettings, isLoadingAiSettings]);
+  }, [aiModerationSettings.aiPunishmentConfigs, aiModerationSettings, isLoadingAiSettings, canAccessSettingsTab]);
 
   // Define captureInitialSettings first, before it's used anywhere else
   const captureInitialSettings = useCallback(() => {
@@ -1841,11 +1845,7 @@ const Settings = () => {
           user.username = data.user.username;
         }
         
-        // Show success toast
-        toast({
-          title: "Profile Updated",
-          description: "Your profile information has been saved.",
-        });
+        // Don't show a toast on every auto-save to avoid spam
       } else {
         const errorData = await response.json().catch(() => ({ message: 'Unknown error' }));
         console.error('Profile auto-save failed:', errorData.message);
@@ -1907,11 +1907,7 @@ const Settings = () => {
             user.username = data.user.username;
           }
           
-          // Show success toast
-          toast({
-            title: "Profile Updated",
-            description: "Your profile information has been saved.",
-          });
+          // Don't show a toast on every auto-save to avoid spam
         } else {
           const errorData = await response.json().catch(() => ({ message: 'Unknown error' }));
           console.error('Profile auto-save failed:', errorData.message);
