@@ -9,6 +9,7 @@ import { useTheme } from 'next-themes';
 import serverLogo from '@/assets/server-logo.png';
 import * as LucideIcons from 'lucide-react';
 import { usePublicSettings } from '@/hooks/use-public-settings';
+import { useAuth } from '@/hooks/use-auth';
 
 // Types for knowledgebase data
 interface ArticleStub {
@@ -58,6 +59,7 @@ const HomePage: React.FC = () => {
   const [expandedCards, setExpandedCards] = useState<Set<string>>(new Set());
   const { theme, setTheme } = useTheme();
   const { data: publicSettings } = usePublicSettings();
+  const { user } = useAuth();
 
   // Fetch categories on component mount
   useEffect(() => {
@@ -234,11 +236,11 @@ const HomePage: React.FC = () => {
           {theme === 'dark' ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
         </Button>
 
-        {/* Sign In Button */}
-        <Link href="/panel/auth">
+        {/* Sign In / Go To Panel Button */}
+        <Link href={user ? "/panel" : "/panel/auth"}>
           <Button variant="secondary" size="sm" className="bg-card/80 hover:bg-card/90 text-foreground border-muted">
             <LogIn className="h-4 w-4 mr-2" />
-            Sign In
+            {user ? "Go To Panel" : "Sign In"}
           </Button>
         </Link>
       </div>
