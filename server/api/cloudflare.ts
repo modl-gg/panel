@@ -395,7 +395,7 @@ export async function updateDomainStatuses(serverDbConnection: any) {
       customDomain_status: { $in: ['pending', 'verifying', 'error'] }
     });
 
-    console.log(`Checking status for ${serversWithDomains.length} domains...`);
+    // console.log(`Checking status for ${serversWithDomains.length} domains...`);
 
     for (const server of serversWithDomains) {
       try {

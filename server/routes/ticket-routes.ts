@@ -634,7 +634,7 @@ router.patch('/:id', async (req: Request<{ id: string }, {}, UpdateTicketBody>, 
       required: ['ticket.reply.all']
     });
   }
-  console.log(`[Ticket PATCH] Updating ticket ${req.params.id}`);
+  
   console.log(`[Ticket PATCH] Request body:`, JSON.stringify(req.body, null, 2));
   
   try {
@@ -677,7 +677,7 @@ router.patch('/:id', async (req: Request<{ id: string }, {}, UpdateTicketBody>, 
 
       // Auto-subscribe staff member to ticket when they reply
       if (newReply.staff && req.session?.username) {
-        console.log(`[Ticket PATCH] Auto-subscribing ${req.session.username} to ticket ${req.params.id}`);
+        
         try {
           const { ensureTicketSubscription } = await import('./ticket-subscription-routes');
           
@@ -691,7 +691,7 @@ router.patch('/:id', async (req: Request<{ id: string }, {}, UpdateTicketBody>, 
 
       // Add notification for staff replies
       if (newReply.staff && ticket.creatorUuid) {
-        console.log(`[Ticket PATCH] Staff reply detected from ${newReply.name}`);
+        
         
         // Build panel URL from server name
         const panelUrl = process.env.NODE_ENV === 'development' 
@@ -708,7 +708,7 @@ router.patch('/:id', async (req: Request<{ id: string }, {}, UpdateTicketBody>, 
         
         // Send email notification if ticket has creator email
         const emailField = ticket.data?.get('creatorEmail') || ticket.data?.get('contactEmail') || ticket.data?.get('contact_email');
-        console.log(`[Ticket PATCH] Checking for email field. Found: ${emailField}`);
+        
         console.log(`[Ticket PATCH] ticket.data keys:`, ticket.data ? Array.from(ticket.data.keys()) : 'No data');
         
         if (ticket.data && emailField) {
@@ -732,7 +732,7 @@ router.patch('/:id', async (req: Request<{ id: string }, {}, UpdateTicketBody>, 
               serverName: req.serverName,
               serverDisplayName: serverDisplayName
             });
-            console.log(`[Ticket PATCH] Email notification sent successfully to ${emailField}`);
+            
           } catch (emailError) {
             console.error(`[Ticket PATCH] Failed to send email notification for ticket ${req.params.id}:`, emailError);
             // Don't fail the reply if email fails - this is not critical

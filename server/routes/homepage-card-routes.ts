@@ -70,9 +70,9 @@ router.get(
   
   async (req: Request, res: Response) => {
     try {
-      console.log('[Homepage Cards] GET request received');
+      
       const HomepageCard = getHomepageCardModel(req);
-      console.log('[Homepage Cards] Model retrieved successfully');
+      
 
       const cards = await HomepageCard.find()
         .sort({ ordinal: 1 })

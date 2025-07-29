@@ -331,9 +331,9 @@ export async function ensureTicketSubscription(db: any, ticketId: string, staffU
     );
 
     if (result.modifiedCount > 0) {
-      console.log(`[SUCCESS] Created ticket subscription for ${staffUsername} on ticket ${ticketId}`);
+      
     } else {
-      console.log(`[INFO] No modification needed for ${staffUsername} on ticket ${ticketId} (may already exist)`);
+      
     }
 
   } catch (error) {
@@ -384,9 +384,9 @@ export async function markTicketAsRead(db: any, ticketId: string, staffUsername:
     }
     
     if (result.modifiedCount > 0) {
-      console.log(`[SUCCESS] Marked ticket ${ticketId} as read for ${staffUsername}`);
+      
     } else {
-      console.log(`[INFO] No subscription found to mark as read for ${staffUsername} on ticket ${ticketId}`);
+      
     }
   } catch (error) {
     console.error('Error marking ticket as read:', error);

@@ -105,8 +105,6 @@ router.post('/cancel-subscription', isAuthenticated, async (req, res) => {
       cancel_at_period_end: true
     }) as any;
 
-    console.log(`[CANCEL SUBSCRIPTION] Subscription ${server.stripe_subscription_id} for server ${server.customDomain} set to cancel at period end`);
-
     // Update our database to reflect the cancellation
     const globalDb = await connectToGlobalModlDb();
     const Server = globalDb.models.ModlServer || globalDb.model('ModlServer', ModlServerSchema);
@@ -161,13 +159,11 @@ router.get('/status', isAuthenticated, async (req, res) => {
       } else {
         try {
           const subscription = await stripe.subscriptions.retrieve(server.stripe_subscription_id) as any;
-          console.log(`[BILLING STATUS] Stripe subscription status: ${subscription.status}, cancel_at_period_end: ${subscription.cancel_at_period_end}, DB status: ${server.subscription_status}`);
 
           // Determine effective status - if cancel_at_period_end is true, treat as canceled
           let effectiveStatus = subscription.status;
           if (subscription.cancel_at_period_end === true && subscription.status === 'active') {
             effectiveStatus = 'canceled';
-            console.log(`[BILLING STATUS] Subscription marked for cancellation at period end, treating as canceled`);
           }
 
           // Parse period dates from Stripe
@@ -199,8 +195,6 @@ router.get('/status', isAuthenticated, async (req, res) => {
                              (!server.current_period_start && periodStartDate);
 
           if (needsUpdate) {
-            console.log(`[BILLING STATUS] Status/date mismatch detected. Updating ${server.customDomain} from ${server.subscription_status} to ${effectiveStatus}`);
-
             const globalDb = await connectToGlobalModlDb();
             const Server = globalDb.models.ModlServer || globalDb.model('ModlServer', ModlServerSchema);
 
@@ -232,7 +226,7 @@ router.get('/status', isAuthenticated, async (req, res) => {
             
             // Special logging for cancelled subscriptions
             if (effectiveStatus === 'canceled') {
-              console.log(`[BILLING STATUS] CANCELLATION DETECTED: Server ${server.customDomain} has cancelled subscription. Access ends: ${periodEndDate ? periodEndDate.toISOString() : 'No end date'}`);
+              
             }
           }
         } catch (stripeError) {
@@ -272,7 +266,7 @@ router.get('/usage', isAuthenticated, async (req, res) => {
       return res.status(404).send('Server not found in database.');
     }
 
-    console.log(`[USAGE] Fetching usage data for ${freshServer.customDomain}, usage_billing_enabled: ${freshServer.usage_billing_enabled}`);
+    
 
     // Get current billing period start and end dates
     const currentPeriodStart = freshServer.current_period_start || new Date(Date.now() - (30 * 24 * 60 * 60 * 1000)); // Default to 30 days ago
@@ -341,7 +335,7 @@ router.post('/usage-billing-settings', isAuthenticated, async (req, res) => {
     return res.status(400).send('Server context not found in request.');
   }
 
-  console.log(`[USAGE BILLING] Updating usage billing for ${server.customDomain}: enabled=${enabled}`);
+  
 
   try {
     const globalDb = await connectToGlobalModlDb();
@@ -416,12 +410,12 @@ async function checkExpiredSubscriptions() {
         );
         
         expiredCount++;
-        console.log(`[AUTO EXPIRED CHECK] Updated ${server.customDomain} - expired on ${endDate.toISOString()}`);
+        
       }
     }
 
     if (expiredCount > 0) {
-      console.log(`[AUTO EXPIRED CHECK] Processed ${expiredCount} expired subscriptions out of ${cancelledServers.length} cancelled subscriptions`);
+      
     }
   } catch (error) {
     console.error('[AUTO EXPIRED CHECK] Error checking for expired subscriptions:', error);
@@ -466,7 +460,7 @@ router.post('/resubscribe', isAuthenticated, async (req, res) => {
             cancel_at_period_end: false
           }) as any;
           
-          console.log(`[RESUBSCRIBE] Removed cancellation for subscription ${server.stripe_subscription_id} for server ${server.customDomain}`);
+          
         } else if (existingSubscription.status === 'canceled') {
           // Subscription was fully cancelled, need to create a new one
           throw new Error('Subscription was fully cancelled, creating new one');
@@ -478,7 +472,7 @@ router.post('/resubscribe', isAuthenticated, async (req, res) => {
       } catch (stripeError: any) {
         if (stripeError.code === 'resource_missing') {
           // Subscription was deleted, create a new one
-          console.log(`[RESUBSCRIBE] Subscription ${server.stripe_subscription_id} not found, creating new subscription`);
+          
         } else {
           console.log(`[RESUBSCRIBE] Stripe error retrieving subscription, creating new one:`, stripeError.message);
         }
@@ -495,7 +489,7 @@ router.post('/resubscribe', isAuthenticated, async (req, res) => {
           items: [{ price: process.env.STRIPE_PRICE_ID }],
         }) as any;
         
-        console.log(`[RESUBSCRIBE] Created new subscription ${subscriptionResult.id} for server ${server.customDomain}`);
+        
       }
     } else {
       // No subscription ID stored, create a new subscription
@@ -510,7 +504,7 @@ router.post('/resubscribe', isAuthenticated, async (req, res) => {
         items: [{ price: process.env.STRIPE_PRICE_ID }],
       }) as any;
       
-      console.log(`[RESUBSCRIBE] Created new subscription ${subscriptionResult.id} for server ${server.customDomain} (no previous subscription ID)`);
+      
     }
 
     // Update our database with the new subscription details
@@ -555,7 +549,7 @@ router.post('/resubscribe', isAuthenticated, async (req, res) => {
       updateData
     );
 
-    console.log(`[RESUBSCRIBE] Successfully resubscribed ${server.customDomain} - new status: ${subscriptionResult.status}`);
+    
 
     res.json({ 
       success: true, 
@@ -599,7 +593,7 @@ webhookRouter.post('/stripe-webhooks', express.raw({ type: 'application/json' })
 
   try {
     event = stripe.webhooks.constructEvent(req.body, sig as string, webhookSecret);
-    console.log(`[WEBHOOK] Received Stripe event: ${event.type}`);
+    
   } catch (err: any) {
     console.error('[WEBHOOK] Webhook signature verification failed:', err.message);
     return res.status(400).send(`Webhook Error: ${err.message}`);
@@ -612,7 +606,7 @@ webhookRouter.post('/stripe-webhooks', express.raw({ type: 'application/json' })
     switch (event.type) {
       case 'checkout.session.completed': {
         const session = event.data.object as Stripe.Checkout.Session;
-        console.log(`[WEBHOOK] Processing checkout.session.completed for customer: ${session.customer}`);
+        
 
         if (session.customer && session.subscription) {
           const server = await Server.findOne({ stripe_customer_id: session.customer });
@@ -655,7 +649,7 @@ webhookRouter.post('/stripe-webhooks', express.raw({ type: 'application/json' })
               { _id: server._id },
               updateData
             );
-            console.log(`[WEBHOOK] Updated server ${server.customDomain} - checkout completed with periods: ${periodStartDate?.toISOString()} to ${periodEndDate?.toISOString()}`);
+            
           } else {
             console.warn(`[WEBHOOK] No server found for customer: ${session.customer}`);
           }
@@ -665,7 +659,7 @@ webhookRouter.post('/stripe-webhooks', express.raw({ type: 'application/json' })
       
       case 'customer.subscription.created': {
         const subscription = event.data.object as any; // Stripe.Subscription
-        console.log(`[WEBHOOK] Processing subscription.created: ${subscription.id}, status: ${subscription.status}, customer: ${subscription.customer}`);
+        
 
         const server = await Server.findOne({ stripe_customer_id: subscription.customer });
         if (server) {
@@ -715,7 +709,7 @@ webhookRouter.post('/stripe-webhooks', express.raw({ type: 'application/json' })
             { _id: server._id },
             updateData
           );
-          console.log(`[WEBHOOK] Updated server ${server.customDomain} - subscription created/linked: ${subscription.id}, status: ${subscription.status}, period: ${periodStartDate?.toISOString()} to ${periodEndDate?.toISOString()}`);
+          
         } else {
           console.warn(`[WEBHOOK] No server found for customer: ${subscription.customer} during subscription.created event for subscription ${subscription.id}`);
         }
@@ -724,7 +718,7 @@ webhookRouter.post('/stripe-webhooks', express.raw({ type: 'application/json' })
       
       case 'customer.subscription.updated': {
         const subscription = event.data.object as any; // Stripe.Subscription
-        console.log(`[WEBHOOK] Processing subscription.updated: ${subscription.id}, status: ${subscription.status}, cancel_at_period_end: ${subscription.cancel_at_period_end}`);
+        
 
         const server = await Server.findOne({ stripe_subscription_id: subscription.id });
         if (server) {
@@ -753,7 +747,7 @@ webhookRouter.post('/stripe-webhooks', express.raw({ type: 'application/json' })
           let effectiveStatus = subscription.status;
           if (subscription.cancel_at_period_end === true && subscription.status === 'active') {
             effectiveStatus = 'canceled';
-            console.log(`[WEBHOOK] Subscription marked for cancellation at period end, treating as canceled`);
+            
           }
 
           const updateData: any = {
@@ -774,11 +768,11 @@ webhookRouter.post('/stripe-webhooks', express.raw({ type: 'application/json' })
             updateData
           );
 
-          console.log(`[WEBHOOK] Updated server ${server.customDomain} - subscription status: ${effectiveStatus}, period: ${periodStartDate?.toISOString()} to ${periodEndDate?.toISOString()}`);
+          
           
           // Special logging for cancelled subscriptions
           if (effectiveStatus === 'canceled') {
-            console.log(`[WEBHOOK] CANCELLATION DETECTED: Server ${server.customDomain} subscription cancelled. Access ends: ${periodEndDate ? periodEndDate.toISOString() : 'No end date'}`);
+            
           }
         } else {
           console.warn(`[WEBHOOK] No server found for subscription: ${subscription.id}`);
@@ -788,7 +782,7 @@ webhookRouter.post('/stripe-webhooks', express.raw({ type: 'application/json' })
 
       case 'customer.subscription.deleted': {
         const subscription = event.data.object as any; // Use any to access Stripe properties
-        console.log(`[WEBHOOK] Processing subscription.deleted: ${subscription.id}`);
+        
 
         const server = await Server.findOne({ stripe_subscription_id: subscription.id });
         if (server) {
@@ -800,7 +794,7 @@ webhookRouter.post('/stripe-webhooks', express.raw({ type: 'application/json' })
               current_period_end: null
             }
           );
-          console.log(`[WEBHOOK] Updated server ${server.customDomain} - subscription deleted`);
+          
         } else {
           console.warn(`[WEBHOOK] No server found for deleted subscription: ${subscription.id}`);
         }
@@ -809,7 +803,7 @@ webhookRouter.post('/stripe-webhooks', express.raw({ type: 'application/json' })
       
       case 'invoice.payment_failed': {
         const invoice = event.data.object as any; // Use any to access Stripe properties
-        console.log(`[WEBHOOK] Processing payment_failed for customer: ${invoice.customer}`);
+        
 
         if (invoice.subscription) {
           const server = await Server.findOne({ stripe_subscription_id: invoice.subscription });
@@ -818,7 +812,7 @@ webhookRouter.post('/stripe-webhooks', express.raw({ type: 'application/json' })
               { _id: server._id },
               { subscription_status: 'past_due' }
             );
-            console.log(`[WEBHOOK] Updated server ${server.customDomain} - payment failed`);
+            
           }
         }
         break;
@@ -826,13 +820,13 @@ webhookRouter.post('/stripe-webhooks', express.raw({ type: 'application/json' })
 
       case 'customer.subscription.trial_will_end': {
         const subscription = event.data.object as any;
-        console.log(`[WEBHOOK] Processing trial_will_end for subscription: ${subscription.id}`);
+        
         // Could send notification email here
         break;
       }
 
       default:
-        console.log(`[WEBHOOK] Unhandled event type: ${event.type}`);
+        
     }
 
     res.json({ received: true });
