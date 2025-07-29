@@ -3,9 +3,9 @@ import {
   HomepageCardSchema,
   KnowledgebaseCategorySchema,
   KnowledgebaseArticleSchema,
-  IHomepageCard,
-  IKnowledgebaseCategory,
-  IKnowledgebaseArticle
+  HomepageCard,
+  KnowledgebaseCategory,
+  KnowledgebaseArticle
 } from '@modl-gg/shared-web';
 import mongoose, { Model } from 'mongoose';
 import { isAuthenticated } from '../middleware/auth-middleware';
@@ -38,35 +38,33 @@ const homepagePermissionMiddleware = async (req: Request, res: Response, next: F
   }
 };
 
-// Apply the permission middleware to all routes
-router.use(homepagePermissionMiddleware);
-
 // Helper to get the HomepageCard model for the current tenant
-const getHomepageCardModel = (req: Request): Model<IHomepageCard> => {
+const getHomepageCardModel = (req: Request): Model<HomepageCard> => {
   if (!req.serverDbConnection) {
     throw new Error('Database connection not found for this tenant.');
   }
   if (!req.serverDbConnection.models.HomepageCard) {
-    req.serverDbConnection.model<IHomepageCard>('HomepageCard', HomepageCardSchema);
+    req.serverDbConnection.model<HomepageCard>('HomepageCard', HomepageCardSchema);
   }
-  return req.serverDbConnection.model<IHomepageCard>('HomepageCard');
+  return req.serverDbConnection.model<HomepageCard>('HomepageCard');
 };
 
 // Helper to get the KnowledgebaseCategory model for the current tenant
-const getKnowledgebaseCategoryModel = (req: Request): Model<IKnowledgebaseCategory> => {
+const getKnowledgebaseCategoryModel = (req: Request): Model<KnowledgebaseCategory> => {
   if (!req.serverDbConnection) {
     throw new Error('Database connection not found for this tenant.');
   }
   if (!req.serverDbConnection.models.KnowledgebaseCategory) {
-    req.serverDbConnection.model<IKnowledgebaseCategory>('KnowledgebaseCategory', KnowledgebaseCategorySchema);
+    req.serverDbConnection.model<KnowledgebaseCategory>('KnowledgebaseCategory', KnowledgebaseCategorySchema);
   }
-  return req.serverDbConnection.model<IKnowledgebaseCategory>('KnowledgebaseCategory');
+  return req.serverDbConnection.model<KnowledgebaseCategory>('KnowledgebaseCategory');
 };
 
 // GET /api/panel/homepage-cards - List all homepage cards for admin
 router.get(
   '/homepage-cards',
   isAuthenticated,
+  homepagePermissionMiddleware,
   
   async (req: Request, res: Response) => {
     try {
@@ -112,6 +110,7 @@ router.get(
 router.post(
   '/homepage-cards',
   isAuthenticated,
+  homepagePermissionMiddleware,
   
   [
     check('title', 'Title is required').not().isEmpty().trim(),
@@ -217,6 +216,7 @@ router.post(
 router.put(
   '/homepage-cards/:cardId',
   isAuthenticated,
+  homepagePermissionMiddleware,
   
   [
     check('title', 'Title must be a non-empty string').optional().notEmpty().trim(),
@@ -321,6 +321,7 @@ router.put(
 router.delete(
   '/homepage-cards/:cardId',
   isAuthenticated,
+  homepagePermissionMiddleware,
   
   async (req: Request, res: Response) => {
     try {
@@ -351,6 +352,7 @@ router.delete(
 router.put(
   '/homepage-cards/reorder',
   isAuthenticated,
+  homepagePermissionMiddleware,
   
   [
     check('cardIds', 'Card IDs must be an array').isArray(),
