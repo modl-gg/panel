@@ -181,7 +181,7 @@ const DraggableRoleCard: React.FC<DraggableRoleCardProps> = ({
               {role.userCount} users
             </Badge>
           )}
-          {role.order !== undefined && role.order === 0 && (
+          {role.name === 'Super Admin' && (
             <Badge variant="default" className="text-xs bg-yellow-500">
               Highest Rank
             </Badge>
