@@ -192,7 +192,7 @@ const DraggableRoleCard: React.FC<DraggableRoleCardProps> = ({
             variant="outline"
             size="sm"
             onClick={() => onEditRole(role)}
-            disabled={role.name === 'Super Admin' || !currentUserRoleObj || getRoleOrder(currentUserRoleObj) >= getRoleOrder(role)}
+            disabled={role.name === 'Super Admin' || !currentUserRoleObj || getRoleOrder(currentUserRoleObj || { order: 999 }) >= getRoleOrder(role)}
           >
             <Edit className="h-3 w-3" />
           </Button>
@@ -200,7 +200,7 @@ const DraggableRoleCard: React.FC<DraggableRoleCardProps> = ({
             variant="outline"
             size="sm"
             onClick={() => onDeleteRole(role)}
-            disabled={role.name === 'Super Admin' || !currentUserRoleObj || getRoleOrder(currentUserRoleObj) >= getRoleOrder(role)}
+            disabled={role.name === 'Super Admin' || !currentUserRoleObj || getRoleOrder(currentUserRoleObj || { order: 999 }) >= getRoleOrder(role)}
             className="text-destructive hover:text-destructive"
           >
             <Trash2 className="h-3 w-3" />
@@ -258,7 +258,22 @@ export default function StaffRolesCard() {
   const permissionCategories = permissionsData?.categories || PERMISSION_CATEGORIES;
   
   // Find current user's role object from roles array
-  const currentUserRoleObj = roles.find(role => role.name === currentUser?.role);
+  const currentUserRoleObj = React.useMemo(() => {
+    let userRole = roles.find(role => role.name === currentUser?.role);
+    
+    // If not found in custom roles, try to find in default roles as fallback
+    if (!userRole && currentUser?.role) {
+      userRole = DEFAULT_ROLES.find(role => role.name === currentUser.role);
+    }
+    
+    return userRole;
+  }, [roles, currentUser?.role]);
+  
+  // Debug logging to see what's happening
+  console.log('Current user role:', currentUser?.role);
+  console.log('Available roles:', roles.map(r => r.name));
+  console.log('Current user role object:', currentUserRoleObj);
+  console.log('Roles loading state:', rolesLoading);
 
   // Update local roles when server data changes
   useEffect(() => {
@@ -347,7 +362,7 @@ export default function StaffRolesCard() {
     }
     
     // Check if user can edit this role based on hierarchy
-    if (!currentUserRoleObj || getRoleOrder(currentUserRoleObj) >= getRoleOrder(role)) {
+    if (!currentUserRoleObj || getRoleOrder(currentUserRoleObj || { order: 999 }) >= getRoleOrder(role)) {
       toast({
         title: "Cannot Edit Role",
         description: "You can only edit roles with lower authority than your own.",
@@ -417,7 +432,7 @@ export default function StaffRolesCard() {
     }
     
     // Check if user can delete this role based on hierarchy
-    if (!currentUserRoleObj || getRoleOrder(currentUserRoleObj) >= getRoleOrder(role)) {
+    if (!currentUserRoleObj || getRoleOrder(currentUserRoleObj || { order: 999 }) >= getRoleOrder(role)) {
       toast({
         title: "Cannot Delete Role",
         description: "You can only delete roles with lower authority than your own.",
