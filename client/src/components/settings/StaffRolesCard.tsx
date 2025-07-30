@@ -199,7 +199,7 @@ const DraggableRoleCard: React.FC<DraggableRoleCardProps> = ({
             variant="outline"
             size="sm"
             onClick={() => onEditRole(role)}
-            disabled={role.name === 'Super Admin' || !currentUserRoleObj || getRoleOrder(currentUserRoleObj || { order: 999 }) >= getRoleOrder(role)}
+            disabled={role.name === 'Super Admin' || getRoleOrder(currentUserRoleObj) >= getRoleOrder(role)}
           >
             <Edit className="h-3 w-3" />
           </Button>
@@ -207,7 +207,7 @@ const DraggableRoleCard: React.FC<DraggableRoleCardProps> = ({
             variant="outline"
             size="sm"
             onClick={() => onDeleteRole(role)}
-            disabled={role.name === 'Super Admin' || !currentUserRoleObj || getRoleOrder(currentUserRoleObj || { order: 999 }) >= getRoleOrder(role)}
+            disabled={role.name === 'Super Admin' || getRoleOrder(currentUserRoleObj) >= getRoleOrder(role)}
             className="text-destructive hover:text-destructive"
           >
             <Trash2 className="h-3 w-3" />
@@ -269,7 +269,16 @@ export default function StaffRolesCard() {
   
   // Find current user's role object from effective roles array
   const currentUserRoleObj = React.useMemo(() => {
-    return effectiveRoles.find(role => role.name === currentUser?.role);
+    const found = effectiveRoles.find(role => role.name === currentUser?.role);
+    // Always return a valid object to prevent undefined errors
+    return found || { 
+      id: 'fallback', 
+      name: currentUser?.role || 'Unknown', 
+      order: 999, 
+      permissions: [], 
+      isDefault: false, 
+      description: 'Fallback role for unknown user role' 
+    };
   }, [effectiveRoles, currentUser?.role]);
   
   // Debug logging to see what's happening
@@ -366,7 +375,7 @@ export default function StaffRolesCard() {
     }
     
     // Check if user can edit this role based on hierarchy
-    if (!currentUserRoleObj || getRoleOrder(currentUserRoleObj || { order: 999 }) >= getRoleOrder(role)) {
+    if (getRoleOrder(currentUserRoleObj) >= getRoleOrder(role)) {
       toast({
         title: "Cannot Edit Role",
         description: "You can only edit roles with lower authority than your own.",
@@ -436,7 +445,7 @@ export default function StaffRolesCard() {
     }
     
     // Check if user can delete this role based on hierarchy
-    if (!currentUserRoleObj || getRoleOrder(currentUserRoleObj || { order: 999 }) >= getRoleOrder(role)) {
+    if (getRoleOrder(currentUserRoleObj) >= getRoleOrder(role)) {
       toast({
         title: "Cannot Delete Role",
         description: "You can only delete roles with lower authority than your own.",
@@ -512,7 +521,7 @@ export default function StaffRolesCard() {
                   key={role.id}
                   role={role}
                   index={index}
-                  currentUserRole={currentUserRoleObj || { id: 'fallback', name: 'Unknown', order: 999, permissions: [], isDefault: false, description: 'Fallback role' }}
+                  currentUserRole={currentUserRoleObj}
                   onEditRole={handleEditRole}
                   onDeleteRole={handleDeleteRole}
                   onMoveRole={moveRole}
