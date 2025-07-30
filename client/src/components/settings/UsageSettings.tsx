@@ -116,15 +116,43 @@ const UsageSettings = () => {
     try {
       setLoading(true);
       
-      // Fetch storage usage
-      const usageResponse = await fetch('/api/panel/storage/usage');
-      const usage = await usageResponse.json();
+      // Fetch storage usage using quota-with-ai endpoint
+      const usageResponse = await fetch('/api/panel/storage/quota-with-ai');
+      const usageData = await usageResponse.json();
+      
+      // Transform the data to match expected format
+      const usage = {
+        totalUsed: usageData.quota?.totalUsed || 0,
+        totalQuota: usageData.quota?.totalLimit || 0,
+        byType: {
+          ticket: 0,
+          evidence: 0,
+          logs: 0,
+          backup: 0,
+          other: 0
+        },
+        quota: usageData.quota,
+        aiQuota: usageData.aiQuota,
+        pricing: {
+          storage: {
+            overagePricePerGB: 0.10,
+            currency: 'USD',
+            period: 'month'
+          },
+          ai: {
+            overagePricePerRequest: 0.01,
+            currency: 'USD',
+            period: 'month'
+          }
+        }
+      };
+      
       setStorageUsage(usage);
 
       // Fetch files
       const filesResponse = await fetch('/api/panel/storage/files');
       const filesData = await filesResponse.json();
-      setFiles(filesData);
+      setFiles(filesData.files || []);
     } catch (error) {
       console.error('Error fetching storage data:', error);
       toast({
@@ -139,8 +167,22 @@ const UsageSettings = () => {
 
   const fetchStorageSettings = async () => {
     try {
-      const response = await fetch('/api/panel/storage/settings');
-      const settings = await response.json();
+      // Use quota endpoint to get current settings
+      const response = await fetch('/api/panel/storage/quota');
+      const data = await response.json();
+      
+      // Transform to expected settings format
+      const settings = {
+        overageLimit: data.quota?.overageLimit || 0,
+        overageEnabled: data.quota?.isPaid || false,
+        isPaid: data.quota?.isPaid || false,
+        limits: {
+          freeLimit: data.quota?.baseLimit || 0,
+          paidLimit: data.quota?.totalLimit || 0,
+          defaultOverageLimit: data.quota?.overageLimit || 0
+        }
+      };
+      
       setStorageSettings(settings);
       setNewOverageLimit(settings.overageLimit);
     } catch (error) {
@@ -152,28 +194,15 @@ const UsageSettings = () => {
     try {
       setSettingsLoading(true);
       
-      const { csrfFetch } = await import('@/utils/csrf');
-      const response = await csrfFetch('/api/panel/storage/settings', {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          overageLimit: newOverageLimit,
-          overageEnabled: true,
-        }),
-      });
-      
-      if (!response.ok) {
-        throw new Error('Failed to update settings');
-      }
-      
-      await fetchStorageSettings();
-      await fetchStorageData(); // Refresh usage data
-      setShowStorageSettings(false);
-      
+      // For now, show a message that storage settings updates are not implemented
+      // since there's no PUT endpoint for storage settings in the current implementation
       toast({
-        title: "Success",
-        description: "Storage settings updated successfully.",
+        title: "Feature Not Available",
+        description: "Storage settings updates are not currently implemented. Please contact support to modify your storage limits.",
+        variant: "destructive",
       });
+      
+      setShowStorageSettings(false);
     } catch (error) {
       console.error('Error updating storage settings:', error);
       toast({

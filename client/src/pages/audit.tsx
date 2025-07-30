@@ -493,36 +493,45 @@ const StaffPerformanceModal = () => {
               <CardTitle className="text-base">Staff Activity Details</CardTitle>
             </CardHeader>
             <CardContent>
-              <div className="overflow-x-auto">
-                <table className="w-full text-sm">
-                  <thead>
-                    <tr className="border-b">
-                      <th className="text-left p-2">Username</th>
-                      <th className="text-left p-2">Role</th>
-                      <th className="text-left p-2">Total Actions</th>
-                      <th className="text-left p-2">Ticket Responses</th>
-                      <th className="text-left p-2">Punishments</th>
-                      <th className="text-left p-2">Avg Response</th>
-                      <th className="text-left p-2">Last Active</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {staffData.map((staff: StaffMember) => (
-                      <tr key={staff.id} className="border-b">
-                        <td className="p-2 font-medium">{staff.username}</td>
-                        <td className="p-2">
-                          <Badge variant="outline">{staff.role}</Badge>
-                        </td>
-                        <td className="p-2">{staff.totalActions}</td>
-                        <td className="p-2">{staff.ticketResponses}</td>
-                        <td className="p-2">{staff.punishmentsIssued}</td>
-                        <td className="p-2">{staff.avgResponseTime}m</td>
-                        <td className="p-2">{formatRelativeTime(new Date(staff.lastActive))}</td>
+              {!staffData || staffData.length === 0 ? (
+                <div className="flex items-center justify-center h-[200px] text-muted-foreground">
+                  <div className="text-center">
+                    <Shield className="h-8 w-8 mx-auto mb-2 opacity-50" />
+                    <p className="text-sm">No staff activity data available</p>
+                  </div>
+                </div>
+              ) : (
+                <div className="overflow-x-auto">
+                  <table className="w-full text-sm">
+                    <thead>
+                      <tr className="border-b">
+                        <th className="text-left p-2">Username</th>
+                        <th className="text-left p-2">Role</th>
+                        <th className="text-left p-2">Total Actions</th>
+                        <th className="text-left p-2">Ticket Responses</th>
+                        <th className="text-left p-2">Punishments</th>
+                        <th className="text-left p-2">Avg Response</th>
+                        <th className="text-left p-2">Last Active</th>
                       </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
+                    </thead>
+                    <tbody>
+                      {staffData.map((staff: StaffMember) => (
+                        <tr key={staff.id} className="border-b">
+                          <td className="p-2 font-medium">{staff.username}</td>
+                          <td className="p-2">
+                            <Badge variant="outline">{staff.role}</Badge>
+                          </td>
+                          <td className="p-2">{staff.totalActions}</td>
+                          <td className="p-2">{staff.ticketResponses}</td>
+                          <td className="p-2">{staff.punishmentsIssued}</td>
+                          <td className="p-2">{staff.avgResponseTime}m</td>
+                          <td className="p-2">{formatRelativeTime(new Date(staff.lastActive))}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              )}
             </CardContent>
           </Card>
             </>
@@ -2134,25 +2143,34 @@ const AuditLog = () => {
                 <CardTitle className="text-base">Staff Activity Details</CardTitle>
               </CardHeader>
               <CardContent>
-                <div className="overflow-x-auto">
-                  <table className="w-full text-sm">
-                    <thead>
-                      <tr className="border-b">
-                        <th className="text-left p-2">Username</th>
-                        <th className="text-left p-2">Role</th>
-                        <th className="text-left p-2">Ticket Responses</th>
-                        <th className="text-left p-2">Punishments Issued</th>
-                        <th className="text-left p-2">Notes Added</th>
-                        <th className="text-left p-2">Total Actions</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {staffPerformanceData.map((staff: any) => (
-                        <StaffDetailRow key={staff.id} staff={staff} />
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
+                {!staffPerformanceData || staffPerformanceData.length === 0 ? (
+                  <div className="flex items-center justify-center h-[200px] text-muted-foreground">
+                    <div className="text-center">
+                      <Shield className="h-8 w-8 mx-auto mb-2 opacity-50" />
+                      <p className="text-sm">No staff activity data available</p>
+                    </div>
+                  </div>
+                ) : (
+                  <div className="overflow-x-auto">
+                    <table className="w-full text-sm">
+                      <thead>
+                        <tr className="border-b">
+                          <th className="text-left p-2">Username</th>
+                          <th className="text-left p-2">Role</th>
+                          <th className="text-left p-2">Ticket Responses</th>
+                          <th className="text-left p-2">Punishments Issued</th>
+                          <th className="text-left p-2">Notes Added</th>
+                          <th className="text-left p-2">Total Actions</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {staffPerformanceData.map((staff: any) => (
+                          <StaffDetailRow key={staff.id} staff={staff} />
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                )}
               </CardContent>
             </Card>
           </TabsContent>
@@ -2223,18 +2241,27 @@ const AuditLog = () => {
                 <CardTitle className="text-base">Top Punishers (Staff)</CardTitle>
               </CardHeader>
               <CardContent>
-                <div className="space-y-2">
-                  {(punishmentAnalytics?.topPunishers || []).map((staff: any, index: number) => (
-                    <div key={index} className="flex items-center justify-between p-2 border rounded">
-                      <div className="flex items-center gap-2">
-                        <Shield className="h-4 w-4 text-blue-600" />
-                        <span className="font-medium">{staff.staffName}</span>
-                        <Badge variant="outline" className="text-xs">{staff.role}</Badge>
-                      </div>
-                      <Badge variant="secondary">{staff.punishmentCount}</Badge>
+                {!punishmentAnalytics?.topPunishers || punishmentAnalytics.topPunishers.length === 0 ? (
+                  <div className="flex items-center justify-center h-[200px] text-muted-foreground">
+                    <div className="text-center">
+                      <Shield className="h-8 w-8 mx-auto mb-2 opacity-50" />
+                      <p className="text-sm">No staff punishment data available</p>
                     </div>
-                  ))}
-                </div>
+                  </div>
+                ) : (
+                  <div className="space-y-2">
+                    {punishmentAnalytics.topPunishers.map((staff: any, index: number) => (
+                      <div key={index} className="flex items-center justify-between p-2 border rounded">
+                        <div className="flex items-center gap-2">
+                          <Shield className="h-4 w-4 text-blue-600" />
+                          <span className="font-medium">{staff.staffName}</span>
+                          <Badge variant="outline" className="text-xs">{staff.role}</Badge>
+                        </div>
+                        <Badge variant="secondary">{staff.punishmentCount}</Badge>
+                      </div>
+                    ))}
+                  </div>
+                )}
               </CardContent>
             </Card>
           </TabsContent>
