@@ -72,11 +72,6 @@ export class AIModerationService {
         // No punishment types found, skipping analysis
         return null;
       }
-      
-      
-      punishmentTypes.forEach(pt => {
-        console.log(`  - ID: ${pt.id}, Name: ${pt.name}, Description: ${pt.aiDescription}`);
-      });
 
       // Get system prompt for strictness level with punishment types injected
       const systemPrompt = await this.systemPromptsService.getPromptForStrictnessLevel(
@@ -226,10 +221,7 @@ export class AIModerationService {
         console.warn('[AI Moderation] No AI punishment configs found in settings');
         return [];
       }
-
-      console.log(`[AI Moderation] AI punishment configs:`, JSON.stringify(aiPunishmentConfigs, null, 2));
       
-
       // Map AI punishment configs to actual punishment types
       const enabledAIPunishmentTypes: AIPunishmentType[] = [];
       
@@ -429,7 +421,6 @@ export class AIModerationService {
         );
         
         if (!isPremium) {
-          console.log(`[AI Moderation] Skipping AI analysis for ticket ${ticketId} - Premium subscription required`);
           return;
         }
       }

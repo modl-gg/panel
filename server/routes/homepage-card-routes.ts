@@ -76,8 +76,6 @@ router.get(
         .sort({ ordinal: 1 })
         .populate('category', 'name slug description')
         .lean();
-      
-      console.log('[Homepage Cards] Cards fetched:', cards.length);
 
       const formattedCards = cards.map(card => ({
         id: (card._id as any).toString(),
@@ -94,7 +92,6 @@ router.get(
         category: (card as any).category
       }));
 
-      console.log('[Homepage Cards] Formatted cards:', formattedCards.length);
       res.status(200).json(formattedCards);
     } catch (error: any) {
       console.error('Error fetching homepage cards:', error);

@@ -801,8 +801,6 @@ router.post('/tickets/:id/submit', async (req: Request, res: Response) => {
         ticket.data = new Map();
       }
       
-      // Debug: Log the form data to see what's being received
-      console.log('Form data received:', formData);
       // Store form data
       Object.entries(formData).forEach(([key, value]) => {
         ticket.data.set(key, value);
@@ -815,9 +813,6 @@ router.post('/tickets/:id/submit', async (req: Request, res: Response) => {
       
       // Create initial message content from form data
       let contentString = '';
-      
-      // Debug: Log the form data processing
-      console.log('Processing form data for message content:', Object.keys(formData));
       
       // Get ticket form configuration to get field labels
       let ticketForms = null;
@@ -835,18 +830,13 @@ router.post('/tickets/:id/submit', async (req: Request, res: Response) => {
         });
       }
       
-      // Debug: Log the field labels mapping
-      console.log('Field labels mapping:', fieldLabels);
-      
       Object.entries(formData).forEach(([key, value]) => {
         // Skip email field from message content as it's used for notifications only
         if (key === 'email' || key === 'contact_email') {
-          console.log(`Skipping email field: ${key} = ${value}`);
           return;
         }
         
         if (value && value.toString().trim()) {
-          console.log(`Adding field to content: ${key} = ${value}`);
           // Special handling for chat reports
           if (ticket.type === 'chat' && key === 'chatlog' && ticket.chatMessages && ticket.chatMessages.length > 0) {
             // Format chat messages with timestamps and player links
@@ -892,26 +882,19 @@ router.post('/tickets/:id/submit', async (req: Request, res: Response) => {
               }
             }
             
-            console.log(`Field ${key} mapped to label: "${fieldLabel}"`);
             contentString += `**${fieldLabel}:**\n${value}\n\n`;
           }
         }
       });
       
-      // Debug: Log the final content string
-      console.log('Final content string:', contentString);
-      
       // Add initial message if there's content
       // For Unfinished tickets, we want to create/replace the initial user message
       if (contentString.trim()) {
-        console.log('Existing replies count:', ticket.replies?.length || 0);
-        
         // Check if the first message is from the user and replace it, or add new message
         let shouldAddMessage = true;
         if (ticket.replies && ticket.replies.length > 0) {
           const firstReply = ticket.replies[0];
           if (firstReply.senderType === 'user' || firstReply.type === 'user') {
-            console.log('Replacing existing user message');
             ticket.replies[0].content = contentString.trim();
             ticket.replies[0].timestamp = new Date().toISOString();
             ticket.replies[0].created = new Date();
@@ -937,18 +920,9 @@ router.post('/tickets/:id/submit', async (req: Request, res: Response) => {
           ticket.replies = [];
         }
         ticket.replies.push(initialMessage);
-        
-        // Debug: Log what's being saved to the database
-        console.log('Saving initial message to database:');
-        console.log('- Content length:', initialMessage.content.length);
-        console.log('- Content preview (first 200 chars):', initialMessage.content.substring(0, 200));
-        console.log('- Content full:', JSON.stringify(initialMessage.content));
         }
       }
     }
-    
-    // Debug: Log ticket state before saving
-    console.log('Ticket replies count before save:', ticket.replies?.length || 0);
     
     // Change status from Unfinished to Open
     ticket.status = 'Open';
@@ -959,9 +933,6 @@ router.post('/tickets/:id/submit', async (req: Request, res: Response) => {
     const savedTicket = await Ticket.findById(ticket._id);
     if (savedTicket && savedTicket.replies && savedTicket.replies.length > 0) {
       const lastReply = savedTicket.replies[savedTicket.replies.length - 1];
-      console.log('Verified saved content in database:');
-      console.log('- Saved content length:', lastReply.content?.length || 0);
-      console.log('- Saved content preview:', lastReply.content?.substring(0, 200) || 'NO CONTENT');
     }
     
     res.json({

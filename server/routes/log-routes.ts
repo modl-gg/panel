@@ -12,7 +12,6 @@ export async function createSystemLog(
   if (!dbConnection) {
     console.error('createSystemLog called without a dbConnection. Log will not be saved.');
     const serverIdMessage = serverName || 'Unknown Server';
-    console.log(`LOG_ATTEMPT (${serverIdMessage} - NO DB): ${description} [${level}, ${source}]`);
     return null;
   }
   try {
@@ -25,7 +24,6 @@ export async function createSystemLog(
     });
     await logEntry.save();
     const serverIdMessage = serverName || dbConnection.name;
-    console.log(`LOG (${serverIdMessage}): ${description} [${level}, ${source}]`);
     return logEntry;
   } catch (error) {
     const serverIdMessage = serverName || (dbConnection ? dbConnection.name : 'Unknown Server');

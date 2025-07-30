@@ -123,9 +123,6 @@ const DraggableRoleCard: React.FC<DraggableRoleCardProps> = ({
   const roleOrder = getRoleOrder(role);
   // User can drag roles that have higher order number (lower authority) and not super admin
   const canDragRole = role.name !== 'Super Admin' && currentUserOrder < roleOrder;
-  
-  // Debug logging for drag permissions
-  console.log(`Role: ${role.name}, currentUserOrder: ${currentUserOrder}, roleOrder: ${roleOrder}, canDragRole: ${canDragRole}`);
 
   const [{ isDragging }, drag, preview] = useDrag({
     type: 'role',
@@ -201,7 +198,7 @@ const DraggableRoleCard: React.FC<DraggableRoleCardProps> = ({
             variant="outline"
             size="sm"
             onClick={() => onEditRole(role)}
-            disabled={role.name === 'Super Admin' || (roleOrderMap.get(currentUser.role || '') ?? 999) >= getRoleOrder(role)}
+            disabled={role.name === 'Super Admin' || (roleOrderMap.get(currentUserRole || '') ?? 999) >= getRoleOrder(role)}
           >
             <Edit className="h-3 w-3" />
           </Button>
@@ -209,7 +206,7 @@ const DraggableRoleCard: React.FC<DraggableRoleCardProps> = ({
             variant="outline"
             size="sm"
             onClick={() => onDeleteRole(role)}
-            disabled={role.name === 'Super Admin' || (roleOrderMap.get(currentUser.role || '') ?? 999) >= getRoleOrder(role)}
+            disabled={role.name === 'Super Admin' || (roleOrderMap.get(currentUserRole || '') ?? 999) >= getRoleOrder(role)}
             className="text-destructive hover:text-destructive"
           >
             <Trash2 className="h-3 w-3" />
@@ -277,18 +274,11 @@ export default function StaffRolesCard() {
     });
   }
   
-  // Debug logging to see what's happening
-  console.log('Current user object:', currentUser);
-  console.log('Current user role:', currentUser.role);
-  console.log('Role order map:', Array.from(roleOrderMap.entries()));
-  
   // Safety check for currentUser
   if (!currentUser) {
     console.warn('currentUser is undefined - this should not happen');
     return <div>Loading user information...</div>;
   }
-  
-  console.log('Current user order:', roleOrderMap.get(currentUser.role || '') ?? 999);
 
   // Update local roles when server data changes
   useEffect(() => {

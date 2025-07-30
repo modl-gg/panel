@@ -744,18 +744,58 @@ const AppealFormFieldDropZone = ({ sectionId, moveFieldBetweenSections }: Appeal
 
 const Settings = () => {
   const { } = useSidebar();
-  const [, navigateWouter] = useLocation();
+  const [location, navigateWouter] = useLocation();
   const { user, logout } = useAuth();
   const { canAccessSettingsTab, getAccessibleSettingsTabs } = usePermissions();
   const mainContentClass = "ml-[32px] pl-8";
   const [activeTab, setActiveTab] = useState('account');
+  const [activeSection, setActiveSection] = useState<string>('');
 
+  // Update URL when tab or section changes
+  const updateURL = (tab: string, section?: string) => {
+    const url = new URL(window.location.href);
+    url.searchParams.set('tab', tab);
+    if (section) {
+      url.searchParams.set('section', section);
+    } else {
+      url.searchParams.delete('section');
+    }
+    window.history.replaceState({}, '', url.toString());
+  };
+
+  // Initialize from URL parameters
   useEffect(() => {
     const urlParams = new URLSearchParams(window.location.search);
+    const urlTab = urlParams.get('tab');
+    const urlSection = urlParams.get('section');
+    
+    // Handle legacy session_id parameter
     if (urlParams.has('session_id') && user?.role === 'Super Admin') {
-      setActiveTab('general');
+      const newTab = 'general';
+      setActiveTab(newTab);
+      updateURL(newTab);
+      return;
     }
-  }, [user]);
+    
+    // If URL has tab parameter, validate and set it
+    if (urlTab && user) {
+      // Check if user can access the requested tab
+      if (canAccessSettingsTab(urlTab as any)) {
+        setActiveTab(urlTab);
+        // Only set section if the tab supports sections (currently only 'staff')
+        if (urlSection && urlTab === 'staff') {
+          setActiveSection(urlSection);
+        } else {
+          setActiveSection('');
+        }
+      } else {
+        // User doesn't have permission, redirect to account
+        setActiveTab('account');
+        setActiveSection('');
+        updateURL('account');
+      }
+    }
+  }, [user, canAccessSettingsTab]);
 
   // Redirect users to accessible tabs if they don't have permission for current tab
   useEffect(() => {
@@ -764,8 +804,26 @@ const Settings = () => {
     // Check if user can access the current tab
     if (!canAccessSettingsTab(activeTab as any)) {
       setActiveTab('account'); // Redirect to account tab which everyone can access
+      setActiveSection('');
+      updateURL('account');
     }
   }, [user, activeTab, canAccessSettingsTab]);
+  
+  // Custom tab change handler that updates URL
+  const handleTabChange = (tabValue: string) => {
+    setActiveTab(tabValue);
+    setActiveSection(''); // Reset section when changing tabs
+    updateURL(tabValue);
+  };
+  
+  // Custom section change handler that updates URL
+  const handleSectionChange = (sectionValue: string) => {
+    setActiveSection(sectionValue);
+    // Only update URL with section for tabs that support sections
+    if (activeTab === 'staff') {
+      updateURL(activeTab, sectionValue);
+    }
+  };
   
   // Auto-save state
   const [lastSaved, setLastSaved] = useState<Date | null>(null);
@@ -2613,7 +2671,7 @@ const Settings = () => {
         </div>
 
         <Card className="overflow-visible">
-          <Tabs value={activeTab} onValueChange={setActiveTab}>
+          <Tabs value={activeTab} onValueChange={handleTabChange}>
             <TabsList className="w-full h-full justify-start rounded-none bg-transparent border-b border-border overflow-x-auto mx-1">
               <TabsTrigger
                 value="account"
@@ -2773,7 +2831,7 @@ const Settings = () => {
 
             <TabsContent value="staff" className="p-6">
               {canAccessSettingsTab('staff') ? (
-                <Tabs defaultValue="staff-management" className="w-full">
+                <Tabs value={activeSection || "staff-management"} onValueChange={handleSectionChange} className="w-full">
                   <TabsList className="grid w-full grid-cols-2">
                     <TabsTrigger value="staff-management" className="flex items-center gap-2">
                       <UserIcon className="h-4 w-4" />

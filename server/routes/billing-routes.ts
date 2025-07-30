@@ -360,11 +360,6 @@ router.post('/usage-billing-settings', isAuthenticated, async (req, res) => {
       }
     );
 
-    console.log(`[USAGE BILLING] Database update result for ${server.customDomain}:`, {
-      updated: !!updateResult,
-      usage_billing_enabled: updateResult?.usage_billing_enabled
-    });
-
     // If enabling usage billing, we could set up Stripe metering here
     // For now, we'll just track the setting in our database
     
@@ -473,8 +468,6 @@ router.post('/resubscribe', isAuthenticated, async (req, res) => {
         if (stripeError.code === 'resource_missing') {
           // Subscription was deleted, create a new one
           
-        } else {
-          console.log(`[RESUBSCRIBE] Stripe error retrieving subscription, creating new one:`, stripeError.message);
         }
         
         // Create new subscription
@@ -663,15 +656,6 @@ webhookRouter.post('/stripe-webhooks', express.raw({ type: 'application/json' })
 
         const server = await Server.findOne({ stripe_customer_id: subscription.customer });
         if (server) {
-          console.log(`[WEBHOOK] Subscription.created details for ${server.customDomain}:`, {
-            id: subscription.id,
-            status: subscription.status,
-            current_period_start: subscription.current_period_start,
-            current_period_end: subscription.current_period_end,
-            current_period_start_type: typeof subscription.current_period_start,
-            current_period_end_type: typeof subscription.current_period_end
-          });
-          
           let periodStartDate = null;
           let periodEndDate = null;
           

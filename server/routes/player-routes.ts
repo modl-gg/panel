@@ -1464,14 +1464,6 @@ router.get('/punishment-lookup/:punishmentId', async (req: Request<{ punishmentI
       playerUsername = player.usernames[player.usernames.length - 1].username;
     }
     
-    console.log('Punishment lookup result:', {
-      playerUuid: player.minecraftUuid,
-      directUsername: player.username,
-      usernamesArray: player.usernames?.length || 0,
-      finalUsername: playerUsername,
-      punishmentId: punishment.id
-    });
-    
     // Return simplified punishment data with player info
     res.json({
       playerUuid: player.minecraftUuid,

@@ -149,12 +149,10 @@ router.post('/', async (req: Request, res: Response) => {
     if (existingHostname) {
       // Use existing hostname
       cloudflareHostname = existingHostname;
-      console.log(`Using existing Cloudflare hostname for ${customDomain}`);
     } else {
       // Create new custom hostname in Cloudflare
       try {
         cloudflareHostname = await createCustomHostname(customDomain, server._id.toString());
-        console.log(`Created new Cloudflare hostname for ${customDomain}`);
       } catch (error: any) {
         console.error('Cloudflare API error:', error);
         return res.status(500).json({ 
@@ -289,7 +287,6 @@ router.delete('/', async (req: Request, res: Response) => {
     // Call Cloudflare API to delete the custom hostname
     try {
       await deleteCustomHostname(server.customDomain_override);
-      console.log(`Deleted Cloudflare hostname for ${server.customDomain_override}`);
     } catch (error: any) {
       console.warn('Failed to delete Cloudflare hostname:', error.message);
       // Continue with database cleanup even if Cloudflare deletion fails
