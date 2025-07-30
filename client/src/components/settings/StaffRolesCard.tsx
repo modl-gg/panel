@@ -86,22 +86,16 @@ const DEFAULT_ROLES: StaffRole[] = [
   },
 ];
 
-// Role hierarchy (higher number = higher authority)
-const getRoleRank = (roleName: string): number => {
-  const roleHierarchy: Record<string, number> = {
-    'Helper': 1,
-    'Moderator': 2,
-    'Admin': 3,
-    'Super Admin': 4
-  };
-  return roleHierarchy[roleName] || 0;
+// Get role order from the role object (lower order = higher authority)
+const getRoleOrder = (role: StaffRole): number => {
+  return role.order ?? 999; // Default to high number if order is not set
 };
 
 // Draggable Role Card Component
 interface DraggableRoleCardProps {
   role: StaffRole;
   index: number;
-  currentUserRole: string;
+  currentUserRole: StaffRole | undefined;
   onEditRole: (role: StaffRole) => void;
   onDeleteRole: (role: StaffRole) => void;
   onMoveRole: (dragIndex: number, hoverIndex: number) => void;
@@ -119,9 +113,10 @@ const DraggableRoleCard: React.FC<DraggableRoleCardProps> = ({
   getPermissionsByCategory,
   hasPermission
 }) => {
-  const currentUserRank = getRoleRank(currentUserRole);
-  const roleRank = getRoleRank(role.name);
-  const canDragRole = currentUserRank > roleRank && role.id !== 'super-admin';
+  const currentUserOrder = currentUserRole ? getRoleOrder(currentUserRole) : 999;
+  const roleOrder = getRoleOrder(role);
+  // User can drag roles that have higher order number (lower authority) and not super admin
+  const canDragRole = currentUserOrder < roleOrder && role.order !== 0;
 
   const [{ isDragging }, drag, preview] = useDrag({
     type: 'role',
@@ -138,14 +133,14 @@ const DraggableRoleCard: React.FC<DraggableRoleCardProps> = ({
       if (draggedItem.index === index) return;
       
       // Don't allow dropping on Super Admin or moving Super Admin
-      if (role.id === 'super-admin' || draggedItem.role.id === 'super-admin') return;
+      if (role.order === 0 || draggedItem.role.order === 0) return;
       
       // Check if current user can move the dragged role to this position
-      const draggedRoleRank = getRoleRank(draggedItem.role.name);
-      const targetRoleRank = getRoleRank(role.name);
+      const draggedRoleOrder = getRoleOrder(draggedItem.role);
+      const targetRoleOrder = getRoleOrder(role);
       
-      // User must have higher rank than both the dragged role and target position
-      if (currentUserRank <= draggedRoleRank || currentUserRank <= targetRoleRank) return;
+      // User must have lower order (higher authority) than both the dragged role and target position
+      if (currentUserOrder >= draggedRoleOrder || currentUserOrder >= targetRoleOrder) return;
       
       onMoveRole(draggedItem.index, index);
       draggedItem.index = index;
@@ -186,7 +181,7 @@ const DraggableRoleCard: React.FC<DraggableRoleCardProps> = ({
               {role.userCount} users
             </Badge>
           )}
-          {role.id === 'super-admin' && (
+          {role.order === 0 && (
             <Badge variant="default" className="text-xs bg-yellow-500">
               Highest Rank
             </Badge>
@@ -197,7 +192,7 @@ const DraggableRoleCard: React.FC<DraggableRoleCardProps> = ({
             variant="outline"
             size="sm"
             onClick={() => onEditRole(role)}
-            disabled={role.id === 'super-admin'}
+            disabled={role.order === 0}
           >
             <Edit className="h-3 w-3" />
           </Button>
@@ -205,7 +200,7 @@ const DraggableRoleCard: React.FC<DraggableRoleCardProps> = ({
             variant="outline"
             size="sm"
             onClick={() => onDeleteRole(role)}
-            disabled={role.id === 'super-admin'}
+            disabled={role.order === 0}
             className="text-destructive hover:text-destructive"
           >
             <Trash2 className="h-3 w-3" />
@@ -261,15 +256,18 @@ export default function StaffRolesCard() {
   const roles = rolesData?.roles || [];
   const permissions = permissionsData?.permissions || [];
   const permissionCategories = permissionsData?.categories || PERMISSION_CATEGORIES;
+  
+  // Find current user's role object from roles array
+  const currentUserRoleObj = roles.find(role => role.name === currentUser?.role);
 
   // Update local roles when server data changes
   useEffect(() => {
     if (roles.length > 0) {
-      // Sort roles with Super Admin always first, then by hierarchy
+      // Sort roles by order (lower order = higher authority)
       const sortedRoles = [...roles].sort((a, b) => {
-        if (a.id === 'super-admin') return -1;
-        if (b.id === 'super-admin') return 1;
-        return getRoleRank(b.name) - getRoleRank(a.name); // Higher rank first
+        const aOrder = a.order ?? 999;
+        const bOrder = b.order ?? 999;
+        return aOrder - bOrder;
       });
       setLocalRoles(sortedRoles);
     }
@@ -339,10 +337,10 @@ export default function StaffRolesCard() {
   };
 
   const handleEditRole = (role: StaffRole) => {
-    if (role.id === 'super-admin') {
+    if (role.order === 0) {
       toast({
         title: "Cannot Edit Super Admin Role",
-        description: "Super Admin role cannot be modified.",
+        description: "The highest authority role cannot be modified.",
         variant: "destructive"
       });
       return;
@@ -399,10 +397,10 @@ export default function StaffRolesCard() {
   };
 
   const handleDeleteRole = (role: StaffRole) => {
-    if (role.id === 'super-admin') {
+    if (role.order === 0) {
       toast({
         title: "Cannot Delete Super Admin Role",
-        description: "Super Admin role cannot be deleted.",
+        description: "The highest authority role cannot be deleted.",
         variant: "destructive"
       });
       return;
@@ -475,7 +473,7 @@ export default function StaffRolesCard() {
                   key={role.id}
                   role={role}
                   index={index}
-                  currentUserRole={currentUser?.role || ''}
+                  currentUserRole={currentUserRoleObj}
                   onEditRole={handleEditRole}
                   onDeleteRole={handleDeleteRole}
                   onMoveRole={moveRole}
