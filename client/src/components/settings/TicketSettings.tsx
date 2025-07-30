@@ -16,6 +16,7 @@ import { Separator } from '@modl-gg/shared-web/components/ui/separator';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@modl-gg/shared-web/components/ui/dialog';
 import { QuickResponseAction, QuickResponseCategory, QuickResponsesConfiguration, defaultQuickResponsesConfig } from '@/types/quickResponses';
 import { useBillingStatus } from '@/hooks/use-data';
+import { useAuth } from '@/hooks/use-auth';
 
 // Import the types we need for the form builder
 interface TicketFormField {
@@ -82,6 +83,15 @@ interface TicketSettingsProps {
   aiModerationSettings: any;
   setAiModerationSettings: (value: any) => void;
   punishmentTypesState: any[];
+
+  // Optional callbacks that may be passed from parent
+  onEditSection?: (section: TicketFormSection) => void;
+  onDeleteSection?: (sectionId: string) => void;
+  onEditField?: (field: TicketFormField) => void;
+  onDeleteField?: (fieldId: string) => void;
+  onAddField?: () => void;
+  moveField?: (dragIndex: number, hoverIndex: number, sectionId: string) => void;
+  moveFieldBetweenSections?: (fieldId: string, fromSectionId: string, toSectionId: string, targetIndex?: number) => void;
 }
 
 const TicketSettings = ({
@@ -105,8 +115,19 @@ const TicketSettings = ({
   setSelectedTicketFormType,
   aiModerationSettings,
   setAiModerationSettings,
-  punishmentTypesState
+  punishmentTypesState,
+  // Optional props with defaults
+  onEditSection,
+  onDeleteSection,
+  onEditField,
+  onDeleteField,
+  onAddField,
+  moveField,
+  moveFieldBetweenSections
 }: TicketSettingsProps) => {
+  // User authentication and role information
+  const { user: currentUser } = useAuth();
+  
   // Billing status for premium gating
   const { data: billingStatus } = useBillingStatus();
   
@@ -360,8 +381,8 @@ const TicketSettings = ({
     });
   }, [selectedTicketFormType, setTicketForms]);
 
-  // Move field between sections
-  const moveFieldBetweenSections = React.useCallback((fieldId: string, fromSectionId: string, toSectionId: string, targetIndex?: number) => {
+  // Create default implementations for optional callbacks
+  const defaultMoveFieldBetweenSections = React.useCallback((fieldId: string, fromSectionId: string, toSectionId: string, targetIndex?: number) => {
     setTicketForms(prev => {
       const allFields = [...(prev[selectedTicketFormType]?.fields || [])];
       
@@ -401,6 +422,9 @@ const TicketSettings = ({
       };
     });
   }, [selectedTicketFormType, setTicketForms]);
+
+  // Use provided callbacks or defaults
+  const handleMoveFieldBetweenSections = moveFieldBetweenSections || defaultMoveFieldBetweenSections;
 
   // Move action within a category
   const moveAction = React.useCallback((categoryId: string, dragIndex: number, hoverIndex: number) => {
@@ -861,7 +885,7 @@ const TicketSettings = ({
                                 setIsAddTicketFormFieldDialogOpen(true);
                               }}
                               moveField={moveFieldInForm}
-                              moveFieldBetweenSections={moveFieldBetweenSections}
+                              moveFieldBetweenSections={handleMoveFieldBetweenSections}
                             />
                           ))}
 
@@ -2171,7 +2195,7 @@ const DraggableSectionCard = ({
             index={fieldIndex}
             sectionId={section.id}
             moveField={moveField}
-            moveFieldBetweenSections={moveFieldBetweenSections}
+            moveFieldBetweenSections={handleMoveFieldBetweenSections}
             onEditField={onEditField}
             onDeleteField={onDeleteField}
           />
@@ -2180,7 +2204,7 @@ const DraggableSectionCard = ({
         {/* Drop zone for adding fields from other sections */}
         <FieldDropZone
           sectionId={section.id}
-          moveFieldBetweenSections={moveFieldBetweenSections}
+          moveFieldBetweenSections={handleMoveFieldBetweenSections}
         />
         
         <Button
