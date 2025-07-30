@@ -28,8 +28,8 @@ export interface AIUsageRecord {
  */
 export async function getStorageSettings(serverName: string): Promise<StorageSettings> {
   try {
-    const { getTenantConnection } = await import('../db/connectionManager');
-    const connection = await getTenantConnection(serverName);
+    const { connectToServerDb } = await import('../db/connectionManager');
+    const connection = await connectToServerDb(serverName);
     
     if (!connection) {
       throw new Error('Database connection not available');
@@ -92,8 +92,8 @@ export async function updateStorageSettings(
   updates: Partial<Pick<StorageSettings, 'overageLimit' | 'overageEnabled'>>
 ): Promise<StorageSettings> {
   try {
-    const { getTenantConnection } = await import('../db/connectionManager');
-    const connection = await getTenantConnection(serverName);
+    const { connectToServerDb } = await import('../db/connectionManager');
+    const connection = await connectToServerDb(serverName);
     
     if (!connection) {
       throw new Error('Database connection not available');
@@ -153,8 +153,8 @@ export async function logAIRequest(
   cost: number = 0.01
 ): Promise<void> {
   try {
-    const { getTenantConnection } = await import('../db/connectionManager');
-    const connection = await getTenantConnection(serverName);
+    const { connectToServerDb } = await import('../db/connectionManager');
+    const connection = await connectToServerDb(serverName);
     
     if (!connection) {
       console.warn('Database connection not available for AI usage logging');
@@ -224,8 +224,8 @@ export async function getAIUsage(
   endDate?: string
 ): Promise<AIUsageRecord[]> {
   try {
-    const { getTenantConnection } = await import('../db/connectionManager');
-    const connection = await getTenantConnection(serverName);
+    const { connectToServerDb } = await import('../db/connectionManager');
+    const connection = await connectToServerDb(serverName);
     
     if (!connection) {
       return [];

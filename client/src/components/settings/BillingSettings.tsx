@@ -536,8 +536,7 @@ const BillingSettings = () => {
                       <AlertDialogHeader>
                         <AlertDialogTitle>Reactivate Premium Subscription</AlertDialogTitle>
                         <AlertDialogDescription>
-                          Are you sure you want to reactivate your Premium subscription? You'll be charged $20/month starting immediately and regain access to all premium features.
-                          <br /><br />
+                          Reactiviting Premium Subscription will bill you automatically when your current billing period ends.
                           Your subscription will automatically renew each month unless cancelled.
                         </AlertDialogDescription>
                       </AlertDialogHeader>

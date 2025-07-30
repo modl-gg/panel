@@ -155,7 +155,6 @@ export function RecentPunishmentsSection({ punishments, loading }: RecentPunishm
                   >
                     <div className="flex justify-between items-start mb-2">
                       <div className="flex items-center gap-2">
-                        <span className="text-lg">{punishmentIcons[punishment.type]}</span>
                         <div>
                           <div className="flex items-center gap-2">
                             <Badge 
@@ -196,7 +195,7 @@ export function RecentPunishmentsSection({ punishments, loading }: RecentPunishm
                         {punishment.playerName}
                       </Button>
                       <span className="text-sm text-muted-foreground">
-                        • {punishment.type} by {punishment.issuedBy}
+                        {punishment.type} by {punishment.issuedBy}
                       </span>
                     </div>
                   </div>
