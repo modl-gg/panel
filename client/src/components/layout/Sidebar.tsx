@@ -257,7 +257,7 @@ const Sidebar = () => {
   );
 
   // Calculate sidebar height dynamically (navItems * 56px + top/bottom padding of 32px)
-  const sidebarHeight = Math.max(200, navItems.length * 56 + 32);
+  const sidebarHeight = Math.max(200, navItems.length * 56 + 16);
 
   // Fetch players from API using React Query
   const { data: players, isLoading } = usePlayers();
