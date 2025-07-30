@@ -81,7 +81,7 @@ const getBasePermissions = (): Permission[] => [
   { id: 'admin.settings.view', name: 'View Settings', description: 'View all system settings', category: 'admin' },
   { id: 'admin.settings.modify', name: 'Modify Settings', description: 'Modify system settings (excluding account settings)', category: 'admin' },
   { id: 'admin.staff.manage', name: 'Manage Staff', description: 'Invite, remove, and modify staff members', category: 'admin' },
-  { id: 'admin.analytics.view', name: 'View Analytics', description: 'Access system analytics and reports', category: 'admin' },
+  { id: 'admin.audit.view', name: 'View Audit', description: 'Access audit logs and system activity', category: 'admin' },
   
   // Punishment permissions
   { id: 'punishment.modify', name: 'Modify Punishments', description: 'Pardon, modify duration, and edit existing punishments', category: 'punishment' },
@@ -383,7 +383,7 @@ export async function createDefaultRoles(dbConnection: Connection): Promise<void
         name: 'Admin',
         description: 'Administrative access with some restrictions',
         permissions: [
-          'admin.settings.view', 'admin.staff.manage', 'admin.analytics.view',
+          'admin.settings.view', 'admin.staff.manage', 'admin.audit.view',
           'punishment.modify',
           'ticket.view.all', 'ticket.reply.all', 'ticket.close.all',
           ...allPunishmentPerms

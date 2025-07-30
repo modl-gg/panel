@@ -8,7 +8,6 @@ export const PERMISSIONS = {
   ADMIN_SETTINGS_VIEW: 'admin.settings.view',
   ADMIN_SETTINGS_MODIFY: 'admin.settings.modify',
   ADMIN_STAFF_MANAGE: 'admin.staff.manage',
-  ADMIN_ANALYTICS_VIEW: 'admin.analytics.view',
   ADMIN_AUDIT_VIEW: 'admin.audit.view',
   
   // Punishment permissions
@@ -80,7 +79,7 @@ export function usePermissions() {
         PERMISSIONS.ADMIN_SETTINGS_VIEW,
         PERMISSIONS.ADMIN_SETTINGS_MODIFY,
         PERMISSIONS.ADMIN_STAFF_MANAGE,
-        PERMISSIONS.ADMIN_ANALYTICS_VIEW,
+        PERMISSIONS.ADMIN_AUDIT_VIEW,
         PERMISSIONS.TICKET_VIEW_ALL,
         PERMISSIONS.TICKET_REPLY_ALL,
         PERMISSIONS.TICKET_CLOSE_ALL,
@@ -89,7 +88,7 @@ export function usePermissions() {
       'Admin': [
         PERMISSIONS.ADMIN_SETTINGS_VIEW,
         PERMISSIONS.ADMIN_STAFF_MANAGE,
-        PERMISSIONS.ADMIN_ANALYTICS_VIEW,
+        PERMISSIONS.ADMIN_AUDIT_VIEW,
         PERMISSIONS.TICKET_VIEW_ALL,
         PERMISSIONS.TICKET_REPLY_ALL,
         PERMISSIONS.TICKET_CLOSE_ALL,

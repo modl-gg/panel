@@ -5,8 +5,6 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@modl-gg/shared-web/co
 import { Alert, AlertDescription } from '@modl-gg/shared-web/components/ui/alert';
 import { AlertTriangle, BarChart3, Users, Ticket, Shield, Activity } from 'lucide-react';
 import PageContainer from '@/components/layout/PageContainer';
-import { PermissionWrapper } from '@/components/PermissionWrapper';
-import { PERMISSIONS } from '@/hooks/use-permissions';
 import {
   OverviewCards,
   TicketAnalytics,
@@ -39,23 +37,7 @@ const fetchAnalyticsData = async (endpoint: string, period?: string) => {
 };
 
 export default function AnalyticsPage() {
-  return (
-    <PermissionWrapper 
-      permissions={[PERMISSIONS.ADMIN_ANALYTICS_VIEW]}
-      fallback={
-        <PageContainer title="Analytics">
-          <Alert variant="destructive">
-            <AlertTriangle className="h-4 w-4" />
-            <AlertDescription>
-              You do not have permission to view analytics. Only administrators can access this page.
-            </AlertDescription>
-          </Alert>
-        </PageContainer>
-      }
-    >
-      <AnalyticsContent />
-    </PermissionWrapper>
-  );
+  return <AnalyticsContent />;
 }
 
 function AnalyticsContent() {
