@@ -370,7 +370,17 @@ export default function StaffRolesCard() {
     if (!pendingReorder) return;
     
     try {
-      const roleOrder = pendingReorder.map((role, index) => ({ id: role.id, order: index }));
+      // Pre-fetch CSRF token to avoid initial request failure
+      const { getCSRFToken } = await import('@/utils/csrf');
+      await getCSRFToken();
+      
+      // Filter out Super Admin from the reorder request since it should never be reordered
+      // Super Admin should always stay at order 0, other roles start from order 1
+      const nonSuperAdminRoles = pendingReorder.filter(role => role.name !== 'Super Admin');
+      const roleOrder = nonSuperAdminRoles.map((role, index) => ({ 
+        id: role.id, 
+        order: index + 1  // Start from 1 since Super Admin is always 0
+      }));
       
       const { csrfFetch } = await import('@/utils/csrf');
       const response = await csrfFetch('/api/panel/roles/reorder', {
