@@ -117,6 +117,9 @@ const DraggableRoleCard: React.FC<DraggableRoleCardProps> = ({
   const roleOrder = getRoleOrder(role);
   // User can drag roles that have higher order number (lower authority) and not super admin
   const canDragRole = role.name !== 'Super Admin' && currentUserOrder < roleOrder;
+  
+  // Debug logging for drag permissions
+  console.log(`Role: ${role.name}, currentUserOrder: ${currentUserOrder}, roleOrder: ${roleOrder}, canDragRole: ${canDragRole}`);
 
   const [{ isDragging }, drag, preview] = useDrag({
     type: 'role',
@@ -271,9 +274,11 @@ export default function StaffRolesCard() {
   
   // Debug logging to see what's happening
   console.log('Current user role:', currentUser?.role);
-  console.log('Available roles:', roles.map(r => r.name));
+  console.log('Available roles:', roles.map(r => ({ name: r.name, order: r.order })));
+  console.log('Default roles:', DEFAULT_ROLES.map(r => ({ name: r.name, order: r.order })));
   console.log('Current user role object:', currentUserRoleObj);
   console.log('Roles loading state:', rolesLoading);
+  console.log('Current user object:', currentUser);
 
   // Update local roles when server data changes
   useEffect(() => {
@@ -508,7 +513,7 @@ export default function StaffRolesCard() {
                   key={role.id}
                   role={role}
                   index={index}
-                  currentUserRole={currentUserRoleObj}
+                  currentUserRole={currentUserRoleObj || { id: 'fallback', name: 'Unknown', order: 999, permissions: [], isDefault: false, description: 'Fallback role' }}
                   onEditRole={handleEditRole}
                   onDeleteRole={handleDeleteRole}
                   onMoveRole={moveRole}
