@@ -62,6 +62,7 @@ const DEFAULT_ROLES: StaffRole[] = [
     description: 'Full access to all features and settings',
     permissions: ['admin.settings.view', 'admin.settings.modify', 'admin.staff.manage', 'admin.audit.view', 'ticket.view.all', 'ticket.reply.all', 'ticket.close.all', 'ticket.delete.all'],
     isDefault: true,
+    order: 0,
   },
   {
     id: 'admin',
@@ -69,6 +70,7 @@ const DEFAULT_ROLES: StaffRole[] = [
     description: 'Administrative access with some restrictions',
     permissions: ['admin.settings.view', 'admin.staff.manage', 'admin.audit.view', 'ticket.view.all', 'ticket.reply.all', 'ticket.close.all'],
     isDefault: true,
+    order: 1,
   },
   {
     id: 'moderator',
@@ -76,6 +78,7 @@ const DEFAULT_ROLES: StaffRole[] = [
     description: 'Moderation permissions for punishments and tickets',
     permissions: ['ticket.view.all', 'ticket.reply.all', 'ticket.close.all'],
     isDefault: true,
+    order: 2,
   },
   {
     id: 'helper',
@@ -83,6 +86,7 @@ const DEFAULT_ROLES: StaffRole[] = [
     description: 'Basic support permissions',
     permissions: ['ticket.view.all', 'ticket.reply.all'],
     isDefault: true,
+    order: 3,
   },
 ];
 
@@ -260,38 +264,33 @@ export default function StaffRolesCard() {
   const permissions = permissionsData?.permissions || [];
   const permissionCategories = permissionsData?.categories || PERMISSION_CATEGORIES;
   
-  // Find current user's role object from roles array
+  // If no roles are loaded from the database, use default roles as fallback
+  const effectiveRoles = roles.length > 0 ? roles : DEFAULT_ROLES;
+  
+  // Find current user's role object from effective roles array
   const currentUserRoleObj = React.useMemo(() => {
-    let userRole = roles.find(role => role.name === currentUser?.role);
-    
-    // If not found in custom roles, try to find in default roles as fallback
-    if (!userRole && currentUser?.role) {
-      userRole = DEFAULT_ROLES.find(role => role.name === currentUser.role);
-    }
-    
-    return userRole;
-  }, [roles, currentUser?.role]);
+    return effectiveRoles.find(role => role.name === currentUser?.role);
+  }, [effectiveRoles, currentUser?.role]);
   
   // Debug logging to see what's happening
   console.log('Current user role:', currentUser?.role);
   console.log('Available roles:', roles.map(r => ({ name: r.name, order: r.order })));
-  console.log('Default roles:', DEFAULT_ROLES.map(r => ({ name: r.name, order: r.order })));
+  console.log('Effective roles:', effectiveRoles.map(r => ({ name: r.name, order: r.order })));
   console.log('Current user role object:', currentUserRoleObj);
   console.log('Roles loading state:', rolesLoading);
-  console.log('Current user object:', currentUser);
 
   // Update local roles when server data changes
   useEffect(() => {
-    if (roles.length > 0) {
+    if (effectiveRoles.length > 0) {
       // Sort roles by order (lower order = higher authority)
-      const sortedRoles = [...roles].sort((a, b) => {
+      const sortedRoles = [...effectiveRoles].sort((a, b) => {
         const aOrder = a.order ?? 999;
         const bOrder = b.order ?? 999;
         return aOrder - bOrder;
       });
       setLocalRoles(sortedRoles);
     }
-  }, [roles]);
+  }, [effectiveRoles]);
 
   // Handle role reordering
   const moveRole = async (dragIndex: number, hoverIndex: number) => {
