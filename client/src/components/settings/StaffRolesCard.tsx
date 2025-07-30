@@ -192,7 +192,7 @@ const DraggableRoleCard: React.FC<DraggableRoleCardProps> = ({
             variant="outline"
             size="sm"
             onClick={() => onEditRole(role)}
-            disabled={role.name === 'Super Admin' || (currentUserRoleObj && getRoleOrder(currentUserRoleObj) >= getRoleOrder(role))}
+            disabled={role.name === 'Super Admin' || !currentUserRoleObj || getRoleOrder(currentUserRoleObj) >= getRoleOrder(role)}
           >
             <Edit className="h-3 w-3" />
           </Button>
@@ -200,7 +200,7 @@ const DraggableRoleCard: React.FC<DraggableRoleCardProps> = ({
             variant="outline"
             size="sm"
             onClick={() => onDeleteRole(role)}
-            disabled={role.name === 'Super Admin' || (currentUserRoleObj && getRoleOrder(currentUserRoleObj) >= getRoleOrder(role))}
+            disabled={role.name === 'Super Admin' || !currentUserRoleObj || getRoleOrder(currentUserRoleObj) >= getRoleOrder(role)}
             className="text-destructive hover:text-destructive"
           >
             <Trash2 className="h-3 w-3" />
@@ -347,7 +347,7 @@ export default function StaffRolesCard() {
     }
     
     // Check if user can edit this role based on hierarchy
-    if (currentUserRoleObj && getRoleOrder(currentUserRoleObj) >= getRoleOrder(role)) {
+    if (!currentUserRoleObj || getRoleOrder(currentUserRoleObj) >= getRoleOrder(role)) {
       toast({
         title: "Cannot Edit Role",
         description: "You can only edit roles with lower authority than your own.",
@@ -417,7 +417,7 @@ export default function StaffRolesCard() {
     }
     
     // Check if user can delete this role based on hierarchy
-    if (currentUserRoleObj && getRoleOrder(currentUserRoleObj) >= getRoleOrder(role)) {
+    if (!currentUserRoleObj || getRoleOrder(currentUserRoleObj) >= getRoleOrder(role)) {
       toast({
         title: "Cannot Delete Role",
         description: "You can only delete roles with lower authority than your own.",
