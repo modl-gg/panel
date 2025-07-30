@@ -1101,8 +1101,8 @@ const TicketSettings = ({
                       </div>
                     </div>
                   </div>
-                    </div>
-                  </>
+                  </div>
+                </>
                 )}
               </div>
             </CollapsibleContent>
