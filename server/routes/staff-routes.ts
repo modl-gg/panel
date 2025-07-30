@@ -511,26 +511,34 @@ router.patch('/:id/role', async (req: Request<{ id: string }, {}, { role: IStaff
       return res.status(403).json({ message: 'Cannot change the role of the server administrator.' });
     }
 
-    // Permission-based role change validation
-    const performerPermissions = await getUserPermissions(req, performingUser.role);
-    const currentTargetPermissions = await getUserPermissions(req, staffToUpdate.role);
-    const newTargetPermissions = await getUserPermissions(req, newRole);
+    // Role hierarchy validation (matches client-side hierarchy)
+    const getRoleRank = (role: string): number => {
+      const roleHierarchy: Record<string, number> = {
+        'Helper': 1,
+        'Moderator': 2,
+        'Admin': 3,
+        'Super Admin': 4
+      };
+      return roleHierarchy[role] || 0;
+    };
 
     // Cannot change your own role
     if (staffToUpdate._id.toString() === performingUser.userId) {
       return res.status(403).json({ message: 'You cannot change your own role.' });
     }
 
-    // Can only change roles if you have more permissions than both the current and target roles
-    const canChangeCurrentRole = currentTargetPermissions.every(perm => performerPermissions.includes(perm));
-    const canAssignNewRole = newTargetPermissions.every(perm => performerPermissions.includes(perm));
+    // Check role hierarchy permissions
+    const performerRank = getRoleRank(performingUser.role);
+    const currentTargetRank = getRoleRank(staffToUpdate.role);
+    const newTargetRank = getRoleRank(newRole);
 
-    if (!canChangeCurrentRole) {
-      return res.status(403).json({ message: 'Cannot modify users with higher permission levels than your own.' });
+    // Can only change roles if your rank is higher than both current and new target roles
+    if (performerRank <= currentTargetRank) {
+      return res.status(403).json({ message: 'Cannot modify users with the same or higher role level than your own.' });
     }
 
-    if (!canAssignNewRole) {
-      return res.status(403).json({ message: 'Cannot assign roles with higher permission levels than your own.' });
+    if (performerRank <= newTargetRank) {
+      return res.status(403).json({ message: 'Cannot assign roles with the same or higher level than your own.' });
     }
 
     if (staffToUpdate.role === newRole) {

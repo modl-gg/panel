@@ -1,5 +1,7 @@
 import React, { useState, useEffect } from 'react';
-import { Shield, Plus, Edit, Trash2, Save, X, Check } from 'lucide-react';
+import { Shield, Plus, Edit, Trash2, Save, X, Check, GripVertical } from 'lucide-react';
+import { DndProvider, useDrag, useDrop } from 'react-dnd';
+import { HTML5Backend } from 'react-dnd-html5-backend';
 import { Button } from '@modl-gg/shared-web/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@modl-gg/shared-web/components/ui/card';
 import { Input } from '@modl-gg/shared-web/components/ui/input';
@@ -10,6 +12,7 @@ import { useToast } from '@modl-gg/shared-web/hooks/use-toast';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@modl-gg/shared-web/components/ui/dialog";
 import { Separator } from '@modl-gg/shared-web/components/ui/separator';
 import { useSettings, useRoles, usePermissions, useCreateRole, useUpdateRole, useDeleteRole } from '@/hooks/use-data';
+import { useAuth } from '@/hooks/use-auth';
 
 // Permission categories and definitions
 interface Permission {
@@ -26,6 +29,7 @@ interface StaffRole {
   permissions: string[];
   isDefault: boolean;
   userCount?: number;
+  rank?: number; // For drag and drop ordering
 }
 
 const PERMISSION_CATEGORIES = {
@@ -82,17 +86,174 @@ const DEFAULT_ROLES: StaffRole[] = [
   },
 ];
 
+// Role hierarchy (higher number = higher authority)
+const getRoleRank = (roleName: string): number => {
+  const roleHierarchy: Record<string, number> = {
+    'Helper': 1,
+    'Moderator': 2,
+    'Admin': 3,
+    'Super Admin': 4
+  };
+  return roleHierarchy[roleName] || 0;
+};
+
+// Draggable Role Card Component
+interface DraggableRoleCardProps {
+  role: StaffRole;
+  index: number;
+  currentUserRole: string;
+  onEditRole: (role: StaffRole) => void;
+  onDeleteRole: (role: StaffRole) => void;
+  onMoveRole: (dragIndex: number, hoverIndex: number) => void;
+  getPermissionsByCategory: (category: string) => Permission[];
+  hasPermission: (role: StaffRole, permissionId: string) => boolean;
+}
+
+const DraggableRoleCard: React.FC<DraggableRoleCardProps> = ({
+  role,
+  index,
+  currentUserRole,
+  onEditRole,
+  onDeleteRole,
+  onMoveRole,
+  getPermissionsByCategory,
+  hasPermission
+}) => {
+  const currentUserRank = getRoleRank(currentUserRole);
+  const roleRank = getRoleRank(role.name);
+  const canDragRole = currentUserRank > roleRank && role.id !== 'super-admin';
+
+  const [{ isDragging }, drag, preview] = useDrag({
+    type: 'role',
+    item: { index, role },
+    canDrag: canDragRole,
+    collect: (monitor) => ({
+      isDragging: monitor.isDragging(),
+    }),
+  });
+
+  const [{ isOver, canDrop }, drop] = useDrop({
+    accept: 'role',
+    hover: (draggedItem: { index: number; role: StaffRole }) => {
+      if (draggedItem.index === index) return;
+      
+      // Don't allow dropping on Super Admin or moving Super Admin
+      if (role.id === 'super-admin' || draggedItem.role.id === 'super-admin') return;
+      
+      // Check if current user can move the dragged role to this position
+      const draggedRoleRank = getRoleRank(draggedItem.role.name);
+      const targetRoleRank = getRoleRank(role.name);
+      
+      // User must have higher rank than both the dragged role and target position
+      if (currentUserRank <= draggedRoleRank || currentUserRank <= targetRoleRank) return;
+      
+      onMoveRole(draggedItem.index, index);
+      draggedItem.index = index;
+    },
+    collect: (monitor) => ({
+      isOver: monitor.isOver(),
+      canDrop: monitor.canDrop(),
+    }),
+  });
+
+  // Combine drag and drop refs
+  const ref = (node: HTMLDivElement | null) => {
+    drag(drop(node));
+  };
+
+  return (
+    <div
+      ref={ref}
+      className={`border rounded-lg p-4 transition-all ${
+        isDragging ? 'opacity-50 scale-95' : ''
+      } ${isOver && canDrop ? 'border-primary bg-primary/5' : ''} ${
+        canDragRole ? 'cursor-move' : ''
+      }`}
+    >
+      <div className="flex items-center justify-between mb-2">
+        <div className="flex items-center gap-3">
+          {canDragRole && (
+            <GripVertical className="h-4 w-4 text-muted-foreground" />
+          )}
+          <h4 className="font-medium">{role.name}</h4>
+          {role.isDefault && (
+            <Badge variant="outline" className="text-xs">
+              Default
+            </Badge>
+          )}
+          {role.userCount !== undefined && (
+            <Badge variant="secondary" className="text-xs">
+              {role.userCount} users
+            </Badge>
+          )}
+          {role.id === 'super-admin' && (
+            <Badge variant="default" className="text-xs bg-yellow-500">
+              Highest Rank
+            </Badge>
+          )}
+        </div>
+        <div className="flex items-center gap-2">
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => onEditRole(role)}
+            disabled={role.id === 'super-admin'}
+          >
+            <Edit className="h-3 w-3" />
+          </Button>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => onDeleteRole(role)}
+            disabled={role.id === 'super-admin'}
+            className="text-destructive hover:text-destructive"
+          >
+            <Trash2 className="h-3 w-3" />
+          </Button>
+        </div>
+      </div>
+      <p className="text-sm text-muted-foreground mb-3">{role.description}</p>
+      
+      {/* Permission Summary */}
+      <div className="space-y-2">
+        <div className="text-xs font-medium text-muted-foreground">Permissions:</div>
+        <div className="flex flex-wrap gap-1">
+          {Object.entries(PERMISSION_CATEGORIES).map(([category, label]) => {
+            const categoryPermissions = getPermissionsByCategory(category);
+            const granted = categoryPermissions.filter(p => hasPermission(role, p.id)).length;
+            const total = categoryPermissions.length;
+            
+            if (total === 0) return null;
+            
+            return (
+              <Badge 
+                key={category} 
+                variant={granted === total ? "default" : granted > 0 ? "secondary" : "outline"}
+                className="text-xs"
+              >
+                {label}: {granted}/{total}
+              </Badge>
+            );
+          })}
+        </div>
+      </div>
+    </div>
+  );
+};
+
 export default function StaffRolesCard() {
   const [selectedRole, setSelectedRole] = useState<StaffRole | null>(null);
   const [isEditingRole, setIsEditingRole] = useState(false);
   const [isCreatingRole, setIsCreatingRole] = useState(false);
   const [roleFormData, setRoleFormData] = useState({ name: '', description: '', permissions: [] as string[] });
   const [deleteConfirmRole, setDeleteConfirmRole] = useState<StaffRole | null>(null);
+  const [localRoles, setLocalRoles] = useState<StaffRole[]>([]);
   const { toast } = useToast();
   
   // API hooks
   const { data: rolesData, isLoading: rolesLoading } = useRoles();
   const { data: permissionsData, isLoading: permissionsLoading } = usePermissions();
+  const { user: currentUser } = useAuth();
   const createRoleMutation = useCreateRole();
   const updateRoleMutation = useUpdateRole();
   const deleteRoleMutation = useDeleteRole();
@@ -100,6 +261,61 @@ export default function StaffRolesCard() {
   const roles = rolesData?.roles || [];
   const permissions = permissionsData?.permissions || [];
   const permissionCategories = permissionsData?.categories || PERMISSION_CATEGORIES;
+
+  // Update local roles when server data changes
+  useEffect(() => {
+    if (roles.length > 0) {
+      // Sort roles with Super Admin always first, then by hierarchy
+      const sortedRoles = [...roles].sort((a, b) => {
+        if (a.id === 'super-admin') return -1;
+        if (b.id === 'super-admin') return 1;
+        return getRoleRank(b.name) - getRoleRank(a.name); // Higher rank first
+      });
+      setLocalRoles(sortedRoles);
+    }
+  }, [roles]);
+
+  // Handle role reordering
+  const moveRole = async (dragIndex: number, hoverIndex: number) => {
+    const newRoles = [...localRoles];
+    const draggedRole = newRoles[dragIndex];
+    
+    // Remove the dragged role and insert at new position
+    newRoles.splice(dragIndex, 1);
+    newRoles.splice(hoverIndex, 0, draggedRole);
+    
+    setLocalRoles(newRoles);
+    
+    // Save new role order to server
+    try {
+      const roleOrder = newRoles.map((role, index) => ({ id: role.id, order: index }));
+      
+      const response = await fetch('/api/panel/roles/reorder', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ roleOrder }),
+      });
+      
+      if (!response.ok) {
+        throw new Error('Failed to update role order');
+      }
+      
+      toast({
+        title: "Role Order Updated",
+        description: "The role hierarchy has been saved successfully.",
+      });
+    } catch (error) {
+      // Revert the local change if the API call fails
+      setLocalRoles(localRoles);
+      toast({
+        title: "Error",
+        description: "Failed to save role order. Please try again.",
+        variant: "destructive"
+      });
+    }
+  };
 
   // Show loading state
   if (rolesLoading || permissionsLoading) {
@@ -252,71 +468,23 @@ export default function StaffRolesCard() {
         </CardHeader>
         <CardContent className="space-y-6">
           {/* Roles List */}
-          <div className="space-y-4">
-            {roles.map((role) => (
-              <div key={role.id} className="border rounded-lg p-4">
-                <div className="flex items-center justify-between mb-2">
-                  <div className="flex items-center gap-3">
-                    <h4 className="font-medium">{role.name}</h4>
-                    {role.isDefault && (
-                      <Badge variant="outline" className="text-xs">
-                        Default
-                      </Badge>
-                    )}
-                    {role.userCount !== undefined && (
-                      <Badge variant="secondary" className="text-xs">
-                        {role.userCount} users
-                      </Badge>
-                    )}
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => handleEditRole(role)}
-                      disabled={role.id === 'super-admin'}
-                    >
-                      <Edit className="h-3 w-3" />
-                    </Button>
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => handleDeleteRole(role)}
-                      disabled={role.id === 'super-admin'}
-                      className="text-destructive hover:text-destructive"
-                    >
-                      <Trash2 className="h-3 w-3" />
-                    </Button>
-                  </div>
-                </div>
-                <p className="text-sm text-muted-foreground mb-3">{role.description}</p>
-                
-                {/* Permission Summary */}
-                <div className="space-y-2">
-                  <div className="text-xs font-medium text-muted-foreground">Permissions:</div>
-                  <div className="flex flex-wrap gap-1">
-                    {Object.entries(PERMISSION_CATEGORIES).map(([category, label]) => {
-                      const categoryPermissions = getPermissionsByCategory(category);
-                      const granted = categoryPermissions.filter(p => hasPermission(role, p.id)).length;
-                      const total = categoryPermissions.length;
-                      
-                      if (total === 0) return null;
-                      
-                      return (
-                        <Badge 
-                          key={category} 
-                          variant={granted === total ? "default" : granted > 0 ? "secondary" : "outline"}
-                          className="text-xs"
-                        >
-                          {label}: {granted}/{total}
-                        </Badge>
-                      );
-                    })}
-                  </div>
-                </div>
-              </div>
-            ))}
-          </div>
+          <DndProvider backend={HTML5Backend}>
+            <div className="space-y-4">
+              {localRoles.map((role, index) => (
+                <DraggableRoleCard
+                  key={role.id}
+                  role={role}
+                  index={index}
+                  currentUserRole={currentUser?.role || ''}
+                  onEditRole={handleEditRole}
+                  onDeleteRole={handleDeleteRole}
+                  onMoveRole={moveRole}
+                  getPermissionsByCategory={getPermissionsByCategory}
+                  hasPermission={hasPermission}
+                />
+              ))}
+            </div>
+          </DndProvider>
         </CardContent>
       </Card>
 
