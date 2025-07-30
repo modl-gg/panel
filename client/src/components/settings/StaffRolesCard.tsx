@@ -116,7 +116,7 @@ const DraggableRoleCard: React.FC<DraggableRoleCardProps> = ({
   const currentUserOrder = currentUserRole ? getRoleOrder(currentUserRole) : 999;
   const roleOrder = getRoleOrder(role);
   // User can drag roles that have higher order number (lower authority) and not super admin
-  const canDragRole = currentUserOrder < roleOrder && !(role.order !== undefined && role.order === 0);
+  const canDragRole = role.name !== 'Super Admin' && currentUserOrder < roleOrder;
 
   const [{ isDragging }, drag, preview] = useDrag({
     type: 'role',
@@ -133,7 +133,7 @@ const DraggableRoleCard: React.FC<DraggableRoleCardProps> = ({
       if (draggedItem.index === index) return;
       
       // Don't allow dropping on Super Admin or moving Super Admin
-      if ((role.order !== undefined && role.order === 0) || (draggedItem.role.order !== undefined && draggedItem.role.order === 0)) return;
+      if (role.name === 'Super Admin' || draggedItem.role.name === 'Super Admin') return;
       
       // Check if current user can move the dragged role to this position
       const draggedRoleOrder = getRoleOrder(draggedItem.role);
@@ -192,7 +192,7 @@ const DraggableRoleCard: React.FC<DraggableRoleCardProps> = ({
             variant="outline"
             size="sm"
             onClick={() => onEditRole(role)}
-            disabled={role.order !== undefined && role.order === 0}
+            disabled={role.name === 'Super Admin' || (currentUserRoleObj && getRoleOrder(currentUserRoleObj) >= getRoleOrder(role))}
           >
             <Edit className="h-3 w-3" />
           </Button>
@@ -200,7 +200,7 @@ const DraggableRoleCard: React.FC<DraggableRoleCardProps> = ({
             variant="outline"
             size="sm"
             onClick={() => onDeleteRole(role)}
-            disabled={role.order !== undefined && role.order === 0}
+            disabled={role.name === 'Super Admin' || (currentUserRoleObj && getRoleOrder(currentUserRoleObj) >= getRoleOrder(role))}
             className="text-destructive hover:text-destructive"
           >
             <Trash2 className="h-3 w-3" />
@@ -337,10 +337,20 @@ export default function StaffRolesCard() {
   };
 
   const handleEditRole = (role: StaffRole) => {
-    if (role.order !== undefined && role.order === 0) {
+    if (role.name === 'Super Admin') {
       toast({
         title: "Cannot Edit Super Admin Role",
         description: "The highest authority role cannot be modified.",
+        variant: "destructive"
+      });
+      return;
+    }
+    
+    // Check if user can edit this role based on hierarchy
+    if (currentUserRoleObj && getRoleOrder(currentUserRoleObj) >= getRoleOrder(role)) {
+      toast({
+        title: "Cannot Edit Role",
+        description: "You can only edit roles with lower authority than your own.",
         variant: "destructive"
       });
       return;
@@ -397,10 +407,20 @@ export default function StaffRolesCard() {
   };
 
   const handleDeleteRole = (role: StaffRole) => {
-    if (role.order !== undefined && role.order === 0) {
+    if (role.name === 'Super Admin') {
       toast({
         title: "Cannot Delete Super Admin Role",
         description: "The highest authority role cannot be deleted.",
+        variant: "destructive"
+      });
+      return;
+    }
+    
+    // Check if user can delete this role based on hierarchy
+    if (currentUserRoleObj && getRoleOrder(currentUserRoleObj) >= getRoleOrder(role)) {
+      toast({
+        title: "Cannot Delete Role",
+        description: "You can only delete roles with lower authority than your own.",
         variant: "destructive"
       });
       return;
