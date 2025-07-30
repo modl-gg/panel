@@ -106,6 +106,9 @@ interface DraggableRoleCardProps {
   onEditRole: (role: StaffRole) => void;
   onDeleteRole: (role: StaffRole) => void;
   onMoveRole: (dragIndex: number, hoverIndex: number) => void;
+  onCommitReorder: (dragIndex: number, hoverIndex: number) => void;
+  onDragStart: () => void;
+  onDragEnd: (didDrop: boolean) => void;
   getPermissionsByCategory: (category: string) => Permission[];
   hasPermission: (role: StaffRole, permissionId: string) => boolean;
 }
@@ -118,6 +121,9 @@ const DraggableRoleCard: React.FC<DraggableRoleCardProps> = ({
   onEditRole,
   onDeleteRole,
   onMoveRole,
+  onCommitReorder,
+  onDragStart,
+  onDragEnd,
   getPermissionsByCategory,
   hasPermission
 }) => {
@@ -126,14 +132,21 @@ const DraggableRoleCard: React.FC<DraggableRoleCardProps> = ({
   // User can drag roles that have higher order number (lower authority) and not super admin
   const canDragRole = role.name !== 'Super Admin' && currentUserOrder < roleOrder;
 
-  const [{ isDragging }, drag, preview] = useDrag({
+  const [{ isDragging }, drag, preview] = useDrag(() => ({
     type: 'role',
-    item: { index, role },
+    item: { index, role, originalIndex: index },
     canDrag: canDragRole,
+    begin: () => {
+      onDragStart();
+    },
+    end: (item, monitor) => {
+      const didDrop = monitor.didDrop();
+      onDragEnd(didDrop);
+    },
     collect: (monitor) => ({
       isDragging: monitor.isDragging(),
     }),
-  });
+  }));
 
   const [{ isOver, canDrop }, drop] = useDrop({
     accept: 'role',
@@ -150,8 +163,25 @@ const DraggableRoleCard: React.FC<DraggableRoleCardProps> = ({
       // User must have lower order (higher authority) than both the dragged role and target position
       if (currentUserOrder >= draggedRoleOrder || currentUserOrder >= targetRoleOrder) return;
       
+      // Only update visual state during hover
       onMoveRole(draggedItem.index, index);
       draggedItem.index = index;
+    },
+    drop: (draggedItem: { index: number; role: StaffRole }) => {
+      if (draggedItem.index === index) return;
+      
+      // Don't allow dropping on Super Admin or moving Super Admin
+      if (role.name === 'Super Admin' || draggedItem.role.name === 'Super Admin') return;
+      
+      // Check if current user can move the dragged role to this position
+      const draggedRoleOrder = getRoleOrder(draggedItem.role);
+      const targetRoleOrder = getRoleOrder(role);
+      
+      // User must have lower order (higher authority) than both the dragged role and target position
+      if (currentUserOrder >= draggedRoleOrder || currentUserOrder >= targetRoleOrder) return;
+      
+      // Commit the change and show confirmation when drop happens
+      onCommitReorder(draggedItem.index, index);
     },
     collect: (monitor) => ({
       isOver: monitor.isOver(),
@@ -251,8 +281,10 @@ export default function StaffRolesCard() {
   const [roleFormData, setRoleFormData] = useState({ name: '', description: '', permissions: [] as string[] });
   const [deleteConfirmRole, setDeleteConfirmRole] = useState<StaffRole | null>(null);
   const [localRoles, setLocalRoles] = useState<StaffRole[]>([]);
+  const [originalRoles, setOriginalRoles] = useState<StaffRole[]>([]);
   const [pendingReorder, setPendingReorder] = useState<StaffRole[] | null>(null);
   const [showReorderConfirm, setShowReorderConfirm] = useState(false);
+  const [isDragInProgress, setIsDragInProgress] = useState(false);
   const { toast } = useToast();
   
   // API hooks
@@ -294,11 +326,39 @@ export default function StaffRolesCard() {
         return aOrder - bOrder;
       });
       setLocalRoles(sortedRoles);
+      setOriginalRoles(sortedRoles);
     }
   }, [effectiveRoles]);
 
-  // Handle role reordering
+  // Handle drag start
+  const handleDragStart = () => {
+    setIsDragInProgress(true);
+  };
+
+  // Handle drag end (whether successful or cancelled)
+  const handleDragEnd = (didDrop: boolean) => {
+    setIsDragInProgress(false);
+    // If drag was cancelled and no drop occurred, reset to original positions
+    if (!didDrop) {
+      setLocalRoles(originalRoles);
+    }
+  };
+
+  // Handle role reordering during drag (preview only)
   const moveRole = (dragIndex: number, hoverIndex: number) => {
+    const newRoles = [...localRoles];
+    const draggedRole = newRoles[dragIndex];
+    
+    // Remove the dragged role and insert at new position
+    newRoles.splice(dragIndex, 1);
+    newRoles.splice(hoverIndex, 0, draggedRole);
+    
+    // Only update local state for visual feedback, don't trigger confirmation yet
+    setLocalRoles(newRoles);
+  };
+
+  // Handle role reordering when drag ends (actual commit)
+  const commitRoleReorder = (dragIndex: number, hoverIndex: number) => {
     const newRoles = [...localRoles];
     const draggedRole = newRoles[dragIndex];
     
@@ -353,7 +413,13 @@ export default function StaffRolesCard() {
 
   // Cancel role reordering
   const cancelRoleOrder = () => {
-    setLocalRoles(effectiveRoles);
+    // Reset to original sorted order
+    const sortedRoles = [...effectiveRoles].sort((a, b) => {
+      const aOrder = a.order ?? 999;
+      const bOrder = b.order ?? 999;
+      return aOrder - bOrder;
+    });
+    setLocalRoles(sortedRoles);
     setPendingReorder(null);
     setShowReorderConfirm(false);
   };
@@ -543,6 +609,9 @@ export default function StaffRolesCard() {
                   onEditRole={handleEditRole}
                   onDeleteRole={handleDeleteRole}
                   onMoveRole={moveRole}
+                  onCommitReorder={commitRoleReorder}
+                  onDragStart={handleDragStart}
+                  onDragEnd={handleDragEnd}
                   getPermissionsByCategory={getPermissionsByCategory}
                   hasPermission={hasPermission}
                 />
