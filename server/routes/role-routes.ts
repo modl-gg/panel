@@ -145,7 +145,7 @@ router.get('/', async (req: Request, res: Response) => {
     const { getStaffRoleModel } = await import('../utils/schema-utils');
     const StaffRoles = getStaffRoleModel(db);
     
-    const allRoles = await StaffRoles.find({});
+    const allRoles = await StaffRoles.find({}).sort({ order: 1, createdAt: 1 });
 
     // Get staff counts for each role
     const Staff = db.model('Staff');
@@ -352,6 +352,40 @@ router.delete('/:id', strictRateLimit, async (req: Request, res: Response) => {
   }
 });
 
+// POST /api/panel/roles/reorder - Update role order
+router.post('/reorder', strictRateLimit, async (req: Request, res: Response) => {
+  if (!(await checkRolePermission(req, res, true))) return;
+  try {
+    const { roleOrder } = req.body;
+    
+    if (!Array.isArray(roleOrder)) {
+      return res.status(400).json({ error: 'Role order must be an array' });
+    }
+    
+    const db = req.serverDbConnection!;
+    
+    // Get StaffRole model with consistent schema
+    const { getStaffRoleModel } = await import('../utils/schema-utils');
+    const StaffRoles = getStaffRoleModel(db);
+    
+    // Update each role's order
+    const updatePromises = roleOrder.map(async (item: { id: string; order: number }) => {
+      return StaffRoles.findOneAndUpdate(
+        { id: item.id },
+        { order: item.order },
+        { new: true }
+      );
+    });
+    
+    await Promise.all(updatePromises);
+    
+    res.json({ message: 'Role order updated successfully' });
+  } catch (error) {
+    console.error('Error updating role order:', error);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
 /**
  * Create default staff roles in the database
  * Called during server provisioning
@@ -377,6 +411,7 @@ export async function createDefaultRoles(dbConnection: Connection): Promise<void
         description: 'Full access to all features and settings',
         permissions: allPermissionIds, // Super Admin gets ALL permissions
         isDefault: true,
+        order: 0, // Always at the top
       },
       {
         id: 'admin',
@@ -389,6 +424,7 @@ export async function createDefaultRoles(dbConnection: Connection): Promise<void
           ...allPunishmentPerms
         ],
         isDefault: true,
+        order: 1,
       },
       {
         id: 'moderator',
@@ -401,6 +437,7 @@ export async function createDefaultRoles(dbConnection: Connection): Promise<void
           ...allPunishmentPerms.filter(p => !p.includes('blacklist') && !p.includes('security-ban'))
         ],
         isDefault: true,
+        order: 2,
       },
       {
         id: 'helper',
@@ -408,6 +445,7 @@ export async function createDefaultRoles(dbConnection: Connection): Promise<void
         description: 'Basic support permissions',
         permissions: ['ticket.view.all', 'ticket.reply.all'],
         isDefault: true,
+        order: 3,
       },
     ];
 
