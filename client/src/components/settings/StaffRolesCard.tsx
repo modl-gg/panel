@@ -13,6 +13,7 @@ import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, D
 import { Separator } from '@modl-gg/shared-web/components/ui/separator';
 import { useSettings, useRoles, usePermissions, useCreateRole, useUpdateRole, useDeleteRole } from '@/hooks/use-data';
 import { useAuth } from '@/hooks/use-auth';
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@modl-gg/shared-web/components/ui/alert-dialog';
 
 // Permission categories and definitions
 interface Permission {
@@ -29,6 +30,7 @@ interface StaffRole {
   permissions: string[];
   isDefault: boolean;
   userCount?: number;
+  order?: number;
   rank?: number; // For drag and drop ordering
 }
 
@@ -249,6 +251,8 @@ export default function StaffRolesCard() {
   const [roleFormData, setRoleFormData] = useState({ name: '', description: '', permissions: [] as string[] });
   const [deleteConfirmRole, setDeleteConfirmRole] = useState<StaffRole | null>(null);
   const [localRoles, setLocalRoles] = useState<StaffRole[]>([]);
+  const [pendingReorder, setPendingReorder] = useState<StaffRole[] | null>(null);
+  const [showReorderConfirm, setShowReorderConfirm] = useState(false);
   const { toast } = useToast();
   
   // API hooks
@@ -269,7 +273,7 @@ export default function StaffRolesCard() {
   // Create role order map from roles data (copying StaffManagementPanel approach)
   const roleOrderMap = new Map<string, number>();
   if (effectiveRoles) {
-    effectiveRoles.forEach((role) => {
+    effectiveRoles.forEach((role: StaffRole) => {
       roleOrderMap.set(role.name, role.order ?? 999);
     });
   }
@@ -294,7 +298,7 @@ export default function StaffRolesCard() {
   }, [effectiveRoles]);
 
   // Handle role reordering
-  const moveRole = async (dragIndex: number, hoverIndex: number) => {
+  const moveRole = (dragIndex: number, hoverIndex: number) => {
     const newRoles = [...localRoles];
     const draggedRole = newRoles[dragIndex];
     
@@ -303,12 +307,19 @@ export default function StaffRolesCard() {
     newRoles.splice(hoverIndex, 0, draggedRole);
     
     setLocalRoles(newRoles);
+    setPendingReorder(newRoles);
+    setShowReorderConfirm(true);
+  };
+
+  // Save role reordering to server
+  const saveRoleOrder = async () => {
+    if (!pendingReorder) return;
     
-    // Save new role order to server
     try {
-      const roleOrder = newRoles.map((role, index) => ({ id: role.id, order: index }));
+      const roleOrder = pendingReorder.map((role, index) => ({ id: role.id, order: index }));
       
-      const response = await fetch('/api/panel/roles/reorder', {
+      const { csrfFetch } = await import('@/utils/csrf');
+      const response = await csrfFetch('/api/panel/roles/reorder', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -324,15 +335,27 @@ export default function StaffRolesCard() {
         title: "Role Order Updated",
         description: "The role hierarchy has been saved successfully.",
       });
+      
+      setPendingReorder(null);
+      setShowReorderConfirm(false);
     } catch (error) {
       // Revert the local change if the API call fails
-      setLocalRoles(localRoles);
+      setLocalRoles(effectiveRoles);
       toast({
         title: "Error",
         description: "Failed to save role order. Please try again.",
         variant: "destructive"
       });
+      setPendingReorder(null);
+      setShowReorderConfirm(false);
     }
+  };
+
+  // Cancel role reordering
+  const cancelRoleOrder = () => {
+    setLocalRoles(effectiveRoles);
+    setPendingReorder(null);
+    setShowReorderConfirm(false);
   };
 
   // Show loading state
@@ -479,7 +502,7 @@ export default function StaffRolesCard() {
   };
 
   const getPermissionsByCategory = (category: string) => {
-    return permissions.filter(p => p.category === category);
+    return permissions.filter((p: Permission) => p.category === category);
   };
 
   const hasPermission = (role: StaffRole, permissionId: string) => {
@@ -588,10 +611,10 @@ export default function StaffRolesCard() {
                           variant="outline"
                           size="sm"
                           onClick={() => {
-                            const allCategoryPermissions = categoryPermissions.map(p => p.id);
+                            const allCategoryPermissions = categoryPermissions.map((p: Permission) => p.id);
                             setRoleFormData(prev => ({
                               ...prev,
-                              permissions: [...prev.permissions.filter(p => !allCategoryPermissions.includes(p)), ...allCategoryPermissions]
+                              permissions: [...prev.permissions.filter((p: string) => !allCategoryPermissions.includes(p)), ...allCategoryPermissions]
                             }));
                           }}
                         >
@@ -602,10 +625,10 @@ export default function StaffRolesCard() {
                           variant="outline"
                           size="sm"
                           onClick={() => {
-                            const allCategoryPermissions = categoryPermissions.map(p => p.id);
+                            const allCategoryPermissions = categoryPermissions.map((p: Permission) => p.id);
                             setRoleFormData(prev => ({
                               ...prev,
-                              permissions: prev.permissions.filter(p => !allCategoryPermissions.includes(p))
+                              permissions: prev.permissions.filter((p: string) => !allCategoryPermissions.includes(p))
                             }));
                           }}
                         >
@@ -615,7 +638,7 @@ export default function StaffRolesCard() {
                     </div>
                     
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-3 pl-4">
-                      {categoryPermissions.map((permission) => (
+                      {categoryPermissions.map((permission: Permission) => (
                         <div key={permission.id} className="flex items-start space-x-2">
                           <Checkbox
                             id={permission.id}
@@ -692,6 +715,26 @@ export default function StaffRolesCard() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      {/* Role Reorder Confirmation Dialog */}
+      <AlertDialog open={showReorderConfirm} onOpenChange={setShowReorderConfirm}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Confirm Role Reordering</AlertDialogTitle>
+            <AlertDialogDescription>
+              Are you sure you want to save the new role hierarchy? This will change the authority levels of staff members with these roles.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel onClick={cancelRoleOrder}>
+              Cancel
+            </AlertDialogCancel>
+            <AlertDialogAction onClick={saveRoleOrder}>
+              Save New Order
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }

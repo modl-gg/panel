@@ -1,4 +1,13 @@
 import { Request, Response, NextFunction } from 'express';
+import { 
+  getRoleHierarchy, 
+  hasHigherAuthority, 
+  hasHigherOrEqualAuthority,
+  canModifyRole as canModifyRoleHierarchy,
+  canRemoveUser as canRemoveUserHierarchy,
+  canAssignMinecraftPlayer as canAssignMinecraftPlayerHierarchy,
+  isSuperAdminRole
+} from '../utils/role-hierarchy';
 
 // Permission checking middleware
 export const checkPermission = (requiredPermissions: string | string[]) => {
@@ -147,4 +156,84 @@ export const hasPermission = async (req: Request, permission: string): Promise<b
     console.error('Error checking permission:', error);
     return false;
   }
+};
+
+// Role hierarchy helper functions integrated with existing permission system
+
+export const canModifyRole = async (
+  req: Request,
+  currentUserRole: string,
+  targetUserRole: string,
+  newRole: string
+): Promise<boolean> => {
+  try {
+    const roleHierarchy = await getRoleHierarchy(req.serverDbConnection!);
+    return canModifyRoleHierarchy(currentUserRole, targetUserRole, newRole, roleHierarchy);
+  } catch (error) {
+    console.error('Error checking role modification permissions:', error);
+    return false;
+  }
+};
+
+export const canRemoveUser = async (
+  req: Request,
+  currentUserRole: string,
+  targetUserRole: string
+): Promise<boolean> => {
+  try {
+    const roleHierarchy = await getRoleHierarchy(req.serverDbConnection!);
+    return canRemoveUserHierarchy(currentUserRole, targetUserRole, roleHierarchy);
+  } catch (error) {
+    console.error('Error checking user removal permissions:', error);
+    return false;
+  }
+};
+
+export const canAssignMinecraftPlayer = async (
+  req: Request,
+  currentUserRole: string,
+  targetUserRole: string,
+  currentUserId: string,
+  targetUserId: string
+): Promise<boolean> => {
+  try {
+    const roleHierarchy = await getRoleHierarchy(req.serverDbConnection!);
+    return canAssignMinecraftPlayerHierarchy(currentUserRole, targetUserRole, currentUserId, targetUserId, roleHierarchy);
+  } catch (error) {
+    console.error('Error checking minecraft player assignment permissions:', error);
+    return false;
+  }
+};
+
+export const hasHigherRoleAuthority = async (
+  req: Request,
+  user1Role: string,
+  user2Role: string
+): Promise<boolean> => {
+  try {
+    const roleHierarchy = await getRoleHierarchy(req.serverDbConnection!);
+    return hasHigherAuthority(user1Role, user2Role, roleHierarchy);
+  } catch (error) {
+    console.error('Error checking role authority:', error);
+    return false;
+  }
+};
+
+export const hasEqualOrHigherRoleAuthority = async (
+  req: Request,
+  user1Role: string,
+  user2Role: string
+): Promise<boolean> => {
+  try {
+    const roleHierarchy = await getRoleHierarchy(req.serverDbConnection!);
+    return hasHigherOrEqualAuthority(user1Role, user2Role, roleHierarchy);
+  } catch (error) {
+    console.error('Error checking role authority:', error);
+    return false;
+  }
+};
+
+// Check if a role is Super Admin (for special handling)
+export const isSuperAdmin = (roleName: string): boolean => {
+  return isSuperAdminRole(roleName);
 };

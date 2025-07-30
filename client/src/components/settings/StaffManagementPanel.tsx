@@ -16,6 +16,7 @@ import AssignMinecraftPlayerModal from './AssignMinecraftPlayerModal';
 import { useToast } from '@modl-gg/shared-web/hooks/use-toast';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@modl-gg/shared-web/components/ui/alert-dialog';
 
+
 interface StaffMember {
   _id: string;
   email: string;
@@ -40,45 +41,13 @@ interface Role {
   order?: number;
 }
 
-// Helper function to check if a user can change another member's role
-const canChangeRole = (hasStaffManagePermission: boolean, currentUser: User, member: StaffMember, roleMap: Map<string, number>): boolean => {
-  if (!hasStaffManagePermission) return false;
-  
-  // Cannot change role of yourself
-  if (currentUser._id === member._id) {
-    return false;
-  }
-  
-  // Get role orders from the map
-  const currentUserOrder = roleMap.get(currentUser.role) ?? 999;
-  const memberOrder = roleMap.get(member.role) ?? 999;
-  
-  // Cannot change role of someone with same or lower order (higher or equal authority)
-  return currentUserOrder < memberOrder;
-};
 
-// Helper function to check if a user can remove another member
-const canRemoveMember = (hasStaffManagePermission: boolean, currentUser: User, member: StaffMember, roleMap: Map<string, number>): boolean => {
-  if (!hasStaffManagePermission) return false;
-  
-  // Cannot remove yourself
-  if (currentUser._id === member._id) {
-    return false;
-  }
-  
-  // Get role orders from the map
-  const currentUserOrder = roleMap.get(currentUser.role) ?? 999;
-  const memberOrder = roleMap.get(member.role) ?? 999;
-  
-  // Cannot remove someone with same or lower order (higher or equal authority)
-  return currentUserOrder < memberOrder;
-};
 
 const StaffManagementPanel = () => {
   const { data: staff, isLoading, error, refetch: refetchStaff, isRefetching } = useStaff();
   const { data: rolesData } = useRoles();
   const { user: currentUser } = useAuth();
-  const { hasPermission } = usePermissions();
+  const { hasPermission, canModifyUserRole, canRemoveStaffUser, canAssignStaffMinecraftPlayer } = usePermissions();
   const [isInviteModalOpen, setIsInviteModalOpen] = useState(false);
   const [isRemoveAlertOpen, setIsRemoveAlertOpen] = useState(false);
   const [isChangeRoleModalOpen, setIsChangeRoleModalOpen] = useState(false);
@@ -88,13 +57,7 @@ const StaffManagementPanel = () => {
   const queryClient = useQueryClient();
   const { toast } = useToast();
   
-  // Create role order map from roles data
-  const roleOrderMap = new Map<string, number>();
-  if (rolesData?.roles) {
-    rolesData.roles.forEach((role: Role) => {
-      roleOrderMap.set(role.name, role.order ?? 999);
-    });
-  }
+
 
   const handleInviteSent = () => {
     queryClient.invalidateQueries({ queryKey: ['/api/panel/staff'] });
@@ -278,17 +241,17 @@ const StaffManagementPanel = () => {
                             </>
                           ) : (
                             <>
-                              {hasPermission('admin.staff.manage') && (
+                              {hasPermission('admin.staff.manage') && canAssignStaffMinecraftPlayer(member.role, member._id) && (
                                 <DropdownMenuItem onSelect={() => openAssignPlayerModal(member)}>
                                   {member.assignedMinecraftUsername ? 'Change' : 'Assign'} Minecraft Player
                                 </DropdownMenuItem>
                               )}
-                              {currentUser && canChangeRole(hasPermission('admin.staff.manage'), currentUser, member, roleOrderMap) && (
+                              {hasPermission('admin.staff.manage') && canModifyUserRole(member.role, member.role) && (
                                 <DropdownMenuItem onSelect={() => openChangeRoleModal(member)}>
                                   Change Role
                                 </DropdownMenuItem>
                               )}
-                              {currentUser && canRemoveMember(hasPermission('admin.staff.manage'), currentUser, member, roleOrderMap) && (
+                              {hasPermission('admin.staff.manage') && canRemoveStaffUser(member.role) && (
                                 <DropdownMenuItem onSelect={() => openConfirmationDialog(member)}>
                                   Remove Staff Member
                                 </DropdownMenuItem>

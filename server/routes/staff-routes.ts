@@ -516,31 +516,20 @@ router.patch('/:id/role', async (req: Request<{ id: string }, {}, { role: IStaff
       return res.status(403).json({ message: 'You cannot change your own role.' });
     }
 
-    // Get role hierarchy from database
-    const { getStaffRoleModel } = await import('../utils/schema-utils');
-    const StaffRoles = getStaffRoleModel(req.serverDbConnection!);
-    const allRoles = await StaffRoles.find({}).sort({ order: 1 });
+    // Check role hierarchy permissions using integrated system
+    const { canModifyRole } = await import('../middleware/permission-middleware');
     
-    // Create role name to order mapping
-    const roleOrderMap = new Map(allRoles.map((role: any) => [role.name, role.order]));
+    const canModify = await canModifyRole(
+      req,
+      performingUser.role,
+      staffToUpdate.role,
+      newRole
+    );
     
-    // Get role orders
-    const performerOrder = roleOrderMap.get(performingUser.role);
-    const currentTargetOrder = roleOrderMap.get(staffToUpdate.role);
-    const newTargetOrder = roleOrderMap.get(newRole);
-    
-    if (performerOrder === undefined || currentTargetOrder === undefined || newTargetOrder === undefined) {
-      return res.status(500).json({ message: 'Role hierarchy information not found.' });
-    }
-
-    // Check role hierarchy permissions
-    // Can only change roles if your order is lower (higher authority) than both current and new target roles
-    if (performerOrder >= currentTargetOrder) {
-      return res.status(403).json({ message: 'Cannot modify users with the same or higher role level than your own.' });
-    }
-
-    if (performerOrder >= newTargetOrder) {
-      return res.status(403).json({ message: 'Cannot assign roles with the same or higher level than your own.' });
+    if (!canModify) {
+      return res.status(403).json({ 
+        message: 'You do not have permission to change this staff member\'s role to the specified role.' 
+      });
     }
 
     if (staffToUpdate.role === newRole) {
@@ -597,6 +586,35 @@ router.patch('/:username/minecraft-player', async (req: Request<{ username: stri
     const staffMember = await Staff.findOne({ username: req.params.username });
     if (!staffMember) {
       return res.status(404).json({ error: 'Staff member not found' });
+    }
+
+    // Additional permission checks for minecraft player assignment using role hierarchy
+    const currentUser = req.currentUser!;
+    const currentUserStaff = await Staff.findOne({ 
+      $or: [
+        { email: currentUser.email },
+        { _id: currentUser._id }
+      ]
+    });
+
+    // Check minecraft player assignment permissions using integrated system
+    const { canAssignMinecraftPlayer } = await import('../middleware/permission-middleware');
+    
+    const currentUserId = currentUserStaff?._id.toString() || currentUser._id;
+    const targetUserId = staffMember._id.toString();
+    
+    const canAssign = await canAssignMinecraftPlayer(
+      req,
+      currentUser.role,
+      staffMember.role,
+      currentUserId,
+      targetUserId
+    );
+    
+    if (!canAssign) {
+      return res.status(403).json({ 
+        error: 'Forbidden: You do not have permission to assign minecraft players for this staff member.' 
+      });
     }
 
     // If clearing assignment

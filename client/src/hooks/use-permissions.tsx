@@ -1,6 +1,7 @@
 import { useMemo } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { useAuth } from './use-auth';
+import { buildRoleHierarchy, canModifyRole, canRemoveUser, canAssignMinecraftPlayer } from '@/utils/role-hierarchy';
 
 // Define permissions that match the backend permission system
 export const PERMISSIONS = {
@@ -143,6 +144,37 @@ export function usePermissions() {
     return allTabs.filter(tab => canAccessSettingsTab(tab));
   };
 
+  // Role hierarchy helper functions integrated with existing permission system
+  const { data: rolesData } = useQuery({
+    queryKey: ['roles'],
+    queryFn: async () => {
+      const response = await fetch('/api/panel/roles');
+      if (!response.ok) throw new Error('Failed to fetch roles');
+      return response.json();
+    },
+    staleTime: 5 * 60 * 1000, // Cache for 5 minutes
+  });
+
+  const roleHierarchy = useMemo(() => {
+    return rolesData?.roles ? buildRoleHierarchy(rolesData.roles) : new Map();
+  }, [rolesData]);
+
+  // Role hierarchy functions
+  const canModifyUserRole = (targetUserRole: string, newRole: string, targetUserId?: string): boolean => {
+    if (!user) return false;
+    return canModifyRole(user.role, targetUserRole, newRole, roleHierarchy);
+  };
+
+  const canRemoveStaffUser = (targetUserRole: string): boolean => {
+    if (!user) return false;
+    return canRemoveUser(user.role, targetUserRole, roleHierarchy);
+  };
+
+  const canAssignStaffMinecraftPlayer = (targetUserRole: string, targetUserId: string): boolean => {
+    if (!user) return false;
+    return canAssignMinecraftPlayer(user.role, targetUserRole, user._id, targetUserId, roleHierarchy);
+  };
+
   return {
     userPermissions,
     hasPermission,
@@ -150,5 +182,10 @@ export function usePermissions() {
     hasAnyPermission,
     canAccessSettingsTab,
     getAccessibleSettingsTabs,
+    // Role hierarchy functions
+    canModifyUserRole,
+    canRemoveStaffUser,
+    canAssignStaffMinecraftPlayer,
+    roleHierarchy,
   };
 }
