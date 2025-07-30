@@ -930,8 +930,8 @@ const Settings = () => {
   
   // AI Moderation settings state
   const [aiModerationSettings, setAiModerationSettings] = useState<IAIModerationSettings>({
-    enableAIReview: true,
-    enableAutomatedActions: true,
+    enableAIReview: false,
+    enableAutomatedActions: false,
     strictnessLevel: 'standard',
     aiPunishmentConfigs: {}
   });
