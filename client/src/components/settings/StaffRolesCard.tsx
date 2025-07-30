@@ -150,7 +150,7 @@ const DraggableRoleCard: React.FC<DraggableRoleCardProps> = ({
 
   const [{ isOver, canDrop }, drop] = useDrop({
     accept: 'role',
-    hover: (draggedItem: { index: number; role: StaffRole }) => {
+    hover: (draggedItem: { index: number; role: StaffRole; originalIndex: number }) => {
       if (draggedItem.index === index) return;
       
       // Don't allow dropping on Super Admin or moving Super Admin
@@ -167,9 +167,7 @@ const DraggableRoleCard: React.FC<DraggableRoleCardProps> = ({
       onMoveRole(draggedItem.index, index);
       draggedItem.index = index;
     },
-    drop: (draggedItem: { index: number; role: StaffRole }) => {
-      if (draggedItem.index === index) return;
-      
+    drop: (draggedItem: { index: number; role: StaffRole; originalIndex: number }) => {
       // Don't allow dropping on Super Admin or moving Super Admin
       if (role.name === 'Super Admin' || draggedItem.role.name === 'Super Admin') return;
       
@@ -180,8 +178,10 @@ const DraggableRoleCard: React.FC<DraggableRoleCardProps> = ({
       // User must have lower order (higher authority) than both the dragged role and target position
       if (currentUserOrder >= draggedRoleOrder || currentUserOrder >= targetRoleOrder) return;
       
-      // Commit the change and show confirmation when drop happens
-      onCommitReorder(draggedItem.index, index);
+      // Only commit if the position actually changed
+      if (draggedItem.originalIndex !== index) {
+        onCommitReorder(draggedItem.originalIndex, index);
+      }
     },
     collect: (monitor) => ({
       isOver: monitor.isOver(),
@@ -358,16 +358,10 @@ export default function StaffRolesCard() {
   };
 
   // Handle role reordering when drag ends (actual commit)
-  const commitRoleReorder = (dragIndex: number, hoverIndex: number) => {
-    const newRoles = [...localRoles];
-    const draggedRole = newRoles[dragIndex];
-    
-    // Remove the dragged role and insert at new position
-    newRoles.splice(dragIndex, 1);
-    newRoles.splice(hoverIndex, 0, draggedRole);
-    
-    setLocalRoles(newRoles);
-    setPendingReorder(newRoles);
+  const commitRoleReorder = (originalIndex: number, targetIndex: number) => {
+    // The localRoles state already reflects the current visual state from hover operations
+    // We just need to set pending reorder and show confirmation
+    setPendingReorder([...localRoles]);
     setShowReorderConfirm(true);
   };
 
@@ -396,11 +390,13 @@ export default function StaffRolesCard() {
         description: "The role hierarchy has been saved successfully.",
       });
       
+      // Update original roles to the new order so future cancellations work correctly
+      setOriginalRoles([...localRoles]);
       setPendingReorder(null);
       setShowReorderConfirm(false);
     } catch (error) {
       // Revert the local change if the API call fails
-      setLocalRoles(effectiveRoles);
+      setLocalRoles(originalRoles);
       toast({
         title: "Error",
         description: "Failed to save role order. Please try again.",
@@ -413,13 +409,8 @@ export default function StaffRolesCard() {
 
   // Cancel role reordering
   const cancelRoleOrder = () => {
-    // Reset to original sorted order
-    const sortedRoles = [...effectiveRoles].sort((a, b) => {
-      const aOrder = a.order ?? 999;
-      const bOrder = b.order ?? 999;
-      return aOrder - bOrder;
-    });
-    setLocalRoles(sortedRoles);
+    // Reset to original order before the drag operation
+    setLocalRoles(originalRoles);
     setPendingReorder(null);
     setShowReorderConfirm(false);
   };
