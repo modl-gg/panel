@@ -492,10 +492,7 @@ export async function createDefaultRoles(dbConnection: Connection): Promise<void
         roleData,
         { upsert: true, new: true }
       );
-      console.log(`Created/updated default role: ${roleData.name}`);
     }
-
-    console.log('Default staff roles created successfully');
   } catch (error) {
     console.error('Error creating default roles:', error);
     throw error;

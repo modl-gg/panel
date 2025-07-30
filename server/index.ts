@@ -6,7 +6,7 @@ import { registerRoutes } from "./routes";
 import { setupVite, serveStatic, log } from "./vite";
 import { subdomainDbMiddleware } from "./middleware/subdomainDbMiddleware";
 import { globalRateLimit } from "./middleware/rate-limiter";
-import { csrfProtection, csrfTokenProvider } from "./middleware/csrf-middleware";
+import { csrfProtection, csrfTokenProvider, getCSRFToken } from "./middleware/csrf-middleware";
 import { securityHeaders } from "./middleware/security-headers";
 
 // SECURITY: Block development mode execution
@@ -114,7 +114,6 @@ app.use(csrfTokenProvider);
 
 // CSRF token endpoint for client-side access
 app.get('/api/csrf-token', (req, res) => {
-  const { getCSRFToken } = require('./middleware/csrf-middleware');
   getCSRFToken(req, res);
 });
 

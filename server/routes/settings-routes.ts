@@ -1229,10 +1229,6 @@ export async function migrateTicketForms(dbConnection: Connection): Promise<void
         },
         { upsert: true }
       );
-      
-      console.log('Successfully migrated ticketForms from old format to new format');
-    } else {
-      console.log('ticketForms already in correct format or doesn\'t exist');
     }
   } catch (error) {
     console.error('Error during ticketForms migration:', error);
@@ -1288,7 +1284,6 @@ export async function getAllSettings(dbConnection: Connection): Promise<any> {
                 },
                 { upsert: true }
               );
-              console.log('Migrated ticketForms from old format to new format');
             } catch (migrationError) {
               console.error('Error migrating ticketForms:', migrationError);
             }
@@ -1505,8 +1500,6 @@ export async function cleanupOrphanedAIPunishmentConfigs(dbConnection: Connectio
       .filter(id => !validPunishmentTypeIds.has(id));
 
     if (orphanedConfigIds.length > 0) {
-      console.log(`[Settings] Cleaning up ${orphanedConfigIds.length} orphaned AI punishment configs:`, orphanedConfigIds);
-      
       // Remove orphaned configs
       orphanedConfigIds.forEach(id => {
         delete aiSettings.aiPunishmentConfigs[id];
@@ -1518,8 +1511,6 @@ export async function cleanupOrphanedAIPunishmentConfigs(dbConnection: Connectio
         { type: 'aiModerationSettings', data: aiSettings },
         { upsert: true, new: true }
       );
-      
-      console.log(`[Settings] Successfully removed orphaned AI configs for punishment types:`, orphanedConfigIds);
     }
   } catch (error) {
     console.error('[Settings] Error cleaning up orphaned AI punishment configs:', error);
@@ -2692,8 +2683,6 @@ async function cleanupOrphanedAIPunishmentConfigsHelper(dbConnection: Connection
       .filter(id => !validPunishmentTypeIds.has(id));
 
     if (orphanedConfigIds.length > 0) {
-      console.log(`[Settings] Cleaning up ${orphanedConfigIds.length} orphaned AI punishment configs:`, orphanedConfigIds);
-      
       // Remove orphaned configs
       orphanedConfigIds.forEach(id => {
         delete aiSettings.aiPunishmentConfigs[id];
@@ -2702,8 +2691,6 @@ async function cleanupOrphanedAIPunishmentConfigsHelper(dbConnection: Connection
       // Save updated settings
       settingsDoc.settings.set('aiModerationSettings', aiSettings);
       await settingsDoc.save();
-      
-      console.log(`[Settings] Successfully removed orphaned AI configs for punishment types:`, orphanedConfigIds);
     }
   } catch (error) {
     console.error('[Settings] Error cleaning up orphaned AI punishment configs:', error);
@@ -2928,15 +2915,8 @@ router.delete('/api-key', async (req: Request, res: Response) => {
 router.get('/ticket-api-key', async (req: Request, res: Response) => {
   if (!(await checkRoutePermission(req, res, 'admin.settings.view'))) return;
   try {
-    
-    console.log('[Ticket API Key GET] Server name:', req.serverName);
-    console.log('[Ticket API Key GET] DB connection exists:', !!req.serverDbConnection);
-    
     const Settings = req.serverDbConnection!.model<ISettingsDocument>('Settings');
     const settingsDoc = await Settings.findOne({});
-    
-    console.log('[Ticket API Key GET] Settings doc found:', !!settingsDoc);
-    console.log('[Ticket API Key GET] Settings map exists:', !!settingsDoc?.settings);
     
     if (!settingsDoc || !settingsDoc.settings) {
       
@@ -2944,8 +2924,6 @@ router.get('/ticket-api-key', async (req: Request, res: Response) => {
     }
     
     const apiKey = settingsDoc.settings.get('ticket_api_key');
-    console.log('[Ticket API Key GET] API key exists:', !!apiKey);
-    console.log('[Ticket API Key GET] API key length:', apiKey ? apiKey.length : 0);
     
     if (!apiKey) {
       
@@ -2960,7 +2938,6 @@ router.get('/ticket-api-key', async (req: Request, res: Response) => {
       ? `${apiKey.substring(0, 8)}...${apiKey.substring(apiKey.length - 4)}`
       : `${apiKey.substring(0, 4)}...`;
     
-    console.log('[Ticket API Key GET] Returning masked key:', maskedKey);
     res.json({ 
       hasApiKey: true,
       maskedKey 
@@ -2975,15 +2952,10 @@ router.get('/ticket-api-key', async (req: Request, res: Response) => {
 router.post('/ticket-api-key/generate', async (req: Request, res: Response) => {
   if (!(await checkRoutePermission(req, res, 'admin.settings.modify'))) return;
   try {
-    
-    console.log('[Ticket API Key GENERATE] Server name:', req.serverName);
-    console.log('[Ticket API Key GENERATE] DB connection exists:', !!req.serverDbConnection);
-    
     const Settings = req.serverDbConnection!.model('Settings');
     
     // Generate new API key
     const newApiKey = generateTicketApiKey();
-    console.log('[Ticket API Key GENERATE] Generated new API key with length:', newApiKey.length);
     
     // Get existing API keys data
     const existingApiKeysDoc = await Settings.findOne({ type: 'apiKeys' });
@@ -3006,8 +2978,6 @@ router.post('/ticket-api-key/generate', async (req: Request, res: Response) => {
     // Verify it was saved
     const verifyDoc = await Settings.findOne({});
     const savedKey = verifyDoc?.settings.get('ticket_api_key');
-    console.log('[Ticket API Key GENERATE] Verification - API key saved correctly:', !!savedKey);
-    console.log('[Ticket API Key GENERATE] Verification - API key matches:', savedKey === newApiKey);
     
     // Return the full key only once (for copying)
     res.json({ 
@@ -3581,7 +3551,6 @@ router.post('/ai-apply-punishment/:ticketId', async (req: Request, res: Response
     }
 
     aiAnalysis = ticket.data?.get ? ticket.data.get('aiAnalysis') : ticket.data?.aiAnalysis;
-    console.log(`[AI Apply] Found AI analysis for ticket ${ticketId}:`, JSON.stringify(aiAnalysis, null, 2));
     
     if (!aiAnalysis || !aiAnalysis.suggestedAction) {
       return res.status(400).json({ error: 'No AI suggestion found for this ticket' });
@@ -3628,10 +3597,6 @@ router.post('/ai-apply-punishment/:ticketId', async (req: Request, res: Response
         error: `Failed to apply punishment: ${punishmentResult.error}` 
       });
     }
-
-    // Update the AI analysis to mark it as manually applied
-    
-    console.log(`[AI Apply] AI analysis before update:`, JSON.stringify(aiAnalysis, null, 2));
     
     // Create a new object to ensure MongoDB detects the change
     const updatedAiAnalysis = {
@@ -3642,8 +3607,6 @@ router.post('/ai-apply-punishment/:ticketId', async (req: Request, res: Response
       appliedAt: new Date(),
       appliedPunishmentId: punishmentResult.punishmentId
     };
-
-    console.log(`[AI Apply] Updated AI analysis:`, JSON.stringify(updatedAiAnalysis, null, 2));
     
     ticket.data.set('aiAnalysis', updatedAiAnalysis);
     ticket.markModified('data');
@@ -3751,7 +3714,6 @@ router.post('/ai-dismiss-suggestion/:ticketId', async (req: Request, res: Respon
     }
 
     const aiAnalysis = ticket.data?.get ? ticket.data.get('aiAnalysis') : ticket.data?.aiAnalysis;
-    console.log(`[AI Dismiss] Found AI analysis for ticket ${ticketId}:`, JSON.stringify(aiAnalysis, null, 2));
     
     if (!aiAnalysis) {
       console.error(`[AI Dismiss] No AI analysis found for ticket ${ticketId}`);
@@ -3780,8 +3742,6 @@ router.post('/ai-dismiss-suggestion/:ticketId', async (req: Request, res: Respon
       dismissedAt: new Date(),
       dismissalReason: reason || 'No reason provided'
     };
-
-    console.log(`[AI Dismiss] Updated AI analysis:`, JSON.stringify(dismissedAiAnalysis, null, 2));
     
     ticket.data.set('aiAnalysis', dismissedAiAnalysis);
     ticket.markModified('data');
@@ -3966,11 +3926,8 @@ export async function addDefaultPunishmentTypes(dbConnection: Connection): Promi
     const missingGameplayTypes = requiredGameplayOrdinals.filter(ordinal => !existingTypesMap.has(ordinal));
     
     if (missingSocialTypes.length === 0 && missingGameplayTypes.length === 0) {
-      console.log('All default punishment types already exist, skipping creation');
       return;
     }
-    
-    console.log(`Missing social types: ${missingSocialTypes.length}, missing gameplay types: ${missingGameplayTypes.length}`);
 
     // Default Social punishment types (customizable, ordered as requested)
     const defaultSocialTypes: IPunishmentType[] = [
@@ -4366,10 +4323,6 @@ export async function addDefaultPunishmentTypes(dbConnection: Connection): Promi
         },
         { upsert: true }
       );
-      
-      console.log(`Added ${missingTypes.length} missing default punishment types to database`);
-    } else {
-      console.log('All required punishment types already exist, no changes needed');
     }
   } catch (error) {
     console.error('Error adding default punishment types:', error);

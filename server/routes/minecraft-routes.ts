@@ -62,7 +62,6 @@ async function createPunishmentAuditLog(
     });
     
     await logEntry.save();
-    console.log(`AUDIT LOG (${serverName}): ${description} [moderation, ${auditSource}]`);
   } catch (error) {
     console.error('Error creating punishment audit log:', error);
     // Fallback to basic system log

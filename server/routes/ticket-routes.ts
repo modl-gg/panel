@@ -56,8 +56,6 @@ async function addNotificationToPlayer(
     const playerExists = await Player.countDocuments({ minecraftUuid: playerUuid });
     
     if (!playerExists) {
-      console.log(`Player ${playerUuid} not found, creating basic player record for notification`);
-      
       // Try to create a new player document
       try {
         const newPlayer = new Player({
@@ -73,21 +71,18 @@ async function addNotificationToPlayer(
         });
         
         await newPlayer.save();
-        console.log(`Created basic player record for ${playerUuid} with notification`);
         return;
       } catch (saveError: any) {
         // If save fails due to duplicate key, player was created by another process
         if (saveError.code !== 11000) {
           throw saveError;
         }
-        console.log(`Player ${playerUuid} already exists, will update with notification`);
       }
     }
 
     // First, check if we need to migrate from old string format
     const player = await Player.findOne({ minecraftUuid: playerUuid }, { pendingNotifications: 1 });
     if (player && player.pendingNotifications && player.pendingNotifications.length > 0 && typeof player.pendingNotifications[0] === 'string') {
-      console.log(`Migrating pendingNotifications format for player ${playerUuid}`);
       // Clear old string notifications
       await Player.updateOne(
         { minecraftUuid: playerUuid },
@@ -109,9 +104,7 @@ async function addNotificationToPlayer(
       }
     );
     
-    if (result) {
-      console.log(`Added notification to player ${playerUuid}: ${notification.message}`);
-    } else {
+    if (!result) {
       console.error(`Failed to add notification - player ${playerUuid} not found after existence check`);
     }
   } catch (error) {
@@ -635,8 +628,6 @@ router.patch('/:id', async (req: Request<{ id: string }, {}, UpdateTicketBody>, 
     });
   }
   
-  console.log(`[Ticket PATCH] Request body:`, JSON.stringify(req.body, null, 2));
-  
   try {
     const Ticket = req.serverDbConnection!.model<ITicket>('Ticket');
     const ticket = await Ticket.findById(req.params.id);
@@ -708,8 +699,6 @@ router.patch('/:id', async (req: Request<{ id: string }, {}, UpdateTicketBody>, 
         
         // Send email notification if ticket has creator email
         const emailField = ticket.data?.get('creatorEmail') || ticket.data?.get('contactEmail') || ticket.data?.get('contact_email');
-        
-        console.log(`[Ticket PATCH] ticket.data keys:`, ticket.data ? Array.from(ticket.data.keys()) : 'No data');
         
         if (ticket.data && emailField) {
           try {

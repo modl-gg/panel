@@ -674,7 +674,6 @@ export function setupTicketRoutes(app: Express) {
       const updatedTicket = await Ticket.findByIdAndUpdate(id, updateOperations, { new: true });
       if (!updatedTicket) return res.status(404).json({ error: 'Ticket not found during update' });
 
-      console.log(`Updated ticket ${id} - Locked status: ${updatedTicket.locked}`);
       await createSystemLog(req.serverDbConnection, req.serverName, `Ticket ${id} updated`);
       res.json(updatedTicket);
     } catch (error) {

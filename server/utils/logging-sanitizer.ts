@@ -125,7 +125,7 @@ function sanitizeObject(obj: any): any {
  */
 export function safeLog(message: string, ...args: any[]): void {
   const sanitizedArgs = args.map(sanitizeValue);
-  console.log(message, ...sanitizedArgs);
+  //console.log(message, ...sanitizedArgs);
 }
 
 /**
