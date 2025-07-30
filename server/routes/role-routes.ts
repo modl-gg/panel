@@ -381,27 +381,26 @@ router.post('/reorder', strictRateLimit, async (req: Request, res: Response) => 
       return res.status(500).json({ error: 'Current user role not found in database' });
     }
     
-    // Super Admin (order 0) can reorder all roles
-    const isSuperAdmin = userRole.order === 0;
+    // Get role hierarchy utilities and check permissions
+    const { getRoleHierarchy, canReorderRoles } = await import('../utils/role-hierarchy');
+    const roleHierarchy = await getRoleHierarchy(db);
     
-    // Validate that user can only reorder roles below their rank
-    for (const item of roleOrder) {
-      const role = roleMap.get(item.id);
-      if (!role) continue;
-      
-      // Super Admin is always at order 0 and cannot be reordered by anyone
-      if (role.order === 0) {
-        return res.status(403).json({ 
-          error: 'The Super Admin role cannot be reordered.' 
-        });
-      }
-      
-      // Non-super admins cannot reorder roles at or above their own order
-      if (!isSuperAdmin && role.order <= userRole.order) {
-        return res.status(403).json({ 
-          error: `You cannot reorder the ${role.name} role as it has equal or higher authority than your role.` 
-        });
-      }
+    // Extract role names from reorder request
+    const rolesToReorder = roleOrder
+      .map((item: { id: string; order: number }) => roleMap.get(item.id)?.name)
+      .filter(Boolean);
+    
+    // Check if user can reorder these roles
+    const { canReorder, invalidRoles } = canReorderRoles(
+      currentUser.role,
+      rolesToReorder,
+      roleHierarchy
+    );
+    
+    if (!canReorder) {
+      return res.status(403).json({ 
+        error: `You cannot reorder the following roles: ${invalidRoles.join(', ')}` 
+      });
     }
     
     // If validation passes, update each role's order

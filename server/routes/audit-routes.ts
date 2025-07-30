@@ -7,11 +7,19 @@ const router = express.Router();
 // we don't need additional auth middleware here. The isAuthenticated middleware is already applied.
 
 // Middleware to ensure only admins can access audit routes
-const requireAdmin = (req: express.Request, res: express.Response, next: express.NextFunction) => {
-  if (!req.currentUser || (req.currentUser.role !== 'Admin' && req.currentUser.role !== 'Super Admin')) {
-    return res.status(403).json({ message: 'Access denied. Admin privileges required.' });
+const requireAdmin = async (req: express.Request, res: express.Response, next: express.NextFunction) => {
+  try {
+    // Check if user has audit access using existing permission system
+    const { hasPermission } = await import('../middleware/permission-middleware');
+    
+    if (!req.currentUser || !(await hasPermission(req, 'admin.audit.view'))) {
+      return res.status(403).json({ message: 'Access denied. Admin privileges required.' });
+    }
+    next();
+  } catch (error) {
+    console.error('Error checking audit permissions:', error);
+    return res.status(500).json({ message: 'Internal server error while checking permissions.' });
   }
-  next();
 };
 
 router.use(requireAdmin);
