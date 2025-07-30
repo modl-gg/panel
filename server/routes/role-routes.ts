@@ -354,7 +354,7 @@ router.delete('/:id', strictRateLimit, async (req: Request, res: Response) => {
 
 // POST /api/panel/roles/reorder - Update role order
 router.post('/reorder', strictRateLimit, async (req: Request, res: Response) => {
-  if (!(await checkRolePermission(req, res, true))) return;
+  if (!(await checkRolePermission(req, res, false))) return;
   try {
     const { roleOrder } = req.body;
     
@@ -363,12 +363,48 @@ router.post('/reorder', strictRateLimit, async (req: Request, res: Response) => 
     }
     
     const db = req.serverDbConnection!;
+    const currentUser = req.currentUser!;
     
     // Get StaffRole model with consistent schema
     const { getStaffRoleModel } = await import('../utils/schema-utils');
     const StaffRoles = getStaffRoleModel(db);
     
-    // Update each role's order
+    // Get all current roles to check permissions
+    const allRoles = await StaffRoles.find({}).sort({ order: 1 });
+    
+    // Create a map of role ID to role object for quick lookup
+    const roleMap = new Map(allRoles.map((role: any) => [role.id, role]));
+    
+    // Find the current user's role in the database
+    const userRole = allRoles.find((role: any) => role.name === currentUser.role);
+    if (!userRole) {
+      return res.status(500).json({ error: 'Current user role not found in database' });
+    }
+    
+    // Super Admin (order 0) can reorder all roles
+    const isSuperAdmin = userRole.order === 0;
+    
+    // Validate that user can only reorder roles below their rank
+    for (const item of roleOrder) {
+      const role = roleMap.get(item.id);
+      if (!role) continue;
+      
+      // Super Admin is always at order 0 and cannot be reordered by anyone
+      if (role.order === 0) {
+        return res.status(403).json({ 
+          error: 'The Super Admin role cannot be reordered.' 
+        });
+      }
+      
+      // Non-super admins cannot reorder roles at or above their own order
+      if (!isSuperAdmin && role.order <= userRole.order) {
+        return res.status(403).json({ 
+          error: `You cannot reorder the ${role.name} role as it has equal or higher authority than your role.` 
+        });
+      }
+    }
+    
+    // If validation passes, update each role's order
     const updatePromises = roleOrder.map(async (item: { id: string; order: number }) => {
       return StaffRoles.findOneAndUpdate(
         { id: item.id },

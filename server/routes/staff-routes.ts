@@ -511,33 +511,35 @@ router.patch('/:id/role', async (req: Request<{ id: string }, {}, { role: IStaff
       return res.status(403).json({ message: 'Cannot change the role of the server administrator.' });
     }
 
-    // Role hierarchy validation (matches client-side hierarchy)
-    const getRoleRank = (role: string): number => {
-      const roleHierarchy: Record<string, number> = {
-        'Helper': 1,
-        'Moderator': 2,
-        'Admin': 3,
-        'Super Admin': 4
-      };
-      return roleHierarchy[role] || 0;
-    };
-
     // Cannot change your own role
     if (staffToUpdate._id.toString() === performingUser.userId) {
       return res.status(403).json({ message: 'You cannot change your own role.' });
     }
 
-    // Check role hierarchy permissions
-    const performerRank = getRoleRank(performingUser.role);
-    const currentTargetRank = getRoleRank(staffToUpdate.role);
-    const newTargetRank = getRoleRank(newRole);
+    // Get role hierarchy from database
+    const { getStaffRoleModel } = await import('../utils/schema-utils');
+    const StaffRoles = getStaffRoleModel(req.serverDbConnection!);
+    const allRoles = await StaffRoles.find({}).sort({ order: 1 });
+    
+    // Create role name to order mapping
+    const roleOrderMap = new Map(allRoles.map((role: any) => [role.name, role.order]));
+    
+    // Get role orders
+    const performerOrder = roleOrderMap.get(performingUser.role);
+    const currentTargetOrder = roleOrderMap.get(staffToUpdate.role);
+    const newTargetOrder = roleOrderMap.get(newRole);
+    
+    if (performerOrder === undefined || currentTargetOrder === undefined || newTargetOrder === undefined) {
+      return res.status(500).json({ message: 'Role hierarchy information not found.' });
+    }
 
-    // Can only change roles if your rank is higher than both current and new target roles
-    if (performerRank <= currentTargetRank) {
+    // Check role hierarchy permissions
+    // Can only change roles if your order is lower (higher authority) than both current and new target roles
+    if (performerOrder >= currentTargetOrder) {
       return res.status(403).json({ message: 'Cannot modify users with the same or higher role level than your own.' });
     }
 
-    if (performerRank <= newTargetRank) {
+    if (performerOrder >= newTargetOrder) {
       return res.status(403).json({ message: 'Cannot assign roles with the same or higher level than your own.' });
     }
 

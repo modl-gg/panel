@@ -6,7 +6,7 @@ import { Button } from '@modl-gg/shared-web/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@modl-gg/shared-web/components/ui/card';
 import ChangeRoleModal from './ChangeRoleModal'; // Import the new modal
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@modl-gg/shared-web/components/ui/table';
-import { useStaff } from '@/hooks/use-data';
+import { useStaff, useRoles } from '@/hooks/use-data';
 import { Skeleton } from '@modl-gg/shared-web/components/ui/skeleton';
 import { MoreHorizontal, Plus, PlusIcon, RefreshCw, User } from 'lucide-react';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@modl-gg/shared-web/components/ui/dropdown-menu';
@@ -33,35 +33,32 @@ interface User {
   role: string;
 }
 
-// Define role hierarchy (higher number = higher authority)
-const getRoleRank = (role: string): number => {
-  const roleHierarchy: Record<string, number> = {
-    'Helper': 1,
-    'Moderator': 2,
-    'Admin': 3,
-    'Super Admin': 4
-  };
-  return roleHierarchy[role] || 0;
-};
+// Role interface to match the one from StaffRolesCard
+interface Role {
+  id: string;
+  name: string;
+  order?: number;
+}
 
 // Helper function to check if a user can change another member's role
-const canChangeRole = (hasStaffManagePermission: boolean, currentUser: User, member: StaffMember): boolean => {
+const canChangeRole = (hasStaffManagePermission: boolean, currentUser: User, member: StaffMember, roleMap: Map<string, number>): boolean => {
   if (!hasStaffManagePermission) return false;
   
-  // Super Admin clicking on themselves - should not see change role button
-  if (currentUser.role === 'Super Admin' && currentUser._id === member._id) {
+  // Cannot change role of yourself
+  if (currentUser._id === member._id) {
     return false;
   }
   
-  // Cannot change role of someone with same or higher rank
-  const currentUserRank = getRoleRank(currentUser.role);
-  const memberRank = getRoleRank(member.role);
+  // Get role orders from the map
+  const currentUserOrder = roleMap.get(currentUser.role) ?? 999;
+  const memberOrder = roleMap.get(member.role) ?? 999;
   
-  return currentUserRank > memberRank;
+  // Cannot change role of someone with same or lower order (higher or equal authority)
+  return currentUserOrder < memberOrder;
 };
 
 // Helper function to check if a user can remove another member
-const canRemoveMember = (hasStaffManagePermission: boolean, currentUser: User, member: StaffMember): boolean => {
+const canRemoveMember = (hasStaffManagePermission: boolean, currentUser: User, member: StaffMember, roleMap: Map<string, number>): boolean => {
   if (!hasStaffManagePermission) return false;
   
   // Cannot remove yourself
@@ -69,15 +66,17 @@ const canRemoveMember = (hasStaffManagePermission: boolean, currentUser: User, m
     return false;
   }
   
-  // Cannot remove someone with same or higher rank
-  const currentUserRank = getRoleRank(currentUser.role);
-  const memberRank = getRoleRank(member.role);
+  // Get role orders from the map
+  const currentUserOrder = roleMap.get(currentUser.role) ?? 999;
+  const memberOrder = roleMap.get(member.role) ?? 999;
   
-  return currentUserRank > memberRank;
+  // Cannot remove someone with same or lower order (higher or equal authority)
+  return currentUserOrder < memberOrder;
 };
 
 const StaffManagementPanel = () => {
   const { data: staff, isLoading, error, refetch: refetchStaff, isRefetching } = useStaff();
+  const { data: rolesData } = useRoles();
   const { user: currentUser } = useAuth();
   const { hasPermission } = usePermissions();
   const [isInviteModalOpen, setIsInviteModalOpen] = useState(false);
@@ -88,6 +87,14 @@ const StaffManagementPanel = () => {
   const [isSpinning, setIsSpinning] = useState(false);
   const queryClient = useQueryClient();
   const { toast } = useToast();
+  
+  // Create role order map from roles data
+  const roleOrderMap = new Map<string, number>();
+  if (rolesData?.roles) {
+    rolesData.roles.forEach((role: Role) => {
+      roleOrderMap.set(role.name, role.order ?? 999);
+    });
+  }
 
   const handleInviteSent = () => {
     queryClient.invalidateQueries({ queryKey: ['/api/panel/staff'] });
@@ -276,12 +283,12 @@ const StaffManagementPanel = () => {
                                   {member.assignedMinecraftUsername ? 'Change' : 'Assign'} Minecraft Player
                                 </DropdownMenuItem>
                               )}
-                              {currentUser && canChangeRole(hasPermission('admin.staff.manage'), currentUser, member) && (
+                              {currentUser && canChangeRole(hasPermission('admin.staff.manage'), currentUser, member, roleOrderMap) && (
                                 <DropdownMenuItem onSelect={() => openChangeRoleModal(member)}>
                                   Change Role
                                 </DropdownMenuItem>
                               )}
-                              {currentUser && canRemoveMember(hasPermission('admin.staff.manage'), currentUser, member) && (
+                              {currentUser && canRemoveMember(hasPermission('admin.staff.manage'), currentUser, member, roleOrderMap) && (
                                 <DropdownMenuItem onSelect={() => openConfirmationDialog(member)}>
                                   Remove Staff Member
                                 </DropdownMenuItem>
