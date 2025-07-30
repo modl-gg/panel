@@ -201,7 +201,7 @@ const DraggableRoleCard: React.FC<DraggableRoleCardProps> = ({
             variant="outline"
             size="sm"
             onClick={() => onEditRole(role)}
-            disabled={role.name === 'Super Admin' || (roleOrderMap.get(currentUser?.role || '') ?? 999) >= getRoleOrder(role)}
+            disabled={role.name === 'Super Admin' || (roleOrderMap.get(currentUser.role || '') ?? 999) >= getRoleOrder(role)}
           >
             <Edit className="h-3 w-3" />
           </Button>
@@ -209,7 +209,7 @@ const DraggableRoleCard: React.FC<DraggableRoleCardProps> = ({
             variant="outline"
             size="sm"
             onClick={() => onDeleteRole(role)}
-            disabled={role.name === 'Super Admin' || (roleOrderMap.get(currentUser?.role || '') ?? 999) >= getRoleOrder(role)}
+            disabled={role.name === 'Super Admin' || (roleOrderMap.get(currentUser.role || '') ?? 999) >= getRoleOrder(role)}
             className="text-destructive hover:text-destructive"
           >
             <Trash2 className="h-3 w-3" />
@@ -278,9 +278,17 @@ export default function StaffRolesCard() {
   }
   
   // Debug logging to see what's happening
-  console.log('Current user role:', currentUser?.role);
+  console.log('Current user object:', currentUser);
+  console.log('Current user role:', currentUser.role);
   console.log('Role order map:', Array.from(roleOrderMap.entries()));
-  console.log('Current user order:', roleOrderMap.get(currentUser?.role || '') ?? 999);
+  
+  // Safety check for currentUser
+  if (!currentUser) {
+    console.warn('currentUser is undefined - this should not happen');
+    return <div>Loading user information...</div>;
+  }
+  
+  console.log('Current user order:', roleOrderMap.get(currentUser.role || '') ?? 999);
 
   // Update local roles when server data changes
   useEffect(() => {
@@ -369,7 +377,7 @@ export default function StaffRolesCard() {
     }
     
     // Check if user can edit this role based on hierarchy
-    const currentUserOrder = roleOrderMap.get(currentUser?.role || '') ?? 999;
+    const currentUserOrder = roleOrderMap.get(currentUser.role || '') ?? 999;
     if (currentUserOrder >= getRoleOrder(role)) {
       toast({
         title: "Cannot Edit Role",
@@ -440,7 +448,7 @@ export default function StaffRolesCard() {
     }
     
     // Check if user can delete this role based on hierarchy
-    const currentUserOrder = roleOrderMap.get(currentUser?.role || '') ?? 999;
+    const currentUserOrder = roleOrderMap.get(currentUser.role || '') ?? 999;
     if (currentUserOrder >= getRoleOrder(role)) {
       toast({
         title: "Cannot Delete Role",
@@ -517,7 +525,7 @@ export default function StaffRolesCard() {
                   key={role.id}
                   role={role}
                   index={index}
-                  currentUserRole={currentUser?.role}
+                  currentUserRole={currentUser.role}
                   roleOrderMap={roleOrderMap}
                   onEditRole={handleEditRole}
                   onDeleteRole={handleDeleteRole}
