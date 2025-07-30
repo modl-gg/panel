@@ -939,104 +939,104 @@ const TicketSettings = ({
                     </p>
 
                     <div className="space-y-6">
-                  {/* Enable AI Review Toggle */}
-                  <div className="flex items-center justify-between">
-                    <div className="space-y-1">
-                      <Label htmlFor="enable-ai-review" className="text-sm font-medium">
-                        Enable AI Review
-                      </Label>
-                      <p className="text-xs text-muted-foreground">
-                        Enable AI-powered analysis and moderation of chat reports. When disabled, all AI features are turned off.
-                      </p>
-                    </div>
-                    <Switch
-                      id="enable-ai-review"
-                      checked={aiModerationSettings.enableAIReview !== false}
-                      onCheckedChange={(checked) => {
-                        setAiModerationSettings((prev: any) => ({
-                          ...prev,
-                          enableAIReview: checked
-                        }));
-                      }}
-                    />
-                  </div>
-
-                  {/* AI Settings Content - Disabled when AI Review is off */}
-                  <div className={`space-y-6 ${aiModerationSettings.enableAIReview === false ? 'opacity-50 pointer-events-none' : ''}`}>
-                    {/* Enable Automated Actions Toggle */}
-                    <div className="flex items-center justify-between">
-                    <div className="space-y-1">
-                      <Label htmlFor="enable-automated-actions" className="text-sm font-medium">
-                        Enable Automated Actions
-                      </Label>
-                      <p className="text-xs text-muted-foreground">
-                        When enabled, the AI will automatically apply suggested punishments for clear violations. When disabled, the AI will only provide suggestions for staff review.
-                      </p>
-                    </div>
-                    <Switch
-                      id="enable-automated-actions"
-                      checked={aiModerationSettings.enableAutomatedActions}
-                      onCheckedChange={(checked) => {
-                        setAiModerationSettings((prev: any) => ({
-                          ...prev,
-                          enableAutomatedActions: checked
-                        }));
-                      }}
-                    />
-                  </div>
-
-                  {/* Strictness Level */}
-                  <div className="space-y-3">
-                    <Label className="text-sm font-medium">AI Strictness Level</Label>
-                    <Select
-                      value={aiModerationSettings.strictnessLevel}
-                      onValueChange={(value) => {
-                        setAiModerationSettings((prev: any) => ({
-                          ...prev,
-                          strictnessLevel: value
-                        }));
-                      }}
-                    >
-                      <SelectTrigger className="w-full">
-                        <SelectValue placeholder="Select strictness level" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="lenient">Lenient - Only flagrant violations</SelectItem>
-                        <SelectItem value="standard">Standard - Balanced approach</SelectItem>
-                        <SelectItem value="strict">Strict - Zero tolerance policy</SelectItem>
-                      </SelectContent>
-                    </Select>
-                    <p className="text-xs text-muted-foreground">
-                      Controls how sensitive the AI is to rule violations. Higher strictness means more actions will be flagged.
-                    </p>
-                  </div>
-
-                  {/* AI Punishment Types Management Section */}
-                  <div className="space-y-4">
-                    <div className="flex items-center justify-between">
-                      <div>
-                        <h4 className="text-base font-medium">AI Punishment Types</h4>
-                        <p className="text-sm text-muted-foreground">
-                          Manage which punishment types the AI can reference when analyzing reports. Only enabled punishment types will be available to the AI moderation system.
-                        </p>
+                      {/* Enable AI Review Toggle */}
+                      <div className="flex items-center justify-between">
+                        <div className="space-y-1">
+                          <Label htmlFor="enable-ai-review" className="text-sm font-medium">
+                            Enable AI Review
+                          </Label>
+                          <p className="text-xs text-muted-foreground">
+                            Enable AI-powered analysis and moderation of chat reports. When disabled, all AI features are turned off.
+                          </p>
+                        </div>
+                        <Switch
+                          id="enable-ai-review"
+                          checked={aiModerationSettings.enableAIReview !== false}
+                          onCheckedChange={(checked) => {
+                            setAiModerationSettings((prev: any) => ({
+                              ...prev,
+                              enableAIReview: checked
+                            }));
+                          }}
+                        />
                       </div>
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() => {
-                          setSelectedPunishmentTypeId(null);
-                          setNewAIPunishmentDescription('');
-                          setIsAddAIPunishmentDialogOpen(true);
-                        }}
-                      >
-                        <Plus className="mr-2 h-4 w-4" />
-                        Add Type
-                      </Button>
-                    </div>
 
-                    <div className="space-y-4">
-                      {/* Current AI Punishment Types */}
-                      <div className="space-y-3">
+                      {/* AI Settings Content - Disabled when AI Review is off */}
+                      <div className={`space-y-6 ${aiModerationSettings.enableAIReview === false ? 'opacity-50 pointer-events-none' : ''}`}>
+                        {/* Enable Automated Actions Toggle */}
+                        <div className="flex items-center justify-between">
+                          <div className="space-y-1">
+                            <Label htmlFor="enable-automated-actions" className="text-sm font-medium">
+                              Enable Automated Actions
+                            </Label>
+                            <p className="text-xs text-muted-foreground">
+                              When enabled, the AI will automatically apply suggested punishments for clear violations. When disabled, the AI will only provide suggestions for staff review.
+                            </p>
+                          </div>
+                          <Switch
+                            id="enable-automated-actions"
+                            checked={aiModerationSettings.enableAutomatedActions}
+                            onCheckedChange={(checked) => {
+                              setAiModerationSettings((prev: any) => ({
+                                ...prev,
+                                enableAutomatedActions: checked
+                              }));
+                            }}
+                          />
+                        </div>
+
+                        {/* Strictness Level */}
+                        <div className="space-y-3">
+                          <Label className="text-sm font-medium">AI Strictness Level</Label>
+                          <Select
+                            value={aiModerationSettings.strictnessLevel}
+                            onValueChange={(value) => {
+                              setAiModerationSettings((prev: any) => ({
+                                ...prev,
+                                strictnessLevel: value
+                              }));
+                            }}
+                          >
+                            <SelectTrigger className="w-full">
+                              <SelectValue placeholder="Select strictness level" />
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="lenient">Lenient - Only flagrant violations</SelectItem>
+                              <SelectItem value="standard">Standard - Balanced approach</SelectItem>
+                              <SelectItem value="strict">Strict - Zero tolerance policy</SelectItem>
+                            </SelectContent>
+                          </Select>
+                          <p className="text-xs text-muted-foreground">
+                            Controls how sensitive the AI is to rule violations. Higher strictness means more actions will be flagged.
+                          </p>
+                        </div>
+
+                        {/* AI Punishment Types Management Section */}
+                        <div className="space-y-4">
+                          <div className="flex items-center justify-between">
+                            <div>
+                              <h4 className="text-base font-medium">AI Punishment Types</h4>
+                              <p className="text-sm text-muted-foreground">
+                                Manage which punishment types the AI can reference when analyzing reports. Only enabled punishment types will be available to the AI moderation system.
+                              </p>
+                            </div>
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={() => {
+                                setSelectedPunishmentTypeId(null);
+                                setNewAIPunishmentDescription('');
+                                setIsAddAIPunishmentDialogOpen(true);
+                              }}
+                            >
+                              <Plus className="mr-2 h-4 w-4" />
+                              Add Type
+                            </Button>
+                          </div>
+
+                          <div className="space-y-4">
+                            {/* Current AI Punishment Types */}
+                            <div className="space-y-3">
                         {Object.values(aiModerationSettings.aiPunishmentConfigs || {}).map((punishmentType: any) => (
                           <div key={punishmentType.id} className="flex items-start justify-between p-4 border rounded-lg bg-card">
                             <div className="flex-1 space-y-2">
@@ -1092,16 +1092,18 @@ const TicketSettings = ({
                           </div>
                         ))}
 
-                        {Object.keys(aiModerationSettings.aiPunishmentConfigs || {}).length === 0 && (
-                          <div className="text-center py-8 text-muted-foreground">
-                            <p className="text-sm">No AI punishment types configured.</p>
-                            <p className="text-xs">Add punishment types for the AI to reference when analyzing reports.</p>
+                              {Object.keys(aiModerationSettings.aiPunishmentConfigs || {}).length === 0 && (
+                                <div className="text-center py-8 text-muted-foreground">
+                                  <p className="text-sm">No AI punishment types configured.</p>
+                                  <p className="text-xs">Add punishment types for the AI to reference when analyzing reports.</p>
+                                </div>
+                              )}
+                            </div>
                           </div>
-                        )}
+                        </div>
                       </div>
                     </div>
-                  </div>
-                </>
+                  </>
                 )}
               </div>
             </CollapsibleContent>
