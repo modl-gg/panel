@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { MessageCircle, Tag, Plus, X, ChevronDown, ChevronRight, Layers, Shield, Edit3, Trash2, GripVertical, Save, CheckCircle, Settings } from 'lucide-react';
+import { MessageCircle, Tag, Plus, X, ChevronDown, ChevronRight, Layers, Shield, Edit3, Trash2, GripVertical, Save, CheckCircle, Settings, Crown } from 'lucide-react';
 import { Button } from '@modl-gg/shared-web/components/ui/button';
 import { Input } from '@modl-gg/shared-web/components/ui/input';
 import { Textarea } from '@modl-gg/shared-web/components/ui/textarea';
@@ -15,6 +15,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@modl-gg/shared-web/co
 import { Separator } from '@modl-gg/shared-web/components/ui/separator';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@modl-gg/shared-web/components/ui/dialog';
 import { QuickResponseAction, QuickResponseCategory, QuickResponsesConfiguration, defaultQuickResponsesConfig } from '@/types/quickResponses';
+import { useBillingStatus } from '@/hooks/use-data';
 
 // Import the types we need for the form builder
 interface TicketFormField {
@@ -106,6 +107,28 @@ const TicketSettings = ({
   setAiModerationSettings,
   punishmentTypesState
 }: TicketSettingsProps) => {
+  // Billing status for premium gating
+  const { data: billingStatus } = useBillingStatus();
+  
+  // Check if user has premium access
+  const isPremiumUser = () => {
+    if (!billingStatus) return false;
+    const { subscription_status, current_period_end, plan } = billingStatus;
+    
+    // For cancelled subscriptions, check if the period has ended
+    if (subscription_status === 'canceled') {
+      if (!current_period_end) return false;
+      const endDate = new Date(current_period_end);
+      const now = new Date();
+      return endDate > now && plan === 'premium';
+    }
+    
+    // Active, trialing, or payment issues within period
+    return (['active', 'trialing'].includes(subscription_status) && plan === 'premium') ||
+           (['past_due', 'unpaid', 'incomplete'].includes(subscription_status) && plan === 'premium' && 
+            current_period_end && new Date(current_period_end) > new Date());
+  };
+
   // Collapsible state
   const [isQuickResponsesExpanded, setIsQuickResponsesExpanded] = useState(false);
   const [isTagManagementExpanded, setIsTagManagementExpanded] = useState(false);
@@ -866,33 +889,56 @@ const TicketSettings = ({
           </Collapsible>
 
           {/* AI Moderation Settings Section */}
-          <Collapsible open={isAIModerationExpanded} onOpenChange={setIsAIModerationExpanded}>
-            <CollapsibleTrigger className="flex items-center justify-between w-full p-4 bg-muted/50 rounded-lg hover:bg-muted/70 transition-colors">
+          <Collapsible open={isAIModerationExpanded} onOpenChange={isPremiumUser() ? setIsAIModerationExpanded : undefined}>
+            <CollapsibleTrigger className={`flex items-center justify-between w-full p-4 bg-muted/50 rounded-lg transition-colors ${isPremiumUser() ? 'hover:bg-muted/70' : 'cursor-not-allowed opacity-60'}`}>
               <div className="flex items-center">
                 <Shield className="h-4 w-4 mr-2" />
                 <h4 className="text-base font-medium">AI Moderation Settings</h4>
+                {!isPremiumUser() && (
+                  <Badge variant="secondary" className="ml-2 bg-orange-100 text-orange-800 dark:bg-orange-900 dark:text-orange-100">
+                    <Crown className="h-3 w-3 mr-1" />
+                    Premium
+                  </Badge>
+                )}
               </div>
               <div className="flex items-center space-x-2">
-                {!isAIModerationExpanded && (
+                {!isAIModerationExpanded && isPremiumUser() && (
                   <span className="text-sm text-muted-foreground">
                     {aiModerationSettings.enableAutomatedActions ? 'Automated' : 'Manual'} • {aiModerationSettings.strictnessLevel}
                   </span>
                 )}
-                {isAIModerationExpanded ? (
+                {!isPremiumUser() && (
+                  <span className="text-sm text-muted-foreground">Premium Required</span>
+                )}
+                {isPremiumUser() && (isAIModerationExpanded ? (
                   <ChevronDown className="h-4 w-4" />
                 ) : (
                   <ChevronRight className="h-4 w-4" />
-                )}
+                ))}
               </div>
             </CollapsibleTrigger>
             
             <CollapsibleContent className="pt-4">
-              <div className="border rounded-lg p-4">
-                <p className="text-sm text-muted-foreground">
-                  Configure how the AI analyzes and moderates chat reports. AI suggestions can help staff make faster, more consistent decisions.
-                </p>
+              <div className={`border rounded-lg p-4 ${!isPremiumUser() ? 'opacity-60 pointer-events-none' : ''}`}>
+                {!isPremiumUser() ? (
+                  <div className="text-center py-8">
+                    <Crown className="h-12 w-12 mx-auto mb-4 text-orange-500" />
+                    <h3 className="text-lg font-medium mb-2">Premium Feature</h3>
+                    <p className="text-sm text-muted-foreground mb-4">
+                      AI moderation is available for Premium subscribers only. Upgrade to access AI-powered chat analysis, automated moderation, and intelligent punishment suggestions.
+                    </p>
+                    <Button variant="default" className="bg-orange-600 hover:bg-orange-700">
+                      <Crown className="h-4 w-4 mr-2" />
+                      Upgrade to Premium
+                    </Button>
+                  </div>
+                ) : (
+                  <>
+                    <p className="text-sm text-muted-foreground">
+                      Configure how the AI analyzes and moderates chat reports. AI suggestions can help staff make faster, more consistent decisions.
+                    </p>
 
-                <div className="space-y-6">
+                    <div className="space-y-6">
                   {/* Enable AI Review Toggle */}
                   <div className="flex items-center justify-between">
                     <div className="space-y-1">
@@ -1055,8 +1101,9 @@ const TicketSettings = ({
                       </div>
                     </div>
                   </div>
-                  </div>
-                </div>
+                    </div>
+                  </>
+                )}
               </div>
             </CollapsibleContent>
           </Collapsible>

@@ -266,7 +266,7 @@ router.post('/tickets', verifyTicketApiKey, async (req: Request, res: Response) 
       try {
         const AIModerationService = (await import('../services/ai-moderation-service')).default;
         const aiModerationService = new AIModerationService(req.serverDbConnection);
-        await aiModerationService.processNewTicket(ticketId, newTicket.toObject());
+        await aiModerationService.processNewTicket(ticketId, newTicket.toObject(), (req as any).modlServer);
       } catch (aiError: any) {
         console.error(`[Public Ticket API] AI moderation processing failed for ticket ${ticketId}:`, aiError.message);
         // Don't fail the ticket creation if AI processing fails
@@ -470,7 +470,7 @@ router.post('/tickets/unfinished', strictRateLimit, async (req: Request, res: Re
       try {
         const AIModerationService = (await import('../services/ai-moderation-service')).default;
         const aiModerationService = new AIModerationService(req.serverDbConnection);
-        await aiModerationService.processNewTicket(ticketId, newTicket.toObject());
+        await aiModerationService.processNewTicket(ticketId, newTicket.toObject(), (req as any).modlServer);
       } catch (aiError: any) {
         console.error(`[Public Ticket API] AI moderation processing failed for ticket ${ticketId}:`, aiError.message);
         // Don't fail the ticket creation if AI processing fails

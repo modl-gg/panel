@@ -295,7 +295,7 @@ const Sidebar = () => {
           className="bg-sidebar/90 h-auto rounded-2xl w-16 overflow-hidden"
           style={{ 
             backdropFilter: "blur(12px)",
-            minHeight: `${Math.max(200, navItems.length * 56 + 48)}px`
+            minHeight: `${Math.max(200, navItems.length * 56 + 32)}px`
           }}
           onClick={(e) => {
             // Close search if clicked anywhere except the lookup button

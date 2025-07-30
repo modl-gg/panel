@@ -33,19 +33,47 @@ interface User {
   role: string;
 }
 
+// Define role hierarchy (higher number = higher authority)
+const getRoleRank = (role: string): number => {
+  const roleHierarchy: Record<string, number> = {
+    'Helper': 1,
+    'Moderator': 2,
+    'Admin': 3,
+    'Super Admin': 4
+  };
+  return roleHierarchy[role] || 0;
+};
+
 // Helper function to check if a user can change another member's role
-const canChangeRole = (hasStaffManagePermission: boolean): boolean => {
-  return hasStaffManagePermission;
+const canChangeRole = (hasStaffManagePermission: boolean, currentUser: User, member: StaffMember): boolean => {
+  if (!hasStaffManagePermission) return false;
+  
+  // Super Admin clicking on themselves - should not see change role button
+  if (currentUser.role === 'Super Admin' && currentUser._id === member._id) {
+    return false;
+  }
+  
+  // Cannot change role of someone with same or higher rank
+  const currentUserRank = getRoleRank(currentUser.role);
+  const memberRank = getRoleRank(member.role);
+  
+  return currentUserRank > memberRank;
 };
 
 // Helper function to check if a user can remove another member
 const canRemoveMember = (hasStaffManagePermission: boolean, currentUser: User, member: StaffMember): boolean => {
-  // Cannot remove yourself (checked by member ID comparison in the actual removal)
+  if (!hasStaffManagePermission) return false;
+  
+  // Cannot remove yourself
   if (currentUser._id === member._id) {
     return false;
   }
   
-  return hasStaffManagePermission;
+  // Cannot remove someone with same or higher rank
+  const currentUserRank = getRoleRank(currentUser.role);
+  const memberRank = getRoleRank(member.role);
+  
+  return currentUserRank > memberRank;
 };
 
 const StaffManagementPanel = () => {
@@ -248,7 +276,7 @@ const StaffManagementPanel = () => {
                                   {member.assignedMinecraftUsername ? 'Change' : 'Assign'} Minecraft Player
                                 </DropdownMenuItem>
                               )}
-                              {currentUser && canChangeRole(hasPermission('admin.staff.manage')) && (
+                              {currentUser && canChangeRole(hasPermission('admin.staff.manage'), currentUser, member) && (
                                 <DropdownMenuItem onSelect={() => openChangeRoleModal(member)}>
                                   Change Role
                                 </DropdownMenuItem>

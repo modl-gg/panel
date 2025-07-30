@@ -185,8 +185,8 @@ export class AIModerationService {
 
       if (!aiSettingsDoc || !aiSettingsDoc.data) {
         return {
-          enableAIReview: true,
-          enableAutomatedActions: true,
+          enableAIReview: false,
+          enableAutomatedActions: false,
           strictnessLevel: 'standard'
         };
       }
@@ -411,13 +411,27 @@ export class AIModerationService {
   /**
    * Process a ticket for AI analysis (called after ticket creation)
    */
-  async processNewTicket(ticketId: string, ticketData: any): Promise<void> {
+  async processNewTicket(ticketId: string, ticketData: any, serverInfo?: any): Promise<void> {
     try {
       // Check if AI review is enabled
       const aiSettings = await this.getAISettings();
       if (!aiSettings || !aiSettings.enableAIReview) {
         
         return;
+      }
+
+      // Check if server has premium subscription before proceeding with AI analysis
+      if (serverInfo) {
+        const isPremium = serverInfo && (
+          (serverInfo.subscription_status === 'active' && serverInfo.plan === 'premium') ||
+          (serverInfo.subscription_status === 'canceled' && serverInfo.plan === 'premium' && 
+           serverInfo.current_period_end && new Date(serverInfo.current_period_end) > new Date())
+        );
+        
+        if (!isPremium) {
+          console.log(`[AI Moderation] Skipping AI analysis for ticket ${ticketId} - Premium subscription required`);
+          return;
+        }
       }
 
       // Only process Chat Report tickets with chat messages

@@ -403,7 +403,7 @@ router.post('/', async (req: Request<{}, {}, CreateTicketBody>, res: Response) =
     if (req.serverDbConnection) {
       try {
         const aiModerationService = new AIModerationService(req.serverDbConnection);
-        await aiModerationService.processNewTicket(ticketId, newTicket);
+        await aiModerationService.processNewTicket(ticketId, newTicket, (req as any).modlServer);
       } catch (aiError) {
         console.error(`[Ticket Routes] AI moderation processing failed for ticket ${ticketId}:`, aiError);
         // Don't fail the ticket creation if AI processing fails

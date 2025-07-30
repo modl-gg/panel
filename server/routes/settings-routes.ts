@@ -899,35 +899,7 @@ export async function createDefaultSettings(dbConnection: Connection, serverName
       {
         type: 'aiModerationSettings',
         data: {
-          enableAIReview: true,
-          enableAutomatedActions: false,
-          strictnessLevel: 'standard',
-          aiPunishmentConfigs: {
-            "1753245662827": {
-              id: "1753245662827",
-              name: "Chat Abuse",
-              aiDescription: "Chat abuse is the act of spamming, excessive profanity, abusive language, inappropriate topics or jokes, and misleading information",
-              enabled: true
-            },
-            "1753245774990": {
-              id: "1753245774990",
-              name: "Anti Social",
-              aiDescription: "Anti social is the act of harassing, threatening, black-mailing, or otherwise abusing another player or group of players. This includes bigotry and other forms of discrimination against protected classes.",
-              enabled: true
-            }
-          }
-        }
-      },
-      { upsert: true, new: true }
-    ),
-    
-    // AI Moderation Settings document
-    models.Settings.findOneAndUpdate(
-      { type: 'aiModerationSettings' },
-      {
-        type: 'aiModerationSettings',
-        data: {
-          enableAIReview: true,
+          enableAIReview: false,
           enableAutomatedActions: false,
           strictnessLevel: 'standard',
           aiPunishmentConfigs: {
@@ -1821,22 +1793,6 @@ export async function createDefaultSettingsDocument(dbConnection: Connection, se
     };
     defaultSettingsMap.set('general', generalSettings);
     
-    // AI Moderation settings with default enabled punishment types
-    defaultSettingsMap.set('aiModerationSettings', {
-      enableAIReview: true,
-      enableAutomatedActions: true,
-      strictnessLevel: 'standard',
-      aiPunishmentConfigs: {
-        6: {
-          enabled: true,
-          aiDescription: 'Inappropriate language, excessive caps, spam, harassment, or disruptive chat behavior that violates community standards and creates a negative environment.'
-        },
-        7: {
-          enabled: true,
-          aiDescription: 'Hostile, toxic, bullying, or antisocial behavior including personal attacks, threats, discrimination, or actions that deliberately harm the community atmosphere.'
-        }
-      }
-    });
 
     // Default Ticket Forms Configuration (only 3 types needed) with comprehensive sections
     const defaultTicketForms = {
@@ -3505,8 +3461,8 @@ router.get('/ai-moderation-settings', async (req: Request, res: Response) => {
     }
 
     const aiSettings = await getSettingsValue(req.serverDbConnection, 'aiModerationSettings') || {
-      enableAIReview: true,
-      enableAutomatedActions: true,
+      enableAIReview: false,
+      enableAutomatedActions: false,
       strictnessLevel: 'standard'
     };
 
@@ -3544,8 +3500,8 @@ router.put('/ai-moderation-settings', async (req: Request, res: Response) => {
     // Get current AI moderation settings
     const currentDoc = await SettingsModel.findOne({ type: 'aiModerationSettings' });
     const currentSettings = currentDoc?.data || {
-      enableAIReview: true,
-      enableAutomatedActions: true,
+      enableAIReview: false,
+      enableAutomatedActions: false,
       strictnessLevel: 'standard',
       aiPunishmentConfigs: {}
     };
