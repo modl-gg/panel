@@ -134,11 +134,11 @@ const DraggableRoleCard: React.FC<DraggableRoleCardProps> = ({
 
   const [{ isDragging }, drag, preview] = useDrag(() => ({
     type: 'role',
-    item: { index, role, originalIndex: index },
-    canDrag: canDragRole,
-    begin: () => {
+    item: () => {
       onDragStart();
+      return { index, role, originalIndex: index };
     },
+    canDrag: canDragRole,
     end: (item, monitor) => {
       const didDrop = monitor.didDrop();
       onDragEnd(didDrop);
