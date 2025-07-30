@@ -256,6 +256,9 @@ const Sidebar = () => {
     !item.permission || hasPermission(item.permission)
   );
 
+  // Calculate sidebar height dynamically (navItems * 56px + top/bottom padding of 32px)
+  const sidebarHeight = Math.max(200, navItems.length * 56 + 32);
+
   // Fetch players from API using React Query
   const { data: players, isLoading } = usePlayers();
 
@@ -295,7 +298,7 @@ const Sidebar = () => {
           className="bg-sidebar/90 h-auto rounded-2xl w-16 overflow-hidden"
           style={{ 
             backdropFilter: "blur(12px)",
-            minHeight: `${Math.max(200, navItems.length * 56 + 32)}px`
+            height: `${sidebarHeight}px`
           }}
           onClick={(e) => {
             // Close search if clicked anywhere except the lookup button
@@ -307,7 +310,7 @@ const Sidebar = () => {
             }
           }}
         >
-          <div className="w-16 p-2 pt-4">
+          <div className="w-16 p-2 pt-4 pb-4">
             <nav className="flex-1">
               <ul className="space-y-4">
                 {navItems.map((item, index) => {
@@ -396,8 +399,11 @@ const Sidebar = () => {
         {/* Expandable search area */}
         {isLookupOpen && (
           <div
-            className={`bg-sidebar/90 h-[300px] ml-2 rounded-xl overflow-hidden ${isLookupClosing ? "animate-slide-left" : "animate-slide-right"}`}
-            style={{ backdropFilter: "blur(12px)" }}
+            className={`bg-sidebar/90 ml-2 rounded-xl overflow-hidden ${isLookupClosing ? "animate-slide-left" : "animate-slide-right"}`}
+            style={{ 
+              backdropFilter: "blur(12px)",
+              height: `${sidebarHeight}px`
+            }}
             onMouseEnter={() => {
               // Immediately cancel any pending close operations
               if (closeTimeoutRef.current) {
