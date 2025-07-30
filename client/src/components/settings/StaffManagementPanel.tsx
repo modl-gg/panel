@@ -48,6 +48,21 @@ const StaffManagementPanel = () => {
   const { data: rolesData } = useRoles();
   const { user: currentUser } = useAuth();
   const { hasPermission, canModifyUserRole, canRemoveStaffUser, canAssignStaffMinecraftPlayer } = usePermissions();
+
+  // Helper function to check if there are any available actions for a staff member
+  const hasAvailableActions = (member: StaffMember): boolean => {
+    if (member.status === 'Pending Invitation') {
+      // For pending invitations, there are always actions (resend/cancel)
+      return true;
+    }
+    
+    // For active staff members, check if any management actions are available
+    const canAssign = hasPermission('admin.staff.manage') && canAssignStaffMinecraftPlayer(member.role, member._id);
+    const canChangeRole = hasPermission('admin.staff.manage') && canModifyUserRole(member.role, member.role);
+    const canRemove = hasPermission('admin.staff.manage') && canRemoveStaffUser(member.role);
+    
+    return canAssign || canChangeRole || canRemove;
+  };
   const [isInviteModalOpen, setIsInviteModalOpen] = useState(false);
   const [isRemoveAlertOpen, setIsRemoveAlertOpen] = useState(false);
   const [isChangeRoleModalOpen, setIsChangeRoleModalOpen] = useState(false);
@@ -224,7 +239,11 @@ const StaffManagementPanel = () => {
                     <TableCell className="text-right">
                       <DropdownMenu>
                         <DropdownMenuTrigger asChild>
-                          <Button variant="ghost" className="h-8 w-8 p-0">
+                          <Button 
+                            variant="ghost" 
+                            className="h-8 w-8 p-0" 
+                            disabled={!hasAvailableActions(member)}
+                          >
                             <span className="sr-only">Open menu</span>
                             <MoreHorizontal className="h-4 w-4" />
                           </Button>
