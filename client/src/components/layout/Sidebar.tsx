@@ -292,8 +292,11 @@ const Sidebar = () => {
       <div className="flex">
         {/* Fixed-width sidebar navigation (always visible) */}
         <aside
-          className="bg-sidebar/90 h-auto min-h-[300px] rounded-2xl w-16 overflow-hidden"
-          style={{ backdropFilter: "blur(12px)" }}
+          className="bg-sidebar/90 h-auto rounded-2xl w-16 overflow-hidden"
+          style={{ 
+            backdropFilter: "blur(12px)",
+            minHeight: `${Math.max(200, navItems.length * 64 + 32)}px`
+          }}
           onClick={(e) => {
             // Close search if clicked anywhere except the lookup button
             if (
