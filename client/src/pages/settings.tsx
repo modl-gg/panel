@@ -4474,7 +4474,6 @@ const Settings = () => {
             </DialogContent>
           </Dialog>
         )}
-      </div>
     </PageContainer>
   );
 };

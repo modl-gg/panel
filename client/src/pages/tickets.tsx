@@ -394,18 +394,19 @@ const Tickets = () => {
         <Card>
           <CardHeader className="p-0">
             <Tabs defaultValue="support" className="w-full" onValueChange={setActiveTab}>
-              <TabsList className="w-full h-full justify-start rounded-none bg-transparent border-b border-border overflow-x-auto mx-1">
-                <TabsTrigger 
-                  value="support" 
-                  className="border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:text-primary rounded-none px-6 py-2"
-                >
-                  <MessageSquare className="h-4 w-4 mr-2" />
-                  Support
-                  <Badge variant="outline" className="ml-2 bg-muted/30 text-foreground border-none text-xs font-medium">{ticketCounts.support || 0}</Badge>
-                </TabsTrigger>
+              <div className="overflow-x-auto pb-1 border-b border-border">
+                <TabsList className="w-max flex rounded-none bg-transparent">
+                  <TabsTrigger 
+                    value="support" 
+                    className="data-[state=active]:border-b-2 data-[state=active]:border-primary data-[state=active]:text-primary rounded-none px-3 py-0.5 flex-shrink-0 text-sm"
+                  >
+                    <MessageSquare className="h-4 w-4 mr-2" />
+                    Support
+                    <Badge variant="outline" className="ml-2 bg-muted/30 text-foreground border-none text-xs font-medium">{ticketCounts.support || 0}</Badge>
+                  </TabsTrigger>
                 <TabsTrigger 
                   value="bug" 
-                  className="border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:text-primary rounded-none px-6 py-2"
+                  className="data-[state=active]:border-b-2 data-[state=active]:border-primary data-[state=active]:text-primary rounded-none px-2 py-0.5 flex-shrink-0 text-sm"
                 >
                   <Bug className="h-4 w-4 mr-2" />
                   Bug Reports
@@ -413,7 +414,7 @@ const Tickets = () => {
                 </TabsTrigger>
                 <TabsTrigger 
                   value="player" 
-                  className="border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:text-primary rounded-none px-6 py-2"
+                  className="data-[state=active]:border-b-2 data-[state=active]:border-primary data-[state=active]:text-primary rounded-none px-3 py-0.5 flex-shrink-0 text-sm"
                 >
                   <Users className="h-4 w-4 mr-2" />
                   Player Reports
@@ -421,7 +422,7 @@ const Tickets = () => {
                 </TabsTrigger>
                 <TabsTrigger 
                   value="chat" 
-                  className="border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:text-primary rounded-none px-6 py-2"
+                  className="data-[state=active]:border-b-2 data-[state=active]:border-primary data-[state=active]:text-primary rounded-none px-3 py-0.5 flex-shrink-0 text-sm"
                 >
                   <MessageSquare className="h-4 w-4 mr-2" />
                   Chat Reports
@@ -429,7 +430,7 @@ const Tickets = () => {
                 </TabsTrigger>
                 <TabsTrigger 
                   value="appeal" 
-                  className="border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:text-primary rounded-none px-6 py-2"
+                  className="data-[state=active]:border-b-2 data-[state=active]:border-primary data-[state=active]:text-primary rounded-none px-3 py-0.5 flex-shrink-0 text-sm"
                 >
                   <LockKeyhole className="h-4 w-4 mr-2" />
                   Ban Appeals
@@ -437,13 +438,15 @@ const Tickets = () => {
                 </TabsTrigger>
                 <TabsTrigger 
                   value="staff" 
-                  className="border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:text-primary rounded-none px-6 py-2"
+                  className="data-[state=active]:border-b-2 data-[state=active]:border-primary data-[state=active]:text-primary rounded-none px-3 py-0.5 flex-shrink-0 text-sm"
                 >
                   <MessageSquare className="h-4 w-4 mr-2" />
                   Staff Applications
                   <Badge variant="outline" className="ml-2 bg-muted/30 text-foreground border-none text-xs font-medium">{ticketCounts.staff || 0}</Badge>
                 </TabsTrigger>
+              
               </TabsList>
+              </div>
 
               <TabsContent value="support" className="p-0 mt-0">
                 <CardContent className="p-4">
