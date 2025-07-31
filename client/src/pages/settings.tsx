@@ -2643,48 +2643,52 @@ const Settings = () => {
 
   return (
     <PageContainer>
-      <div className="flex flex-col space-y-6">
-        <div className="flex justify-between items-center">
-          <h2 className="text-xl font-semibold">Settings</h2>
-          <div className="flex space-x-2 items-center">
-            {isSaving ? (
-              <span className="text-sm text-muted-foreground flex items-center">
-                <Save className="animate-spin h-4 w-4 mr-2" />
-                Saving...
-              </span>
-            ) : lastSaved ? (
-              <TooltipProvider>
-                <Tooltip>
-                  <TooltipTrigger>
-                    <span className="text-sm text-muted-foreground flex items-center">
-                      <CheckCircle className="h-4 w-4 mr-2 text-green-500" />
-                      Saved {formatLastSaved()}
-                    </span>
-                  </TooltipTrigger>
-                  <TooltipContent>
-                    <p>Changes are automatically saved</p>
-                  </TooltipContent>
-                </Tooltip>
-              </TooltipProvider>
-            ) : null}
-          </div>
+      <div className="flex justify-between items-center mb-6">
+        <h2 className="text-xl font-semibold">Settings</h2>
+        <div className="flex space-x-2 items-center">
+          {isSaving ? (
+            <span className="text-sm text-muted-foreground flex items-center">
+              <Save className="animate-spin h-4 w-4 mr-2" />
+              Saving...
+            </span>
+          ) : lastSaved ? (
+            <TooltipProvider>
+              <Tooltip>
+                <TooltipTrigger>
+                  <span className="text-sm text-muted-foreground flex items-center">
+                    <CheckCircle className="h-4 w-4 mr-2 text-green-500" />
+                    Saved {formatLastSaved()}
+                  </span>
+                </TooltipTrigger>
+                <TooltipContent>
+                  <p>Changes are automatically saved</p>
+                </TooltipContent>
+              </Tooltip>
+            </TooltipProvider>
+          ) : null}
+          <Button variant="ghost" size="sm" onClick={logout}>
+            <LogOut className="h-4 w-4 mr-2" />
+            Sign Out
+          </Button>
         </div>
+      </div>
 
-        <Card>
+      <Card>
           <CardHeader className="p-0">
             <Tabs value={activeTab} onValueChange={handleTabChange}>
-              <TabsList className="w-full h-full justify-start rounded-none bg-transparent border-b border-border overflow-x-auto mx-1">
-                <TabsTrigger
-                  value="account"
-                  className="border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:text-primary rounded-none px-6 py-2"
-                >
-                  <UserIcon className="h-4 w-4 mr-2" />
-                  Account
-                </TabsTrigger>
+              <div className="overflow-x-auto pb-1 border-b border-border">
+                <TabsList className="w-max flex rounded-none bg-transparent">
+                  <TabsTrigger
+                    value="account"
+                    className="data-[state=active]:border-b-2 data-[state=active]:border-primary data-[state=active]:text-primary rounded-none px-6 py-2 flex-shrink-0 text-sm"
+                  >
+                    <UserIcon className="h-4 w-4 mr-2" />
+                    Account
+                  </TabsTrigger>
                 {canAccessSettingsTab('general') && (
                   <TabsTrigger
                     value="general"
-                    className="border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:text-primary rounded-none px-6 py-2"
+                    className="data-[state=active]:border-b-2 data-[state=active]:border-primary data-[state=active]:text-primary rounded-none px-6 py-2 flex-shrink-0 text-sm"
                   >
                     <SettingsIcon className="h-4 w-4 mr-2" />
                     Server & Billing
@@ -2693,7 +2697,7 @@ const Settings = () => {
                 {canAccessSettingsTab('punishment') && (
                   <TabsTrigger
                     value="punishment"
-                    className="border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:text-primary rounded-none px-6 py-2"
+                    className="data-[state=active]:border-b-2 data-[state=active]:border-primary data-[state=active]:text-primary rounded-none px-6 py-2 flex-shrink-0 text-sm"
                   >
                     <Scale className="h-4 w-4 mr-2" />
                     Punishment Types
@@ -2702,7 +2706,7 @@ const Settings = () => {
                 {canAccessSettingsTab('tags') && (
                   <TabsTrigger
                     value="tags"
-                    className="border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:text-primary rounded-none px-6 py-2"
+                    className="data-[state=active]:border-b-2 data-[state=active]:border-primary data-[state=active]:text-primary rounded-none px-6 py-2 flex-shrink-0 text-sm"
                   >
                     <Tag className="h-4 w-4 mr-2" />
                     Tickets
@@ -2711,7 +2715,7 @@ const Settings = () => {
                 {canAccessSettingsTab('staff') && (
                   <TabsTrigger
                     value="staff"
-                    className="border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:text-primary rounded-none px-6 py-2"
+                    className="data-[state=active]:border-b-2 data-[state=active]:border-primary data-[state=active]:text-primary rounded-none px-6 py-2 flex-shrink-0 text-sm"
                   >
                     <Shield className="h-4 w-4 mr-2" />
                     Staff Management
@@ -2720,7 +2724,7 @@ const Settings = () => {
                 {canAccessSettingsTab('knowledgebase') && (
                   <TabsTrigger
                     value="knowledgebase"
-                    className="border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:text-primary rounded-none px-6 py-2"
+                    className="data-[state=active]:border-b-2 data-[state=active]:border-primary data-[state=active]:text-primary rounded-none px-6 py-2 flex-shrink-0 text-sm"
                   >
                     <BookOpen className="h-4 w-4 mr-2" />
                     Knowledgebase
@@ -2729,13 +2733,14 @@ const Settings = () => {
                 {canAccessSettingsTab('homepage') && (
                   <TabsTrigger
                     value="homepage"
-                    className="border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:text-primary rounded-none px-6 py-2"
+                    className="data-[state=active]:border-b-2 data-[state=active]:border-primary data-[state=active]:text-primary rounded-none px-6 py-2 flex-shrink-0 text-sm"
                   >
                     <Globe className="h-4 w-4 mr-2" />
                     Homepage Cards
                   </TabsTrigger>
                 )}
               </TabsList>
+              </div>
               
               <TabsContent value="account">
                 <AccountSettings
