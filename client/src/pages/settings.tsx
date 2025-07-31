@@ -2643,10 +2643,10 @@ const Settings = () => {
 
   return (
     <PageContainer>
-      <div className="flex flex-col space-y-6 pb-10">
+      <div className="flex flex-col space-y-6">
         <div className="flex justify-between items-center mb-4">
-          <h2 className="text-2xl font-bold tracking-tight">Settings</h2>
-          <div className="flex items-center gap-3">
+          <h2 className="text-xl font-semibold">Settings</h2>
+          <div className="flex space-x-2 items-center">
             {isSaving ? (
               <span className="text-sm text-muted-foreground flex items-center">
                 <Save className="animate-spin h-4 w-4 mr-2" />

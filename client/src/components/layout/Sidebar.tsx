@@ -25,6 +25,7 @@ import serverLogo from "../../assets/server-logo.png";
 import { usePublicSettings } from "@/hooks/use-public-settings";
 import { usePunishmentLookup } from "@/hooks/use-player-lookup";
 import { usePermissions, PERMISSIONS } from "@/hooks/use-permissions";
+import { useQuery } from '@tanstack/react-query';
 
 const Sidebar = () => {
   const { isSearchActive, setIsSearchActive } = useSidebar();
@@ -33,6 +34,13 @@ const Sidebar = () => {
   const { data: billingStatus } = useBillingStatus();
   const { data: publicSettings } = usePublicSettings();
   const { hasPermission } = usePermissions();
+  const { user } = useAuth();
+  
+  // Check if permissions are still loading from server
+  const { isLoading: permissionsLoading } = useQuery({
+    queryKey: ['userPermissions', user?.role],
+    enabled: false, // We just want the loading state
+  });
   const [isLookupOpen, setIsLookupOpen] = useState(false);
   const [isLookupClosing, setIsLookupClosing] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
@@ -252,9 +260,12 @@ const Sidebar = () => {
   ];
 
   // Filter nav items based on permissions
-  const navItems = allNavItems.filter(item => 
-    !item.permission || hasPermission(item.permission)
-  );
+  // Don't show permission-based items while permissions are loading to prevent flash
+  const navItems = allNavItems.filter(item => {
+    if (!item.permission) return true; // Always show items without permission requirements
+    if (permissionsLoading) return false; // Hide permission-based items while loading
+    return hasPermission(item.permission);
+  });
 
   // Calculate sidebar height dynamically (navItems * 56px + top/bottom padding of 32px)
   const sidebarHeight = Math.max(200, navItems.length * 56 + 16);
