@@ -2643,37 +2643,38 @@ const Settings = () => {
 
   return (
     <PageContainer>
-      <div className="flex justify-between items-center">
-        <h2 className="text-xl font-semibold">Settings</h2>
-        <div className="flex space-x-2 items-center">
-          {isSaving ? (
-            <span className="text-sm text-muted-foreground flex items-center">
-              <Save className="animate-spin h-4 w-4 mr-2" />
-              Saving...
-            </span>
-          ) : lastSaved ? (
-            <TooltipProvider>
-              <Tooltip>
-                <TooltipTrigger>
-                  <span className="text-sm text-muted-foreground flex items-center">
-                    <CheckCircle className="h-4 w-4 mr-2 text-green-500" />
-                    Saved {formatLastSaved()}
-                  </span>
-                </TooltipTrigger>
-                <TooltipContent>
-                  <p>Changes are automatically saved</p>
-                </TooltipContent>
-              </Tooltip>
-            </TooltipProvider>
-          ) : null}
-          <Button variant="ghost" size="sm" onClick={logout}>
-            <LogOut className="h-4 w-4 mr-2" />
-            Sign Out
-          </Button>
+      <div className="flex flex-col space-y-6">
+        <div className="flex justify-between items-center">
+          <h2 className="text-xl font-semibold">Settings</h2>
+          <div className="flex space-x-2 items-center">
+            {isSaving ? (
+              <span className="text-sm text-muted-foreground flex items-center">
+                <Save className="animate-spin h-4 w-4 mr-2" />
+                Saving...
+              </span>
+            ) : lastSaved ? (
+              <TooltipProvider>
+                <Tooltip>
+                  <TooltipTrigger>
+                    <span className="text-sm text-muted-foreground flex items-center">
+                      <CheckCircle className="h-4 w-4 mr-2 text-green-500" />
+                      Saved {formatLastSaved()}
+                    </span>
+                  </TooltipTrigger>
+                  <TooltipContent>
+                    <p>Changes are automatically saved</p>
+                  </TooltipContent>
+                </Tooltip>
+              </TooltipProvider>
+            ) : null}
+            <Button variant="ghost" size="sm" onClick={logout}>
+              <LogOut className="h-4 w-4 mr-2" />
+              Sign Out
+            </Button>
+          </div>
         </div>
-      </div>
 
-      <Card>
+        <Card>
           <CardHeader className="p-0">
             <Tabs value={activeTab} onValueChange={handleTabChange}>
               <div className="overflow-x-auto pb-1 border-b border-border">
@@ -4474,6 +4475,7 @@ const Settings = () => {
             </DialogContent>
           </Dialog>
         )}
+      </div>
     </PageContainer>
   );
 };
