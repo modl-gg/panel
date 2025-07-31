@@ -66,6 +66,12 @@ export const logAIUsage = (service: 'moderation' | 'ticket_analysis' | 'appeal_a
     
     // Override the json method to log usage after successful response
     res.json = function(data: any) {
+      // Check if headers have already been sent to avoid errors
+      if (res.headersSent) {
+        console.error('AI usage middleware: Headers already sent, cannot log usage');
+        return this;
+      }
+      
       // Only log if the response was successful (status < 400)
       if (res.statusCode < 400 && !req.aiUsageLogged) {
         const serverName = (req as any).modlServer?.customDomain || req.headers.host?.split('.')[0] || 'default';
