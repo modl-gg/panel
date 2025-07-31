@@ -48,7 +48,6 @@ router.post('/create-checkout-session', isAuthenticated, async (req, res) => {
       },
       line_items: [{ price: process.env.STRIPE_PRICE_ID, quantity: 1 }],
       customer: customerId,
-      customer_email: server.adminEmail,
       success_url: `https://${server.customDomain}.${process.env.DOMAIN}/panel/settings?session_id={CHECKOUT_SESSION_ID}`,
       cancel_url: `https://${server.customDomain}.${process.env.DOMAIN}/panel/settings`,
     });
