@@ -1006,7 +1006,43 @@ const Settings = () => {
   const getBillingSummary = () => {
     if (!billingStatus) return "Loading billing info...";
     
-    const plan = billingStatus.current_plan || "Free";
+    // Use the same logic as BillingSettings.tsx getCurrentPlan() function
+    const getCurrentPlan = () => {
+      const { subscription_status, current_period_end } = billingStatus;
+      
+      // For cancelled subscriptions, check if the period has ended
+      if (subscription_status === 'canceled') {
+        if (!current_period_end) {
+          return 'Free Plan'; // No end date means it's already expired
+        }
+        const endDate = new Date(current_period_end);
+        const now = new Date();
+        if (endDate <= now) {
+          return 'Free Plan'; // Cancellation period has ended
+        }
+        return 'Premium Plan'; // Still has access until end date
+      }
+      
+      // Active and trialing are clearly premium
+      if (['active', 'trialing'].includes(subscription_status)) {
+        return 'Premium Plan';
+      }
+      
+      // For payment issues (past_due, unpaid), check if still within period
+      if (['past_due', 'unpaid', 'incomplete'].includes(subscription_status)) {
+        if (current_period_end) {
+          const endDate = new Date(current_period_end);
+          const now = new Date();
+          if (endDate > now) {
+            return 'Premium Plan'; // Still within paid period despite payment issues
+          }
+        }
+      }
+      
+      return 'Free Plan';
+    };
+
+    const plan = getCurrentPlan();
     const status = billingStatus.subscription_status || "active";
     const nextBilling = billingStatus.current_period_end ? new Date(billingStatus.current_period_end).toLocaleDateString() : null;
     
