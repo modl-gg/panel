@@ -150,6 +150,12 @@ app.get('/api/csrf-token', (req, res) => {
     const status = err.status || err.statusCode || 500;
     const message = err.message || "Internal Server Error";
 
+    // Check if headers have already been sent
+    if (res.headersSent) {
+      console.error('Error occurred after headers were sent:', err);
+      return;
+    }
+
     res.status(status).json({ message });
   });
 
