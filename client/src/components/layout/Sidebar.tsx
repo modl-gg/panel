@@ -25,6 +25,7 @@ import serverLogo from "../../assets/server-logo.png";
 import { usePublicSettings } from "@/hooks/use-public-settings";
 import { usePunishmentLookup } from "@/hooks/use-player-lookup";
 import { usePermissions, PERMISSIONS } from "@/hooks/use-permissions";
+import { useAuth } from "@/hooks/use-auth";
 import { useQuery } from '@tanstack/react-query';
 
 const Sidebar = () => {
