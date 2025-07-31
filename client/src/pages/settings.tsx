@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { Scale, Shield, Globe, Tag, Plus, X, Fingerprint, KeyRound, Lock, QrCode, Copy, Check, Mail, Trash2, GamepadIcon, MessageCircle, Save, CheckCircle, User as UserIcon, LogOut, CreditCard, BookOpen, Settings as SettingsIcon, Upload, Key, Eye, EyeOff, RefreshCw, ChevronDown, ChevronRight, Layers, GripVertical, Edit3 } from 'lucide-react';
 import { Button } from '@modl-gg/shared-web/components/ui/button';
-import { Card, CardContent } from '@modl-gg/shared-web/components/ui/card';
+import { Card, CardContent, CardHeader } from '@modl-gg/shared-web/components/ui/card';
 import { useSidebar } from '@/hooks/use-sidebar';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@modl-gg/shared-web/components/ui/tabs';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@modl-gg/shared-web/components/ui/collapsible';
@@ -2644,7 +2644,7 @@ const Settings = () => {
   return (
     <PageContainer>
       <div className="flex flex-col space-y-6">
-        <div className="flex justify-between items-center mb-4">
+        <div className="flex justify-between items-center">
           <h2 className="text-xl font-semibold">Settings</h2>
           <div className="flex space-x-2 items-center">
             {isSaving ? (
@@ -2670,208 +2670,210 @@ const Settings = () => {
           </div>
         </div>
 
-        <Card className="overflow-visible">
-          <Tabs value={activeTab} onValueChange={handleTabChange}>
-            <TabsList className="w-full h-full justify-start rounded-none bg-transparent border-b border-border overflow-x-auto mx-1">
-              <TabsTrigger
-                value="account"
-                className="border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:text-primary rounded-none px-6 py-2"
-              >
-                <UserIcon className="h-4 w-4 mr-2" />
-                Account
-              </TabsTrigger>
+        <Card>
+          <CardHeader className="p-0">
+            <Tabs value={activeTab} onValueChange={handleTabChange}>
+              <TabsList className="w-full h-full justify-start rounded-none bg-transparent border-b border-border overflow-x-auto mx-1">
+                <TabsTrigger
+                  value="account"
+                  className="border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:text-primary rounded-none px-6 py-2"
+                >
+                  <UserIcon className="h-4 w-4 mr-2" />
+                  Account
+                </TabsTrigger>
+                {canAccessSettingsTab('general') && (
+                  <TabsTrigger
+                    value="general"
+                    className="border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:text-primary rounded-none px-6 py-2"
+                  >
+                    <SettingsIcon className="h-4 w-4 mr-2" />
+                    Server & Billing
+                  </TabsTrigger>
+                )}
+                {canAccessSettingsTab('punishment') && (
+                  <TabsTrigger
+                    value="punishment"
+                    className="border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:text-primary rounded-none px-6 py-2"
+                  >
+                    <Scale className="h-4 w-4 mr-2" />
+                    Punishment Types
+                  </TabsTrigger>
+                )}
+                {canAccessSettingsTab('tags') && (
+                  <TabsTrigger
+                    value="tags"
+                    className="border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:text-primary rounded-none px-6 py-2"
+                  >
+                    <Tag className="h-4 w-4 mr-2" />
+                    Tickets
+                  </TabsTrigger>
+                )}
+                {canAccessSettingsTab('staff') && (
+                  <TabsTrigger
+                    value="staff"
+                    className="border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:text-primary rounded-none px-6 py-2"
+                  >
+                    <Shield className="h-4 w-4 mr-2" />
+                    Staff Management
+                  </TabsTrigger>
+                )}
+                {canAccessSettingsTab('knowledgebase') && (
+                  <TabsTrigger
+                    value="knowledgebase"
+                    className="border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:text-primary rounded-none px-6 py-2"
+                  >
+                    <BookOpen className="h-4 w-4 mr-2" />
+                    Knowledgebase
+                  </TabsTrigger>
+                )}
+                {canAccessSettingsTab('homepage') && (
+                  <TabsTrigger
+                    value="homepage"
+                    className="border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:text-primary rounded-none px-6 py-2"
+                  >
+                    <Globe className="h-4 w-4 mr-2" />
+                    Homepage Cards
+                  </TabsTrigger>
+                )}
+              </TabsList>
+              
+              <TabsContent value="account">
+                <AccountSettings
+                  profileUsername={profileUsername}
+                  setProfileUsername={setProfileUsername}
+                  currentEmail={currentEmail}
+                  setCurrentEmail={setCurrentEmail}
+                />
+              </TabsContent>
+
               {canAccessSettingsTab('general') && (
-                <TabsTrigger
-                  value="general"
-                  className="border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:text-primary rounded-none px-6 py-2"
-                >
-                  <SettingsIcon className="h-4 w-4 mr-2" />
-                  Server & Billing
-                </TabsTrigger>
+                <TabsContent value="general">
+                  <GeneralSettings
+                    serverDisplayName={serverDisplayName}
+                    setServerDisplayName={setServerDisplayName}
+                    homepageIconUrl={homepageIconUrl}
+                    panelIconUrl={panelIconUrl}
+                    uploadingHomepageIcon={uploadingHomepageIcon}
+                    uploadingPanelIcon={uploadingPanelIcon}
+                    handleHomepageIconUpload={handleHomepageIconUpload}
+                    handlePanelIconUpload={handlePanelIconUpload}
+                    apiKey={apiKey}
+                    fullApiKey={fullApiKey}
+                    showApiKey={showApiKey}
+                    apiKeyCopied={apiKeyCopied}
+                    isGeneratingApiKey={isGeneratingApiKey}
+                    isRevokingApiKey={isRevokingApiKey}
+                    generateApiKey={generateApiKey}
+                    revokeApiKey={revokeApiKey}
+                    revealApiKey={revealApiKey}
+                    copyApiKey={copyApiKey}
+                    maskApiKey={maskApiKey}
+                    usageData={usageData}
+                    getBillingSummary={getBillingSummary}
+                    getUsageSummary={getUsageSummary}
+                    getServerConfigSummary={getServerConfigSummary}
+                    getDomainSummary={getDomainSummary}
+                  />
+                </TabsContent>
               )}
+
               {canAccessSettingsTab('punishment') && (
-                <TabsTrigger
-                  value="punishment"
-                  className="border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:text-primary rounded-none px-6 py-2"
-                >
-                  <Scale className="h-4 w-4 mr-2" />
-                  Punishment Types
-                </TabsTrigger>
+                <TabsContent value="punishment">
+                  <PunishmentSettings
+                    statusThresholds={statusThresholds}
+                    setStatusThresholds={setStatusThresholds}
+                    punishmentTypes={punishmentTypes}
+                    newPunishmentName={newPunishmentName}
+                    setNewPunishmentName={setNewPunishmentName}
+                    newPunishmentCategory={newPunishmentCategory}
+                    setNewPunishmentCategory={setNewPunishmentCategory}
+                    addPunishmentType={addPunishmentType}
+                    removePunishmentType={removePunishmentType}
+                    setSelectedPunishment={setSelectedPunishment}
+                  />
+                </TabsContent>
               )}
+
               {canAccessSettingsTab('tags') && (
-                <TabsTrigger
-                  value="tags"
-                  className="border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:text-primary rounded-none px-6 py-2"
-                >
-                  <Tag className="h-4 w-4 mr-2" />
-                  Tickets
-                </TabsTrigger>
+                <TabsContent value="tags">
+                  <TicketSettings
+                  quickResponsesState={quickResponsesState}
+                  setQuickResponsesState={setQuickResponsesState}
+                  bugReportTags={bugReportTags}
+                  setBugReportTags={setBugReportTagsState}
+                  playerReportTags={playerReportTags}
+                  setPlayerReportTags={setPlayerReportTagsState}
+                  appealTags={appealTags}
+                  setAppealTags={setAppealTagsState}
+                  newBugTag={newBugTag}
+                  setNewBugTag={setNewBugTag}
+                  newPlayerTag={newPlayerTag}
+                  setNewPlayerTag={setNewPlayerTag}
+                  newAppealTag={newAppealTag}
+                  setNewAppealTag={setNewAppealTag}
+                  ticketForms={ticketForms}
+                  setTicketForms={setTicketFormsState}
+                  selectedTicketFormType={selectedTicketFormType}
+                  setSelectedTicketFormType={setSelectedTicketFormType}
+                  aiModerationSettings={aiModerationSettings}
+                  setAiModerationSettings={setAiModerationSettings}
+                  punishmentTypesState={punishmentTypes}
+                  onEditSection={onEditSection}
+                  onDeleteSection={onDeleteSection}
+                  onEditField={onEditField}
+                  onDeleteField={onDeleteField}
+                  onAddField={onAddField}
+                  moveField={moveField}
+                  moveFieldBetweenSections={moveFieldBetweenSections}
+                />
+                </TabsContent>
               )}
-              {canAccessSettingsTab('staff') && (
-                <TabsTrigger
-                  value="staff"
-                  className="border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:text-primary rounded-none px-6 py-2"
-                >
-                  <Shield className="h-4 w-4 mr-2" />
-                  Staff Management
-                </TabsTrigger>
-              )}
+
+
+              <TabsContent value="staff" className="p-6">
+                {canAccessSettingsTab('staff') ? (
+                  <Tabs value={activeSection || "staff-management"} onValueChange={handleSectionChange} className="w-full">
+                    <TabsList className="grid w-full grid-cols-2">
+                      <TabsTrigger value="staff-management" className="flex items-center gap-2">
+                        <UserIcon className="h-4 w-4" />
+                        Staff Management
+                      </TabsTrigger>
+                      <TabsTrigger value="roles-permissions" className="flex items-center gap-2">
+                        <Shield className="h-4 w-4" />
+                        Roles & Permissions
+                      </TabsTrigger>
+                    </TabsList>
+                    
+                    <TabsContent value="staff-management" className="mt-6">
+                      <StaffManagementPanel />
+                    </TabsContent>
+                    
+                    <TabsContent value="roles-permissions" className="mt-6">
+                      <StaffRolesCard />
+                    </TabsContent>
+                  </Tabs>
+                ) : (
+                  <div className="flex items-center justify-center h-64 border-2 border-dashed border-muted rounded-lg">
+                    <p className="text-muted-foreground">You do not have permission to view this page.</p>
+                  </div>
+                )}
+              </TabsContent>
+
+
               {canAccessSettingsTab('knowledgebase') && (
-                <TabsTrigger
-                  value="knowledgebase"
-                  className="border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:text-primary rounded-none px-6 py-2"
-                >
-                  <BookOpen className="h-4 w-4 mr-2" />
-                  Knowledgebase
-                </TabsTrigger>
+                <TabsContent value="knowledgebase" className="space-y-6 p-6">
+                  <KnowledgebaseSettings />
+                </TabsContent>
               )}
+
               {canAccessSettingsTab('homepage') && (
-                <TabsTrigger
-                  value="homepage"
-                  className="border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:text-primary rounded-none px-6 py-2"
-                >
-                  <Globe className="h-4 w-4 mr-2" />
-                  Homepage Cards
-                </TabsTrigger>
+                <TabsContent value="homepage" className="space-y-6 p-6">
+                  <HomepageCardSettings />
+                </TabsContent>
               )}
-            </TabsList>
-            
-            <TabsContent value="account">
-              <AccountSettings
-                profileUsername={profileUsername}
-                setProfileUsername={setProfileUsername}
-                currentEmail={currentEmail}
-                setCurrentEmail={setCurrentEmail}
-              />
-            </TabsContent>
 
-            {canAccessSettingsTab('general') && (
-              <TabsContent value="general">
-                <GeneralSettings
-                  serverDisplayName={serverDisplayName}
-                  setServerDisplayName={setServerDisplayName}
-                  homepageIconUrl={homepageIconUrl}
-                  panelIconUrl={panelIconUrl}
-                  uploadingHomepageIcon={uploadingHomepageIcon}
-                  uploadingPanelIcon={uploadingPanelIcon}
-                  handleHomepageIconUpload={handleHomepageIconUpload}
-                  handlePanelIconUpload={handlePanelIconUpload}
-                  apiKey={apiKey}
-                  fullApiKey={fullApiKey}
-                  showApiKey={showApiKey}
-                  apiKeyCopied={apiKeyCopied}
-                  isGeneratingApiKey={isGeneratingApiKey}
-                  isRevokingApiKey={isRevokingApiKey}
-                  generateApiKey={generateApiKey}
-                  revokeApiKey={revokeApiKey}
-                  revealApiKey={revealApiKey}
-                  copyApiKey={copyApiKey}
-                  maskApiKey={maskApiKey}
-                  usageData={usageData}
-                  getBillingSummary={getBillingSummary}
-                  getUsageSummary={getUsageSummary}
-                  getServerConfigSummary={getServerConfigSummary}
-                  getDomainSummary={getDomainSummary}
-                />
-              </TabsContent>
-            )}
-
-            {canAccessSettingsTab('punishment') && (
-              <TabsContent value="punishment">
-                <PunishmentSettings
-                  statusThresholds={statusThresholds}
-                  setStatusThresholds={setStatusThresholds}
-                  punishmentTypes={punishmentTypes}
-                  newPunishmentName={newPunishmentName}
-                  setNewPunishmentName={setNewPunishmentName}
-                  newPunishmentCategory={newPunishmentCategory}
-                  setNewPunishmentCategory={setNewPunishmentCategory}
-                  addPunishmentType={addPunishmentType}
-                  removePunishmentType={removePunishmentType}
-                  setSelectedPunishment={setSelectedPunishment}
-                />
-              </TabsContent>
-            )}
-
-            {canAccessSettingsTab('tags') && (
-              <TabsContent value="tags">
-                <TicketSettings
-                quickResponsesState={quickResponsesState}
-                setQuickResponsesState={setQuickResponsesState}
-                bugReportTags={bugReportTags}
-                setBugReportTags={setBugReportTagsState}
-                playerReportTags={playerReportTags}
-                setPlayerReportTags={setPlayerReportTagsState}
-                appealTags={appealTags}
-                setAppealTags={setAppealTagsState}
-                newBugTag={newBugTag}
-                setNewBugTag={setNewBugTag}
-                newPlayerTag={newPlayerTag}
-                setNewPlayerTag={setNewPlayerTag}
-                newAppealTag={newAppealTag}
-                setNewAppealTag={setNewAppealTag}
-                ticketForms={ticketForms}
-                setTicketForms={setTicketFormsState}
-                selectedTicketFormType={selectedTicketFormType}
-                setSelectedTicketFormType={setSelectedTicketFormType}
-                aiModerationSettings={aiModerationSettings}
-                setAiModerationSettings={setAiModerationSettings}
-                punishmentTypesState={punishmentTypes}
-                onEditSection={onEditSection}
-                onDeleteSection={onDeleteSection}
-                onEditField={onEditField}
-                onDeleteField={onDeleteField}
-                onAddField={onAddField}
-                moveField={moveField}
-                moveFieldBetweenSections={moveFieldBetweenSections}
-              />
-              </TabsContent>
-            )}
-
-
-            <TabsContent value="staff" className="p-6">
-              {canAccessSettingsTab('staff') ? (
-                <Tabs value={activeSection || "staff-management"} onValueChange={handleSectionChange} className="w-full">
-                  <TabsList className="grid w-full grid-cols-2">
-                    <TabsTrigger value="staff-management" className="flex items-center gap-2">
-                      <UserIcon className="h-4 w-4" />
-                      Staff Management
-                    </TabsTrigger>
-                    <TabsTrigger value="roles-permissions" className="flex items-center gap-2">
-                      <Shield className="h-4 w-4" />
-                      Roles & Permissions
-                    </TabsTrigger>
-                  </TabsList>
-                  
-                  <TabsContent value="staff-management" className="mt-6">
-                    <StaffManagementPanel />
-                  </TabsContent>
-                  
-                  <TabsContent value="roles-permissions" className="mt-6">
-                    <StaffRolesCard />
-                  </TabsContent>
-                </Tabs>
-              ) : (
-                <div className="flex items-center justify-center h-64 border-2 border-dashed border-muted rounded-lg">
-                  <p className="text-muted-foreground">You do not have permission to view this page.</p>
-                </div>
-              )}
-            </TabsContent>
-
-
-            {canAccessSettingsTab('knowledgebase') && (
-              <TabsContent value="knowledgebase" className="space-y-6 p-6">
-                <KnowledgebaseSettings />
-              </TabsContent>
-            )}
-
-            {canAccessSettingsTab('homepage') && (
-              <TabsContent value="homepage" className="space-y-6 p-6">
-                <HomepageCardSettings />
-              </TabsContent>
-            )}
-
-          </Tabs>
+            </Tabs>
+          </CardHeader>
         </Card>
 
         {/* Punishment Configuration Dialog */}
