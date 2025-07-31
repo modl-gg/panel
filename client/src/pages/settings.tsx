@@ -2643,7 +2643,7 @@ const Settings = () => {
 
   return (
     <PageContainer>
-      <div className="flex justify-between items-center mb-6">
+      <div className="flex justify-between items-center">
         <h2 className="text-xl font-semibold">Settings</h2>
         <div className="flex space-x-2 items-center">
           {isSaving ? (
