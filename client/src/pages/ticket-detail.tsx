@@ -576,8 +576,51 @@ const TicketDetail = () => {
         });
       }
       
-      // Prepare evidence array
-      const evidence = punishmentData.evidence?.filter((e: string) => e.trim()).map((e: string) => e.trim()) || [];
+      // Prepare evidence array - handle both string and object formats like PlayerWindow
+      const evidence = punishmentData.evidence?.filter((e: string) => e.trim()).map((e: string) => {
+        const trimmedEvidence = e.trim();
+        
+        // If it's a URL (uploaded file), convert to object format
+        if (trimmedEvidence.startsWith('http')) {
+          // Extract filename from URL for better display
+          const fileName = trimmedEvidence.split('/').pop() || 'Unknown file';
+          
+          return {
+            text: fileName,
+            issuerName: user?.username || 'Admin',
+            date: new Date().toISOString(),
+            type: 'file',
+            fileUrl: trimmedEvidence,
+            fileName: fileName,
+            fileType: getFileTypeFromUrl(trimmedEvidence),
+            fileSize: 0 // We don't have size info from URL
+          };
+        } else {
+          // Text evidence - convert to object format
+          return {
+            text: trimmedEvidence,
+            issuerName: user?.username || 'Admin',
+            date: new Date().toISOString(),
+            type: 'text'
+          };
+        }
+      }) || [];
+      
+      // Helper function to determine file type from URL
+      function getFileTypeFromUrl(url: string): string {
+        const extension = url.split('.').pop()?.toLowerCase();
+        if (!extension) return 'application/octet-stream';
+        
+        const imageExts = ['jpg', 'jpeg', 'png', 'gif', 'webp'];
+        const videoExts = ['mp4', 'webm', 'mov', 'avi'];
+        const docExts = ['pdf', 'doc', 'docx', 'txt'];
+        
+        if (imageExts.includes(extension)) return `image/${extension}`;
+        if (videoExts.includes(extension)) return `video/${extension}`;
+        if (docExts.includes(extension)) return `application/${extension}`;
+        
+        return 'application/octet-stream';
+      }
       
       // Prepare punishment data in the format expected by the server
       const punishmentApiData: { [key: string]: any } = {
