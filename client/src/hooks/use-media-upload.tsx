@@ -96,7 +96,8 @@ export function useMediaUpload() {
     uploadType: 'evidence' | 'ticket' | 'appeal' | 'article' | 'server-icon',
     metadata: Record<string, any> = {}
   ): Promise<{ url: string; key: string }> => {
-    if (!config.data?.backblazeConfigured) {
+    // Evidence uploads support local storage fallback, others require Backblaze
+    if (!config.data?.backblazeConfigured && uploadType !== 'evidence') {
       throw new Error('Media storage is not configured');
     }
 

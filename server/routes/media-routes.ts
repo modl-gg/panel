@@ -426,9 +426,44 @@ router.post('/upload/evidence', isAuthenticated, upload.single('file'), async (r
 
 // Get media configuration (used by client to check if Backblaze B2 is configured)
 router.get('/config', async (req, res) => {
-  res.json({
-    backblazeConfigured: isBackblazeConfigured(),
-  });
+  try {
+    res.json({
+      backblazeConfigured: isBackblazeConfigured(),
+      supportedTypes: {
+        evidence: ['image/png', 'image/jpeg', 'image/gif', 'video/mp4', 'application/pdf'],
+        tickets: ['image/png', 'image/jpeg', 'image/gif', 'video/mp4', 'application/pdf'],
+        appeals: ['image/png', 'image/jpeg', 'image/gif', 'video/mp4', 'application/pdf'],
+        articles: ['image/png', 'image/jpeg', 'image/gif'],
+        'server-icons': ['image/png', 'image/jpeg']
+      },
+      fileSizeLimits: {
+        evidence: 100 * 1024 * 1024, // 100MB (authenticated users)
+        tickets: 100 * 1024 * 1024, // 100MB (authenticated users)
+        appeals: 100 * 1024 * 1024, // 100MB (authenticated users)
+        articles: 50 * 1024 * 1024, // 50MB (authenticated users)
+        'server-icons': 5 * 1024 * 1024 // 5MB (authenticated users)
+      }
+    });
+  } catch (error) {
+    console.error('[Media Config] Error occurred:', error);
+    res.json({
+      backblazeConfigured: false,
+      supportedTypes: {
+        evidence: [],
+        tickets: [],
+        appeals: [],
+        articles: [],
+        'server-icons': []
+      },
+      fileSizeLimits: {
+        evidence: 0,
+        tickets: 0,
+        appeals: 0,
+        articles: 0,
+        'server-icons': 0
+      }
+    });
+  }
 });
 
 export default router;

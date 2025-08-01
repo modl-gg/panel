@@ -99,23 +99,7 @@ export function EvidenceUpload({
   const isImage = (type: string) => type.startsWith('image/');
   const isVideo = (type: string) => type.startsWith('video/');
 
-  if (!config?.backblazeConfigured) {
-    return (
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <Shield className="h-5 w-5" />
-            Evidence Upload
-          </CardTitle>
-        </CardHeader>
-        <CardContent>
-          <p className="text-sm text-muted-foreground">
-            Media storage is not configured. Please contact your administrator.
-          </p>
-        </CardContent>
-      </Card>
-    );
-  }
+  // Evidence uploads support local storage fallback, so no need to check backblazeConfigured
 
   return (
     <Card>
