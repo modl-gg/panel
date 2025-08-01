@@ -160,8 +160,21 @@ export function usePermissions() {
   }, [rolesData]);
 
   // Role hierarchy functions
-  const canModifyUserRole = (targetUserRole: string, newRole: string, targetUserId?: string): boolean => {
+  const canModifyUserRole = (targetUserRole: string, newRole?: string, targetUserId?: string): boolean => {
     if (!user) return false;
+    // If no newRole specified, check if user can modify this role at all
+    // For checking general ability to change role, we'll use a dummy check
+    if (!newRole) {
+      // Super Admin can modify any non-Super Admin role
+      if (user.role === 'Super Admin' && targetUserRole !== 'Super Admin') {
+        return true;
+      }
+      // For others, check if they have higher authority than the target
+      const currentRoleInfo = roleHierarchy.get(user.role);
+      const targetRoleInfo = roleHierarchy.get(targetUserRole);
+      if (!currentRoleInfo || !targetRoleInfo) return false;
+      return currentRoleInfo.order < targetRoleInfo.order;
+    }
     return canModifyRole(user.role, targetUserRole, newRole, roleHierarchy);
   };
 

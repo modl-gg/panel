@@ -406,9 +406,15 @@ router.delete('/media/:key', isAuthenticated, requireBackblazeConfig, async (req
 });
 
 // Upload evidence (used by the evidence upload modal)
-router.post('/upload/evidence', async (req, res) => {
+router.post('/upload/evidence', isAuthenticated, upload.single('file'), async (req, res) => {
+  const serverName = (req as any).serverName;
+  
+  if (!req.file) {
+    return res.status(400).json({ error: 'No file uploaded' });
+  }
+
   try {
-    await handleFileUpload(req, res, req.file as Express.Multer.File, 'evidence', req.body.subFolder, req.body.serverName);
+    await handleFileUpload(req, res, req.file as Express.Multer.File, 'evidence', req.body.subFolder, serverName);
   } catch (error) {
     console.error('Evidence upload error:', error);
     res.status(500).json({ 

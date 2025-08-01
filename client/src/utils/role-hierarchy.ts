@@ -66,6 +66,11 @@ export function canModifyRole(
     return false;
   }
   
+  // Super Admin can modify any non-Super Admin role
+  if (isSuperAdminRole(currentUserRole)) {
+    return true;
+  }
+  
   // Cannot modify your own role
   if (currentUserRole === targetUserRole) {
     return false;
