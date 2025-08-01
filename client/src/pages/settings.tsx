@@ -1730,11 +1730,17 @@ const Settings = () => {
         setLastSaved(new Date());
         // Don't show a toast on every auto-save to avoid spam
       } else {
-        toast({
-          title: "Error",
-          description: "Failed to save settings",
-          variant: "destructive"
-        });
+        const errorData = await response.json().catch(() => ({ error: 'Unknown error' }));
+        console.error('Settings save failed:', response.status, errorData);
+        
+        // Only show error toast if it's not a permissions issue that still saves
+        if (response.status !== 403) {
+          toast({
+            title: "Error",
+            description: `Failed to save settings: ${errorData.error || response.statusText}`,
+            variant: "destructive"
+          });
+        }
       }
     } catch (error) {
       console.error("Error saving settings:", error);
@@ -2011,14 +2017,16 @@ const Settings = () => {
           // Don't show a toast on every auto-save to avoid spam
         } else {
           const errorData = await response.json().catch(() => ({ message: 'Unknown error' }));
-          console.error('Profile auto-save failed:', errorData.message);
+          console.error('Profile auto-save failed:', response.status, errorData);
           
-          // Show error toast
-          toast({
-            title: "Save Failed",
-            description: `Failed to save profile: ${errorData.message}`,
-            variant: "destructive",
-          });
+          // Only show error toast if it's not a CSRF issue that might still save
+          if (response.status !== 403) {
+            toast({
+              title: "Save Failed",
+              description: `Failed to save profile: ${errorData.message}`,
+              variant: "destructive",
+            });
+          }
         }
       } catch (error) {
         console.error('Profile auto-save error:', error);
