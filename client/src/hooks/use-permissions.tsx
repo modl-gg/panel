@@ -185,7 +185,14 @@ export function usePermissions() {
 
   const canAssignStaffMinecraftPlayer = (targetUserRole: string, targetUserId: string): boolean => {
     if (!user) return false;
-    return canAssignMinecraftPlayer(user.role, targetUserRole, user._id, targetUserId, roleHierarchy);
+    
+    // Super Admin can change anyone's minecraft player
+    if (user.role === 'Super Admin') {
+      return true;
+    }
+    
+    // For other roles, they can only change their own
+    return user._id === targetUserId;
   };
 
   return {

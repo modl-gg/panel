@@ -29,6 +29,20 @@ export default defineConfig({
   build: {
     outDir: path.resolve(import.meta.dirname, "dist/public"),
     emptyOutDir: true,
+    rollupOptions: {
+      output: {
+        manualChunks: (id) => {
+          // Keep CSRF utilities in the main chunk to prevent 404s
+          if (id.includes('utils/csrf')) {
+            return 'index';
+          }
+          // Keep rate limit handler with CSRF since they're related
+          if (id.includes('utils/rate-limit-handler')) {
+            return 'index';
+          }
+        }
+      }
+    }
   },
   server: {
     watch: {

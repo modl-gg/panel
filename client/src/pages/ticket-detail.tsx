@@ -43,7 +43,7 @@ import {
 import { Button } from '@modl-gg/shared-web/components/ui/button';
 import { Badge } from '@modl-gg/shared-web/components/ui/badge';
 import { Checkbox } from '@modl-gg/shared-web/components/ui/checkbox';
-import { useTicket, usePanelTicket, useUpdateTicket, useSettings, useStaff, useModifyPunishment } from '@/hooks/use-data';
+import { useTicket, usePanelTicket, useUpdateTicket, useSettings, useStaff, useModifyPunishment, useApplyPunishment } from '@/hooks/use-data';
 import { QuickResponsesConfiguration, defaultQuickResponsesConfig } from '@/types/quickResponses';
 import { useToast } from '@/hooks/use-toast';
 import PageContainer from '@/components/layout/PageContainer';
@@ -56,7 +56,6 @@ import { ClickablePlayer } from '@/components/ui/clickable-player';
 import PlayerPunishment, { PlayerPunishmentData } from '@/components/ui/player-punishment';
 import MediaUpload from '@/components/MediaUpload';
 import TicketAttachments from '@/components/TicketAttachments';
-import { useApplyPunishment, useSettings } from '@/hooks/use-data';
 
 // Define PunishmentType interface
 interface PunishmentType {
@@ -345,6 +344,66 @@ const TicketDetail = () => {
     return duration.value * (multipliers[duration.unit as keyof typeof multipliers] || 0);
   }, []);
 
+  const { data: settingsData } = useSettings();
+  
+  // Helper function to get punishment types by category
+  const punishmentTypesByCategory = useMemo(() => {
+    if (!settingsData?.settings?.punishmentTypes) {
+      return {
+        Administrative: [
+          { id: 0, name: 'Kick', category: 'Administrative', isCustomizable: false, ordinal: 0 },
+          { id: 1, name: 'Manual Mute', category: 'Administrative', isCustomizable: false, ordinal: 1 },
+          { id: 2, name: 'Manual Ban', category: 'Administrative', isCustomizable: false, ordinal: 2 },
+          { id: 3, name: 'Security Ban', category: 'Administrative', isCustomizable: false, ordinal: 3 },
+          { id: 4, name: 'Linked Ban', category: 'Administrative', isCustomizable: false, ordinal: 4 },
+          { id: 5, name: 'Blacklist', category: 'Administrative', isCustomizable: false, ordinal: 5 }
+        ],
+        Social: [
+          { id: 6, name: 'Bullying', category: 'Social', isCustomizable: false, ordinal: 6 },
+          { id: 7, name: 'General Toxicity', category: 'Social', isCustomizable: false, ordinal: 7 },
+          { id: 8, name: 'Adult Content', category: 'Social', isCustomizable: false, ordinal: 8 },
+          { id: 9, name: 'Spam', category: 'Social', isCustomizable: false, ordinal: 9 },
+          { id: 10, name: 'Advertising', category: 'Social', isCustomizable: false, ordinal: 10 },
+          { id: 11, name: 'Bad Name', category: 'Social', isCustomizable: false, ordinal: 11 }
+        ],
+        Gameplay: [
+          { id: 12, name: 'Team Abuse', category: 'Gameplay', isCustomizable: false, ordinal: 12 },
+          { id: 13, name: 'Game Abuse', category: 'Gameplay', isCustomizable: false, ordinal: 13 },
+          { id: 14, name: 'Systems Abuse', category: 'Gameplay', isCustomizable: false, ordinal: 14 },
+          { id: 15, name: 'Account Abuse', category: 'Gameplay', isCustomizable: false, ordinal: 15 },
+          { id: 16, name: 'Game Trading', category: 'Gameplay', isCustomizable: false, ordinal: 16 },
+          { id: 17, name: 'Cheating', category: 'Gameplay', isCustomizable: false, ordinal: 17 }
+        ]
+      };
+    }
+    
+    // Organize punishment types by category
+    const categories: any = {
+      Administrative: [],
+      Social: [],
+      Gameplay: []
+    };
+    
+    settingsData.settings.punishmentTypes.forEach((type: any, index: number) => {
+      const punishmentType = {
+        ...type,
+        id: index,
+        ordinal: index
+      };
+      
+      if (categories[type.category]) {
+        categories[type.category].push(punishmentType);
+      }
+    });
+    
+    // Sort each category by ordinal
+    Object.keys(categories).forEach(category => {
+      categories[category].sort((a: any, b: any) => (a.ordinal || 0) - (b.ordinal || 0));
+    });
+    
+    return categories;
+  }, [settingsData]);
+
   // Get current punishment type from punishment data
   const getCurrentPunishmentType = useMemo(() => (punishmentData: any) => {
     if (!punishmentData?.selectedPunishmentCategory) return null;
@@ -580,8 +639,33 @@ const TicketDetail = () => {
       const evidence = punishmentData.evidence?.filter((e: string) => e.trim()).map((e: string) => {
         const trimmedEvidence = e.trim();
         
-        // If it's a URL (uploaded file), convert to object format
-        if (trimmedEvidence.startsWith('http')) {
+        // If it's a JSON object (uploaded file with metadata), parse and convert
+        if (trimmedEvidence.startsWith('{')) {
+          try {
+            const fileData = JSON.parse(trimmedEvidence);
+            return {
+              text: fileData.fileName,
+              issuerName: user?.username || 'Admin',
+              date: new Date().toISOString(),
+              type: 'file',
+              fileUrl: fileData.url,
+              fileName: fileData.fileName,
+              fileType: fileData.fileType,
+              fileSize: fileData.fileSize
+            };
+          } catch (error) {
+            console.warn('Failed to parse evidence JSON:', error);
+            // Fallback to text evidence
+            return {
+              text: trimmedEvidence,
+              issuerName: user?.username || 'Admin',
+              date: new Date().toISOString(),
+              type: 'text'
+            };
+          }
+        }
+        // If it's a URL (legacy uploaded file), convert to object format
+        else if (trimmedEvidence.startsWith('http')) {
           // Extract filename from URL for better display
           const fileName = trimmedEvidence.split('/').pop() || 'Unknown file';
           
@@ -655,33 +739,6 @@ const TicketDetail = () => {
       });
     }
   };
-  const { data: settingsData } = useSettings();
-  
-  // Helper function to get punishment types by category
-  const punishmentTypesByCategory = useMemo(() => {
-    if (!settingsData?.settings?.punishmentTypes) {
-      return {
-        Administrative: [
-          { id: 0, name: 'Kick', category: 'Administrative', isCustomizable: false, ordinal: 0 },
-          { id: 1, name: 'Manual Mute', category: 'Administrative', isCustomizable: false, ordinal: 1 },
-          { id: 2, name: 'Manual Ban', category: 'Administrative', isCustomizable: false, ordinal: 2 },
-          { id: 3, name: 'Security Ban', category: 'Administrative', isCustomizable: false, ordinal: 3 },
-          { id: 4, name: 'Linked Ban', category: 'Administrative', isCustomizable: false, ordinal: 4 },
-          { id: 5, name: 'Blacklist', category: 'Administrative', isCustomizable: false, ordinal: 5 }
-        ],
-        Social: [],
-        Gameplay: []
-      };
-    }
-
-    const types = settingsData.settings.punishmentTypes;
-    return {
-      Administrative: types.filter((t: any) => t.category === 'Administrative').sort((a: any, b: any) => a.ordinal - b.ordinal),
-      Social: types.filter((t: any) => t.category === 'Social').sort((a: any, b: any) => a.ordinal - b.ordinal),
-      Gameplay: types.filter((t: any) => t.category === 'Gameplay').sort((a: any, b: any) => a.ordinal - b.ordinal)
-    };
-  }, [settingsData]);
-
 
   // Helper function to convert duration to milliseconds
   const convertDurationToMs = (duration: { value: number; unit: string }) => {
