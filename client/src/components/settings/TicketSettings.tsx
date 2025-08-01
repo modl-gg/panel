@@ -886,7 +886,7 @@ const TicketSettings = ({
                                 setIsAddTicketFormFieldDialogOpen(true);
                               }}
                               moveField={moveFieldInForm}
-                              moveFieldBetweenSections={handleMoveFieldBetweenSections}
+                              moveFieldBetweenSections={moveFieldBetweenSections}
                             />
                           ))}
 
@@ -2196,7 +2196,7 @@ const DraggableSectionCard = ({
             index={fieldIndex}
             sectionId={section.id}
             moveField={moveField}
-            moveFieldBetweenSections={handleMoveFieldBetweenSections}
+            moveFieldBetweenSections={moveFieldBetweenSections}
             onEditField={onEditField}
             onDeleteField={onDeleteField}
           />
