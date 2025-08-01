@@ -2203,7 +2203,7 @@ const DraggableSectionCard = ({
         {/* Drop zone for adding fields from other sections */}
         <FieldDropZone
           sectionId={section.id}
-          moveFieldBetweenSections={handleMoveFieldBetweenSections}
+          moveFieldBetweenSections={moveFieldBetweenSections}
         />
         
         <Button
