@@ -431,8 +431,76 @@ const PlayerWindow = ({ playerId, isOpen, onClose, initialPosition }: PlayerWind
         });
       }
       
-      // Prepare evidence array
-      const evidence = playerInfo.evidenceList?.filter(e => e.trim()).map(e => e.trim()) || [];
+      // Prepare evidence array - handle both string and object formats like PlayerWindow history
+      const evidence = playerInfo.evidenceList?.filter((e: string) => e.trim()).map((e: string) => {
+        const trimmedEvidence = e.trim();
+        
+        // If it's a JSON object (uploaded file with metadata), parse and convert
+        if (trimmedEvidence.startsWith('{')) {
+          try {
+            const fileData = JSON.parse(trimmedEvidence);
+            return {
+              text: fileData.fileName,
+              issuerName: user?.username || 'Admin',
+              date: new Date().toISOString(),
+              type: 'file',
+              fileUrl: fileData.url,
+              fileName: fileData.fileName,
+              fileType: fileData.fileType,
+              fileSize: fileData.fileSize
+            };
+          } catch (error) {
+            console.warn('Failed to parse evidence JSON:', error);
+            // Fallback to text evidence
+            return {
+              text: trimmedEvidence,
+              issuerName: user?.username || 'Admin',
+              date: new Date().toISOString(),
+              type: 'text'
+            };
+          }
+        }
+        // If it's a URL (legacy uploaded file), convert to object format
+        else if (trimmedEvidence.startsWith('http')) {
+          // Extract filename from URL for better display
+          const fileName = trimmedEvidence.split('/').pop() || 'Unknown file';
+          
+          return {
+            text: fileName,
+            issuerName: user?.username || 'Admin',
+            date: new Date().toISOString(),
+            type: 'file',
+            fileUrl: trimmedEvidence,
+            fileName: fileName,
+            fileType: getFileTypeFromUrl(trimmedEvidence),
+            fileSize: 0 // We don't have size info from URL
+          };
+        } else {
+          // Text evidence - convert to object format
+          return {
+            text: trimmedEvidence,
+            issuerName: user?.username || 'Admin',
+            date: new Date().toISOString(),
+            type: 'text'
+          };
+        }
+      }) || [];
+      
+      // Helper function to determine file type from URL
+      function getFileTypeFromUrl(url: string): string {
+        const extension = url.split('.').pop()?.toLowerCase();
+        if (!extension) return 'application/octet-stream';
+        
+        const imageExts = ['jpg', 'jpeg', 'png', 'gif', 'webp'];
+        const videoExts = ['mp4', 'webm', 'mov', 'avi'];
+        const docExts = ['pdf', 'doc', 'docx', 'txt'];
+        
+        if (imageExts.includes(extension)) return `image/${extension}`;
+        if (videoExts.includes(extension)) return `video/${extension}`;
+        if (docExts.includes(extension)) return `application/${extension}`;
+        
+        return 'application/octet-stream';
+      }
       // Prepare punishment data in the format expected by the server
       const punishmentData: { [key: string]: any } = {
         issuerName: user?.username || 'Admin', // Use actual staff member name

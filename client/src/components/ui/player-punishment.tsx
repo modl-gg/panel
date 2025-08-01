@@ -640,28 +640,52 @@ const PlayerPunishment: React.FC<PlayerPunishmentProps> = ({
               <input
                 type="text"
                 className={`flex-1 h-8 rounded-md border border-input px-3 py-1 text-sm ${
-                  evidence.startsWith('http') ? 'bg-muted text-muted-foreground' : 'bg-background'
+                  evidence.startsWith('http') || evidence.startsWith('{') ? 'bg-muted text-muted-foreground' : 'bg-background'
                 }`}
                 placeholder="Evidence URL or description..."
-                value={evidence.startsWith('http') ? `📁 ${evidence.split('/').pop()}` : evidence}
+                value={(() => {
+                  // Handle uploaded file objects
+                  if (evidence.startsWith('{')) {
+                    try {
+                      const parsed = JSON.parse(evidence);
+                      return `📁 ${parsed.fileName}`;
+                    } catch {
+                      return evidence;
+                    }
+                  }
+                  // Handle direct URLs (legacy)
+                  if (evidence.startsWith('http')) {
+                    return `📁 ${evidence.split('/').pop()}`;
+                  }
+                  // Regular text evidence
+                  return evidence;
+                })()}
                 onChange={(e) => {
-                  // Don't allow editing of uploaded files (URLs)
-                  if (evidence.startsWith('http')) return;
+                  // Don't allow editing of uploaded files (URLs or objects)
+                  if (evidence.startsWith('http') || evidence.startsWith('{')) return;
                   
                   const newEvidence = [...(data.evidence || [])];
                   newEvidence[index] = e.target.value;
                   updateData({ evidence: newEvidence });
                 }}
-                readOnly={evidence.startsWith('http')}
+                readOnly={evidence.startsWith('http') || evidence.startsWith('{')}
               />
               
               {/* Upload button for this evidence item */}
               <MediaUpload
                 uploadType="evidence"
-                onUploadComplete={(result) => {
-                  // Replace the current evidence item with the uploaded file URL
+                onUploadComplete={(result, file) => {
+                  // Create evidence object with file metadata like PlayerWindow does
+                  const evidenceObject = {
+                    url: result.url,
+                    fileName: file?.name || 'Unknown file',
+                    fileType: file?.type || 'application/octet-stream',
+                    fileSize: file?.size || 0
+                  };
+                  
+                  // Store the stringified object so it can be parsed later
                   const newEvidence = [...(data.evidence || [])];
-                  newEvidence[index] = result.url;
+                  newEvidence[index] = JSON.stringify(evidenceObject);
                   updateData({ evidence: newEvidence });
                 }}
                 metadata={{
