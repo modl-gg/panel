@@ -4,6 +4,7 @@ import { z } from 'zod';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { AlertTriangle, SearchIcon, ShieldCheck, ShieldX, Send } from 'lucide-react';
+import { formatDate } from '../utils/date-utils';
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -52,22 +53,6 @@ interface AppealFormSettings {
   fields: AppealFormField[];
 }
 
-// Format date to MM/dd/yy HH:mm in browser's timezone
-const formatDate = (dateString: string): string => {
-  try {
-    const date = new Date(dateString);
-    return date.toLocaleString('en-US', {
-      month: '2-digit',
-      day: '2-digit',
-      year: '2-digit',
-      hour: '2-digit',
-      minute: '2-digit',
-      hour12: false
-    });
-  } catch (e) {
-    return dateString; // Return original string if formatting fails
-  }
-};
 
 // Define the search form schema
 const searchSchema = z.object({

@@ -6,6 +6,7 @@ import { Progress } from '@modl-gg/shared-web/components/ui/progress';
 import { Card, CardContent } from '@modl-gg/shared-web/components/ui/card';
 import { cn } from '@modl-gg/shared-web/lib/utils';
 import { useMediaUpload } from '@/hooks/use-media-upload';
+import { formatFileSize } from '@/utils/file-utils';
 
 interface MediaUploadProps {
   uploadType: 'evidence' | 'ticket' | 'appeal' | 'article' | 'server-icon';
@@ -80,13 +81,6 @@ export function MediaUpload({
     return <File className="h-4 w-4" />;
   };
 
-  const formatFileSize = (bytes: number): string => {
-    if (bytes === 0) return '0 Bytes';
-    const k = 1024;
-    const sizes = ['Bytes', 'KB', 'MB', 'GB'];
-    const i = Math.floor(Math.log(bytes) / Math.log(k));
-    return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
-  };
 
   const validateFile = (file: File): string | null => {
     if (!allowedTypes.includes(file.type)) {

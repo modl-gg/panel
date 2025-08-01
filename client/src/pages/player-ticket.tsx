@@ -91,34 +91,6 @@ interface TicketAttachment {
 }
 
 // Format date to MM/dd/yy HH:mm in browser's timezone
-const formatDate = (dateString: string): string => {
-  try {
-    // Handle various date formats and edge cases
-    if (!dateString) {
-      return 'Unknown';
-    }
-    
-    const date = new Date(dateString);
-    
-    // Check if the date is valid
-    if (isNaN(date.getTime())) {
-      console.warn('Invalid date string:', dateString);
-      return 'Invalid Date';
-    }
-    
-    return date.toLocaleString('en-US', {
-      month: '2-digit',
-      day: '2-digit',
-      year: '2-digit',
-      hour: '2-digit',
-      minute: '2-digit',
-      hour12: false
-    });
-  } catch (e) {
-    console.error('Error formatting date:', e, 'Original string:', dateString);
-    return 'Unknown'; // Return a more user-friendly fallback
-  }
-};
 
 // Avatar component for messages
 const MessageAvatar = ({ message, creatorUuid }: { message: TicketMessage, creatorUuid?: string }) => {

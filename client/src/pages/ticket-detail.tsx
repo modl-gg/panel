@@ -3,6 +3,7 @@ import { useLocation, Link } from 'wouter';
 import { Popover, PopoverContent, PopoverTrigger } from '@modl-gg/shared-web/components/ui/popover';
 import { queryClient } from '@/lib/queryClient';
 import { useAuth } from '@/hooks/use-auth';
+import { formatDate, formatDateWithRelative } from '../utils/date-utils';
 import {
   MessageSquare,
   User,
@@ -657,35 +658,6 @@ const TicketDetail = () => {
   const [formData, setFormData] = useState<Record<string, string>>({});
   const [replyAttachments, setReplyAttachments] = useState<Array<{id: string, url: string, key: string, fileName: string, fileType: string, fileSize: number, uploadedAt: string, uploadedBy: string}>>([]);
   
-  // Format date to MM/dd/yy HH:mm in browser's timezone
-  const formatDate = (dateString: string): string => {
-    try {
-      // Handle various date formats and edge cases
-      if (!dateString) {
-        return 'Unknown';
-      }
-      
-      const date = new Date(dateString);
-      
-      // Check if the date is valid
-      if (isNaN(date.getTime())) {
-        console.warn('Invalid date string:', dateString);
-        return 'Invalid Date';
-      }
-      
-      return date.toLocaleString('en-US', {
-        month: '2-digit',
-        day: '2-digit',
-        year: '2-digit',
-        hour: '2-digit',
-        minute: '2-digit',
-        hour12: false
-      });
-    } catch (e) {
-      console.error('Error formatting date:', e, 'Original string:', dateString);
-      return 'Unknown'; // Return a more user-friendly fallback
-    }
-  };
 
   // Helper function to get file icon
   const getFileIcon = (type: string) => {
@@ -2448,21 +2420,6 @@ const PunishmentDetailsCard = ({ punishmentId }: { punishmentId: string }) => {
     }
   }, [punishmentId]);
 
-  const formatDate = (dateString: string): string => {
-    try {
-      const date = new Date(dateString);
-      return date.toLocaleString('en-US', {
-        month: '2-digit',
-        day: '2-digit',
-        year: '2-digit',
-        hour: '2-digit',
-        minute: '2-digit',
-        hour12: false
-      });
-    } catch (e) {
-      return dateString;
-    }
-  };
 
   const formatExpiryStatus = (expires: string | null, active: boolean): string => {
     if (!expires) {
@@ -2529,48 +2486,6 @@ const PunishmentDetailsCard = ({ punishmentId }: { punishmentId: string }) => {
     }
   };
 
-  const formatDateWithRelative = (dateString: string): string => {
-    try {
-      const date = new Date(dateString);
-      const now = new Date();
-      const timeDiff = date.getTime() - now.getTime();
-      
-      // Format the actual date
-      const formattedDate = date.toLocaleString('en-US', {
-        month: '2-digit',
-        day: '2-digit',
-        year: '2-digit',
-        hour: '2-digit',
-        minute: '2-digit',
-        hour12: false
-      });
-
-      // Calculate relative time
-      const formatTimeDifference = (timeDiff: number) => {
-        const days = Math.floor(Math.abs(timeDiff) / (24 * 60 * 60 * 1000));
-        const hours = Math.floor((Math.abs(timeDiff) % (24 * 60 * 60 * 1000)) / (60 * 60 * 1000));
-        const minutes = Math.floor((Math.abs(timeDiff) % (60 * 60 * 1000)) / (60 * 1000));
-        
-        if (days > 0) {
-          return `${days}d${hours > 0 ? ` ${hours}h` : ''}`;
-        } else if (hours > 0) {
-          return `${hours}h${minutes > 0 && hours < 24 ? ` ${minutes}m` : ''}`;
-        } else {
-          return `${minutes}m`;
-        }
-      };
-
-      const timeAgo = formatTimeDifference(timeDiff);
-      
-      if (timeDiff > 0) {
-        return `${formattedDate} (in ${timeAgo})`;
-      } else {
-        return `${formattedDate} (${timeAgo} ago)`;
-      }
-    } catch (e) {
-      return dateString;
-    }
-  };
 
   if (isLoading) {
     return (
