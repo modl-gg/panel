@@ -1,10 +1,7 @@
 import { Connection } from 'mongoose';
-
-export interface RoleHierarchyInfo {
-  name: string;
-  order: number;
-  permissions: string[];
-}
+// Import shared core functions and types
+export * from '../../shared/role-hierarchy-core';
+import { RoleHierarchyInfo, buildRoleHierarchy } from '../../shared/role-hierarchy-core';
 
 export interface RoleHierarchyCache {
   roles: Map<string, RoleHierarchyInfo>;
@@ -81,53 +78,8 @@ export function clearRoleHierarchyCache(serverName?: string): void {
   }
 }
 
-/**
- * Check if user1 has higher or equal authority than user2 based on role hierarchy
- * Lower order number = higher authority
- */
-export function hasHigherOrEqualAuthority(
-  user1Role: string,
-  user2Role: string,
-  roleHierarchy: Map<string, RoleHierarchyInfo>
-): boolean {
-  const user1Info = roleHierarchy.get(user1Role);
-  const user2Info = roleHierarchy.get(user2Role);
-  
-  // If either role is not found, default to no authority
-  if (!user1Info || !user2Info) {
-    return false;
-  }
-  
-  // Lower order = higher authority
-  return user1Info.order <= user2Info.order;
-}
 
-/**
- * Check if user1 has higher authority than user2 (strictly higher, not equal)
- */
-export function hasHigherAuthority(
-  user1Role: string,
-  user2Role: string,
-  roleHierarchy: Map<string, RoleHierarchyInfo>
-): boolean {
-  const user1Info = roleHierarchy.get(user1Role);
-  const user2Info = roleHierarchy.get(user2Role);
-  
-  // If either role is not found, default to no authority
-  if (!user1Info || !user2Info) {
-    return false;
-  }
-  
-  // Lower order = higher authority
-  return user1Info.order < user2Info.order;
-}
 
-/**
- * Check if a role is the Super Admin role (immutable role with special privileges)
- */
-export function isSuperAdminRole(roleName: string): boolean {
-  return roleName === 'Super Admin';
-}
 
 /**
  * Check if user can modify another user's role based on hierarchy
@@ -226,37 +178,5 @@ export function canReorderRoles(
   return { canReorder: invalidRoles.length === 0, invalidRoles };
 }
 
-/**
- * Get user's role order (lower = higher authority)
- */
-export function getUserRoleOrder(userRole: string, roleHierarchy: Map<string, RoleHierarchyInfo>): number {
-  const roleInfo = roleHierarchy.get(userRole);
-  return roleInfo ? roleInfo.order : 999;
-}
 
-/**
- * Check if user has a specific permission
- */
-export function hasPermission(
-  userRole: string,
-  permission: string,
-  roleHierarchy: Map<string, RoleHierarchyInfo>
-): boolean {
-  const roleInfo = roleHierarchy.get(userRole);
-  if (!roleInfo) {
-    return false;
-  }
-  
-  return roleInfo.permissions.includes(permission);
-}
 
-/**
- * Get all permissions for a user role
- */
-export function getUserPermissions(
-  userRole: string,
-  roleHierarchy: Map<string, RoleHierarchyInfo>
-): string[] {
-  const roleInfo = roleHierarchy.get(userRole);
-  return roleInfo ? roleInfo.permissions : [];
-}

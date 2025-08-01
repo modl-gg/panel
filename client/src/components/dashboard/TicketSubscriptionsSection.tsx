@@ -5,6 +5,7 @@ import { Button } from '@modl-gg/shared-web/components/ui/button';
 import { Bell, Clock, User, MessageSquare, X, UserMinus } from 'lucide-react';
 import { useLocation } from 'wouter';
 import { useToast } from '@modl-gg/shared-web/hooks/use-toast';
+import { formatTimeAgo } from '@/utils/date-utils';
 
 export interface TicketSubscriptionUpdate {
   id: string;
@@ -70,26 +71,6 @@ export function TicketSubscriptionsSection({
     return contentStr.substring(0, maxLength) + '...';
   };
 
-  const formatTimeAgo = (dateString: string | Date) => {
-    const date = new Date(dateString);
-    const now = new Date();
-    
-    // Check for invalid date
-    if (isNaN(date.getTime())) {
-      return 'Unknown';
-    }
-    
-    const diffInMinutes = Math.floor((now.getTime() - date.getTime()) / (1000 * 60));
-    
-    if (diffInMinutes < 1) return 'Just now';
-    if (diffInMinutes < 60) return `${diffInMinutes}m ago`;
-    
-    const diffInHours = Math.floor(diffInMinutes / 60);
-    if (diffInHours < 24) return `${diffInHours}h ago`;
-    
-    const diffInDays = Math.floor(diffInHours / 24);
-    return `${diffInDays}d ago`;
-  };
 
   if (loading) {
     return (

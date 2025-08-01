@@ -15,6 +15,7 @@ import { useAuth } from '@/hooks/use-auth';
 import { toast } from '@/hooks/use-toast';
 import PlayerPunishment, { PlayerPunishmentData } from '@/components/ui/player-punishment';
 import MediaUpload from '@/components/MediaUpload';
+import { formatDateWithTime } from '@/utils/date-utils';
 
 // Local type definitions
 interface WindowPosition {
@@ -1293,24 +1294,6 @@ const PlayerWindow = ({ playerId, isOpen, onClose, initialPosition }: PlayerWind
     }
   };
 
-  // Helper function to format date with time (MM/DD/YYYY HH:MM)
-  const formatDateWithTime = (date: Date | string | null | undefined) => {
-    if (!date) return 'Unknown';
-    
-    const dateObj = typeof date === 'string' ? new Date(date) : date;
-    
-    // Check if the date is valid
-    if (isNaN(dateObj.getTime())) {
-      return 'Invalid Date';
-    }
-    
-    const month = (dateObj.getMonth() + 1).toString().padStart(2, '0');
-    const day = dateObj.getDate().toString().padStart(2, '0');
-    const year = dateObj.getFullYear();
-    const hours = dateObj.getHours().toString().padStart(2, '0');
-    const minutes = dateObj.getMinutes().toString().padStart(2, '0');
-    return `${month}/${day}/${year} ${hours}:${minutes}`;
-  };
   
   return (
     <ResizableWindow

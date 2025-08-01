@@ -12,73 +12,7 @@ import {
   ChevronLeft,
   ChevronRight
 } from 'lucide-react';
-
-// Format date to MM/dd/yy HH:mm in browser's timezone
-const formatDate = (dateString: string): string => {
-  try {
-    if (!dateString || dateString === 'Invalid Date') {
-      return 'Unknown';
-    }
-    const date = new Date(dateString);
-    if (isNaN(date.getTime())) {
-      return 'Invalid Date';
-    }
-    return date.toLocaleString('en-US', {
-      month: '2-digit',
-      day: '2-digit',
-      year: '2-digit',
-      hour: '2-digit',
-      minute: '2-digit',
-      hour12: false
-    });
-  } catch (e) {
-    console.error("Error formatting date:", e, "Input:", dateString);
-    return 'Invalid Date'; // Return clear error message if formatting fails
-  }
-};
-
-// Format date as "X time ago"
-const formatTimeAgo = (dateString: string): string => {
-  try {
-    if (!dateString || dateString === 'Invalid Date') {
-      return 'Unknown';
-    }
-    const date = new Date(dateString);
-    if (isNaN(date.getTime())) {
-      return 'Invalid Date';
-    }
-    const now = new Date();
-    const diffMs = now.getTime() - date.getTime();
-    
-    // Convert to seconds
-    const diffSec = Math.floor(diffMs / 1000);
-    if (diffSec < 60) return `${diffSec} second${diffSec !== 1 ? 's' : ''} ago`;
-    
-    // Convert to minutes
-    const diffMin = Math.floor(diffSec / 60);
-    if (diffMin < 60) return `${diffMin} minute${diffMin !== 1 ? 's' : ''} ago`;
-    
-    // Convert to hours
-    const diffHour = Math.floor(diffMin / 60);
-    if (diffHour < 24) return `${diffHour} hour${diffHour !== 1 ? 's' : ''} ago`;
-    
-    // Convert to days
-    const diffDay = Math.floor(diffHour / 24);
-    if (diffDay < 30) return `${diffDay} day${diffDay !== 1 ? 's' : ''} ago`;
-    
-    // Convert to months
-    const diffMonth = Math.floor(diffDay / 30);
-    if (diffMonth < 12) return `${diffMonth} month${diffMonth !== 1 ? 's' : ''} ago`;
-    
-    // Convert to years
-    const diffYear = Math.floor(diffMonth / 12);
-    return `${diffYear} year${diffYear !== 1 ? 's' : ''} ago`;
-    
-  } catch (e) {
-    console.error("Error formatting time ago:", e, "Input:", dateString);
-    return "Unknown";
-  }
-};
+import { formatDate, formatTimeAgo } from '../utils/date-utils';
 import { Button } from '@modl-gg/shared-web/components/ui/button';
 import { Card, CardContent, CardHeader } from '@modl-gg/shared-web/components/ui/card';
 import { Badge } from '@modl-gg/shared-web/components/ui/badge';

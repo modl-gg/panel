@@ -8,6 +8,7 @@ import { Input } from '@modl-gg/shared-web/components/ui/input';
 import { Label } from '@modl-gg/shared-web/components/ui/label';
 import MediaUpload from './MediaUpload';
 import { useMediaUpload } from '@/hooks/use-media-upload';
+import { formatFileSize } from '@/utils/file-utils';
 
 interface ArticleMedia {
   id: string;
@@ -124,13 +125,6 @@ export function ArticleMediaUpload({
     onMediaUpdate?.(updatedMedia);
   };
 
-  const formatFileSize = (bytes: number): string => {
-    if (bytes === 0) return '0 Bytes';
-    const k = 1024;
-    const sizes = ['Bytes', 'KB', 'MB', 'GB'];
-    const i = Math.floor(Math.log(bytes) / Math.log(k));
-    return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
-  };
 
   const isImage = (type: string) => type.startsWith('image/');
   const isVideo = (type: string) => type.startsWith('video/');

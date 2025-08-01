@@ -14,6 +14,7 @@ import { useAuth } from '@/hooks/use-auth';
 import { toast } from '@/hooks/use-toast';
 import PlayerPunishment, { PlayerPunishmentData } from '@/components/ui/player-punishment';
 import MediaUpload from '@/components/MediaUpload';
+import { formatDateWithTime } from '@/utils/date-utils';
 
 interface PlayerInfo {
   username: string;
@@ -398,24 +399,6 @@ const PlayerDetailPage = () => {
     return (player.data as any)[key];
   };
 
-  // Helper function to format date with time
-  const formatDateWithTime = (date: any) => {
-    if (!date) return 'Unknown';
-    
-    const dateObj = typeof date === 'string' ? new Date(date) : date;
-    
-    // Check if the date is valid
-    if (isNaN(dateObj.getTime())) {
-      return 'Invalid Date';
-    }
-    
-    const month = (dateObj.getMonth() + 1).toString().padStart(2, '0');
-    const day = dateObj.getDate().toString().padStart(2, '0');
-    const year = dateObj.getFullYear();
-    const hours = dateObj.getHours().toString().padStart(2, '0');
-    const minutes = dateObj.getMinutes().toString().padStart(2, '0');
-    return `${month}/${day}/${year} ${hours}:${minutes}`;
-  };
 
   // Helper function to check if a value is a valid display value for badges
   const isValidBadgeValue = (value: any): boolean => {
