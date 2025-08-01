@@ -54,7 +54,8 @@ const ChangeRoleModal: React.FC<ChangeRoleModalProps> = ({ isOpen, onClose, staf
     enabled: isOpen
   });
   
-  const availableRoles = rolesData?.roles || [];
+  // Filter out Super Admin role from available roles
+  const availableRoles = (rolesData?.roles || []).filter((role: StaffRole) => role.name !== 'Super Admin');
 
   useEffect(() => {
     if (staffMember) {
@@ -65,6 +66,16 @@ const ChangeRoleModal: React.FC<ChangeRoleModalProps> = ({ isOpen, onClose, staf
 
   const handleRoleChange = async () => {
     if (!staffMember || !selectedRole) return;
+
+    // Prevent changing role if user is Super Admin
+    if (staffMember.role === 'Super Admin') {
+      toast({
+        title: 'Error',
+        description: 'Super Admin role cannot be changed.',
+        variant: 'destructive',
+      });
+      return;
+    }
 
     try {
       const { csrfFetch } = await import('@/utils/csrf');
@@ -106,7 +117,9 @@ const ChangeRoleModal: React.FC<ChangeRoleModalProps> = ({ isOpen, onClose, staf
         <AlertDialogHeader>
           <AlertDialogTitle>Change Role for {staffMember.email}</AlertDialogTitle>
           <AlertDialogDescription>
-            Select the new role for this staff member.
+            {staffMember.role === 'Super Admin' 
+              ? 'Super Admin role cannot be changed.'
+              : 'Select the new role for this staff member.'}
           </AlertDialogDescription>
         </AlertDialogHeader>
         <div className="grid gap-4 py-4">
@@ -117,7 +130,7 @@ const ChangeRoleModal: React.FC<ChangeRoleModalProps> = ({ isOpen, onClose, staf
             <Select
               value={selectedRole}
               onValueChange={(value) => setSelectedRole(value)}
-              disabled={availableRoles.length === 0}
+              disabled={availableRoles.length === 0 || staffMember.role === 'Super Admin'}
             >
               <SelectTrigger className="col-span-3">
                 <SelectValue placeholder="Select a role" />
@@ -136,7 +149,7 @@ const ChangeRoleModal: React.FC<ChangeRoleModalProps> = ({ isOpen, onClose, staf
           <AlertDialogCancel onClick={onClose}>Cancel</AlertDialogCancel>
           <AlertDialogAction
             onClick={handleRoleChange}
-            disabled={!selectedRole || selectedRole === staffMember.role}
+            disabled={!selectedRole || selectedRole === staffMember.role || staffMember.role === 'Super Admin'}
           >
             Confirm
           </AlertDialogAction>

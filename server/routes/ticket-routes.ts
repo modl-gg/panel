@@ -639,16 +639,22 @@ router.patch('/:id', async (req: Request<{ id: string }, {}, UpdateTicketBody>, 
 
     // Update status if provided (requires close permission for closing)
     if (updates.status !== undefined) {
-      if (updates.status === 'Closed' && !req.session?.permissions?.includes('ticket.close.all')) {
-        return res.status(403).json({ error: 'Insufficient permissions to close tickets' });
+      if (updates.status === 'Closed') {
+        const canCloseTickets = await hasPermission(req, 'ticket.close.all');
+        if (!canCloseTickets) {
+          return res.status(403).json({ error: 'Insufficient permissions to close tickets' });
+        }
       }
       ticket.status = updates.status;
     }
 
     // Update locked status if provided (requires close permission)
     if (updates.locked !== undefined) {
-      if (updates.locked && !req.session?.permissions?.includes('ticket.close.all')) {
-        return res.status(403).json({ error: 'Insufficient permissions to lock tickets' });
+      if (updates.locked) {
+        const canCloseTickets = await hasPermission(req, 'ticket.close.all');
+        if (!canCloseTickets) {
+          return res.status(403).json({ error: 'Insufficient permissions to lock tickets' });
+        }
       }
       ticket.locked = updates.locked;
     }

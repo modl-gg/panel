@@ -62,7 +62,8 @@ const InviteStaffModal: React.FC<InviteStaffModalProps> = ({ isOpen, onClose, on
     enabled: isOpen
   });
   
-  const availableRoles = rolesData?.roles || [];
+  // Filter out Super Admin role from available roles
+  const availableRoles = (rolesData?.roles || []).filter((role: StaffRole) => role.name !== 'Super Admin');
   
   const form = useForm<InviteFormValues>({
     resolver: zodResolver(inviteSchema),

@@ -1013,19 +1013,19 @@ const Settings = () => {
       // For cancelled subscriptions, check if the period has ended
       if (subscription_status === 'canceled') {
         if (!current_period_end) {
-          return 'Free Plan'; // No end date means it's already expired
+          return 'Free'; // No end date means it's already expired
         }
         const endDate = new Date(current_period_end);
         const now = new Date();
         if (endDate <= now) {
-          return 'Free Plan'; // Cancellation period has ended
+          return 'Free'; // Cancellation period has ended
         }
-        return 'Premium Plan'; // Still has access until end date
+        return 'Premium'; // Still has access until end date
       }
       
       // Active and trialing are clearly premium
       if (['active', 'trialing'].includes(subscription_status)) {
-        return 'Premium Plan';
+        return 'Premium';
       }
       
       // For payment issues (past_due, unpaid), check if still within period
@@ -1034,12 +1034,12 @@ const Settings = () => {
           const endDate = new Date(current_period_end);
           const now = new Date();
           if (endDate > now) {
-            return 'Premium Plan'; // Still within paid period despite payment issues
+            return 'Premium'; // Still within paid period despite payment issues
           }
         }
       }
       
-      return 'Free Plan';
+      return 'Free';
     };
 
     const plan = getCurrentPlan();
