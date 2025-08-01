@@ -424,8 +424,6 @@ const TicketSettings = ({
     });
   }, [selectedTicketFormType, setTicketForms]);
 
-  // Use provided callbacks or defaults
-  const handleMoveFieldBetweenSections = moveFieldBetweenSections || defaultMoveFieldBetweenSections;
 
   // Move action within a category
   const moveAction = React.useCallback((categoryId: string, dragIndex: number, hoverIndex: number) => {
