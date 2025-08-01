@@ -447,8 +447,74 @@ const PlayerTicket = () => {
       return;
     }
     
-    // Check required fields
-    for (const field of formConfig.fields) {
+    // Get visible sections to validate only visible required fields
+    const visibleSections = new Set<string>();
+    
+    // First, add all sections that don't have conditional logic and are not hidden by default
+    const sectionDefinitions = formConfig.sections || [];
+    sectionDefinitions.forEach((section: FormSection) => {
+      if (!section.showIfFieldId && !section.hideByDefault) {
+        visibleSections.add(section.id);
+      }
+    });
+    
+    // Check conditional sections
+    sectionDefinitions.forEach((section: FormSection) => {
+      if (section.showIfFieldId) {
+        const triggerFieldValue = formData[section.showIfFieldId];
+        
+        if (section.showIfValue && triggerFieldValue === section.showIfValue) {
+          visibleSections.add(section.id);
+        } else if (section.showIfValues && section.showIfValues.includes(triggerFieldValue)) {
+          visibleSections.add(section.id);
+        }
+      }
+    });
+    
+    // Also check field-level navigation (legacy support and optionSectionMapping)
+    const allFields = formConfig.fields || [];
+    allFields.forEach((field: FormField) => {
+      const fieldValue = formData[field.id];
+      
+      if (field.optionSectionMapping && fieldValue) {
+        if (field.type === 'dropdown' || field.type === 'multiple_choice') {
+          const targetSection = field.optionSectionMapping[fieldValue];
+          if (targetSection) {
+            visibleSections.add(targetSection);
+          }
+        } else if (field.type === 'checkboxes') {
+          const selectedValues = fieldValue.split(',').map((v: string) => v.trim()).filter((v: string) => v);
+          selectedValues.forEach((value: string) => {
+            const targetSection = field.optionSectionMapping![value];
+            if (targetSection) {
+              visibleSections.add(targetSection);
+            }
+          });
+        }
+      }
+    });
+    
+    // Add email field to validation (it's added dynamically to the form)
+    const emailField = {
+      id: 'email',
+      type: 'text' as const,
+      label: 'Email Address',
+      description: 'Your email address for response notifications',
+      required: true,
+      order: 1,
+      sectionId: undefined
+    };
+    
+    // Combine email field with form config fields for validation
+    const fieldsToValidate = [emailField, ...(formConfig.fields || [])];
+    
+    // Check required fields - only validate fields that are visible
+    for (const field of fieldsToValidate) {
+      // Skip validation if field is in a section that's not visible
+      if (field.sectionId && !visibleSections.has(field.sectionId)) {
+        continue;
+      }
+      
       if (field.required && (!formData[field.id] || formData[field.id].trim() === '')) {
         toast({
           title: "Required Field Missing",

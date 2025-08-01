@@ -58,7 +58,8 @@ const StaffManagementPanel = () => {
     
     // For active staff members, check if any management actions are available
     const canAssign = hasPermission('admin.staff.manage') && canAssignStaffMinecraftPlayer(member.role, member._id);
-    const canChangeRole = hasPermission('admin.staff.manage') && canModifyUserRole(member.role, member.role);
+    // Super Admin role cannot be changed
+    const canChangeRole = hasPermission('admin.staff.manage') && canModifyUserRole(member.role, member.role) && member.role !== 'Super Admin';
     const canRemove = hasPermission('admin.staff.manage') && canRemoveStaffUser(member.role);
     
     return canAssign || canChangeRole || canRemove;
@@ -265,7 +266,7 @@ const StaffManagementPanel = () => {
                                   {member.assignedMinecraftUsername ? 'Change' : 'Assign'} Minecraft Player
                                 </DropdownMenuItem>
                               )}
-                              {hasPermission('admin.staff.manage') && canModifyUserRole(member.role, member.role) && (
+                              {hasPermission('admin.staff.manage') && canModifyUserRole(member.role, member.role) && member.role !== 'Super Admin' && (
                                 <DropdownMenuItem onSelect={() => openChangeRoleModal(member)}>
                                   Change Role
                                 </DropdownMenuItem>
