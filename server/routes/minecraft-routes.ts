@@ -80,11 +80,11 @@ async function getUserPermissions(req: Request, userRole: string): Promise<strin
   // Define default role permissions
   const defaultPermissions: Record<string, string[]> = {
     'Super Admin': [
-      'admin.settings.view', 'admin.settings.modify', 'admin.staff.manage', 'admin.analytics.view',
+      'admin.settings.view', 'admin.settings.modify', 'admin.staff.manage', 'admin.audit.view',
       'ticket.view.all', 'ticket.reply.all', 'ticket.close.all', 'ticket.delete.all'
     ],
     'Admin': [
-      'admin.settings.view', 'admin.staff.manage', 'admin.analytics.view',
+      'admin.settings.view', 'admin.staff.manage', 'admin.audit.view',
       'ticket.view.all', 'ticket.reply.all', 'ticket.close.all'
     ],
     'Moderator': [
