@@ -269,6 +269,7 @@ const TicketSettings = ({
 
   // Section Management Functions
   const addTicketFormSection = () => {
+    console.log('addTicketFormSection called with:', newTicketFormSectionTitle);
     if (!newTicketFormSectionTitle.trim()) return;
     
     const newSection: TicketFormSection = {
