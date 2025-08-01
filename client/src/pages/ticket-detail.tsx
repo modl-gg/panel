@@ -1,4 +1,4 @@
-import { useState, useEffect, memo } from 'react';
+import { useState, useEffect, memo, useMemo } from 'react';
 import { useLocation, Link } from 'wouter';
 import { Popover, PopoverContent, PopoverTrigger } from '@modl-gg/shared-web/components/ui/popover';
 import { queryClient } from '@/lib/queryClient';
@@ -55,6 +55,7 @@ import { ClickablePlayer } from '@/components/ui/clickable-player';
 import PlayerPunishment, { PlayerPunishmentData } from '@/components/ui/player-punishment';
 import MediaUpload from '@/components/MediaUpload';
 import TicketAttachments from '@/components/TicketAttachments';
+import { useApplyPunishment, useSettings } from '@/hooks/use-data';
 
 // Define PunishmentType interface
 interface PunishmentType {
@@ -296,6 +297,488 @@ const TicketDetail = () => {
   const { user } = useAuth();
   const { toast } = useToast();
   const [isSubmitting, setIsSubmitting] = useState(false);
+  
+  // Add punishment-related hooks
+  const applyPunishment = useApplyPunishment();
+
+  // Mapping of punishment type names to their ordinals
+  const getPunishmentOrdinal = useMemo(() => (punishmentName: string): number => {
+    const punishmentMap: { [key: string]: number } = {
+      // Administrative punishments
+      'Kick': 0,
+      'Manual Mute': 1,
+      'Manual Ban': 2,
+      'Security Ban': 3,
+      'Linked Ban': 4,
+      'Blacklist': 5,
+      // Social punishments
+      'Chat Abuse': 6,
+      'Anti Social': 7,
+      'Targeting': 8,
+      'Bad Content': 9,
+      'Bad Skin': 10,
+      'Bad Name': 11,
+      // Gameplay punishments
+      'Team Abuse': 12,
+      'Game Abuse': 13,
+      'Systems Abuse': 14,
+      'Account Abuse': 15,
+      'Game Trading': 16,
+      'Cheating': 17
+    };
+    
+    return punishmentMap[punishmentName] ?? -1;
+  }, []);
+
+  // Convert duration to milliseconds
+  const convertDurationToMilliseconds = useMemo(() => (duration: { value: number; unit: string }): number => {
+    const multipliers = {
+      'seconds': 1000,
+      'minutes': 60 * 1000,
+      'hours': 60 * 60 * 1000,
+      'days': 24 * 60 * 60 * 1000,
+      'weeks': 7 * 24 * 60 * 60 * 1000,
+      'months': 30 * 24 * 60 * 60 * 1000
+    };
+    
+    return duration.value * (multipliers[duration.unit as keyof typeof multipliers] || 0);
+  }, []);
+
+  // Get current punishment type from punishment data
+  const getCurrentPunishmentType = useMemo(() => (punishmentData: any) => {
+    if (!punishmentData?.selectedPunishmentCategory) return null;
+    
+    const allTypes = [
+      ...(punishmentTypesByCategory?.Administrative || []),
+      ...(punishmentTypesByCategory?.Social || []),
+      ...(punishmentTypesByCategory?.Gameplay || [])
+    ];
+    
+    return allTypes.find(type => type.name === punishmentData.selectedPunishmentCategory);
+  }, [punishmentTypesByCategory]);
+
+  // Apply punishment from ticket context
+  const handleApplyPunishmentFromTicket = async (punishmentData: any) => {
+    const punishmentType = getCurrentPunishmentType(punishmentData);
+    
+    // Validate required fields
+    if (!punishmentData.selectedPunishmentCategory) {
+      toast({
+        title: "Missing information",
+        description: "Please select a punishment category",
+        variant: "destructive"
+      });
+      return;
+    }
+
+    // Only validate reason for administrative manual punishments that explicitly need it
+    const needsReason = ['Kick', 'Manual Mute', 'Manual Ban'].includes(punishmentData.selectedPunishmentCategory);
+    if (needsReason && !punishmentData.reason?.trim()) {
+      toast({
+        title: "Missing information",
+        description: "Please provide a reason for this punishment",
+        variant: "destructive"
+      });
+      return;
+    }
+    
+    // For single-severity punishments, offense level is required
+    // For multi-severity punishments, severity is required
+    if (punishmentType?.singleSeverityPunishment && !punishmentData.selectedOffenseLevel) {
+      toast({
+        title: "Missing information",
+        description: "Please select an offense level",
+        variant: "destructive"
+      });
+      return;
+    }
+    
+    if (!punishmentType?.singleSeverityPunishment && !punishmentData.selectedSeverity && 
+        !['Kick', 'Manual Mute', 'Manual Ban', 'Security Ban', 'Linked Ban', 'Blacklist'].includes(punishmentData.selectedPunishmentCategory)) {
+      toast({
+        title: "Missing information",
+        description: "Please select a severity level",
+        variant: "destructive"
+      });
+      return;
+    }
+    
+    // Validate duration for punishments that need it
+    const needsDuration = ['Manual Mute', 'Manual Ban'].includes(punishmentData.selectedPunishmentCategory);
+    const isManualPunishment = ['Kick', 'Manual Mute', 'Manual Ban', 'Security Ban', 'Linked Ban', 'Blacklist'].includes(punishmentData.selectedPunishmentCategory);
+                          
+    if (needsDuration && !punishmentData.isPermanent && (!punishmentData.duration?.value || punishmentData.duration.value <= 0 || !punishmentData.duration?.unit)) {
+      toast({
+        title: "Invalid duration",
+        description: "Please specify a valid duration (greater than 0) or select 'Permanent'",
+        variant: "destructive"
+      });
+      return;
+    }
+    
+    // Validate punishment ordinal
+    const typeOrdinal = getPunishmentOrdinal(punishmentData.selectedPunishmentCategory);
+    if (typeOrdinal === -1) {
+      toast({
+        title: "Invalid punishment type",
+        description: "Unknown punishment type selected",
+        variant: "destructive"
+      });
+      return;
+    }
+    
+    try {
+      // Determine severity and status based on punishment type first
+      let severity = null;
+      let status = null;
+      
+      if (punishmentType?.singleSeverityPunishment) {
+        // For single-severity punishments, severity is the single configured value
+        severity = 'single'; // or could be determined from punishment type config
+        // Map offense level to status for storage
+        const offenseLevelMapping = {
+          'first': 'low',
+          'medium': 'medium', 
+          'habitual': 'habitual'
+        };
+        status = offenseLevelMapping[punishmentData.selectedOffenseLevel as keyof typeof offenseLevelMapping] || 'low';
+      } else if (punishmentData.selectedSeverity) {
+        // For multi-severity punishments, map UI severity to punishment system values
+        const severityMapping = {
+          'Lenient': 'lenient',
+          'Regular': 'regular', 
+          'Aggravated': 'severe'
+        };
+        severity = severityMapping[punishmentData.selectedSeverity] || 'n/a';
+        
+        // Status is always low for multi-severity (default offense level)
+        status = 'low'; // Could be enhanced to track actual offense count
+      }
+
+      // Calculate duration in milliseconds based on punishment type configuration
+      let durationMs = 0;
+      
+      // For manual punishments that need duration, use user-specified duration
+      if (needsDuration && !punishmentData.isPermanent && punishmentData.duration) {
+        durationMs = convertDurationToMilliseconds(punishmentData.duration);
+      } 
+      // For Linked Ban, it inherits duration from the linked ban (permanent by default)
+      else if (punishmentData.selectedPunishmentCategory === 'Linked Ban') {
+        durationMs = 0; // Permanent by default, unless linked ban has expiry
+      }
+      // For other manual punishments that don't need duration (Kick, Security Ban, Blacklist), skip duration calculation
+      else if (isManualPunishment) {
+        // These punishments don't need duration calculations
+        durationMs = 0;
+      }
+      // For all other non-manual punishments, use punishment type configuration
+      else if (!punishmentData.isPermanent) {
+        if (punishmentType?.singleSeverityPunishment && punishmentType?.singleSeverityDurations && punishmentData.selectedOffenseLevel) {
+          // Single-severity punishment - use duration from offense level
+          const duration = punishmentType.singleSeverityDurations[punishmentData.selectedOffenseLevel];
+          if (duration) {
+            durationMs = convertDurationToMilliseconds(duration);
+          }
+        } else if (punishmentType?.durations && punishmentData.selectedSeverity) {
+          // Multi-severity punishment - use duration from punishment type config based on severity and status
+          const severityKey = punishmentData.selectedSeverity === 'Lenient' ? 'low' : 
+                             punishmentData.selectedSeverity === 'Regular' ? 'regular' : 'severe';
+          
+          // Map stored status back to punishment type keys for duration lookup
+          const statusToDurationKey = {
+            'low': 'first',
+            'medium': 'medium', 
+            'habitual': 'habitual'
+          };
+          const statusKey = statusToDurationKey[status as keyof typeof statusToDurationKey] || 'first';
+          const duration = punishmentType.durations[severityKey]?.[statusKey as 'first' | 'medium' | 'habitual'];
+          
+          if (duration) {
+            durationMs = convertDurationToMilliseconds(duration);
+          } else {
+            // Try with 'first' as fallback
+            const fallbackDuration = punishmentType.durations[severityKey]?.['first'];
+            if (fallbackDuration) {
+              durationMs = convertDurationToMilliseconds(fallbackDuration);
+            }
+          }
+        }
+      }
+        // Prepare data map for additional punishment data
+      const data: { [key: string]: any } = {
+        silent: punishmentData.silentPunishment || false,
+      };
+        // Set duration in data for all punishments that have a calculated duration
+      if (durationMs > 0) {
+        data.duration = durationMs;
+      }
+      
+      // Add punishment-specific data
+      if (punishmentData.altBlocking) {
+        data.altBlocking = true;
+      }
+      
+      if (punishmentData.statWiping) {
+        data.wipeAfterExpiry = true;
+      }
+      
+      if (punishmentData.banLinkedAccounts) {
+        data.banLinkedAccounts = true;
+      }
+      
+      if (punishmentData.kickSameIP) {
+        data.kickSameIP = true;
+      }
+      
+      if (punishmentData.banToLink?.trim()) {
+        // Extract ban ID from the format "ban-123 (PlayerName)"
+        const banIdMatch = punishmentData.banToLink.match(/^(ban-\w+)/);
+        if (banIdMatch) {
+          data.linkedBanId = banIdMatch[1];
+        }
+      }
+      
+      // Prepare notes array - notes must be objects with text, issuerName, and date
+      const notes: Array<{text: string; issuerName: string; date?: string}> = [];
+      
+      // For manual punishments that need a reason, make the reason the first note
+      const needsReasonAsFirstNote = ['Kick', 'Manual Mute', 'Manual Ban'].includes(punishmentData.selectedPunishmentCategory);
+      if (needsReasonAsFirstNote && punishmentData.reason?.trim()) {
+        notes.push({
+          text: punishmentData.reason.trim(),
+          issuerName: user?.username || 'Admin'
+        });
+      }
+      
+      // Add staff notes as additional notes
+      if (punishmentData.staffNotes?.trim()) {
+        notes.push({
+          text: punishmentData.staffNotes.trim(),
+          issuerName: user?.username || 'Admin'
+        });
+      }
+      
+      // Prepare attached ticket IDs - include the current ticket
+      const attachedTicketIds: string[] = [];
+      if (ticketDetails.id) {
+        attachedTicketIds.push(ticketDetails.id);
+      }
+      if (punishmentData.attachReports) {
+        punishmentData.attachReports.forEach((report: string) => {
+          if (report && report !== 'ticket-new') {
+            // Extract ticket ID from format like "ticket-123"
+            const ticketMatch = report.match(/ticket-(\w+)/);
+            if (ticketMatch && !attachedTicketIds.includes(ticketMatch[1])) {
+              attachedTicketIds.push(ticketMatch[1]);
+            }
+          }
+        });
+      }
+      
+      // Prepare evidence array
+      const evidence = punishmentData.evidence?.filter((e: string) => e.trim()).map((e: string) => e.trim()) || [];
+      
+      // Prepare punishment data in the format expected by the server
+      const punishmentApiData: { [key: string]: any } = {
+        issuerName: user?.username || 'Admin', // Use actual staff member name
+        type_ordinal: typeOrdinal,
+        notes: notes,
+        evidence: evidence,
+        attachedTicketIds: attachedTicketIds,
+        severity: severity,
+        status: status,
+        data: data
+      };
+      
+      // Call the API
+      await applyPunishment.mutateAsync({
+        uuid: ticketDetails.relatedPlayerId,
+        punishmentData: punishmentApiData
+      });
+      
+      // Show success message
+      toast({
+        title: "Punishment applied",
+        description: `Successfully applied ${punishmentData.selectedPunishmentCategory} to ${ticketDetails.relatedPlayer}`
+      });
+      
+    } catch (error) {
+      console.error('Error applying punishment:', error);
+      toast({
+        title: "Failed to apply punishment",
+        description: error instanceof Error ? error.message : "An unknown error occurred",
+        variant: "destructive"
+      });
+    }
+  };
+  const { data: settingsData } = useSettings();
+  
+  // Helper function to get punishment types by category
+  const punishmentTypesByCategory = useMemo(() => {
+    if (!settingsData?.settings?.punishmentTypes) {
+      return {
+        Administrative: [
+          { id: 0, name: 'Kick', category: 'Administrative', isCustomizable: false, ordinal: 0 },
+          { id: 1, name: 'Manual Mute', category: 'Administrative', isCustomizable: false, ordinal: 1 },
+          { id: 2, name: 'Manual Ban', category: 'Administrative', isCustomizable: false, ordinal: 2 },
+          { id: 3, name: 'Security Ban', category: 'Administrative', isCustomizable: false, ordinal: 3 },
+          { id: 4, name: 'Linked Ban', category: 'Administrative', isCustomizable: false, ordinal: 4 },
+          { id: 5, name: 'Blacklist', category: 'Administrative', isCustomizable: false, ordinal: 5 }
+        ],
+        Social: [],
+        Gameplay: []
+      };
+    }
+
+    const types = settingsData.settings.punishmentTypes;
+    return {
+      Administrative: types.filter((t: any) => t.category === 'Administrative').sort((a: any, b: any) => a.ordinal - b.ordinal),
+      Social: types.filter((t: any) => t.category === 'Social').sort((a: any, b: any) => a.ordinal - b.ordinal),
+      Gameplay: types.filter((t: any) => t.category === 'Gameplay').sort((a: any, b: any) => a.ordinal - b.ordinal)
+    };
+  }, [settingsData]);
+
+  // Helper function to get punishment ordinal
+  const getPunishmentOrdinal = (punishmentName: string): number => {
+    const punishmentMap: { [key: string]: number } = {
+      // Administrative punishments
+      'Kick': 0,
+      'Manual Mute': 1,
+      'Manual Ban': 2,
+      'Security Ban': 3,
+      'Linked Ban': 4,
+      'Blacklist': 5
+    };
+    
+    // For custom punishments, use the ordinal from settings
+    const allTypes = [
+      ...punishmentTypesByCategory.Administrative,
+      ...punishmentTypesByCategory.Social,
+      ...punishmentTypesByCategory.Gameplay
+    ];
+    
+    const customType = allTypes.find(t => t.name === punishmentName);
+    if (customType) {
+      return customType.ordinal;
+    }
+    
+    return punishmentMap[punishmentName] ?? 999;
+  };
+
+  // Helper function to convert duration to milliseconds
+  const convertDurationToMs = (duration: { value: number; unit: string }) => {
+    const multipliers = {
+      'seconds': 1000,
+      'minutes': 60 * 1000,
+      'hours': 60 * 60 * 1000,
+      'days': 24 * 60 * 60 * 1000,
+      'weeks': 7 * 24 * 60 * 60 * 1000,
+      'months': 30 * 24 * 60 * 60 * 1000
+    };
+    
+    return duration.value * (multipliers[duration.unit as keyof typeof multipliers] || 0);
+  };
+
+  // Handler for applying punishment from ticket
+  const handleApplyPunishmentFromTicket = async (punishmentData: PlayerPunishmentData) => {
+    if (!ticketDetails.relatedPlayerId) {
+      toast({
+        title: "Error",
+        description: "No player ID found for this ticket",
+        variant: "destructive"
+      });
+      return;
+    }
+
+    // Validate required fields
+    if (!punishmentData.selectedPunishmentCategory) {
+      toast({
+        title: "Missing information",
+        description: "Please select a punishment category",
+        variant: "destructive"
+      });
+      return;
+    }
+
+    // Get the punishment type
+    const allTypes = [
+      ...punishmentTypesByCategory.Administrative,
+      ...punishmentTypesByCategory.Social,
+      ...punishmentTypesByCategory.Gameplay
+    ];
+    
+    const punishmentType = allTypes.find(t => t.name === punishmentData.selectedPunishmentCategory);
+    if (!punishmentType) {
+      toast({
+        title: "Error",
+        description: "Invalid punishment type selected",
+        variant: "destructive"
+      });
+      return;
+    }
+
+    try {
+      // Prepare punishment data
+      const duration = punishmentData.duration && !punishmentData.isPermanent 
+        ? convertDurationToMs(punishmentData.duration) 
+        : null;
+      
+      const typeOrdinal = getPunishmentOrdinal(punishmentData.selectedPunishmentCategory);
+      const notes = punishmentData.staffNotes || '';
+      const evidence = punishmentData.evidence || [];
+      const attachedTicketIds = [ticketDetails.id]; // Attach current ticket
+      const severity = punishmentData.selectedSeverity || 'Regular';
+      const status = 'Active';
+      
+      // Prepare additional data
+      const data: any = {
+        silentPunishment: punishmentData.silentPunishment || false,
+        kickSameIP: punishmentData.kickSameIP || false,
+        altBlocking: punishmentData.altBlocking || false,
+        statWiping: punishmentData.statWiping || false,
+        offenseLevel: punishmentData.selectedOffenseLevel || 'first'
+      };
+
+      // Handle linked bans
+      if (punishmentData.banLinkedAccounts && punishmentData.banToLink) {
+        data.linkedBanId = punishmentData.banToLink;
+      }
+
+      const punishment = {
+        uuid: ticketDetails.relatedPlayerId,
+        punishment_type: punishmentData.selectedPunishmentCategory,
+        reason: punishmentData.reason || `Applied from ticket ${ticketDetails.id}`,
+        duration: duration,
+        is_permanent: punishmentData.isPermanent || false,
+        type_ordinal: typeOrdinal,
+        notes: notes,
+        evidence: evidence,
+        attachedTicketIds: attachedTicketIds,
+        severity: severity,
+        status: status,
+        data: data
+      };
+      
+      // Apply the punishment
+      await applyPunishment.mutateAsync({
+        uuid: ticketDetails.relatedPlayerId,
+        punishmentData: punishment
+      });
+      
+      toast({
+        title: "Punishment Applied",
+        description: `${punishmentData.selectedPunishmentCategory} applied to ${ticketDetails.relatedPlayer}`,
+      });
+      
+    } catch (error) {
+      console.error('Error applying punishment:', error);
+      toast({
+        title: "Error",
+        description: "Failed to apply punishment. Please try again.",
+        variant: "destructive"
+      });
+    }
+  };
   const [formSubject, setFormSubject] = useState('');
   const [formData, setFormData] = useState<Record<string, string>>({});
   const [replyAttachments, setReplyAttachments] = useState<Array<{id: string, url: string, key: string, fileName: string, fileType: string, fileSize: number, uploadedAt: string, uploadedBy: string}>>([]);
@@ -1850,15 +2333,7 @@ const TicketDetail = () => {
                                 punishmentData: data
                               }));
                             }}
-                            onApply={async (data) => {
-                              // Handle punishment application
-                              console.log('Applying punishment:', data);
-                              // You can integrate with the existing punishment API here
-                              toast({
-                                title: "Punishment Applied",
-                                description: `${data.selectedPunishmentCategory} applied to ${ticketDetails.relatedPlayer}`,
-                              });
-                            }}
+                            onApply={handleApplyPunishmentFromTicket}
                             punishmentTypesByCategory={punishmentTypesByCategory}
                             isLoading={false}
                             compact={false}

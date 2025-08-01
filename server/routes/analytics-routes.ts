@@ -5,19 +5,19 @@ import { isAuthenticated } from '../middleware/auth-middleware';
 
 const router = express.Router();
 
-// Ensure all analytics routes require authentication and admin analytics permission
+// Ensure all analytics routes require authentication and audit permission
 router.use(isAuthenticated);
 
 // Add permission check middleware for all routes
 router.use(async (req, res, next) => {
   try {
     const { hasPermission } = await import('../middleware/permission-middleware');
-    const canViewAnalytics = await hasPermission(req, 'admin.analytics.view');
+    const canViewAudit = await hasPermission(req, 'admin.audit.view');
     
-    if (!canViewAnalytics) {
+    if (!canViewAudit) {
       return res.status(403).json({ 
-        message: 'Forbidden: You do not have permission to view analytics.',
-        required: ['admin.analytics.view']
+        message: 'Forbidden: You do not have permission to view analytics. Audit access required.',
+        required: ['admin.audit.view']
       });
     }
     next();
@@ -89,14 +89,14 @@ function mapPunishmentType(type: string, typeOrdinal: number, punishmentTypesCon
 // Since this router is mounted under `/panel/analytics` and the panel router already applies authentication,
 // we don't need additional auth middleware here. The isAuthenticated middleware is already applied.
 
-// Middleware to ensure only admins can access analytics
-const requireAdmin = async (req: express.Request, res: express.Response, next: express.NextFunction) => {
+// Middleware to ensure only users with audit permission can access analytics
+const requireAuditPermission = async (req: express.Request, res: express.Response, next: express.NextFunction) => {
   try {
-    // Check if user has analytics access using existing permission system
+    // Check if user has audit access using existing permission system
     const { hasPermission } = await import('../middleware/permission-middleware');
     
-    if (!req.currentUser || !(await hasPermission(req, 'admin.analytics.view'))) {
-      return res.status(403).json({ message: 'Access denied. Admin privileges required.' });
+    if (!req.currentUser || !(await hasPermission(req, 'admin.audit.view'))) {
+      return res.status(403).json({ message: 'Access denied. Audit permission required.' });
     }
     next();
   } catch (error) {
@@ -105,7 +105,7 @@ const requireAdmin = async (req: express.Request, res: express.Response, next: e
   }
 };
 
-router.use(requireAdmin);
+router.use(requireAuditPermission);
 
 // Get overview statistics
 router.get('/overview', async (req, res) => {
