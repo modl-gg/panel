@@ -152,7 +152,33 @@ const UsageSettings = () => {
       // Fetch files
       const filesResponse = await fetch('/api/panel/storage/files');
       const filesData = await filesResponse.json();
-      setFiles(filesData.files || []);
+      
+      // Transform the file data to match the expected structure
+      const transformedFiles = (filesData.files || []).map((file: any) => {
+        // Extract filename from the key (last part after /)
+        const parts = file.key?.split('/') || [];
+        const filename = parts[parts.length - 1] || 'Unknown';
+        
+        // Determine file type based on the folder in the path
+        let fileType = 'other';
+        if (file.key?.includes('/evidence/')) fileType = 'evidence';
+        else if (file.key?.includes('/tickets/')) fileType = 'ticket';
+        else if (file.key?.includes('/logs/')) fileType = 'logs';
+        else if (file.key?.includes('/backup/')) fileType = 'backup';
+        
+        return {
+          id: file.key || `file-${Date.now()}-${Math.random()}`,
+          name: filename,
+          path: file.key || '',
+          size: file.size || 0,
+          type: fileType,
+          createdAt: file.lastModified || new Date().toISOString(),
+          lastModified: file.lastModified || new Date().toISOString(),
+          url: file.url || ''
+        };
+      });
+      
+      setFiles(transformedFiles);
     } catch (error) {
       console.error('Error fetching storage data:', error);
       toast({
@@ -245,8 +271,8 @@ const UsageSettings = () => {
 
   const filteredAndSortedFiles = files
     .filter(file => {
-      const matchesSearch = file.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                           file.path.toLowerCase().includes(searchTerm.toLowerCase());
+      const matchesSearch = (file.name?.toLowerCase() || '').includes(searchTerm.toLowerCase()) ||
+                           (file.path?.toLowerCase() || '').includes(searchTerm.toLowerCase());
       const matchesType = filterType === 'all' || file.type === filterType;
       return matchesSearch && matchesType;
     })
@@ -300,16 +326,24 @@ const UsageSettings = () => {
     try {
       const { csrfFetch } = await import('@/utils/csrf');
       if (deleteTarget === 'single') {
-        await csrfFetch(`/api/panel/storage/files/${fileToDelete}`, { method: 'DELETE' });
+        // The delete endpoint expects the file key, not an id
+        const fileToDeleteKey = files.find(f => f.id === fileToDelete)?.path || fileToDelete;
+        await csrfFetch(`/api/panel/storage/file/${encodeURIComponent(fileToDeleteKey)}`, { method: 'DELETE' });
         toast({
           title: "Success",
           description: "File deleted successfully.",
         });
       } else {
-        await csrfFetch('/api/panel/storage/files/batch', {
-          method: 'DELETE',
+        // For bulk delete, we need to get the keys for all selected files
+        const fileKeys = files
+          .filter(f => selectedFiles.has(f.id))
+          .map(f => f.path)
+          .filter(key => key); // Remove any undefined keys
+          
+        await csrfFetch('/api/panel/storage/bulk-delete', {
+          method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ fileIds: Array.from(selectedFiles) }),
+          body: JSON.stringify({ keys: fileKeys }),
         });
         toast({
           title: "Success",
