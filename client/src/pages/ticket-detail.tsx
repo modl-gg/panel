@@ -418,7 +418,7 @@ const TicketDetail = () => {
   }, [punishmentTypesByCategory]);
 
   // Apply punishment from ticket context
-  const handleApplyPunishmentFromTicket = async (punishmentData: any) => {
+  const handleApplyPunishmentFromTicket = async (punishmentData: PlayerPunishmentData): Promise<void> => {
     const punishmentType = getCurrentPunishmentType(punishmentData);
     
     // Validate required fields
@@ -718,17 +718,41 @@ const TicketDetail = () => {
         data: data
       };
       
+      console.log('Final punishment API data:', {
+        ...punishmentApiData,
+        notes: notes.length,
+        evidence: evidence.length,
+        attachedTicketIds,
+        dataKeys: Object.keys(data)
+      });
+      
       // Call the API
-      await applyPunishment.mutateAsync({
+      console.log('Applying punishment with:', {
+        uuid: ticketDetails.relatedPlayerId,
+        relatedPlayer: ticketDetails.relatedPlayer,
+        punishmentData: punishmentApiData
+      });
+      
+      if (!ticketDetails.relatedPlayerId) {
+        console.error('No player UUID found, ticket details:', ticketDetails);
+        throw new Error('No player UUID found for this ticket. Only username available: ' + ticketDetails.relatedPlayer);
+      }
+      
+      const result = await applyPunishment.mutateAsync({
         uuid: ticketDetails.relatedPlayerId,
         punishmentData: punishmentApiData
       });
+      
+      console.log('Punishment application result:', result);
       
       // Show success message
       toast({
         title: "Punishment applied",
         description: `Successfully applied ${punishmentData.selectedPunishmentCategory} to ${ticketDetails.relatedPlayer}`
       });
+      
+      // Important: We might need to close/update the ticket after punishment
+      console.log('Punishment successfully applied, checking if we need to update ticket state');
       
     } catch (error) {
       console.error('Error applying punishment:', error);
@@ -737,6 +761,7 @@ const TicketDetail = () => {
         description: error instanceof Error ? error.message : "An unknown error occurred",
         variant: "destructive"
       });
+      throw error; // Re-throw to ensure PlayerPunishment component knows about the error
     }
   };
 
@@ -2204,7 +2229,9 @@ const TicketDetail = () => {
                                 punishmentData: data
                               }));
                             }}
-                            onApply={handleApplyPunishmentFromTicket}
+                            onApply={async (data: PlayerPunishmentData) => {
+                              return handleApplyPunishmentFromTicket(data);
+                            }}
                             punishmentTypesByCategory={punishmentTypesByCategory}
                             isLoading={false}
                             compact={false}
