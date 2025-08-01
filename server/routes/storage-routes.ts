@@ -211,9 +211,13 @@ router.get('/quota-with-ai', isAuthenticated, async (req, res) => {
     // Check if user has paid subscription (already declared above)
     const quota = await getStorageQuota(serverName, isPaidUser);
     
+    // Get storage breakdown by folder type
+    const breakdown = await getStorageBreakdown(serverName);
+    
     res.json({
       quota,
       aiQuota,
+      breakdown: breakdown.byType,
       configured: true,
     });
   } catch (error) {

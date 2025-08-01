@@ -125,17 +125,17 @@ const UsageSettings = () => {
         totalUsed: usageData.quota?.totalUsed || 0,
         totalQuota: usageData.quota?.totalLimit || 0,
         byType: {
-          ticket: 0,
-          evidence: 0,
-          logs: 0,
-          backup: 0,
-          other: 0
+          ticket: usageData.breakdown?.tickets || 0,
+          evidence: usageData.breakdown?.evidence || 0,
+          logs: usageData.breakdown?.logs || 0,
+          backup: usageData.breakdown?.backup || 0,
+          other: (usageData.breakdown?.articles || 0) + (usageData.breakdown?.appeals || 0) + (usageData.breakdown?.['server-icons'] || 0) + (usageData.breakdown?.other || 0)
         },
         quota: usageData.quota,
         aiQuota: usageData.aiQuota,
         pricing: {
           storage: {
-            overagePricePerGB: 0.10,
+            overagePricePerGB: 0.05,
             currency: 'USD',
             period: 'month'
           },
@@ -377,6 +377,43 @@ const UsageSettings = () => {
 
   return (
     <div className="space-y-6">
+      {/* Overage Warning */}
+      {storageUsage?.quota?.isPaid && storageUsage?.quota?.overageUsed > 0 && (
+        <div className="bg-amber-50 dark:bg-amber-900/10 border border-amber-200 dark:border-amber-800 rounded-lg p-4">
+          <div className="flex items-start gap-3">
+            <AlertCircle className="h-5 w-5 text-amber-600 dark:text-amber-400 mt-0.5 flex-shrink-0" />
+            <div>
+              <h3 className="font-medium text-amber-800 dark:text-amber-200">Storage Overage Alert</h3>
+              <p className="text-sm text-amber-700 dark:text-amber-300 mt-1">
+                You're using <strong>{storageUsage.quota.overageUsedFormatted}</strong> over your {storageUsage.quota.baseLimitFormatted} base storage limit. 
+                This will cost <strong>${storageUsage.quota.overageCost}</strong> this month at $0.05/GB.
+              </p>
+              <p className="text-xs text-amber-600 dark:text-amber-400 mt-2">
+                Consider cleaning up unused files or increasing your storage limit to avoid future charges.
+              </p>
+            </div>
+          </div>
+        </div>
+      )}
+      
+      {/* Free User Limit Warning */}
+      {!storageUsage?.quota?.isPaid && storageUsage?.quota?.baseUsagePercentage >= 80 && (
+        <div className="bg-blue-50 dark:bg-blue-900/10 border border-blue-200 dark:border-blue-800 rounded-lg p-4">
+          <div className="flex items-start gap-3">
+            <AlertCircle className="h-5 w-5 text-blue-600 dark:text-blue-400 mt-0.5 flex-shrink-0" />
+            <div>
+              <h3 className="font-medium text-blue-800 dark:text-blue-200">Storage Limit Warning</h3>
+              <p className="text-sm text-blue-700 dark:text-blue-300 mt-1">
+                You're using <strong>{storageUsage.quota.baseUsagePercentage}%</strong> of your {storageUsage.quota.baseLimitFormatted} free storage limit.
+              </p>
+              <p className="text-xs text-blue-600 dark:text-blue-400 mt-2">
+                Upgrade to premium for 200GB of storage plus overage protection.
+              </p>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Storage Overview */}
       {storageUsage && (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
@@ -533,7 +570,7 @@ const UsageSettings = () => {
                     <span className="font-semibold">${storageUsage.quota.overageCost}</span>
                   </div>
                   <div className="text-xs text-muted-foreground">
-                    ${storageUsage.pricing?.storage?.overagePricePerGB}/GB/month
+                    $0.05/GB/month
                   </div>
                 </div>
               </CardContent>

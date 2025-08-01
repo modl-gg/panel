@@ -30,7 +30,7 @@ async function initializeAwsSdk() {
 
 // Storage limits in bytes
 export const STORAGE_LIMITS = {
-  FREE_TIER: 1 * 1024 * 1024 * 1024, // 1GB
+  FREE_TIER: 2 * 1024 * 1024 * 1024, // 2GB
   PAID_TIER: 200 * 1024 * 1024 * 1024, // 200GB
   DEFAULT_OVERAGE_LIMIT: 100 * 1024 * 1024 * 1024, // 100GB default overage limit
 };
@@ -40,13 +40,20 @@ export const OVERAGE_PRICE_PER_GB_MONTH = 0.05;
 
 export interface StorageQuota {
   totalUsed: number;
+  totalUsedFormatted: string;
   baseLimit: number;
+  baseLimitFormatted: string;
   overageLimit: number;
+  overageLimitFormatted: string;
   totalLimit: number;
+  totalLimitFormatted: string;
   isPaid: boolean;
   canUpload: boolean;
   overageUsed: number;
+  overageUsedFormatted: string;
   overageCost: number;
+  usagePercentage: number;
+  baseUsagePercentage: number;
 }
 
 export interface StorageSettings {
@@ -73,31 +80,52 @@ export async function getStorageQuota(
     const overageUsed = Math.max(0, currentUsage - baseLimit);
     const overageCost = isPaidUser ? calculateOverageCost(overageUsed) : 0;
     
+    // Calculate usage percentages
+    const usagePercentage = totalLimit > 0 ? Math.min(100, Math.round((currentUsage / totalLimit) * 100)) : 0;
+    const baseUsagePercentage = baseLimit > 0 ? Math.min(100, Math.round((currentUsage / baseLimit) * 100)) : 0;
+    
     // Check if user can upload
     const canUpload = currentUsage < totalLimit;
     
     return {
       totalUsed: currentUsage,
+      totalUsedFormatted: formatBytes(currentUsage),
       baseLimit,
+      baseLimitFormatted: formatBytes(baseLimit),
       overageLimit,
+      overageLimitFormatted: formatBytes(overageLimit),
       totalLimit,
+      totalLimitFormatted: formatBytes(totalLimit),
       isPaid: isPaidUser,
       canUpload,
       overageUsed,
-      overageCost,
+      overageUsedFormatted: formatBytes(overageUsed),
+      overageCost: Math.round(overageCost * 100) / 100, // Round to 2 decimal places
+      usagePercentage,
+      baseUsagePercentage,
     };
   } catch (error) {
     console.error('Error getting storage quota:', error);
     // Return conservative defaults on error
+    const baseLimit = isPaidUser ? STORAGE_LIMITS.PAID_TIER : STORAGE_LIMITS.FREE_TIER;
+    const totalLimit = baseLimit;
+    
     return {
       totalUsed: 0,
-      baseLimit: isPaidUser ? STORAGE_LIMITS.PAID_TIER : STORAGE_LIMITS.FREE_TIER,
+      totalUsedFormatted: formatBytes(0),
+      baseLimit,
+      baseLimitFormatted: formatBytes(baseLimit),
       overageLimit: 0,
-      totalLimit: isPaidUser ? STORAGE_LIMITS.PAID_TIER : STORAGE_LIMITS.FREE_TIER,
+      overageLimitFormatted: formatBytes(0),
+      totalLimit,
+      totalLimitFormatted: formatBytes(totalLimit),
       isPaid: isPaidUser,
       canUpload: false,
       overageUsed: 0,
+      overageUsedFormatted: formatBytes(0),
       overageCost: 0,
+      usagePercentage: 0,
+      baseUsagePercentage: 0,
     };
   }
 }
