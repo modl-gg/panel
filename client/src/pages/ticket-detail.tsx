@@ -638,32 +638,6 @@ const TicketDetail = () => {
     };
   }, [settingsData]);
 
-  // Helper function to get punishment ordinal
-  const getPunishmentOrdinal = (punishmentName: string): number => {
-    const punishmentMap: { [key: string]: number } = {
-      // Administrative punishments
-      'Kick': 0,
-      'Manual Mute': 1,
-      'Manual Ban': 2,
-      'Security Ban': 3,
-      'Linked Ban': 4,
-      'Blacklist': 5
-    };
-    
-    // For custom punishments, use the ordinal from settings
-    const allTypes = [
-      ...punishmentTypesByCategory.Administrative,
-      ...punishmentTypesByCategory.Social,
-      ...punishmentTypesByCategory.Gameplay
-    ];
-    
-    const customType = allTypes.find(t => t.name === punishmentName);
-    if (customType) {
-      return customType.ordinal;
-    }
-    
-    return punishmentMap[punishmentName] ?? 999;
-  };
 
   // Helper function to convert duration to milliseconds
   const convertDurationToMs = (duration: { value: number; unit: string }) => {
@@ -679,106 +653,6 @@ const TicketDetail = () => {
     return duration.value * (multipliers[duration.unit as keyof typeof multipliers] || 0);
   };
 
-  // Handler for applying punishment from ticket
-  const handleApplyPunishmentFromTicket = async (punishmentData: PlayerPunishmentData) => {
-    if (!ticketDetails.relatedPlayerId) {
-      toast({
-        title: "Error",
-        description: "No player ID found for this ticket",
-        variant: "destructive"
-      });
-      return;
-    }
-
-    // Validate required fields
-    if (!punishmentData.selectedPunishmentCategory) {
-      toast({
-        title: "Missing information",
-        description: "Please select a punishment category",
-        variant: "destructive"
-      });
-      return;
-    }
-
-    // Get the punishment type
-    const allTypes = [
-      ...punishmentTypesByCategory.Administrative,
-      ...punishmentTypesByCategory.Social,
-      ...punishmentTypesByCategory.Gameplay
-    ];
-    
-    const punishmentType = allTypes.find(t => t.name === punishmentData.selectedPunishmentCategory);
-    if (!punishmentType) {
-      toast({
-        title: "Error",
-        description: "Invalid punishment type selected",
-        variant: "destructive"
-      });
-      return;
-    }
-
-    try {
-      // Prepare punishment data
-      const duration = punishmentData.duration && !punishmentData.isPermanent 
-        ? convertDurationToMs(punishmentData.duration) 
-        : null;
-      
-      const typeOrdinal = getPunishmentOrdinal(punishmentData.selectedPunishmentCategory);
-      const notes = punishmentData.staffNotes || '';
-      const evidence = punishmentData.evidence || [];
-      const attachedTicketIds = [ticketDetails.id]; // Attach current ticket
-      const severity = punishmentData.selectedSeverity || 'Regular';
-      const status = 'Active';
-      
-      // Prepare additional data
-      const data: any = {
-        silentPunishment: punishmentData.silentPunishment || false,
-        kickSameIP: punishmentData.kickSameIP || false,
-        altBlocking: punishmentData.altBlocking || false,
-        statWiping: punishmentData.statWiping || false,
-        offenseLevel: punishmentData.selectedOffenseLevel || 'first'
-      };
-
-      // Handle linked bans
-      if (punishmentData.banLinkedAccounts && punishmentData.banToLink) {
-        data.linkedBanId = punishmentData.banToLink;
-      }
-
-      const punishment = {
-        uuid: ticketDetails.relatedPlayerId,
-        punishment_type: punishmentData.selectedPunishmentCategory,
-        reason: punishmentData.reason || `Applied from ticket ${ticketDetails.id}`,
-        duration: duration,
-        is_permanent: punishmentData.isPermanent || false,
-        type_ordinal: typeOrdinal,
-        notes: notes,
-        evidence: evidence,
-        attachedTicketIds: attachedTicketIds,
-        severity: severity,
-        status: status,
-        data: data
-      };
-      
-      // Apply the punishment
-      await applyPunishment.mutateAsync({
-        uuid: ticketDetails.relatedPlayerId,
-        punishmentData: punishment
-      });
-      
-      toast({
-        title: "Punishment Applied",
-        description: `${punishmentData.selectedPunishmentCategory} applied to ${ticketDetails.relatedPlayer}`,
-      });
-      
-    } catch (error) {
-      console.error('Error applying punishment:', error);
-      toast({
-        title: "Error",
-        description: "Failed to apply punishment. Please try again.",
-        variant: "destructive"
-      });
-    }
-  };
   const [formSubject, setFormSubject] = useState('');
   const [formData, setFormData] = useState<Record<string, string>>({});
   const [replyAttachments, setReplyAttachments] = useState<Array<{id: string, url: string, key: string, fileName: string, fileType: string, fileSize: number, uploadedAt: string, uploadedBy: string}>>([]);
@@ -938,28 +812,6 @@ const TicketDetail = () => {
     }
   });
 
-  // Parse punishment types from settings
-  const [punishmentTypesByCategory, setPunishmentTypesByCategory] = useState<{
-    Administrative: PunishmentType[], 
-    Social: PunishmentType[], 
-    Gameplay: PunishmentType[]
-  }>({
-    Administrative: [
-      // Administrative punishment types (ordinals 0-5, not customizable) - minimal fallback
-      { id: 0, name: 'Kick', category: 'Administrative', isCustomizable: false, ordinal: 0 },
-      { id: 1, name: 'Manual Mute', category: 'Administrative', isCustomizable: false, ordinal: 1 },
-      { id: 2, name: 'Manual Ban', category: 'Administrative', isCustomizable: false, ordinal: 2 },
-      { id: 3, name: 'Security Ban', category: 'Administrative', isCustomizable: false, ordinal: 3 },
-      { id: 4, name: 'Linked Ban', category: 'Administrative', isCustomizable: false, ordinal: 4 },
-      { id: 5, name: 'Blacklist', category: 'Administrative', isCustomizable: false, ordinal: 5 }
-    ],
-    Social: [
-      // Social punishment types are loaded from server during provisioning
-    ],
-    Gameplay: [
-      // Gameplay punishment types are loaded from server during provisioning
-    ]
-  });
 
   // Simplified status colors - just Open and Closed
   const statusColors = {
@@ -985,63 +837,10 @@ const TicketDetail = () => {
   // Mutation hook for modifying punishments
   const modifyPunishmentMutation = useModifyPunishment();
 
-  // Fetch settings to get punishment types
-  const { data: settingsData } = useSettings();
   
   // Fetch staff data to get assigned Minecraft accounts
   const { data: staffData } = useStaff();
 
-  // Process settings data to extract punishment types by category
-  useEffect(() => {
-    const punishmentTypesData = settingsData?.settings?.punishmentTypes;
-    if (punishmentTypesData) {
-      try {
-        // Parse punishment types if they're stored as a string
-        const typesData = typeof punishmentTypesData === 'string' 
-          ? JSON.parse(punishmentTypesData) 
-          : punishmentTypesData;
-          
-        if (Array.isArray(typesData)) {
-          // Always ensure administrative punishment types are available
-          const defaultAdminTypes: PunishmentType[] = [
-            { id: 0, name: 'Kick', category: 'Administrative' as const, isCustomizable: false, ordinal: 0 },
-            { id: 1, name: 'Manual Mute', category: 'Administrative' as const, isCustomizable: false, ordinal: 1 },
-            { id: 2, name: 'Manual Ban', category: 'Administrative' as const, isCustomizable: false, ordinal: 2 },
-            { id: 3, name: 'Security Ban', category: 'Administrative' as const, isCustomizable: false, ordinal: 3 },
-            { id: 4, name: 'Linked Ban', category: 'Administrative' as const, isCustomizable: false, ordinal: 4 },
-            { id: 5, name: 'Blacklist', category: 'Administrative' as const, isCustomizable: false, ordinal: 5 }
-          ];
-          
-          // Group punishment types by category
-          const adminFromSettings = typesData.filter(pt => pt.category === 'Administrative');
-          
-          // Merge default admin types with any additional admin types from settings
-          // Default types take precedence (to ensure they're always available)
-          const mergedAdminTypes = [...defaultAdminTypes];
-          adminFromSettings.forEach(settingsType => {
-            if (!mergedAdminTypes.find(defaultType => defaultType.name === settingsType.name)) {
-              mergedAdminTypes.push(settingsType);
-            }
-          });
-          
-          const categorized = {
-            Administrative: mergedAdminTypes.sort((a, b) => a.ordinal - b.ordinal),
-            Social: typesData.filter(pt => pt.category === 'Social').sort((a, b) => a.ordinal - b.ordinal),
-            Gameplay: typesData.filter(pt => pt.category === 'Gameplay').sort((a, b) => a.ordinal - b.ordinal)
-          };
-          
-          // Update the state with the loaded punishment types
-          setPunishmentTypesByCategory(categorized);
-          
-          // Also create a flattened array for AI suggestion lookup
-          const allTypes = [...mergedAdminTypes, ...categorized.Social, ...categorized.Gameplay];
-          setPunishmentTypes(allTypes);
-        }
-      } catch (error) {
-        console.error("Error parsing punishment types:", error);
-      }
-    }
-  }, [settingsData]);
 
 
 
