@@ -1382,14 +1382,6 @@ const Settings = () => {
         body: JSON.stringify(payload),
       });
       
-      if (response.ok) {
-        toast({
-          title: "Settings Saved",
-          description: "AI moderation settings have been updated successfully.",
-        });
-      } else {
-        throw new Error('Failed to save AI moderation settings');
-      }
     } catch (error) {
       console.error('Error saving AI moderation settings:', error);
       toast({
@@ -1397,6 +1389,7 @@ const Settings = () => {
         description: "Failed to save AI moderation settings. Please try again.",
         variant: "destructive",
       });
+      
     } finally {
       setIsSavingAiSettings(false);
     }
@@ -1613,7 +1606,21 @@ const Settings = () => {
     }
     if (settingsObject.ticketForms) {
       const tf = settingsObject.ticketForms;
-      setTicketFormsState(typeof tf === 'string' ? JSON.parse(tf) : JSON.parse(JSON.stringify(tf)));
+      const parsedTf = typeof tf === 'string' ? JSON.parse(tf) : JSON.parse(JSON.stringify(tf));
+      
+      // Only update if the parsed ticket forms has meaningful data
+      // Check if it has at least one form type with fields or sections
+      const hasData = parsedTf && typeof parsedTf === 'object' && 
+        Object.values(parsedTf).some((form: any) => 
+          form && (
+            (Array.isArray(form.fields) && form.fields.length > 0) ||
+            (Array.isArray(form.sections) && form.sections.length > 0)
+          )
+        );
+      
+      if (hasData) {
+        setTicketFormsState(parsedTf);
+      }
     }
     if (settingsObject.quickResponses) {
       const qr = settingsObject.quickResponses;

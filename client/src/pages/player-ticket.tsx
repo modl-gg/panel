@@ -30,6 +30,7 @@ import { queryClient } from '@/lib/queryClient';
 import { toast } from '@/hooks/use-toast';
 import MarkdownRenderer from '@/components/ui/markdown-renderer';
 import MarkdownHelp from '@/components/ui/markdown-help';
+import { formatDate } from '@/utils/date-utils';
 
 export interface TicketMessage {
   id: string;
