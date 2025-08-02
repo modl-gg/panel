@@ -713,17 +713,17 @@ router.post('/tickets/:id/replies', async (req: Request, res: Response) => {
     await ticket.save();
     
     // Handle ticket subscription for staff replies
-    if (staff && name) {
-      try {
-        const { ensureTicketSubscription } = await import('./ticket-subscription-routes');
+    // if (staff && name) {
+    //   try {
+    //     const { ensureTicketSubscription } = await import('./ticket-subscription-routes');
         
-        // Auto-subscribe the staff member who replied
-        await ensureTicketSubscription(req.serverDbConnection!, id, name);
-      } catch (subscriptionError) {
-        console.error(`Failed to handle ticket subscription for ticket ${id}:`, subscriptionError);
-        // Don't fail the reply if subscription fails
-      }
-    }
+    //     // Auto-subscribe the staff member who replied
+    //     await ensureTicketSubscription(req.serverDbConnection!, id, name);
+    //   } catch (subscriptionError) {
+    //     console.error(`Failed to handle ticket subscription for ticket ${id}:`, subscriptionError);
+    //     // Don't fail the reply if subscription fails
+    //   }
+    // }
     
     // Send email notification if staff replied and ticket has creator email
     if (staff && ticket.data && (ticket.data.get('creatorEmail') || ticket.data.get('contactEmail') || ticket.data.get('contact_email'))) {

@@ -14,9 +14,9 @@ router.use((req, res, next) => {
 router.get('/', async (req, res) => {
   try {
     const db = req.serverDbConnection;
-    const staffUsername = req.session?.username;
+    const staffEmail = req.session?.email;
 
-    if (!staffUsername) {
+    if (!staffEmail) {
       return res.status(401).json({ error: 'Not authenticated' });
     }
 
@@ -24,7 +24,7 @@ router.get('/', async (req, res) => {
     const Ticket = db.model('Ticket');
 
     // Get staff member with their subscriptions
-    const staff = await Staff.findOne({ username: staffUsername }).lean();
+    const staff = await Staff.findOne({ email: staffEmail }).lean();
     
     if (!staff || !staff.subscribedTickets) {
       return res.json([]);
@@ -62,9 +62,9 @@ router.delete('/:ticketId', async (req, res) => {
   try {
     const db = req.serverDbConnection;
     const { ticketId } = req.params;
-    const staffUsername = req.session?.username;
+    const staffEmail = req.session?.email;
 
-    if (!staffUsername) {
+    if (!staffEmail) {
       return res.status(401).json({ error: 'Not authenticated' });
     }
 
@@ -74,7 +74,7 @@ router.delete('/:ticketId', async (req, res) => {
     // Try string ticketId first, then ObjectId for compatibility
     let result = await Staff.updateOne(
       { 
-        username: staffUsername,
+        email: staffEmail,
         'subscribedTickets.ticketId': ticketId,
         'subscribedTickets.active': true
       },
@@ -91,7 +91,7 @@ router.delete('/:ticketId', async (req, res) => {
         const ObjectId = db.base.Types.ObjectId;
         result = await Staff.updateOne(
           { 
-            username: staffUsername,
+            email: staffEmail,
             'subscribedTickets.ticketId': new ObjectId(ticketId),
             'subscribedTickets.active': true
           },
@@ -122,9 +122,9 @@ router.get('/updates', async (req, res) => {
   try {
     const db = req.serverDbConnection;
     const { limit = 10 } = req.query;
-    const staffUsername = req.session?.username;
+    const staffEmail = req.session?.email;
 
-    if (!staffUsername) {
+    if (!staffEmail) {
       return res.status(401).json({ error: 'Not authenticated' });
     }
 
@@ -132,7 +132,7 @@ router.get('/updates', async (req, res) => {
     const Ticket = db.model('Ticket');
 
     // Get staff member with their subscriptions
-    const staff = await Staff.findOne({ username: staffUsername }).lean();
+    const staff = await Staff.findOne({ email: staffEmail }).lean();
     
     if (!staff || !staff.subscribedTickets) {
       return res.json([]);
@@ -218,9 +218,9 @@ router.post('/updates/:updateId/read', async (req, res) => {
   try {
     const db = req.serverDbConnection;
     const { updateId } = req.params;
-    const staffUsername = req.session?.username;
+    const staffEmail = req.session?.email;
 
-    if (!staffUsername) {
+    if (!staffEmail) {
       return res.status(401).json({ error: 'Not authenticated' });
     }
 
@@ -237,7 +237,7 @@ router.post('/updates/:updateId/read', async (req, res) => {
     // Try string ticketId first, then ObjectId for compatibility
     let result = await Staff.updateOne(
       { 
-        username: staffUsername,
+        email: staffEmail,
         'subscribedTickets.ticketId': ticketId,
         'subscribedTickets.active': true
       },
@@ -254,7 +254,7 @@ router.post('/updates/:updateId/read', async (req, res) => {
         const ObjectId = db.base.Types.ObjectId;
         result = await Staff.updateOne(
           { 
-            username: staffUsername,
+            email: staffEmail,
             'subscribedTickets.ticketId': new ObjectId(ticketId),
             'subscribedTickets.active': true
           },
@@ -277,16 +277,16 @@ router.post('/updates/:updateId/read', async (req, res) => {
 });
 
 // Helper function to create or ensure ticket subscription exists
-export async function ensureTicketSubscription(db: any, ticketId: string, staffUsername: string) {
+export async function ensureTicketSubscription(db: any, ticketId: string, staffEmail: string) {
   try {
     
     const Staff = db.model('Staff');
     
     // First check if the staff member exists and if they already have this subscription
-    const staff = await Staff.findOne({ username: staffUsername }).lean();
+    const staff = await Staff.findOne({ email: staffEmail }).lean();
     
     if (!staff) {
-      console.error(`Staff member ${staffUsername} not found`);
+      console.error(`Staff member ${staffEmail} not found`);
       return;
     }
 
@@ -322,7 +322,7 @@ export async function ensureTicketSubscription(db: any, ticketId: string, staffU
 
 
     const result = await Staff.updateOne(
-      { username: staffUsername },
+      { email: staffEmail },
       { 
         $addToSet: { 
           subscribedTickets: subscriptionData
@@ -343,7 +343,7 @@ export async function ensureTicketSubscription(db: any, ticketId: string, staffU
 }
 
 // Helper function to mark ticket as read when staff opens it
-export async function markTicketAsRead(db: any, ticketId: string, staffUsername: string) {
+export async function markTicketAsRead(db: any, ticketId: string, staffEmail: string) {
   try {
     
     const Staff = db.model('Staff');
@@ -351,7 +351,7 @@ export async function markTicketAsRead(db: any, ticketId: string, staffUsername:
     // Try to update with string ticketId first
     let result = await Staff.updateOne(
       { 
-        username: staffUsername,
+        email: staffEmail,
         'subscribedTickets.ticketId': ticketId,
         'subscribedTickets.active': true
       },
@@ -368,7 +368,7 @@ export async function markTicketAsRead(db: any, ticketId: string, staffUsername:
         const ObjectId = db.base.Types.ObjectId;
         result = await Staff.updateOne(
           { 
-            username: staffUsername,
+            email: staffEmail,
             'subscribedTickets.ticketId': new ObjectId(ticketId),
             'subscribedTickets.active': true
           },
