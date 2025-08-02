@@ -2128,7 +2128,8 @@ export function setupMinecraftRoutes(app: Express): void {
                 message: notification.message || 'You have a new notification',
                 type: notification.type || 'general',
                 timestamp: notification.timestamp ? new Date(notification.timestamp).getTime() : Date.now(),
-                targetPlayerUuid: playerUuid
+                targetPlayerUuid: playerUuid,
+                data: notification.data || {}
               });
             }
           }
