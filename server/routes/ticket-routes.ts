@@ -5,6 +5,8 @@ import { isAuthenticated } from '../middleware/auth-middleware';
 import AIModerationService from '../services/ai-moderation-service';
 import { IReply, ITicket } from '@modl-gg/shared-web/types';
 import { getSettingsValue } from './settings-routes';
+import { ensureTicketSubscription } from './ticket-subscription-routes';
+import { markTicketAsRead } from './ticket-subscription-routes';
 
 interface INote {
   content: string;
@@ -311,10 +313,9 @@ router.get('/:id', async (req: Request<{ id: string }>, res: Response) => {
     }
 
     // Mark ticket as read for the current staff member
-    if (req.session?.username) {
+    if (req.session?.email) {
       try {
-        const { markTicketAsRead } = await import('./ticket-subscription-routes');
-        await markTicketAsRead(req.serverDbConnection!, req.params.id, req.session.username);
+        await markTicketAsRead(req.serverDbConnection!, req.params.id, req.session.email);
       } catch (readError) {
         console.error(`Failed to mark ticket ${req.params.id} as read:`, readError);
         // Don't fail the request if marking as read fails
@@ -480,12 +481,10 @@ router.post('/:id/replies', async (req: Request<{ id: string }, {}, AddReplyBody
     await ticket.save();
 
     // Auto-subscribe staff member to ticket when they reply
-    if (newReply.staff && req.session?.username) {
+    if (newReply.staff && req.session?.email) {
       try {
-        const { ensureTicketSubscription } = await import('./ticket-subscription-routes');
-        
         // Auto-subscribe the staff member who replied
-        await ensureTicketSubscription(req.serverDbConnection!, req.params.id, req.session.username);
+        await ensureTicketSubscription(req.serverDbConnection!, req.params.id, req.session.email);
       } catch (subscriptionError) {
         console.error(`Failed to handle ticket subscription for ticket ${req.params.id}:`, subscriptionError);
         // Don't fail the reply if subscription fails
@@ -673,13 +672,11 @@ router.patch('/:id', async (req: Request<{ id: string }, {}, UpdateTicketBody>, 
       ticket.replies.push(newReply);
 
       // Auto-subscribe staff member to ticket when they reply
-      if (newReply.staff && req.session?.username) {
+      if (newReply.staff && req.session?.email) {
         
         try {
-          const { ensureTicketSubscription } = await import('./ticket-subscription-routes');
-          
           // Auto-subscribe the staff member who replied
-          await ensureTicketSubscription(req.serverDbConnection!, req.params.id, req.session.username);
+          await ensureTicketSubscription(req.serverDbConnection!, req.params.id, req.session.email);
         } catch (subscriptionError) {
           console.error(`[Ticket PATCH] Failed to handle ticket subscription for ticket ${req.params.id}:`, subscriptionError);
           // Don't fail the reply if subscription fails - this is not critical
