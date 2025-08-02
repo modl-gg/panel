@@ -124,7 +124,7 @@ export class PunishmentService {
         id: punishmentId,
         issuerName,
         issued: new Date(),
-        started: (punishmentTypeId === 1 || punishmentTypeId === 2) ? new Date() : undefined, // Start immediately for bans/mutes
+        started: (punishmentTypeId === 1 || punishmentTypeId === 2) ? new Date() : undefined, // Start immediately for bans/mutes only, not kicks
         type_ordinal: punishmentTypeId,
         modifications: [],
         notes: [],

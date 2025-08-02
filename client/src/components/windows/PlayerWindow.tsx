@@ -718,8 +718,15 @@ const PlayerWindow = ({ playerId, isOpen, onClose, initialPosition }: PlayerWind
   // Calculate player status based on punishments and settings
   const calculatePlayerStatus = (punishments: any[], punishmentTypes: PunishmentType[], statusThresholds: any) => {
     let socialPoints = 0;
-    let gameplayPoints = 0;    // Calculate points from active punishments
+    let gameplayPoints = 0;
+
+    // Calculate points from active punishments
     for (const punishment of punishments) {
+      // Kicks are never considered active punishments since they are instant
+      if (punishment.type_ordinal === 0) {
+        continue;
+      }
+
       // Check if punishment is effectively active (considering modifications)
       const effectiveState = getEffectivePunishmentState(punishment);
       const isActive = effectiveState.effectiveActive;
@@ -1147,6 +1154,11 @@ const PlayerWindow = ({ playerId, isOpen, onClose, initialPosition }: PlayerWind
 
   // Helper function to determine if a punishment is currently active based on expiry logic
   const isPunishmentCurrentlyActive = (warning: any, effectiveState: any) => {
+    // Kicks are never considered active punishments since they are instant
+    if (warning.type_ordinal === 0) {
+      return false;
+    }
+
     // Check if punishment is pardoned/revoked
     const pardonModification = effectiveState.modifications.find((mod: any) => 
       mod.type === 'MANUAL_PARDON' || mod.type === 'APPEAL_ACCEPT'

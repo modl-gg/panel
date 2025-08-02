@@ -274,31 +274,33 @@ function calculatePlayerStatus(
  * Check if a punishment is currently active (matching panel logic)
  */
 function isPunishmentActive(punishment: IPunishment): boolean {
-  const now = new Date();
-  
-  // Check if punishment has started
-  if (!punishment.started) {
-    return false; // Not started yet
+  // Kicks are never considered active punishments since they are instant
+  if (punishment.type_ordinal === 0) {
+    return false;
   }
-  
-  // Check if punishment has expired
-  const duration = getPunishmentData(punishment, 'duration');
-  if (duration && duration > 0) {
-    const startTime = new Date(punishment.started);
-    const expireTime = new Date(startTime.getTime() + duration);
-    if (now > expireTime) {
-      return false; // Expired
-    }
+
+  // Check if explicitly marked as inactive
+  if (getPunishmentData(punishment, 'active') === false) {
+    return false;
   }
+
+  // Check if punishment has been pardoned or revoked
+  const modifications = punishment.modifications || [];
+  const hasPardon = modifications.some((mod: any) => 
+    mod.type === 'MANUAL_PARDON' || mod.type === 'APPEAL_ACCEPT'
+  );
   
-  // Check if punishment has been pardoned (look for pardon modification)
-  for (const modification of punishment.modifications || []) {
-    if (modification.type === 'MANUAL_PARDON' || modification.type === 'AUTO_PARDON') {
-      return false; // Pardoned
-    }
+  if (hasPardon) {
+    return false;
   }
-  
-  return true; // Active
+
+  // Check if expired
+  const expires = getPunishmentData(punishment, 'expires');
+  if (expires && new Date(expires) < new Date()) {
+    return false;
+  }
+
+  return true;
 }
 
 /**

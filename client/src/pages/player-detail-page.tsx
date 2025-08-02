@@ -281,6 +281,11 @@ const PlayerDetailPage = () => {
 
     // Calculate points from active punishments
     for (const punishment of punishments) {
+      // Kicks are never considered active punishments since they are instant
+      if (punishment.type_ordinal === 0) {
+        continue;
+      }
+
       // Check if punishment is effectively active (considering modifications)
       const effectiveState = getEffectivePunishmentState(punishment);
       const isActive = effectiveState.effectiveActive;
@@ -413,6 +418,11 @@ const PlayerDetailPage = () => {
 
   // Helper function to determine if a punishment is currently active based on expiry logic
   const isPunishmentCurrentlyActive = (warning: any, effectiveState: any) => {
+    // Kicks are never considered active punishments since they are instant
+    if (warning.type_ordinal === 0) {
+      return false;
+    }
+
     // Check if punishment is pardoned/revoked
     const pardonModification = effectiveState.modifications.find((mod: any) => 
       mod.type === 'MANUAL_PARDON' || mod.type === 'APPEAL_ACCEPT'
@@ -765,6 +775,11 @@ const PlayerDetailPage = () => {
         } else if (playerInfo.duration) {
           data.duration = durationToMilliseconds(playerInfo.duration);
         }
+      }
+      
+      // Kicks are instant and should not have duration settings
+      if (playerInfo.selectedPunishmentCategory === 'Kick') {
+        data.duration = 0; // Instant kick
       }
       
       // Add other data fields

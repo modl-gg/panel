@@ -123,6 +123,11 @@ export function calculatePlayerStatus(
  * Check if a punishment is currently active
  */
 function isPunishmentActive(punishment: IPunishment): boolean {
+  // Kicks are never considered active punishments since they are instant
+  if (punishment.type_ordinal === 0) {
+    return false;
+  }
+
   // Check if explicitly marked as inactive
   if (punishment.data?.get('active') === false) {
     return false;
