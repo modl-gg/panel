@@ -93,14 +93,28 @@ app.use((req: Request, res: Response, next: NextFunction) => {
       secret: sessionSecret,
       resave: false,
       saveUninitialized: false,
+      name: 'modl.sid', // Custom session cookie name
       store: MongoStore.create({
         client: mongoClient, // Use the mongoClient variable that was already retrieved and checked
         ttl: 14 * 24 * 60 * 60,
         autoRemove: 'native',
+        touchAfter: 24 * 3600, // Prevent session touch on every request (touch once per 24 hours)
       }),
-      cookie: cookieSettings
+      cookie: cookieSettings,
+      rolling: false, // Don't reset cookie expiry on every request
     });
-    serverSpecificSession(req, res, next);
+    
+    // Wrap session middleware to catch touch errors
+    serverSpecificSession(req, res, (err: any) => {
+      if (err && err.message && err.message.includes('Unable to find the session to touch')) {
+        // Session doesn't exist anymore, likely expired or deleted
+        // Clear the session cookie to prevent further errors
+        res.clearCookie('modl.sid', cookieSettings);
+        // Continue without error - the client will need to re-authenticate
+        return next();
+      }
+      next(err);
+    });
   } else {
     // @ts-ignore
     log(`[Session] No valid serverDbConnection or mongoClient for path ${req.path} (serverDbConn: ${!!serverDbConn}, mongoClient: ${!!mongoClient}), skipping session initialization.`);
