@@ -2520,8 +2520,9 @@ const TicketDetail = () => {
             </div>
           </>
         )}
-      </div>
-    </PageContainer>
+        </div>
+      </PageContainer>
+    </TooltipProvider>
   );
 };
 
@@ -3261,9 +3262,8 @@ const PunishmentDetailsCard = ({ punishmentId }: { punishmentId: string }) => {
           )}
 
         </div>
-        </div>
-      </PageContainer>
-    </TooltipProvider>
+      </div>
+    </div>
   );
 };
 
