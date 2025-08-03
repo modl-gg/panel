@@ -1073,13 +1073,17 @@ const PlayerTicket = () => {
                           {/* Show UNVERIFIED badge for non-staff replies that don't match the original creator */}
                           {message.senderType !== 'staff' && message.senderType !== 'system' &&
                            !isVerifiedCreator(ticketDetails.id, message.creatorIdentifier) && (
-                            <Tooltip>
+                            <Tooltip delayDuration={300}>
                               <TooltipTrigger asChild>
-                                <Badge variant="destructive" className="text-xs cursor-help">
+                                <Badge
+                                  variant="destructive"
+                                  className="text-xs cursor-help"
+                                  title={getUnverifiedExplanation()}
+                                >
                                   UNVERIFIED
                                 </Badge>
                               </TooltipTrigger>
-                              <TooltipContent className="max-w-xs">
+                              <TooltipContent className="max-w-xs p-3 z-50" side="top">
                                 <p className="text-sm">{getUnverifiedExplanation()}</p>
                               </TooltipContent>
                             </Tooltip>
