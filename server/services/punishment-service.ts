@@ -124,7 +124,7 @@ export class PunishmentService {
         id: punishmentId,
         issuerName,
         issued: new Date(),
-        started: (punishmentTypeId === 1 || punishmentTypeId === 2) ? new Date() : undefined, // Start immediately for bans/mutes
+        started: undefined, // Let the normal sync flow handle starting the punishment
         type_ordinal: punishmentTypeId,
         modifications: [],
         notes: [],
