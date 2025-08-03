@@ -493,11 +493,15 @@ const PlayerDetailPage = () => {
               .map((u: any) => u.username)
           : [];
         
-        // Determine player status
-        const status = player.punishments && player.punishments.some((p: any) => p.active && !p.expires) 
-          ? 'Banned' 
-          : player.punishments && player.punishments.some((p: any) => p.active) 
-          ? 'Restricted' 
+        // Determine player status (exclude kicks from status calculation)
+        const status = player.punishments && player.punishments.some((p: any) =>
+          p.active && !p.expires && p.type_ordinal !== 0 // Exclude kicks (ordinal 0)
+        )
+          ? 'Banned'
+          : player.punishments && player.punishments.some((p: any) =>
+            p.active && p.type_ordinal !== 0 // Exclude kicks
+          )
+          ? 'Restricted'
           : 'Active';
         
         // Initialize warnings array

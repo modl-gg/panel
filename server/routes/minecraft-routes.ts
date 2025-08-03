@@ -1998,17 +1998,29 @@ export function setupMinecraftRoutes(app: Express): void {
           const recentlyIssuedUnstarted = validUnstartedPunishments
             .filter((p: IPunishment) => new Date(p.issued) >= lastSync);
           const priorityKick = recentlyIssuedUnstarted.find((p: IPunishment) => isKickPunishment(p, punishmentTypeConfig));
-          
+
           if (priorityKick) {
             const description = await getPunishmentDescription(priorityKick, serverDbConnection);
             const kickType = getPunishmentType(priorityKick, punishmentTypeConfig);
+
+            // For kicks, mark as started immediately since they are instant actions
+            // This prevents them from showing as "unstarted" in the UI
+            const now = new Date();
+            priorityKick.started = now;
+            setPunishmentData(priorityKick, 'completed', true);
+            setPunishmentData(priorityKick, 'completedAt', now);
+            setPunishmentData(priorityKick, 'executedOnServer', true);
+            setPunishmentData(priorityKick, 'executedAt', now);
+
+            // Save the updated punishment
+            await player.save({ validateBeforeSave: false });
 
             pendingPunishments.push({
               minecraftUuid: player.minecraftUuid,
               username: player.usernames[player.usernames.length - 1]?.username || 'Unknown',
               punishment: {
                 type: kickType,
-                started: false,
+                started: true, // Mark as started since kicks are instant
                 expiration: null, // Kicks are instant
                 description: description,
                 id: priorityKick.id,
