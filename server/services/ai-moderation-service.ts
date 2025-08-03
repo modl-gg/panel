@@ -43,7 +43,7 @@ export class AIModerationService {
   constructor(dbConnection: Connection) {
     this.dbConnection = dbConnection;
     this.geminiService = new GeminiService();
-    this.systemPromptsService = new SystemPromptsService(dbConnection);
+    this.systemPromptsService = new SystemPromptsService();
     this.punishmentService = new PunishmentService(dbConnection);
   }
 

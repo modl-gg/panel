@@ -1,4 +1,5 @@
 import { Connection, Schema, Document } from 'mongoose';
+import { connectToGlobalModlDb } from '../db/connectionManager';
 
 interface ISystemPrompt extends Document {
   strictnessLevel: 'lenient' | 'standard' | 'strict';
@@ -43,10 +44,15 @@ const SystemPromptSchema = new Schema<ISystemPrompt>({
 });
 
 export class SystemPromptsService {
-  private dbConnection: Connection;
+  constructor() {
+    // System prompts are global configuration, so we use the global database connection
+  }
 
-  constructor(dbConnection: Connection) {
-    this.dbConnection = dbConnection;
+  /**
+   * Get the global database connection for system prompts
+   */
+  private async getGlobalConnection(): Promise<Connection> {
+    return await connectToGlobalModlDb();
   }
 
   /**
@@ -57,8 +63,9 @@ export class SystemPromptsService {
     punishmentTypes?: AIPunishmentType[]
   ): Promise<string> {
     try {
-      const SystemPromptModel = this.dbConnection.model<ISystemPrompt>('SystemPrompt', SystemPromptSchema);
-      
+      const globalConnection = await this.getGlobalConnection();
+      const SystemPromptModel = globalConnection.model<ISystemPrompt>('SystemPrompt', SystemPromptSchema);
+
       const prompt = await SystemPromptModel.findOne({
         strictnessLevel,
         isActive: true
@@ -117,7 +124,8 @@ export class SystemPromptsService {
    */
   async initializeDefaultPrompts(): Promise<void> {
     try {
-      const SystemPromptModel = this.dbConnection.model<ISystemPrompt>('SystemPrompt', SystemPromptSchema);
+      const globalConnection = await this.getGlobalConnection();
+      const SystemPromptModel = globalConnection.model<ISystemPrompt>('SystemPrompt', SystemPromptSchema);
 
       const defaultPrompts = [
         {
@@ -144,7 +152,7 @@ export class SystemPromptsService {
 
         if (!existing) {
           await SystemPromptModel.create(promptData);
-          
+          console.log(`[System Prompts] Created default prompt for ${promptData.strictnessLevel} level`);
         }
       }
     } catch (error) {
@@ -157,7 +165,8 @@ export class SystemPromptsService {
    */
   async getAllPrompts(): Promise<ISystemPrompt[]> {
     try {
-      const SystemPromptModel = this.dbConnection.model<ISystemPrompt>('SystemPrompt', SystemPromptSchema);
+      const globalConnection = await this.getGlobalConnection();
+      const SystemPromptModel = globalConnection.model<ISystemPrompt>('SystemPrompt', SystemPromptSchema);
       return await SystemPromptModel.find({}).sort({ strictnessLevel: 1 });
     } catch (error) {
       console.error('[System Prompts] Error fetching all prompts:', error);
@@ -170,13 +179,14 @@ export class SystemPromptsService {
    */
   async updatePrompt(strictnessLevel: 'lenient' | 'standard' | 'strict', prompt: string): Promise<boolean> {
     try {
-      const SystemPromptModel = this.dbConnection.model<ISystemPrompt>('SystemPrompt', SystemPromptSchema);
-      
+      const globalConnection = await this.getGlobalConnection();
+      const SystemPromptModel = globalConnection.model<ISystemPrompt>('SystemPrompt', SystemPromptSchema);
+
       const result = await SystemPromptModel.updateOne(
         { strictnessLevel },
-        { 
-          prompt, 
-          updatedAt: new Date() 
+        {
+          prompt,
+          updatedAt: new Date()
         },
         { upsert: true }
       );
