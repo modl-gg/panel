@@ -815,10 +815,14 @@ const PlayerWindow = ({ playerId, isOpen, onClose, initialPosition }: PlayerWind
               .map((u: any) => u.username)
           : [];
         
-        // Determine player status
-        const status = player.punishments && player.punishments.some((p: any) => p.active && !p.expires) 
+        // Determine player status (exclude kicks from status calculation)
+        const status = player.punishments && player.punishments.some((p: any) => 
+          p.active && !p.expires && p.type_ordinal !== 0 // Exclude kicks (ordinal 0)
+        ) 
           ? 'Banned' 
-          : player.punishments && player.punishments.some((p: any) => p.active) 
+          : player.punishments && player.punishments.some((p: any) => 
+            p.active && p.type_ordinal !== 0 // Exclude kicks
+          ) 
           ? 'Restricted' 
           : 'Active';
         
@@ -1524,14 +1528,14 @@ const PlayerWindow = ({ playerId, isOpen, onClose, initialPosition }: PlayerWind
                     key={warning.id || `warning-${index}`} 
                     data-punishment-id={warning.id}
                     className={`${
-                      isPunishmentCurrentlyActive(warning, effectiveState) ? 'bg-muted/30 border-l-4 border-red-500' : 
+                      isPunishmentCurrentlyActive(warning, effectiveState) && warning.type !== 'Kick' ? 'bg-muted/30 border-l-4 border-red-500' : 
                       'bg-muted/30'
                     } p-3 rounded-lg transition-all duration-300`}
                   >
                     <div className="flex justify-between items-start">
                       <div className="flex-1">                        <div className="flex items-center gap-2 mb-1">
-                          {/* Show punishment status: Active, Inactive, or Unstarted */}
-                          {isPunishment && (() => {
+                          {/* Show punishment status: Active, Inactive, or Unstarted (but not for kicks) */}
+                          {isPunishment && warning.type !== 'Kick' && (() => {
                             // Check if punishment is unstarted (started field is null/undefined)
                             if (!warning.started) {
                               return (
