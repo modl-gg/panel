@@ -53,6 +53,8 @@ import { useAddTicketReply } from '@/hooks/use-add-ticket-reply';
 import MarkdownRenderer from '@/components/ui/markdown-renderer';
 import MarkdownHelp from '@/components/ui/markdown-help';
 import { ClickablePlayer } from '@/components/ui/clickable-player';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@modl-gg/shared-web/components/ui/tooltip';
+import { isVerifiedCreator, getUnverifiedExplanation } from '@/utils/creator-verification';
 import PlayerPunishment, { PlayerPunishmentData } from '@/components/ui/player-punishment';
 import MediaUpload from '@/components/MediaUpload';
 import TicketAttachments from '@/components/TicketAttachments';
@@ -110,6 +112,7 @@ export interface TicketMessage {
   staff?: boolean; // Indicates if the sender is a staff member
   attachments?: string[];
   closedAs?: string; // Optional field to track if this message closed the ticket
+  creatorIdentifier?: string; // Browser identifier for creator verification
 }
 
 interface TicketNote {
@@ -1129,12 +1132,13 @@ const TicketDetail = () => {
         messages: (ticketData.messages || (ticketData.replies && ticketData.replies.map((reply: any) => ({
           id: reply._id || reply.id || `msg-${Date.now()}-${Math.random().toString(36).substring(2, 7)}`,
           sender: reply.name,
-          senderType: reply.type === 'staff' ? 'staff' : 
+          senderType: reply.type === 'staff' ? 'staff' :
                      reply.type === 'system' ? 'system' : 'user',
           content: reply.content,
           timestamp: reply.created ? (new Date(reply.created).toISOString() || new Date().toISOString()) : new Date().toISOString(),
           staff: reply.staff,
-          closedAs: (reply.action === "Comment" || reply.action === "Reopen") ? undefined : reply.action
+          closedAs: (reply.action === "Comment" || reply.action === "Reopen") ? undefined : reply.action,
+          creatorIdentifier: reply.creatorIdentifier // Include creator identifier for verification
         }))) || []),
         notes: ticketData.notes || [],
         tags,
@@ -1554,8 +1558,9 @@ const TicketDetail = () => {
   };
 
   return (
-    <PageContainer>
-      <div className="flex flex-col space-y-4">
+    <TooltipProvider>
+      <PageContainer>
+        <div className="flex flex-col space-y-4">
         <div className="flex items-center justify-between w-full">
           <Button 
             variant="ghost" 
@@ -2024,6 +2029,24 @@ const TicketDetail = () => {
                                     </Badge>
                                   );
                                 })()
+                              )}
+                              {/* Show UNVERIFIED badge for non-staff replies that don't match the original creator */}
+                              {message.senderType !== 'staff' && message.senderType !== 'system' &&
+                               !isVerifiedCreator(ticketDetails.id, message.creatorIdentifier) && (
+                                <Tooltip delayDuration={300}>
+                                  <TooltipTrigger asChild>
+                                    <Badge
+                                      variant="destructive"
+                                      className="text-xs cursor-help"
+                                      title={getUnverifiedExplanation()}
+                                    >
+                                      UNVERIFIED
+                                    </Badge>
+                                  </TooltipTrigger>
+                                  <TooltipContent className="max-w-xs p-3 z-50" side="top">
+                                    <p className="text-sm">{getUnverifiedExplanation()}</p>
+                                  </TooltipContent>
+                                </Tooltip>
                               )}
                             </div>
                             
@@ -3238,8 +3261,9 @@ const PunishmentDetailsCard = ({ punishmentId }: { punishmentId: string }) => {
           )}
 
         </div>
-      </div>
-    </div>
+        </div>
+      </PageContainer>
+    </TooltipProvider>
   );
 };
 
