@@ -83,7 +83,9 @@ export function setupPlayerRoutes(app: Express) {
           ? player.usernames[player.usernames.length - 1].username 
           : 'Unknown';
         
-        const status = player.punishments && player.punishments.some((p: IPunishment) => p.active)
+        const status = player.punishments && player.punishments.some((p: IPunishment) =>
+          p.active && p.type_ordinal !== 0 // Exclude kicks (ordinal 0)
+        )
           ? 'Banned'
           : 'Active';
         
