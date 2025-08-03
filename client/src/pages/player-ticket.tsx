@@ -21,6 +21,7 @@ import { Label } from '@modl-gg/shared-web/components/ui/label';
 import { Checkbox } from '@modl-gg/shared-web/components/ui/checkbox';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@modl-gg/shared-web/components/ui/select';
 import { Popover, PopoverContent, PopoverTrigger } from '@modl-gg/shared-web/components/ui/popover';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@modl-gg/shared-web/components/ui/tooltip';
 import { Card, CardHeader, CardTitle, CardDescription, CardContent, CardFooter } from '@modl-gg/shared-web/components/ui/card';
 import { useTicket, useAddTicketReply, useSubmitTicketForm, useSettings } from '@/hooks/use-data';
 import TicketAttachments from '@/components/TicketAttachments';
@@ -31,6 +32,7 @@ import { toast } from '@/hooks/use-toast';
 import MarkdownRenderer from '@/components/ui/markdown-renderer';
 import MarkdownHelp from '@/components/ui/markdown-help';
 import { formatDate } from '@/utils/date-utils';
+import { getCreatorIdentifier, isVerifiedCreator, getUnverifiedExplanation } from '@/utils/creator-verification';
 
 export interface TicketMessage {
   id: string;
@@ -42,6 +44,7 @@ export interface TicketMessage {
   attachments?: string[];
   closedAs?: string;
   staffMinecraftUuid?: string; // For staff avatar display
+  creatorIdentifier?: string; // Browser identifier for creator verification
 }
 
 interface TicketDetails {
@@ -248,7 +251,8 @@ const PlayerTicket = () => {
           staff: message.staff,
           attachments: message.attachments,
           closedAs: (message.action === "Comment" || message.action === "Reopen") ? undefined : message.action,
-          staffMinecraftUuid: message.staffMinecraftUuid // Preserve staff Minecraft UUID for avatars
+          staffMinecraftUuid: message.staffMinecraftUuid, // Preserve staff Minecraft UUID for avatars
+          creatorIdentifier: message.creatorIdentifier // Include creator identifier for verification
         };
         
         return processed;
@@ -271,6 +275,12 @@ const PlayerTicket = () => {
         const name = ticketData.creator || ticketData.reportedBy;
         setPlayerName(name);
         localStorage.setItem('playerName', name);
+      }
+
+      // Generate and store creator identifier for this browser/ticket combination
+      // This will be used to verify if future replies come from the same browser
+      if (ticketData.id || ticketData._id) {
+        getCreatorIdentifier(ticketData.id || ticketData._id);
       }
     }
   }, [ticketData, playerName]);
@@ -311,7 +321,8 @@ const PlayerTicket = () => {
       content: newReply.trim(),
       created: timestamp,
       staff: false,
-      attachments: replyAttachments.map(att => att.url) // Include attachment URLs for API
+      attachments: replyAttachments.map(att => att.url), // Include attachment URLs for API
+      creatorIdentifier: getCreatorIdentifier(ticketDetails.id) // Include creator identifier for verification
     };
     
     // Store current attachments for potential restoration
@@ -943,8 +954,9 @@ const PlayerTicket = () => {
   };
 
   return (
-    <div className="min-h-screen bg-background p-6">
-      <div className="max-w-5xl mx-auto">
+    <TooltipProvider>
+      <div className="min-h-screen bg-background p-6">
+        <div className="max-w-5xl mx-auto">
         {/* Security Disclaimer */}
         <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4 mb-6">
           <div className="flex items-start gap-3">
@@ -1058,6 +1070,20 @@ const PlayerTicket = () => {
                               {message.closedAs}
                             </Badge>
                           )}
+                          {/* Show UNVERIFIED badge for non-staff replies that don't match the original creator */}
+                          {message.senderType !== 'staff' && message.senderType !== 'system' &&
+                           !isVerifiedCreator(ticketDetails.id, message.creatorIdentifier) && (
+                            <Tooltip>
+                              <TooltipTrigger asChild>
+                                <Badge variant="destructive" className="text-xs cursor-help">
+                                  UNVERIFIED
+                                </Badge>
+                              </TooltipTrigger>
+                              <TooltipContent className="max-w-xs">
+                                <p className="text-sm">{getUnverifiedExplanation()}</p>
+                              </TooltipContent>
+                            </Tooltip>
+                          )}
                         </div>
                         <div className="text-sm">
                           <MarkdownRenderer content={message.content} disableClickablePlayers={true} />
@@ -1170,8 +1196,9 @@ const PlayerTicket = () => {
             )}
           </>
         )}
+        </div>
       </div>
-    </div>
+    </TooltipProvider>
   );
 };
 

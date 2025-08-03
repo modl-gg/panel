@@ -21,6 +21,7 @@ interface CreateTicketRequest {
   formData?: Record<string, any>;
   tags?: string[];
   priority?: 'low' | 'medium' | 'high';
+  creatorIdentifier?: string; // Browser identifier for creator verification
 }
 
 // Helper function to generate ticket ID
@@ -63,7 +64,8 @@ router.post('/tickets', verifyTicketApiKey, async (req: Request, res: Response) 
       chatMessages,
       formData,
       tags,
-      priority
+      priority,
+      creatorIdentifier
     }: CreateTicketRequest = req.body;
     
     // Validate required fields
@@ -233,6 +235,7 @@ router.post('/tickets', verifyTicketApiKey, async (req: Request, res: Response) 
     if (chatMessages) ticketData.chatMessages = chatMessages;
     if (priority) ticketData.data.set('priority', priority);
     if (creatorEmail) ticketData.data.set('creatorEmail', creatorEmail);
+    if (creatorIdentifier) ticketData.data.set('creatorIdentifier', creatorIdentifier);
     
     // Store formData in ticket.data Map
     if (formData && Object.keys(formData).length > 0) {
@@ -252,7 +255,8 @@ router.post('/tickets', verifyTicketApiKey, async (req: Request, res: Response) 
         content: contentString.trim(),
         type: 'user',
         created: new Date(),
-        staff: false
+        staff: false,
+        creatorIdentifier: creatorIdentifier // Include creator identifier in initial message
       };
       ticketData.replies = [initialMessage];
     }
@@ -322,7 +326,8 @@ router.post('/tickets/unfinished', strictRateLimit, async (req: Request, res: Re
       chatMessages,
       formData,
       tags,
-      priority
+      priority,
+      creatorIdentifier
     }: CreateTicketRequest = req.body;
     
     // Validate required fields
@@ -437,6 +442,7 @@ router.post('/tickets/unfinished', strictRateLimit, async (req: Request, res: Re
     if (chatMessages) ticketData.chatMessages = chatMessages;
     if (priority) ticketData.data.set('priority', priority);
     if (creatorEmail) ticketData.data.set('creatorEmail', creatorEmail);
+    if (creatorIdentifier) ticketData.data.set('creatorIdentifier', creatorIdentifier);
     
     // Store the original description from the command if provided
     if (description) {
@@ -461,7 +467,8 @@ router.post('/tickets/unfinished', strictRateLimit, async (req: Request, res: Re
         content: contentString.trim(),
         type: 'user',
         created: new Date(),
-        staff: false
+        staff: false,
+        creatorIdentifier: creatorIdentifier // Include creator identifier in initial message
       };
       ticketData.replies = [initialMessage];
     }
@@ -669,8 +676,8 @@ router.post('/tickets/:id/replies', async (req: Request, res: Response) => {
   
   try {
     const { id } = req.params;
-    const { name, content, type = 'user', staff = false, attachments = [] } = req.body;
-    
+    const { name, content, type = 'user', staff = false, attachments = [], creatorIdentifier } = req.body;
+
     if (!name || !content) {
       return res.status(400).json({
         error: 'Bad request',
@@ -703,6 +710,7 @@ router.post('/tickets/:id/replies', async (req: Request, res: Response) => {
       created: new Date(),
       staff: staff,
       attachments: attachments, // Include attachments array
+      creatorIdentifier: creatorIdentifier, // Store creator identifier for verification
       // Compatibility fields
       sender: name,
       senderType: staff ? 'staff' : 'user',
