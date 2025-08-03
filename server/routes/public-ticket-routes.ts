@@ -438,6 +438,11 @@ router.post('/tickets/unfinished', strictRateLimit, async (req: Request, res: Re
     if (priority) ticketData.data.set('priority', priority);
     if (creatorEmail) ticketData.data.set('creatorEmail', creatorEmail);
     
+    // Store the original description from the command if provided
+    if (description) {
+      ticketData.data.set('originalDescription', description);
+    }
+
     // Store formData in ticket.data Map
     if (formData && Object.keys(formData).length > 0) {
       Object.entries(formData).forEach(([key, value]) => {
@@ -813,7 +818,13 @@ router.post('/tickets/:id/submit', async (req: Request, res: Response) => {
       
       // Create initial message content from form data
       let contentString = '';
-      
+
+      // Include original description from command if it exists
+      const originalDescription = ticket.data?.get('originalDescription');
+      if (originalDescription) {
+        contentString += `**Original Description:**\n${originalDescription}\n\n`;
+      }
+
       // Get ticket form configuration to get field labels
       let ticketForms = null;
       try {
