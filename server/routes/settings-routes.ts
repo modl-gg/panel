@@ -4178,7 +4178,7 @@ export async function addDefaultPunishmentTypes(dbConnection: Connection): Promi
         name: 'Systems Abuse', 
         category: 'Gameplay', 
         isCustomizable: true, 
-        ordinal: 14,
+        ordinal: 17,
         durations: {
           low: { first: { value: 3, unit: 'days', type: 'ban' }, medium: { value: 7, unit: 'days', type: 'ban' }, habitual: { value: 14, unit: 'days', type: 'ban' } },
           regular: { first: { value: 14, unit: 'days', type: 'ban' }, medium: { value: 30, unit: 'days', type: 'ban' }, habitual: { value: 90, unit: 'days', type: 'ban' } },
@@ -4207,7 +4207,7 @@ export async function addDefaultPunishmentTypes(dbConnection: Connection): Promi
         name: 'Account Abuse', 
         category: 'Gameplay', 
         isCustomizable: true, 
-        ordinal: 15,        durations: {
+        ordinal: 16,        durations: {
           low: { first: { value: 14, unit: 'days', type: 'ban' }, medium: { value: 30, unit: 'days', type: 'ban' }, habitual: { value: 60, unit: 'days', type: 'ban' } },
           regular: { first: { value: 30, unit: 'days', type: 'ban' }, medium: { value: 90, unit: 'days', type: 'ban' }, habitual: { value: 180, unit: 'days', type: 'ban' } },
           severe: { first: { value: 0, unit: 'days', type: 'permanent ban' }, medium: { value: 0, unit: 'days', type: 'permanent ban' }, habitual: { value: 0, unit: 'days', type: 'permanent ban' } }
@@ -4235,7 +4235,7 @@ export async function addDefaultPunishmentTypes(dbConnection: Connection): Promi
         name: 'Game Trading', 
         category: 'Gameplay', 
         isCustomizable: true, 
-        ordinal: 16,
+        ordinal: 15,
         durations: {
           low: { first: { value: 14, unit: 'days', type: 'ban' }, medium: { value: 30, unit: 'days', type: 'ban' }, habitual: { value: 60, unit: 'days', type: 'ban' } },
           regular: { first: { value: 30, unit: 'days', type: 'ban' }, medium: { value: 90, unit: 'days', type: 'ban' }, habitual: { value: 180, unit: 'days', type: 'ban' } },
@@ -4264,7 +4264,7 @@ export async function addDefaultPunishmentTypes(dbConnection: Connection): Promi
         name: 'Cheating', 
         category: 'Gameplay', 
         isCustomizable: true, 
-        ordinal: 17,
+        ordinal: 14,
         durations: {
           low: { first: { value: 3, unit: 'days', type: 'ban' }, medium: { value: 14, unit: 'days', type: 'ban' }, habitual: { value: 30, unit: 'days', type: 'ban' } },
           regular: { first: { value: 14, unit: 'days', type: 'ban' }, medium: { value: 60, unit: 'days', type: 'ban' }, habitual: { value: 180, unit: 'days', type: 'ban' } },
