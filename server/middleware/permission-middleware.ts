@@ -197,8 +197,22 @@ export const canAssignMinecraftPlayer = async (
   targetUserId: string
 ): Promise<boolean> => {
   try {
+    // Super Admin can always assign minecraft players
+    if (isSuperAdminRole(currentUserRole)) {
+      return true;
+    }
+    
+    // For non-super admins, check if they have admin.staff.manage permission
+    const userPermissions = await getUserPermissions(req, currentUserRole);
+    if (!userPermissions.includes('admin.staff.manage')) {
+      // Without Manage Staff permission, users can only assign to themselves
+      return currentUserId === targetUserId;
+    }
+    
+    // User has admin.staff.manage permission, now check role hierarchy
+    // They can assign to users with lower or equal roles
     const roleHierarchy = await getRoleHierarchy(req.serverDbConnection!);
-    return canAssignMinecraftPlayerHierarchy(currentUserRole, targetUserRole, currentUserId, targetUserId, roleHierarchy);
+    return hasHigherOrEqualAuthority(currentUserRole, targetUserRole, roleHierarchy);
   } catch (error) {
     console.error('Error checking minecraft player assignment permissions:', error);
     return false;
