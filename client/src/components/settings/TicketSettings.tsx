@@ -1179,7 +1179,7 @@ const TicketSettings = ({
                     <SelectTrigger>
                       <SelectValue placeholder="Choose a punishment type..." />
                     </SelectTrigger>
-                    <SelectContent>
+                    <SelectContent className="max-h-60 overflow-y-auto">
                       {punishmentTypesState
                         .filter(pt => !Object.values(aiModerationSettings.aiPunishmentConfigs || {}).some((config: any) => config.name === pt.name))
                         .map((punishmentType) => (
