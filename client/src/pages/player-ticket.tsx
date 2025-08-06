@@ -1074,7 +1074,7 @@ const PlayerTicket = () => {
                           )}
                           {/* Show UNVERIFIED badge for non-staff replies that don't match the original creator */}
                           {message.senderType !== 'staff' && message.senderType !== 'system' &&
-                           shouldShowUnverifiedBadge(ticketDetails.id, message.creatorIdentifier) && (
+                           shouldShowUnverifiedBadge(ticketDetails.id, message.creatorIdentifier, false) && (
                             <Tooltip delayDuration={300}>
                               <TooltipTrigger asChild>
                                 <Badge

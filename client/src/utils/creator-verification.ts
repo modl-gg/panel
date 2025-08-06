@@ -70,23 +70,39 @@ export function isVerifiedCreator(ticketId: string, replyCreatorId?: string): bo
     return false;
   }
 
-  const currentCreatorId = getCreatorIdentifier(ticketId);
-  return currentCreatorId === replyCreatorId;
+  try {
+    const currentCreatorId = getCreatorIdentifier(ticketId);
+    return currentCreatorId === replyCreatorId;
+  } catch (error) {
+    console.warn('Error checking creator verification:', error);
+    return false;
+  }
 }
 
 /**
  * Check if we should show the unverified badge for a message
  * This handles legacy messages that don't have creatorIdentifier
  */
-export function shouldShowUnverifiedBadge(ticketId: string, replyCreatorId?: string): boolean {
-  // If there's no creatorIdentifier, this might be a legacy message
-  // Don't show unverified badge for legacy messages
-  if (!replyCreatorId) {
+export function shouldShowUnverifiedBadge(ticketId: string, replyCreatorId?: string, isStaffPanel: boolean = false): boolean {
+  try {
+    // If there's no creatorIdentifier, this might be a legacy message
+    // Don't show unverified badge for legacy messages
+    if (!replyCreatorId) {
+      return false;
+    }
+
+    // If we're in the staff panel, don't show unverified badges
+    // The verification system is only meaningful for the player-facing ticket page
+    if (isStaffPanel) {
+      return false;
+    }
+
+    // If we have a creatorIdentifier, check if it matches the current one
+    return !isVerifiedCreator(ticketId, replyCreatorId);
+  } catch (error) {
+    console.warn('Error checking if should show unverified badge:', error);
     return false;
   }
-
-  // If we have a creatorIdentifier, check if it matches the current one
-  return !isVerifiedCreator(ticketId, replyCreatorId);
 }
 
 /**
