@@ -927,7 +927,6 @@ function getEffectivePunishmentState(punishment: IPunishment): { effectiveActive
  */
 function isPunishmentValid(punishment: IPunishment): boolean {
   if (punishment.type_ordinal === undefined || punishment.type_ordinal === null) {
-    console.log(`[KICK DEBUG] Punishment invalid - missing type_ordinal: ${punishment.id}`);
     return false;
   }
 
@@ -936,23 +935,19 @@ function isPunishmentValid(punishment: IPunishment): boolean {
   
   // If explicitly marked as inactive by modifications
   if (!effectiveActive) {
-    console.log(`[KICK DEBUG] Punishment invalid - not effectiveActive: ${punishment.id}`);
     return false;
   }
   
   // Kicks are always valid if active (they don't have expiry logic)
   if (punishment.type_ordinal === 0) {
-    console.log(`[KICK DEBUG] Kick is valid (ordinal 0): ${punishment.id}`);
     return true; // Kicks don't expire
   }
   
   // Check if expired (for bans and mutes)
   if (effectiveExpiry && effectiveExpiry < new Date()) {
-    console.log(`[KICK DEBUG] Punishment invalid - expired: ${punishment.id}`);
     return false;
   }
   
-  console.log(`[KICK DEBUG] Punishment valid: ${punishment.id}, ordinal: ${punishment.type_ordinal}`);
   return true;
 }
 
@@ -1907,9 +1902,6 @@ export function setupMinecraftRoutes(app: Express): void {
       const onlineUuids = onlinePlayers ? onlinePlayers.map((p: any) => p.uuid || p.minecraftUuid) : [];
       const pendingPunishments: any[] = [];
 
-      console.log(`[KICK DEBUG] Sync request - Online players: ${onlineUuids.length}`);
-      console.log(`[KICK DEBUG] Online UUIDs: ${onlineUuids.join(', ')}`);
-
       if (onlineUuids.length > 0) {
         // Get online players with unstarted punishments or recently issued punishments
         const onlinePlayersWithPendingPunishments = await Player.find({
@@ -1921,33 +1913,11 @@ export function setupMinecraftRoutes(app: Express): void {
           ]
         }).lean();
 
-        console.log(`[KICK DEBUG] Found ${onlinePlayersWithPendingPunishments.length} players with pending punishments`);
-
         for (const player of onlinePlayersWithPendingPunishments) {
-          console.log(`[KICK DEBUG] Processing player ${player.minecraftUuid} with ${player.punishments.length} total punishments`);
-          
           // Get all valid unstarted punishments for this player, prioritizing recently issued ones
-          const allUnstartedPunishments = player.punishments
-            .filter((p: IPunishment) => (!p.started || p.started === null || p.started === undefined));
-          
-          console.log(`[KICK DEBUG] Player ${player.minecraftUuid} has ${allUnstartedPunishments.length} unstarted punishments`);
-          
-          const validUnstartedPunishments = allUnstartedPunishments
-            .filter((p: IPunishment) => {
-              const isValid = isPunishmentValid(p);
-              const isKick = isKickPunishment(p, punishmentTypeConfig);
-              if (isKick) {
-                console.log(`[KICK DEBUG] Kick validation - id: ${p.id}, ordinal: ${p.type_ordinal}, valid: ${isValid}`);
-                if (!isValid) {
-                  const state = getEffectivePunishmentState(p);
-                  console.log(`[KICK DEBUG] Invalid kick state - effectiveActive: ${state.effectiveActive}, effectiveExpiry: ${state.effectiveExpiry}`);
-                }
-              }
-              return isValid;
-            })
+          const validUnstartedPunishments = player.punishments
+            .filter((p: IPunishment) => (!p.started || p.started === null || p.started === undefined) && isPunishmentValid(p))
             .sort((a: IPunishment, b: IPunishment) => new Date(a.issued).getTime() - new Date(b.issued).getTime());
-
-          console.log(`[KICK DEBUG] Player ${player.minecraftUuid} has ${validUnstartedPunishments.length} valid unstarted punishments`);
 
           // SYNC ENDPOINT: Only send UNSTARTED punishments that need to be executed
           // Already started punishments are handled by login endpoint
@@ -2035,24 +2005,13 @@ export function setupMinecraftRoutes(app: Express): void {
 
           // Add kicks - include ALL unstarted kicks, not just recently issued ones
           // Kicks need to be delivered whenever the player is online, regardless of when they were issued
-          const allKicks = validUnstartedPunishments.filter((p: IPunishment) => isKickPunishment(p, punishmentTypeConfig));
           const priorityKick = validUnstartedPunishments.find((p: IPunishment) => isKickPunishment(p, punishmentTypeConfig));
-          
-          console.log(`[KICK DEBUG] Player ${player.minecraftUuid} has ${allKicks.length} valid unstarted kicks`);
-          if (allKicks.length > 0) {
-            console.log(`[KICK DEBUG] Kick details for ${player.minecraftUuid}:`);
-            allKicks.forEach((kick, i) => {
-              console.log(`  Kick ${i}: id=${kick.id}, ordinal=${kick.type_ordinal}, started=${kick.started}, issued=${kick.issued}`);
-            });
-          }
 
           if (priorityKick) {
             const description = await getPunishmentDescription(priorityKick, serverDbConnection);
             const kickType = getPunishmentType(priorityKick, punishmentTypeConfig);
 
             // Send kick as unstarted punishment - it will be marked as started when the server acknowledges execution
-            console.log(`[KICK DEBUG] Adding kick to pending punishments for ${player.minecraftUuid}`);
-            
             pendingPunishments.push({
               minecraftUuid: player.minecraftUuid,
               username: player.usernames[player.usernames.length - 1]?.username || 'Unknown',
@@ -2188,8 +2147,6 @@ export function setupMinecraftRoutes(app: Express): void {
 
       // Note: Staff permissions are now loaded separately via /api/minecraft/staff-permissions endpoint
 
-      console.log(`[KICK DEBUG] Final sync response: ${pendingPunishments.length} pending punishments`);
-      
       return res.status(200).json({
         status: 200,
         timestamp: now.toISOString(),
