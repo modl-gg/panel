@@ -926,26 +926,33 @@ function getEffectivePunishmentState(punishment: IPunishment): { effectiveActive
  * Utility function to check if a punishment is valid for execution (ignores started status)
  */
 function isPunishmentValid(punishment: IPunishment): boolean {
-  if (!punishment.type_ordinal) return false;
+  if (!punishment.type_ordinal) {
+    console.log(`[KICK DEBUG] Punishment invalid - missing type_ordinal: ${punishment.id}`);
+    return false;
+  }
 
   // Get effective state considering modifications
   const { effectiveActive, effectiveExpiry } = getEffectivePunishmentState(punishment);
   
   // If explicitly marked as inactive by modifications
   if (!effectiveActive) {
+    console.log(`[KICK DEBUG] Punishment invalid - not effectiveActive: ${punishment.id}`);
     return false;
   }
   
   // Kicks are always valid if active (they don't have expiry logic)
   if (punishment.type_ordinal === 0) {
+    console.log(`[KICK DEBUG] Kick is valid (ordinal 0): ${punishment.id}`);
     return true; // Kicks don't expire
   }
   
   // Check if expired (for bans and mutes)
   if (effectiveExpiry && effectiveExpiry < new Date()) {
+    console.log(`[KICK DEBUG] Punishment invalid - expired: ${punishment.id}`);
     return false;
   }
   
+  console.log(`[KICK DEBUG] Punishment valid: ${punishment.id}, ordinal: ${punishment.type_ordinal}`);
   return true;
 }
 
@@ -1926,7 +1933,18 @@ export function setupMinecraftRoutes(app: Express): void {
           console.log(`[KICK DEBUG] Player ${player.minecraftUuid} has ${allUnstartedPunishments.length} unstarted punishments`);
           
           const validUnstartedPunishments = allUnstartedPunishments
-            .filter((p: IPunishment) => isPunishmentValid(p))
+            .filter((p: IPunishment) => {
+              const isValid = isPunishmentValid(p);
+              const isKick = isKickPunishment(p, punishmentTypeConfig);
+              if (isKick) {
+                console.log(`[KICK DEBUG] Kick validation - id: ${p.id}, ordinal: ${p.type_ordinal}, valid: ${isValid}`);
+                if (!isValid) {
+                  const state = getEffectivePunishmentState(p);
+                  console.log(`[KICK DEBUG] Invalid kick state - effectiveActive: ${state.effectiveActive}, effectiveExpiry: ${state.effectiveExpiry}`);
+                }
+              }
+              return isValid;
+            })
             .sort((a: IPunishment, b: IPunishment) => new Date(a.issued).getTime() - new Date(b.issued).getTime());
 
           console.log(`[KICK DEBUG] Player ${player.minecraftUuid} has ${validUnstartedPunishments.length} valid unstarted punishments`);
