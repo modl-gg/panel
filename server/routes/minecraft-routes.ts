@@ -1995,33 +1995,21 @@ export function setupMinecraftRoutes(app: Express): void {
             });
           }
 
-          // Add kicks (only recently issued ones since kicks are instant)
-          const recentlyIssuedUnstarted = validUnstartedPunishments
-            .filter((p: IPunishment) => new Date(p.issued) >= lastSync);
-          const priorityKick = recentlyIssuedUnstarted.find((p: IPunishment) => isKickPunishment(p, punishmentTypeConfig));
+          // Add kicks - include ALL unstarted kicks, not just recently issued ones
+          // Kicks need to be delivered whenever the player is online, regardless of when they were issued
+          const priorityKick = validUnstartedPunishments.find((p: IPunishment) => isKickPunishment(p, punishmentTypeConfig));
 
           if (priorityKick) {
             const description = await getPunishmentDescription(priorityKick, serverDbConnection);
             const kickType = getPunishmentType(priorityKick, punishmentTypeConfig);
 
-            // For kicks, mark as started immediately since they are instant actions
-            // This prevents them from showing as "unstarted" in the UI
-            const now = new Date();
-            priorityKick.started = now;
-            setPunishmentData(priorityKick, 'completed', true);
-            setPunishmentData(priorityKick, 'completedAt', now);
-            setPunishmentData(priorityKick, 'executedOnServer', true);
-            setPunishmentData(priorityKick, 'executedAt', now);
-
-            // Save the updated punishment
-            await player.save({ validateBeforeSave: false });
-
+            // Send kick as unstarted punishment - it will be marked as started when the server acknowledges execution
             pendingPunishments.push({
               minecraftUuid: player.minecraftUuid,
               username: player.usernames[player.usernames.length - 1]?.username || 'Unknown',
               punishment: {
                 type: kickType,
-                started: true, // Mark as started since kicks are instant
+                started: false, // Keep as unstarted until server confirms execution
                 expiration: null, // Kicks are instant
                 description: description,
                 id: priorityKick.id,
