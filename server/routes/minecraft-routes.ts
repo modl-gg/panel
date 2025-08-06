@@ -914,7 +914,8 @@ function getEffectivePunishmentState(punishment: IPunishment): { effectiveActive
   }
   
   // Final check: if there's an expiry date and it's in the past, the punishment is not active
-  if (effectiveExpiry && effectiveExpiry.getTime() <= new Date().getTime()) {
+  // Exception: Kicks (ordinal 0) don't use expiry logic - they're instant actions
+  if (effectiveExpiry && effectiveExpiry.getTime() <= new Date().getTime() && punishment.type_ordinal !== 0) {
     effectiveActive = false;
   }
   
@@ -935,7 +936,12 @@ function isPunishmentValid(punishment: IPunishment): boolean {
     return false;
   }
   
-  // Check if expired
+  // Kicks are always valid if active (they don't have expiry logic)
+  if (punishment.type_ordinal === 0) {
+    return true; // Kicks don't expire
+  }
+  
+  // Check if expired (for bans and mutes)
   if (effectiveExpiry && effectiveExpiry < new Date()) {
     return false;
   }
