@@ -381,7 +381,8 @@ export function setupTicketRoutes(app: Express) {
           content: reply.content,
           timestamp: reply.created,
           staff: reply.staff,
-          closedAs: reply.action
+          closedAs: reply.action,
+          creatorIdentifier: reply.creatorIdentifier // Include creator identifier for verification
         })),
         notes: ticket.notes,
         tags: ticket.tags

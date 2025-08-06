@@ -32,7 +32,7 @@ import { toast } from '@/hooks/use-toast';
 import MarkdownRenderer from '@/components/ui/markdown-renderer';
 import MarkdownHelp from '@/components/ui/markdown-help';
 import { formatDate } from '@/utils/date-utils';
-import { getCreatorIdentifier, isVerifiedCreator, getUnverifiedExplanation } from '@/utils/creator-verification';
+import { getCreatorIdentifier, isVerifiedCreator, getUnverifiedExplanation, shouldShowUnverifiedBadge } from '@/utils/creator-verification';
 
 export interface TicketMessage {
   id: string;
@@ -251,8 +251,8 @@ const PlayerTicket = () => {
           staff: message.staff,
           attachments: message.attachments,
           closedAs: (message.action === "Comment" || message.action === "Reopen") ? undefined : message.action,
+          creatorIdentifier: message.creatorIdentifier, // Include creator identifier for verification
           staffMinecraftUuid: message.staffMinecraftUuid, // Preserve staff Minecraft UUID for avatars
-          creatorIdentifier: message.creatorIdentifier // Include creator identifier for verification
         };
         
         return processed;
@@ -305,7 +305,8 @@ const PlayerTicket = () => {
       content: newReply.trim(),
       timestamp: new Date().toISOString(),
       staff: false,
-      attachments: replyAttachments.map(att => att.url) // Include attachment URLs
+      attachments: replyAttachments.map(att => att.url), // Include attachment URLs
+      creatorIdentifier: getCreatorIdentifier(ticketDetails.id) // Include creator identifier for verification
     };
     
     // Update UI immediately with the new message
@@ -518,7 +519,8 @@ const PlayerTicket = () => {
         id: ticketDetails.id,
         formData: {
           subject: finalSubject,
-          formData: formData
+          formData: formData,
+          creatorIdentifier: getCreatorIdentifier(ticketDetails.id) // Include creator identifier for verification
         }
       });
       
@@ -1072,7 +1074,7 @@ const PlayerTicket = () => {
                           )}
                           {/* Show UNVERIFIED badge for non-staff replies that don't match the original creator */}
                           {message.senderType !== 'staff' && message.senderType !== 'system' &&
-                           !isVerifiedCreator(ticketDetails.id, message.creatorIdentifier) && (
+                           shouldShowUnverifiedBadge(ticketDetails.id, message.creatorIdentifier) && (
                             <Tooltip delayDuration={300}>
                               <TooltipTrigger asChild>
                                 <Badge

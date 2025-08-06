@@ -69,9 +69,24 @@ export function isVerifiedCreator(ticketId: string, replyCreatorId?: string): bo
   if (!replyCreatorId) {
     return false;
   }
-  
+
   const currentCreatorId = getCreatorIdentifier(ticketId);
   return currentCreatorId === replyCreatorId;
+}
+
+/**
+ * Check if we should show the unverified badge for a message
+ * This handles legacy messages that don't have creatorIdentifier
+ */
+export function shouldShowUnverifiedBadge(ticketId: string, replyCreatorId?: string): boolean {
+  // If there's no creatorIdentifier, this might be a legacy message
+  // Don't show unverified badge for legacy messages
+  if (!replyCreatorId) {
+    return false;
+  }
+
+  // If we have a creatorIdentifier, check if it matches the current one
+  return !isVerifiedCreator(ticketId, replyCreatorId);
 }
 
 /**

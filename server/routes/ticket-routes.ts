@@ -346,7 +346,8 @@ router.get('/:id', async (req: Request<{ id: string }>, res: Response) => {
         timestamp: reply.created,
         staff: reply.staff,
         closedAs: reply.action,
-        attachments: reply.attachments || []
+        attachments: reply.attachments || [],
+        creatorIdentifier: reply.creatorIdentifier // Include creator identifier for verification
       })) || [],
       notes: ticket.notes || [],
       tags: ticket.tags || [],

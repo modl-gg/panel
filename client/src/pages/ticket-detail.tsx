@@ -54,7 +54,7 @@ import MarkdownRenderer from '@/components/ui/markdown-renderer';
 import MarkdownHelp from '@/components/ui/markdown-help';
 import { ClickablePlayer } from '@/components/ui/clickable-player';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@modl-gg/shared-web/components/ui/tooltip';
-import { isVerifiedCreator, getUnverifiedExplanation } from '@/utils/creator-verification';
+import { isVerifiedCreator, getUnverifiedExplanation, shouldShowUnverifiedBadge } from '@/utils/creator-verification';
 import PlayerPunishment, { PlayerPunishmentData } from '@/components/ui/player-punishment';
 import MediaUpload from '@/components/MediaUpload';
 import TicketAttachments from '@/components/TicketAttachments';
@@ -1999,7 +1999,7 @@ const TicketDetail = () => {
                               )}
                               {/* Show UNVERIFIED badge for non-staff replies that don't match the original creator */}
                               {message.senderType !== 'staff' && message.senderType !== 'system' &&
-                               !isVerifiedCreator(ticketDetails.id, message.creatorIdentifier) && (
+                               shouldShowUnverifiedBadge(ticketDetails.id, message.creatorIdentifier) && (
                                 <Tooltip delayDuration={300}>
                                   <TooltipTrigger asChild>
                                     <Badge
