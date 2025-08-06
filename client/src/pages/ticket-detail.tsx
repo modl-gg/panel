@@ -304,34 +304,21 @@ const TicketDetail = () => {
   // Add punishment-related hooks
   const applyPunishment = useApplyPunishment();
 
-  // Mapping of punishment type names to their ordinals
+  // Get punishment ordinal from dynamic settings data
   const getPunishmentOrdinal = useMemo(() => (punishmentName: string): number => {
-    const punishmentMap: { [key: string]: number } = {
-      // Administrative punishments
-      'Kick': 0,
-      'Manual Mute': 1,
-      'Manual Ban': 2,
-      'Security Ban': 3,
-      'Linked Ban': 4,
-      'Blacklist': 5,
-      // Social punishments
-      'Chat Abuse': 6,
-      'Anti Social': 7,
-      'Targeting': 8,
-      'Bad Content': 9,
-      'Bad Skin': 10,
-      'Bad Name': 11,
-      // Gameplay punishments
-      'Team Abuse': 12,
-      'Game Abuse': 13,
-      'Systems Abuse': 14,
-      'Account Abuse': 15,
-      'Game Trading': 16,
-      'Cheating': 17
-    };
+    // Use punishment types from settings to find the ordinal
+    if (settingsData?.settings?.punishmentTypes) {
+      const punishmentType = settingsData.settings.punishmentTypes.find(
+        (type: any) => type.name === punishmentName
+      );
+      if (punishmentType) {
+        return punishmentType.ordinal;
+      }
+    }
     
-    return punishmentMap[punishmentName] ?? -1;
-  }, []);
+    // If not found in settings, return -1 to indicate invalid
+    return -1;
+  }, [settingsData]);
 
   // Convert duration to milliseconds
   const convertDurationToMilliseconds = useMemo(() => (duration: { value: number; unit: string }): number => {
@@ -352,31 +339,11 @@ const TicketDetail = () => {
   // Helper function to get punishment types by category
   const punishmentTypesByCategory = useMemo(() => {
     if (!settingsData?.settings?.punishmentTypes) {
+      // Return empty categories if no settings loaded yet
       return {
-        Administrative: [
-          { id: 0, name: 'Kick', category: 'Administrative', isCustomizable: false, ordinal: 0 },
-          { id: 1, name: 'Manual Mute', category: 'Administrative', isCustomizable: false, ordinal: 1 },
-          { id: 2, name: 'Manual Ban', category: 'Administrative', isCustomizable: false, ordinal: 2 },
-          { id: 3, name: 'Security Ban', category: 'Administrative', isCustomizable: false, ordinal: 3 },
-          { id: 4, name: 'Linked Ban', category: 'Administrative', isCustomizable: false, ordinal: 4 },
-          { id: 5, name: 'Blacklist', category: 'Administrative', isCustomizable: false, ordinal: 5 }
-        ],
-        Social: [
-          { id: 6, name: 'Bullying', category: 'Social', isCustomizable: false, ordinal: 6 },
-          { id: 7, name: 'General Toxicity', category: 'Social', isCustomizable: false, ordinal: 7 },
-          { id: 8, name: 'Adult Content', category: 'Social', isCustomizable: false, ordinal: 8 },
-          { id: 9, name: 'Spam', category: 'Social', isCustomizable: false, ordinal: 9 },
-          { id: 10, name: 'Advertising', category: 'Social', isCustomizable: false, ordinal: 10 },
-          { id: 11, name: 'Bad Name', category: 'Social', isCustomizable: false, ordinal: 11 }
-        ],
-        Gameplay: [
-          { id: 12, name: 'Team Abuse', category: 'Gameplay', isCustomizable: false, ordinal: 12 },
-          { id: 13, name: 'Game Abuse', category: 'Gameplay', isCustomizable: false, ordinal: 13 },
-          { id: 14, name: 'Systems Abuse', category: 'Gameplay', isCustomizable: false, ordinal: 14 },
-          { id: 15, name: 'Account Abuse', category: 'Gameplay', isCustomizable: false, ordinal: 15 },
-          { id: 16, name: 'Game Trading', category: 'Gameplay', isCustomizable: false, ordinal: 16 },
-          { id: 17, name: 'Cheating', category: 'Gameplay', isCustomizable: false, ordinal: 17 }
-        ]
+        Administrative: [],
+        Social: [],
+        Gameplay: []
       };
     }
     
@@ -387,11 +354,11 @@ const TicketDetail = () => {
       Gameplay: []
     };
     
-    settingsData.settings.punishmentTypes.forEach((type: any, index: number) => {
+    settingsData.settings.punishmentTypes.forEach((type: any) => {
       const punishmentType = {
         ...type,
-        id: index,
-        ordinal: index
+        id: type.id || type.ordinal, // Use the actual ID from settings
+        ordinal: type.ordinal // Use the actual ordinal from settings
       };
       
       if (categories[type.category]) {

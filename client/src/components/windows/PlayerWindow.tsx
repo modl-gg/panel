@@ -169,33 +169,22 @@ const PlayerWindow = ({ playerId, isOpen, onClose, initialPosition }: PlayerWind
   const applyPunishment = useApplyPunishment();
   const modifyPunishment = useModifyPunishment();
   const addPunishmentNote = useAddPunishmentNote();
-  // Mapping of punishment type names to their ordinals
+  // Get punishment ordinal from actual punishment types data
   const getPunishmentOrdinal = (punishmentName: string): number => {
-    const punishmentMap: { [key: string]: number } = {
-      // Administrative punishments
-      'Kick': 0,
-      'Manual Mute': 1,
-      'Manual Ban': 2,
-      'Security Ban': 3,
-      'Linked Ban': 4,
-      'Blacklist': 5,
-      // Social punishments
-      'Chat Abuse': 6,
-      'Anti Social': 7,
-      'Targeting': 8,
-      'Bad Content': 9,
-      'Bad Skin': 10,
-      'Bad Name': 11,
-      // Gameplay punishments
-      'Team Abuse': 12,
-      'Game Abuse': 13,
-      'Systems Abuse': 14,
-      'Account Abuse': 15,
-      'Game Trading': 16,
-      'Cheating': 17
-    };
+    // First try to find it in the punishment types from settings
+    const allTypes = [
+      ...punishmentTypesByCategory.Administrative,
+      ...punishmentTypesByCategory.Social,
+      ...punishmentTypesByCategory.Gameplay
+    ];
     
-    return punishmentMap[punishmentName] ?? -1;
+    const punishmentType = allTypes.find(type => type.name === punishmentName);
+    if (punishmentType) {
+      return punishmentType.ordinal;
+    }
+    
+    // If not found in settings, return -1 to indicate invalid
+    return -1;
   };
 
   // Convert duration to milliseconds
