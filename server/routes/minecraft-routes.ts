@@ -926,7 +926,7 @@ function getEffectivePunishmentState(punishment: IPunishment): { effectiveActive
  * Utility function to check if a punishment is valid for execution (ignores started status)
  */
 function isPunishmentValid(punishment: IPunishment): boolean {
-  if (!punishment.type_ordinal) {
+  if (punishment.type_ordinal === undefined || punishment.type_ordinal === null) {
     console.log(`[KICK DEBUG] Punishment invalid - missing type_ordinal: ${punishment.id}`);
     return false;
   }
