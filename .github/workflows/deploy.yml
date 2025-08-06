@@ -33,9 +33,7 @@ jobs:
           cd /home/modl/modl-panel
           git stash
           git pull origin main
-          if git diff --name-only HEAD@{1} HEAD | grep -q "package.*\.json"; then
-            npm ci
-          fi
+          npm i
           npm run build
           pm2 reload modl-panel --wait-ready
           if pm2 describe modl-panel | grep -q "online"; then
