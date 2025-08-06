@@ -162,7 +162,14 @@ const PlayerWindow = ({ playerId, isOpen, onClose, initialPosition }: PlayerWind
   const [avatarError, setAvatarError] = useState(false);
   const [avatarLoading, setAvatarLoading] = useState(true);
   const [isApplyingPunishment, setIsApplyingPunishment] = useState(false);
-  const [expandedPunishments, setExpandedPunishments] = useState<Set<string>>(new Set());    // Get current authenticated user
+  const [expandedPunishments, setExpandedPunishments] = useState<Set<string>>(new Set());
+  
+  // Helper function to map severity levels for display (converts 'low' to 'lenient')
+  const mapSeverityForDisplay = (severity: string): string => {
+    return severity.toLowerCase() === 'low' ? 'lenient' : severity;
+  };
+
+  // Get current authenticated user
   const { user } = useAuth();
   const [, setLocation] = useLocation();
     // Initialize the applyPunishment mutation hook
@@ -1569,7 +1576,7 @@ const PlayerWindow = ({ playerId, isOpen, onClose, initialPosition }: PlayerWind
                                 'bg-orange-100 text-orange-800 border-orange-300' :
                                 'bg-red-100 text-red-800 border-red-300'
                             }`}>
-                              {warning.severity}
+                              {mapSeverityForDisplay(warning.severity)}
                             </Badge>
                           )}
                           {isValidBadgeValue(warning.status) && (
