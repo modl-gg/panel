@@ -2895,15 +2895,14 @@ export function setupMinecraftRoutes(app: Express): void {
 
       // Validate punishment type if expectedType is provided
       if (expectedType) {
-        const typeOrdinal = punishment.type_ordinal;
+        // Load punishment type configuration
+        const typeConfig = await loadPunishmentTypeConfig(serverDbConnection);
         let isCorrectType = false;
         
         if (expectedType === 'ban') {
-          // Ban: ordinals 2, 3, 4, 5 and custom (not 0=kick, 1=mute)
-          isCorrectType = typeOrdinal !== 0 && typeOrdinal !== 1;
+          isCorrectType = isBanPunishment(punishment, typeConfig);
         } else if (expectedType === 'mute') {
-          // Mute: ordinal 1
-          isCorrectType = typeOrdinal === 1;
+          isCorrectType = isMutePunishment(punishment, typeConfig);
         }
         
         if (!isCorrectType) {
@@ -3021,6 +3020,9 @@ export function setupMinecraftRoutes(app: Express): void {
       }
 
 
+      // Load punishment type configuration
+      const typeConfig = await loadPunishmentTypeConfig(serverDbConnection);
+
       // Find active punishment of the specified type
       let activePunishment = player.punishments.find(p => {
         // Step 1: Check if explicitly marked as inactive in data
@@ -3052,16 +3054,13 @@ export function setupMinecraftRoutes(app: Express): void {
         }
         // Unstarted temporary punishments are also valid for pardoning
         
-        // Step 4: Check if it matches the requested punishment type
-        const typeOrdinal = p.type_ordinal;
+        // Step 4: Check if it matches the requested punishment type using dynamic type system
         let matchesType = false;
         
         if (punishmentType === 'ban') {
-          // Ban: ordinals 2, 3, 4, 5 and custom (not 0=kick, 1=mute)
-          matchesType = typeOrdinal !== 0 && typeOrdinal !== 1;
+          matchesType = isBanPunishment(p, typeConfig);
         } else if (punishmentType === 'mute') {
-          // Mute: ordinal 1
-          matchesType = typeOrdinal === 1;
+          matchesType = isMutePunishment(p, typeConfig);
         }
         
         return matchesType;
