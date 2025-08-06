@@ -1733,8 +1733,14 @@ const Settings = () => {
         const errorData = await response.json().catch(() => ({ error: 'Unknown error' }));
         console.error('Settings save failed:', response.status, errorData);
         
-        // Only show error toast if it's not a permissions issue that still saves
-        if (response.status !== 403) {
+        // Show permission toast for 403 errors with the specific error message
+        if (response.status === 403) {
+          toast({
+            title: "Permission Denied",
+            description: errorData.error || errorData.message || 'You do not have permission to modify these settings.',
+            variant: "destructive"
+          });
+        } else {
           toast({
             title: "Error",
             description: `Failed to save settings: ${errorData.error || response.statusText}`,
@@ -1813,7 +1819,7 @@ const Settings = () => {
     };  }, [
     punishmentTypes, statusThresholds, serverDisplayName, homepageIconUrl, panelIconUrl,
     bugReportTags, playerReportTags, appealTags, ticketForms, quickResponsesState, mongodbUri, has2FA, hasPasskey, 
-    profileUsername, // Add profile settings to auto-save
+    // profileUsername removed - it has its own separate save function
     isLoadingSettings, isFetchingSettings, saveSettings
   ]);
 
@@ -1957,12 +1963,20 @@ const Settings = () => {
         const errorData = await response.json().catch(() => ({ message: 'Unknown error' }));
         console.error('Profile auto-save failed:', errorData.message);
         
-        // Show error toast
-        toast({
-          title: "Save Failed",
-          description: `Failed to save profile: ${errorData.message}`,
-          variant: "destructive",
-        });
+        // Show specific error toast based on status code
+        if (response.status === 403) {
+          toast({
+            title: "Permission Denied",
+            description: errorData.error || errorData.message || 'You do not have permission to modify your profile.',
+            variant: "destructive",
+          });
+        } else {
+          toast({
+            title: "Save Failed",
+            description: `Failed to save profile: ${errorData.error || errorData.message || 'Unknown error'}`,
+            variant: "destructive",
+          });
+        }
       }
     } catch (error) {
       console.error('Profile auto-save error:', error);
@@ -2019,11 +2033,17 @@ const Settings = () => {
           const errorData = await response.json().catch(() => ({ message: 'Unknown error' }));
           console.error('Profile auto-save failed:', response.status, errorData);
           
-          // Only show error toast if it's not a CSRF issue that might still save
-          if (response.status !== 403) {
+          // Show specific error toast based on status code
+          if (response.status === 403) {
+            toast({
+              title: "Permission Denied",
+              description: errorData.error || errorData.message || 'You do not have permission to modify your profile.',
+              variant: "destructive",
+            });
+          } else {
             toast({
               title: "Save Failed",
-              description: `Failed to save profile: ${errorData.message}`,
+              description: `Failed to save profile: ${errorData.error || errorData.message || 'Unknown error'}`,
               variant: "destructive",
             });
           }
