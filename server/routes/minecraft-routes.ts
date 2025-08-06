@@ -467,7 +467,8 @@ function calculateExpiration(punishment: IPunishment): number | null {
     return null; // No duration specified
   }
   
-  if (duration === -1) {
+  // Check for permanent punishments (duration = 0 or -1)
+  if (duration === 0 || duration === '0' || duration === -1) {
     return null; // Permanent punishment
   }
   
@@ -1231,7 +1232,7 @@ export function setupMinecraftRoutes(app: Express): void {
         
         // Fallback to original duration logic for punishments without modifications
         const duration = getPunishmentData(punishment, 'duration');
-        if (duration === -1 || duration === undefined) return true; // Permanent punishment
+        if (duration === 0 || duration === '0' || duration === -1 || duration === undefined) return true; // Permanent punishment
         
         const startTime = new Date(punishment.started).getTime();
         const endTime = startTime + Number(duration);
@@ -1930,7 +1931,7 @@ export function setupMinecraftRoutes(app: Express): void {
             }
             
             const duration = getPunishmentData(p, 'duration');
-            if (duration === -1 || duration === undefined) return true;
+            if (duration === 0 || duration === '0' || duration === -1 || duration === undefined) return true;
             
             const startTime = new Date(p.started).getTime();
             const endTime = startTime + Number(duration);
@@ -1949,7 +1950,7 @@ export function setupMinecraftRoutes(app: Express): void {
             }
             
             const duration = getPunishmentData(p, 'duration');
-            if (duration === -1 || duration === undefined) return true;
+            if (duration === 0 || duration === '0' || duration === -1 || duration === undefined) return true;
             
             const startTime = new Date(p.started).getTime();
             const endTime = startTime + Number(duration);
@@ -3050,7 +3051,7 @@ export function setupMinecraftRoutes(app: Express): void {
         // Step 3: Check duration and expiration
         const isStarted = !!p.started;
         const duration = p.data ? p.data.get('duration') : undefined;
-        if (duration === -1 || duration === undefined) {
+        if (duration === 0 || duration === '0' || duration === -1 || duration === undefined) {
           // Permanent punishment - it's valid for pardoning
         } else if (isStarted) {
           // Temporary punishment that's started - check if expired

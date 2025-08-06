@@ -148,7 +148,20 @@ router.post('/verify-email-code', authRateLimit, async (req: Request, res: Respo
         req.session.email = email;
         // @ts-ignore
         req.session.role = 'Super Admin';
-        const username = email.split('@')[0] || 'admin';        // @ts-ignore
+        
+        // Try to fetch the actual Super Admin username from the database
+        let username = email.split('@')[0] || 'admin'; // Default fallback
+        try {
+          const StaffModel = req.serverDbConnection!.model('Staff');
+          const superAdmin = await StaffModel.findOne({ email: email });
+          if (superAdmin && superAdmin.username) {
+            username = superAdmin.username;
+          }
+        } catch (error) {
+          console.log('Could not fetch Super Admin username from database, using email prefix');
+        }
+        
+        // @ts-ignore
         req.session.username = username;
         // @ts-ignore
         req.session.userId = email;
@@ -532,10 +545,25 @@ router.get('/session', async (req: Request, res: Response) => {
     // If this is the server admin (identified by admin email), return admin data
     const adminEmail = req.modlServer?.adminEmail?.toLowerCase();
     if (adminEmail && session.userId?.toLowerCase() === adminEmail) {
+      // Try to fetch the actual Super Admin username from the database
+      let username = session.username;
+      try {
+        const StaffModel = req.serverDbConnection!.model('Staff');
+        const superAdmin = await StaffModel.findOne({ email: session.userId });
+        if (superAdmin && superAdmin.username) {
+          username = superAdmin.username;
+          // Update session with correct username
+          session.username = username;
+          await req.session.save();
+        }
+      } catch (error) {
+        // Use session username as fallback
+      }
+      
       const user = {
         _id: session.userId,
         email: session.email,
-        username: session.username,
+        username: username,
         role: session.role
       };
       
