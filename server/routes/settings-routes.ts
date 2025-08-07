@@ -903,14 +903,14 @@ export async function createDefaultSettings(dbConnection: Connection, serverName
           enableAutomatedActions: false,
           strictnessLevel: 'standard',
           aiPunishmentConfigs: {
-            "1753245662827": {
-              id: "1753245662827",
+            "6": {
+              id: "6",
               name: "Chat Abuse",
               aiDescription: "Chat abuse is the act of spamming, excessive profanity, abusive language, inappropriate topics or jokes, and misleading information",
               enabled: true
             },
-            "1753245774990": {
-              id: "1753245774990",
+            "7": {
+              id: "7",
               name: "Anti Social",
               aiDescription: "Anti social is the act of harassing, threatening, black-mailing, or otherwise abusing another player or group of players. This includes bigotry and other forms of discrimination against protected classes.",
               enabled: true
@@ -1365,20 +1365,30 @@ export async function updateSettings(dbConnection: Connection, requestBody: any)
   }
   
   if (requestBody.statusThresholds !== undefined) {
+    // Get existing status thresholds and merge with new data
+    const existingDoc = await models.Settings.findOne({ type: 'statusThresholds' });
+    const existingData = existingDoc?.data || {};
+    const mergedData = { ...existingData, ...requestBody.statusThresholds };
+
     updates.push(
       models.Settings.findOneAndUpdate(
         { type: 'statusThresholds' },
-        { type: 'statusThresholds', data: requestBody.statusThresholds },
+        { type: 'statusThresholds', data: mergedData },
         { upsert: true, new: true }
       )
     );
   }
-  
+
   if (requestBody.system !== undefined) {
+    // Get existing system settings and merge with new data
+    const existingDoc = await models.Settings.findOne({ type: 'systemSettings' });
+    const existingData = existingDoc?.data || {};
+    const mergedData = { ...existingData, ...requestBody.system };
+
     updates.push(
       models.Settings.findOneAndUpdate(
         { type: 'systemSettings' },
-        { type: 'systemSettings', data: requestBody.system },
+        { type: 'systemSettings', data: mergedData },
         { upsert: true, new: true }
       )
     );
@@ -1396,40 +1406,77 @@ export async function updateSettings(dbConnection: Connection, requestBody: any)
   
   
   if (requestBody.general !== undefined) {
+    // Get existing general settings and merge with new data
+    const existingDoc = await models.Settings.findOne({ type: 'general' });
+    const existingData = existingDoc?.data || {};
+    const mergedData = { ...existingData, ...requestBody.general };
+
     updates.push(
       models.Settings.findOneAndUpdate(
         { type: 'general' },
-        { type: 'general', data: requestBody.general },
+        { type: 'general', data: mergedData },
         { upsert: true, new: true }
       )
     );
   }
-  
+
   if (requestBody.quickResponses !== undefined) {
+    // Get existing quick responses and merge with new data
+    const existingDoc = await models.Settings.findOne({ type: 'quickResponses' });
+    const existingData = existingDoc?.data || {};
+    const mergedData = { ...existingData, ...requestBody.quickResponses };
+
     updates.push(
       models.Settings.findOneAndUpdate(
         { type: 'quickResponses' },
-        { type: 'quickResponses', data: requestBody.quickResponses },
+        { type: 'quickResponses', data: mergedData },
         { upsert: true, new: true }
       )
     );
   }
-  
+
   if (requestBody.ticketForms !== undefined) {
+    // Get existing ticket forms and merge with new data
+    const existingDoc = await models.Settings.findOne({ type: 'ticketForms' });
+    const existingData = existingDoc?.data || {};
+    const mergedData = { ...existingData, ...requestBody.ticketForms };
+
     updates.push(
       models.Settings.findOneAndUpdate(
         { type: 'ticketForms' },
-        { type: 'ticketForms', data: requestBody.ticketForms },
+        { type: 'ticketForms', data: mergedData },
         { upsert: true, new: true }
       )
     );
   }
   
   if (requestBody.aiModerationSettings !== undefined) {
+    // Get existing AI moderation settings and merge with new data to preserve aiPunishmentConfigs
+    const existingDoc = await models.Settings.findOne({ type: 'aiModerationSettings' });
+    const existingData = existingDoc?.data || {
+      enableAIReview: false,
+      enableAutomatedActions: false,
+      strictnessLevel: 'standard',
+      aiPunishmentConfigs: {}
+    };
+
+    // Deep merge to preserve nested objects like aiPunishmentConfigs
+    const mergedData = {
+      ...existingData,
+      ...requestBody.aiModerationSettings,
+      // Ensure aiPunishmentConfigs is preserved if not explicitly provided
+      aiPunishmentConfigs: requestBody.aiModerationSettings.aiPunishmentConfigs !== undefined
+        ? requestBody.aiModerationSettings.aiPunishmentConfigs
+        : existingData.aiPunishmentConfigs || {}
+    };
+
+    console.log('[Settings] Updating AI moderation settings, preserving existing aiPunishmentConfigs:',
+      Object.keys(existingData.aiPunishmentConfigs || {}));
+
     updates.push(
       models.Settings.findOneAndUpdate(
         { type: 'aiModerationSettings' },
-        { type: 'aiModerationSettings', data: requestBody.aiModerationSettings },
+        { type: 'aiModerationSettings', data: mergedData },
         { upsert: true, new: true }
       )
     );
@@ -1466,6 +1513,86 @@ export async function updateSettings(dbConnection: Connection, requestBody: any)
   }
 }
 
+// Function to migrate AI punishment configs to use ordinal-based keys
+export async function migrateAIPunishmentConfigKeys(dbConnection: Connection): Promise<void> {
+  const models = getSettingsModels(dbConnection);
+
+  try {
+    const [punishmentTypesDoc, aiModerationDoc] = await Promise.all([
+      models.Settings.findOne({ type: 'punishmentTypes' }),
+      models.Settings.findOne({ type: 'aiModerationSettings' })
+    ]);
+
+    if (!punishmentTypesDoc || !aiModerationDoc) {
+      return;
+    }
+
+    const allPunishmentTypes = punishmentTypesDoc.data || [];
+    const aiSettings = aiModerationDoc.data || {
+      enableAutomatedActions: true,
+      strictnessLevel: 'standard',
+      aiPunishmentConfigs: {}
+    };
+
+    if (!aiSettings.aiPunishmentConfigs) {
+      return;
+    }
+
+    // Create a mapping from punishment type names to ordinals
+    const nameToOrdinalMap = new Map<string, number>();
+    allPunishmentTypes.forEach((pt: IPunishmentType) => {
+      nameToOrdinalMap.set(pt.name, pt.ordinal);
+    });
+
+    const currentConfigs = aiSettings.aiPunishmentConfigs;
+    const migratedConfigs: Record<string, any> = {};
+    let needsMigration = false;
+
+    // Check each existing config
+    Object.entries(currentConfigs).forEach(([key, config]: [string, any]) => {
+      const ordinal = nameToOrdinalMap.get(config.name);
+
+      if (ordinal !== undefined) {
+        const ordinalKey = ordinal.toString();
+
+        // If the key is not already the ordinal, migrate it
+        if (key !== ordinalKey) {
+          needsMigration = true;
+          migratedConfigs[ordinalKey] = {
+            ...config,
+            id: ordinalKey
+          };
+          console.log(`[Settings] Migrating AI punishment config "${config.name}" from key "${key}" to "${ordinalKey}"`);
+        } else {
+          // Keep existing correctly-keyed config
+          migratedConfigs[key] = config;
+        }
+      } else {
+        console.warn(`[Settings] Could not find punishment type for AI config "${config.name}" - removing orphaned config`);
+        needsMigration = true;
+      }
+    });
+
+    // Save migrated configs if needed
+    if (needsMigration) {
+      await models.Settings.findOneAndUpdate(
+        { type: 'aiModerationSettings' },
+        {
+          type: 'aiModerationSettings',
+          data: {
+            ...aiSettings,
+            aiPunishmentConfigs: migratedConfigs
+          }
+        },
+        { upsert: true, new: true }
+      );
+      console.log('[Settings] AI punishment config migration completed');
+    }
+  } catch (error) {
+    console.error('[Settings] Error migrating AI punishment config keys:', error);
+  }
+}
+
 // Function to cleanup orphaned AI punishment configs in separate documents structure
 export async function cleanupOrphanedAIPunishmentConfigs(dbConnection: Connection): Promise<void> {
   const models = getSettingsModels(dbConnection);
@@ -1491,13 +1618,12 @@ export async function cleanupOrphanedAIPunishmentConfigs(dbConnection: Connectio
       return;
     }
 
-    // Get valid punishment type IDs
-    const validPunishmentTypeIds = new Set(allPunishmentTypes.map((pt: IPunishmentType) => pt.id));
-    
+    // Get valid punishment type ordinals (AI configs are keyed by ordinal)
+    const validPunishmentTypeOrdinals = new Set(allPunishmentTypes.map((pt: IPunishmentType) => pt.ordinal.toString()));
+
     // Find orphaned AI configs
     const orphanedConfigIds = Object.keys(aiSettings.aiPunishmentConfigs)
-      .map(id => parseInt(id))
-      .filter(id => !validPunishmentTypeIds.has(id));
+      .filter(id => !validPunishmentTypeOrdinals.has(id));
 
     if (orphanedConfigIds.length > 0) {
       // Remove orphaned configs
