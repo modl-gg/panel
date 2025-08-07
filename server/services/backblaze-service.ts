@@ -209,10 +209,8 @@ export async function uploadMedia(options: MediaUploadOptions): Promise<MediaUpl
     await s3Client.send(uploadCommand);
 
     // Generate public URL using CloudFlare CDN domain (if configured) or Backblaze domain
-    const cdnDomain = process.env.CLOUDFLARE_CDN_DOMAIN;
-    const url = cdnDomain 
-      ? `https://${cdnDomain}/${key}`
-      : `https://${BUCKET_NAME}.s3.us-east-005.backblazeb2.com/${key}`;
+    const cdnDomain = process.env.CLOUDFLARE_CDN_DOMAIN || 'cdn.modl.gg';
+    const url = `https://${cdnDomain}/${key}`;
 
     return {
       success: true,
