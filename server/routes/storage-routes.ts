@@ -13,9 +13,7 @@ let S3Client: any;
 let ListObjectsV2Command: any;
 let PutObjectCommand: any;
 let DeleteObjectCommand: any;
-let GetObjectCommand: any;
 let HeadObjectCommand: any;
-let getSignedUrl: any;
 let s3Client: any;
 
 // Initialize AWS SDK components
@@ -23,16 +21,13 @@ async function initializeAwsSdk() {
   if (S3Client) return; // Already initialized
   
   try {
-    const { S3Client: S3, ListObjectsV2Command: List, PutObjectCommand: Put, DeleteObjectCommand: Delete, GetObjectCommand: Get, HeadObjectCommand: Head } = await import('@aws-sdk/client-s3');
-    const { getSignedUrl: signUrl } = await import('@aws-sdk/s3-request-presigner');
-    
+    const { S3Client: S3, ListObjectsV2Command: List, PutObjectCommand: Put, DeleteObjectCommand: Delete, HeadObjectCommand: Head } = await import('@aws-sdk/client-s3');
+
     S3Client = S3;
     ListObjectsV2Command = List;
     PutObjectCommand = Put;
     DeleteObjectCommand = Delete;
-    GetObjectCommand = Get;
     HeadObjectCommand = Head;
-    getSignedUrl = signUrl;
     
     s3Client = new S3Client({
       region: BACKBLAZE_REGION,
@@ -148,12 +143,17 @@ router.get('/files', isAuthenticated, async (req, res) => {
     const command = new ListObjectsV2Command(listParams);
     const response = await s3Client.send(command);
     
-    const files = (response.Contents || []).map((obj: any) => ({
-      key: obj.Key,
-      size: obj.Size,
-      lastModified: obj.LastModified,
-      url: `https://${BUCKET_NAME}.s3.us-east-005.backblazeb2.com/${obj.Key}`,
-    }));
+    const files = (response.Contents || []).map((obj: any) => {
+      const cdnDomain = process.env.CLOUDFLARE_CDN_DOMAIN || 'cdn.modl.gg';
+      const url = `https://${cdnDomain}/${obj.Key}`;
+      
+      return {
+        key: obj.Key,
+        size: obj.Size,
+        lastModified: obj.LastModified,
+        url,
+      };
+    });
     
     res.json({
       files,
@@ -263,7 +263,7 @@ router.get('/config', isAuthenticated, async (req, res) => {
     res.json({
       configured: hasCredentials,
       bucket: BUCKET_NAME,
-      endpoint: BACKBLAZE_ENDPOINT,
+      endpoint: "https://cdn.modl.gg",
     });
   } catch (error) {
     console.error('Error getting storage config:', error);
@@ -343,7 +343,7 @@ router.get('/test', isAuthenticated, async (req, res) => {
     res.json({ 
       success: true, 
       message: 'Storage connection successful',
-      endpoint: BACKBLAZE_ENDPOINT,
+      endpoint: "https://cdn.modl.gg",
       bucket: BUCKET_NAME,
     });
   } catch (error) {
@@ -375,15 +375,10 @@ router.get('/download/:key(*)', isAuthenticated, async (req, res) => {
       return res.status(500).json({ error: 'Backblaze B2 storage not configured' });
     }
 
-    await initializeAwsSdk();
-    
-    const command = new GetObjectCommand({
-      Bucket: BUCKET_NAME,
-      Key: fileKey,
-    });
-    
-    const url = await getSignedUrl(s3Client, command, { expiresIn: 3600 }); // 1 hour
-    
+    // Generate CDN URL directly instead of presigned URL
+    const cdnDomain = process.env.CLOUDFLARE_CDN_DOMAIN || 'cdn.modl.gg';
+    const url = `https://${cdnDomain}/${fileKey}`;
+
     res.json({ url });
   } catch (error) {
     console.error('Error generating download URL:', error);
