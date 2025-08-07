@@ -1,7 +1,35 @@
 import { Connection } from 'mongoose';
 // Import shared core functions and types
-export * from '../../shared/role-hierarchy-core';
-import { RoleHierarchyInfo, buildRoleHierarchy } from '../../shared/role-hierarchy-core';
+import { 
+  RoleHierarchyInfo, 
+  buildRoleHierarchy,
+  hasHigherOrEqualAuthority,
+  hasHigherAuthority,
+  canModifyRole as canModifyRoleHierarchy,
+  canRemoveUser as canRemoveUserHierarchy,
+  canAssignMinecraftPlayer as canAssignMinecraftPlayerHierarchy,
+  isSuperAdminRole,
+  hasPermission,
+  getUserPermissions,
+  getUserRoleOrder,
+  canReorderRoles
+} from '../../shared/role-hierarchy-core';
+
+// Re-export shared functions explicitly
+export {
+  RoleHierarchyInfo,
+  buildRoleHierarchy,
+  hasHigherOrEqualAuthority,
+  hasHigherAuthority,
+  canModifyRoleHierarchy as canModifyRole,
+  canRemoveUserHierarchy as canRemoveUser,
+  canAssignMinecraftPlayerHierarchy as canAssignMinecraftPlayer,
+  isSuperAdminRole,
+  hasPermission,
+  getUserPermissions,
+  getUserRoleOrder,
+  canReorderRoles
+};
 
 export interface RoleHierarchyCache {
   roles: Map<string, RoleHierarchyInfo>;
@@ -55,20 +83,13 @@ export async function getRoleHierarchy(dbConnection: Connection, serverName?: st
     return roleMap;
   } catch (error) {
     console.error('Error fetching role hierarchy:', error);
-    
-    // Return cached data if available, even if expired
-    const cached = roleHierarchyCache.get(cacheKey);
-    if (cached) {
-      return cached.roles;
-    }
-    
-    // Fallback to empty map
+    // Return empty hierarchy on error
     return new Map();
   }
 }
 
 /**
- * Clear role hierarchy cache for a specific server or all servers
+ * Clear role hierarchy cache (useful when roles are updated)
  */
 export function clearRoleHierarchyCache(serverName?: string): void {
   if (serverName) {
@@ -77,106 +98,3 @@ export function clearRoleHierarchyCache(serverName?: string): void {
     roleHierarchyCache.clear();
   }
 }
-
-
-
-
-/**
- * Check if user can modify another user's role based on hierarchy
- */
-export function canModifyRole(
-  currentUserRole: string,
-  targetUserRole: string,
-  newRole: string,
-  roleHierarchy: Map<string, RoleHierarchyInfo>
-): boolean {
-  // Super Admin role cannot be modified
-  if (isSuperAdminRole(targetUserRole)) {
-    return false;
-  }
-  
-  // Cannot modify your own role
-  if (currentUserRole === targetUserRole) {
-    return false;
-  }
-  
-  // Must have higher authority than both current and new target roles
-  return (
-    hasHigherAuthority(currentUserRole, targetUserRole, roleHierarchy) &&
-    hasHigherAuthority(currentUserRole, newRole, roleHierarchy)
-  );
-}
-
-/**
- * Check if user can remove another user based on hierarchy
- */
-export function canRemoveUser(
-  currentUserRole: string,
-  targetUserRole: string,
-  roleHierarchy: Map<string, RoleHierarchyInfo>
-): boolean {
-  // Cannot remove Super Admin
-  if (isSuperAdminRole(targetUserRole)) {
-    return false;
-  }
-  
-  // Cannot remove yourself
-  if (currentUserRole === targetUserRole) {
-    return false;
-  }
-  
-  // Must have higher authority than target
-  return hasHigherAuthority(currentUserRole, targetUserRole, roleHierarchy);
-}
-
-/**
- * Check if user can assign/modify minecraft player for another user
- */
-export function canAssignMinecraftPlayer(
-  currentUserRole: string,
-  targetUserRole: string,
-  currentUserId: string,
-  targetUserId: string,
-  roleHierarchy: Map<string, RoleHierarchyInfo>
-): boolean {
-  // Super Admin can change anyone's minecraft player
-  if (isSuperAdminRole(currentUserRole)) {
-    return true;
-  }
-  
-  // For other roles, they can only change their own
-  return currentUserId === targetUserId;
-}
-
-/**
- * Check if user can reorder roles based on hierarchy
- */
-export function canReorderRoles(
-  currentUserRole: string,
-  rolesToReorder: string[],
-  roleHierarchy: Map<string, RoleHierarchyInfo>
-): { canReorder: boolean; invalidRoles: string[] } {
-  const invalidRoles: string[] = [];
-  
-  // Super Admin can reorder all non-Super Admin roles
-  if (isSuperAdminRole(currentUserRole)) {
-    for (const roleName of rolesToReorder) {
-      if (isSuperAdminRole(roleName)) {
-        invalidRoles.push(roleName);
-      }
-    }
-    return { canReorder: invalidRoles.length === 0, invalidRoles };
-  }
-  
-  // Non-Super Admins can only reorder roles below their authority
-  for (const roleName of rolesToReorder) {
-    if (isSuperAdminRole(roleName) || !hasHigherAuthority(currentUserRole, roleName, roleHierarchy)) {
-      invalidRoles.push(roleName);
-    }
-  }
-  
-  return { canReorder: invalidRoles.length === 0, invalidRoles };
-}
-
-
-
