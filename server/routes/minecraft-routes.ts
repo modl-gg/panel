@@ -2429,7 +2429,7 @@ export function setupMinecraftRoutes(app: Express): void {
         staffDescription: pt.staffDescription,
         playerDescription: pt.playerDescription,
         permanentUntilSkinChange: pt.permanentUntilSkinChange,
-        permanentUntilNameChange: pt.permanentUntilNameChange
+        permanentUntilNameChange: pt.permanentUntilUsernameChange
       }));
       
       return res.json({ status: 200, data: result });
