@@ -49,6 +49,7 @@ interface CategoryItemProps {
   deleteArticleMutation: any;
   handleDropCategory: () => void;
   reorderArticlesMutation: any; // Add mutation for reordering articles
+  fetchArticleForEditing: (categoryId: string, articleId: string) => Promise<void>;
 }
 
 const CategoryItem: React.FC<CategoryItemProps> = ({
@@ -70,7 +71,8 @@ const CategoryItem: React.FC<CategoryItemProps> = ({
   updateArticleMutation: uam, // This is the global update mutation
   deleteArticleMutation: dam, // This is the global delete mutation
   handleDropCategory,
-  reorderArticlesMutation
+  reorderArticlesMutation,
+  fetchArticleForEditing
 }) => {
   const ref = React.useRef<HTMLDivElement>(null);
   const [displayedCategoryArticles, setDisplayedCategoryArticles] = useState<KnowledgebaseArticle[]>([]);
@@ -185,7 +187,7 @@ const CategoryItem: React.FC<CategoryItemProps> = ({
                 index={articleIndex}
                 categoryId={category.id}
                 moveArticle={moveArticleInCategory}
-                onEdit={(art) => setEditingArticle({...art, categoryId: category.id})} // Uses setEditingArticle from CategoryItem props
+                onEdit={(art) => fetchArticleForEditing(art.categoryId || category.id, art.id)} // Fetch full article content for editing
                 onDelete={handleDeleteArticle} // Uses handleDeleteArticle from CategoryItem props
                 onDropArticle={handleDropArticleInCategory}
               />
@@ -491,6 +493,22 @@ const KnowledgebaseSettings: React.FC = () => {
     }
   };
 
+  // Function to fetch full article content for editing
+  const fetchArticleForEditing = async (categoryId: string, articleId: string) => {
+    try {
+      const { csrfFetch } = await import('@/utils/csrf');
+      const response = await csrfFetch(`/api/panel/knowledgebase/categories/${categoryId}/articles/${articleId}`);
+      if (!response.ok) {
+        throw new Error('Failed to fetch article details');
+      }
+      const articleData = await response.json();
+      setEditingArticle(articleData);
+    } catch (error) {
+      console.error('Error fetching article for editing:', error);
+      toast({ title: "Error", description: "Failed to load article for editing.", variant: "destructive" });
+    }
+  };
+
   const handleUpdateArticle = () => {
     if (editingArticle && editingArticle.title.trim() && editingArticle.content.trim()) {
       updateArticleMutation.mutate({
@@ -581,6 +599,7 @@ const KnowledgebaseSettings: React.FC = () => {
                   deleteArticleMutation={deleteArticleMutation} // Global delete for articles
                   handleDropCategory={handleDropCategory}
                   reorderArticlesMutation={reorderArticlesMutation} // Pass down the reorder mutation
+                  fetchArticleForEditing={fetchArticleForEditing}
                 />
               ))}
             </div>
@@ -616,7 +635,12 @@ const KnowledgebaseSettings: React.FC = () => {
                     </div>
                     <div className="flex justify-end space-x-2">
                         <Button variant="outline" onClick={() => setEditingArticle(null)}>Cancel</Button>
-                        <Button onClick={handleUpdateArticle} disabled={updateArticleMutation.isPending}>Save Article</Button>
+                        <Button
+                            onClick={handleUpdateArticle}
+                            disabled={updateArticleMutation.isPending || !editingArticle?.title.trim() || !editingArticle?.content.trim()}
+                        >
+                            Save Article
+                        </Button>
                     </div>
                 </CardContent>
             </Card>
@@ -651,7 +675,10 @@ const KnowledgebaseSettings: React.FC = () => {
               </div>
               <div className="flex justify-end space-x-2">
                 <Button variant="outline" onClick={() => setNewArticleForModal(null)}>Cancel</Button>
-                <Button onClick={handleCreateArticleFromModal} disabled={createArticleMutation.isPending}>
+                <Button
+                  onClick={handleCreateArticleFromModal}
+                  disabled={createArticleMutation.isPending || !newArticleForModal?.title.trim() || !newArticleForModal?.content.trim()}
+                >
                   {createArticleMutation.isPending ? "Creating..." : "Create Article"}
                 </Button>
               </div>
