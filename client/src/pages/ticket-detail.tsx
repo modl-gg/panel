@@ -303,6 +303,9 @@ const TicketDetail = () => {
   
   // Add punishment-related hooks
   const applyPunishment = useApplyPunishment();
+  
+  // Get settings data early so it's available for useMemo hooks
+  const { data: settingsData } = useSettings();
 
   // Get punishment ordinal from dynamic settings data
   const getPunishmentOrdinal = useMemo(() => (punishmentName: string): number => {
@@ -333,8 +336,6 @@ const TicketDetail = () => {
     
     return duration.value * (multipliers[duration.unit as keyof typeof multipliers] || 0);
   }, []);
-
-  const { data: settingsData } = useSettings();
   
   // Helper function to get punishment types by category
   const punishmentTypesByCategory = useMemo(() => {
@@ -1905,7 +1906,7 @@ const TicketDetail = () => {
               {activeTab === 'conversation' && (
                 <div className="space-y-4">
                   <div className="max-h-[480px] overflow-y-auto divide-y">
-                    {ticketDetails.messages.map((message) => (
+                    {ticketDetails.messages.map((message, index) => (
                       <div key={message.id} className="p-4">
                         <div className="flex items-start gap-3">
                           <MessageAvatar message={message} ticketData={ticketData} staffData={staffData} />
