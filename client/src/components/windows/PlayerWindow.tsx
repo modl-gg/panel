@@ -812,13 +812,14 @@ const PlayerWindow = ({ playerId, isOpen, onClose, initialPosition }: PlayerWind
           : [];
         
         // Determine player status (exclude kicks from status calculation)
-        const status = player.punishments && player.punishments.some((p: any) => 
-          p.active && !p.expires && p.type_ordinal !== 0 // Exclude kicks (ordinal 0)
-        ) 
+        // Kicks (ordinal 0) should never affect the "Currently Punished" badge
+        const activePunishments = player.punishments ? player.punishments.filter((p: any) => 
+          p.active && p.type_ordinal !== 0 // Exclude kicks (ordinal 0) completely
+        ) : [];
+        
+        const status = activePunishments.some((p: any) => !p.expires) 
           ? 'Banned' 
-          : player.punishments && player.punishments.some((p: any) => 
-            p.active && p.type_ordinal !== 0 // Exclude kicks
-          ) 
+          : activePunishments.length > 0
           ? 'Restricted' 
           : 'Active';
         

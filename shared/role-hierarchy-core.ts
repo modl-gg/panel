@@ -76,9 +76,12 @@ export function canModifyRole(
     return false;
   }
   
-  // User must have higher authority than both target and new role
-  return hasHigherAuthority(modifierRole, targetRole, roleHierarchy) && 
-         hasHigherAuthority(modifierRole, newRole, roleHierarchy);
+  // User must have higher authority than the target user they're modifying
+  // AND higher authority than the new role they're assigning (or equal if it's their own role)
+  const canModifyTarget = hasHigherAuthority(modifierRole, targetRole, roleHierarchy);
+  const canAssignNewRole = hasHigherOrEqualAuthority(modifierRole, newRole, roleHierarchy);
+  
+  return canModifyTarget && canAssignNewRole;
 }
 
 /**
