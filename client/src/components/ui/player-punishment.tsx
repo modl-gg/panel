@@ -324,7 +324,7 @@ const PlayerPunishment: React.FC<PlayerPunishmentProps> = ({
     if (punishmentType.singleSeverityPunishment) return null;
     
     // Special permanent punishments don't show severity selection
-    if (punishmentType.permanentUntilSkinChange || punishmentType.permanentUntilNameChange) return null;
+    if (punishmentType.permanentUntilSkinChange || punishmentType.permanentUntilUsernameChange) return null;
 
     return (
       <div className="space-y-2">
@@ -356,7 +356,7 @@ const PlayerPunishment: React.FC<PlayerPunishmentProps> = ({
     if (!punishmentType.singleSeverityPunishment) return null;
     
     // Special permanent punishments don't show offense selection
-    if (punishmentType.permanentUntilSkinChange || punishmentType.permanentUntilNameChange) return null;
+    if (punishmentType.permanentUntilSkinChange || punishmentType.permanentUntilUsernameChange) return null;
 
     return (
       <div className="space-y-2">
@@ -799,7 +799,7 @@ const PlayerPunishment: React.FC<PlayerPunishmentProps> = ({
           const punishmentType = getCurrentPunishmentType();
           if (!punishmentType) return true;
           
-          if (punishmentType.permanentUntilSkinChange || punishmentType.permanentUntilNameChange) {
+          if (punishmentType.permanentUntilSkinChange || punishmentType.permanentUntilUsernameChange) {
             return false;
           }
           
