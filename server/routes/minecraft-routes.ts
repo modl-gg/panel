@@ -914,7 +914,8 @@ function getEffectivePunishmentState(punishment: IPunishment): { effectiveActive
   }
   
   // Final check: if there's an expiry date and it's in the past, the punishment is not active
-  if (effectiveExpiry && effectiveExpiry.getTime() <= new Date().getTime()) {
+  // Exception: Kicks (ordinal 0) don't use expiry logic - they're instant actions
+  if (effectiveExpiry && effectiveExpiry.getTime() <= new Date().getTime() && punishment.type_ordinal !== 0) {
     effectiveActive = false;
   }
   
@@ -925,7 +926,9 @@ function getEffectivePunishmentState(punishment: IPunishment): { effectiveActive
  * Utility function to check if a punishment is valid for execution (ignores started status)
  */
 function isPunishmentValid(punishment: IPunishment): boolean {
-  if (!punishment.type_ordinal) return false;
+  if (punishment.type_ordinal === undefined || punishment.type_ordinal === null) {
+    return false;
+  }
 
   // Get effective state considering modifications
   const { effectiveActive, effectiveExpiry } = getEffectivePunishmentState(punishment);
@@ -935,7 +938,12 @@ function isPunishmentValid(punishment: IPunishment): boolean {
     return false;
   }
   
-  // Check if expired
+  // Kicks are always valid if active (they don't have expiry logic)
+  if (punishment.type_ordinal === 0) {
+    return true; // Kicks don't expire
+  }
+  
+  // Check if expired (for bans and mutes)
   if (effectiveExpiry && effectiveExpiry < new Date()) {
     return false;
   }
@@ -1995,33 +2003,21 @@ export function setupMinecraftRoutes(app: Express): void {
             });
           }
 
-          // Add kicks (only recently issued ones since kicks are instant)
-          const recentlyIssuedUnstarted = validUnstartedPunishments
-            .filter((p: IPunishment) => new Date(p.issued) >= lastSync);
-          const priorityKick = recentlyIssuedUnstarted.find((p: IPunishment) => isKickPunishment(p, punishmentTypeConfig));
+          // Add kicks - include ALL unstarted kicks, not just recently issued ones
+          // Kicks need to be delivered whenever the player is online, regardless of when they were issued
+          const priorityKick = validUnstartedPunishments.find((p: IPunishment) => isKickPunishment(p, punishmentTypeConfig));
 
           if (priorityKick) {
             const description = await getPunishmentDescription(priorityKick, serverDbConnection);
             const kickType = getPunishmentType(priorityKick, punishmentTypeConfig);
 
-            // For kicks, mark as started immediately since they are instant actions
-            // This prevents them from showing as "unstarted" in the UI
-            const now = new Date();
-            priorityKick.started = now;
-            setPunishmentData(priorityKick, 'completed', true);
-            setPunishmentData(priorityKick, 'completedAt', now);
-            setPunishmentData(priorityKick, 'executedOnServer', true);
-            setPunishmentData(priorityKick, 'executedAt', now);
-
-            // Save the updated punishment
-            await player.save({ validateBeforeSave: false });
-
+            // Send kick as unstarted punishment - it will be marked as started when the server acknowledges execution
             pendingPunishments.push({
               minecraftUuid: player.minecraftUuid,
               username: player.usernames[player.usernames.length - 1]?.username || 'Unknown',
               punishment: {
                 type: kickType,
-                started: true, // Mark as started since kicks are instant
+                started: false, // Keep as unstarted until server confirms execution
                 expiration: null, // Kicks are instant
                 description: description,
                 id: priorityKick.id,
@@ -2907,15 +2903,14 @@ export function setupMinecraftRoutes(app: Express): void {
 
       // Validate punishment type if expectedType is provided
       if (expectedType) {
-        const typeOrdinal = punishment.type_ordinal;
+        // Load punishment type configuration
+        const typeConfig = await loadPunishmentTypeConfig(serverDbConnection);
         let isCorrectType = false;
         
         if (expectedType === 'ban') {
-          // Ban: ordinals 2, 3, 4, 5 and custom (not 0=kick, 1=mute)
-          isCorrectType = typeOrdinal !== 0 && typeOrdinal !== 1;
+          isCorrectType = isBanPunishment(punishment, typeConfig);
         } else if (expectedType === 'mute') {
-          // Mute: ordinal 1
-          isCorrectType = typeOrdinal === 1;
+          isCorrectType = isMutePunishment(punishment, typeConfig);
         }
         
         if (!isCorrectType) {
@@ -3033,6 +3028,9 @@ export function setupMinecraftRoutes(app: Express): void {
       }
 
 
+      // Load punishment type configuration
+      const typeConfig = await loadPunishmentTypeConfig(serverDbConnection);
+
       // Find active punishment of the specified type
       let activePunishment = player.punishments.find(p => {
         // Step 1: Check if explicitly marked as inactive in data
@@ -3064,16 +3062,13 @@ export function setupMinecraftRoutes(app: Express): void {
         }
         // Unstarted temporary punishments are also valid for pardoning
         
-        // Step 4: Check if it matches the requested punishment type
-        const typeOrdinal = p.type_ordinal;
+        // Step 4: Check if it matches the requested punishment type using dynamic type system
         let matchesType = false;
         
         if (punishmentType === 'ban') {
-          // Ban: ordinals 2, 3, 4, 5 and custom (not 0=kick, 1=mute)
-          matchesType = typeOrdinal !== 0 && typeOrdinal !== 1;
+          matchesType = isBanPunishment(p, typeConfig);
         } else if (punishmentType === 'mute') {
-          // Mute: ordinal 1
-          matchesType = typeOrdinal === 1;
+          matchesType = isMutePunishment(p, typeConfig);
         }
         
         return matchesType;

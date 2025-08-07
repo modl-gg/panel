@@ -613,9 +613,10 @@ router.get('/tickets/:id', async (req: Request, res: Response) => {
         enhancedMessage.content = message.content || message.message || '';
         enhancedMessage.senderType = message.senderType || (message.staff ? 'staff' : 'user');
         enhancedMessage.timestamp = message.timestamp || message.created || new Date().toISOString();
-        
-        // Explicitly preserve attachments
+
+        // Explicitly preserve attachments and creator identifier
         enhancedMessage.attachments = message.attachments || [];
+        enhancedMessage.creatorIdentifier = message.creatorIdentifier; // Preserve creator identifier for verification
         
         if ((message.staff === true || message.senderType === 'staff') && (message.name || message.sender)) {
           const staffUsername = message.name || message.sender;
@@ -794,7 +795,7 @@ router.post('/tickets/:id/submit', async (req: Request, res: Response) => {
   
   try {
     const { id } = req.params;
-    const { subject, formData } = req.body;
+    const { subject, formData, creatorIdentifier } = req.body;
     
     const ticket = await Ticket.findById(id);
     
@@ -823,6 +824,11 @@ router.post('/tickets/:id/submit', async (req: Request, res: Response) => {
         }
       });
       ticket.formData = formData;
+
+      // Store creator identifier for verification
+      if (creatorIdentifier) {
+        ticket.data.set('creatorIdentifier', creatorIdentifier);
+      }
       
       // Create initial message content from form data
       let contentString = '';
@@ -917,6 +923,7 @@ router.post('/tickets/:id/submit', async (req: Request, res: Response) => {
             ticket.replies[0].content = contentString.trim();
             ticket.replies[0].timestamp = new Date().toISOString();
             ticket.replies[0].created = new Date();
+            ticket.replies[0].creatorIdentifier = ticket.data?.get('creatorIdentifier'); // Include creator identifier for verification
             shouldAddMessage = false;
           }
         }
@@ -929,6 +936,7 @@ router.post('/tickets/:id/submit', async (req: Request, res: Response) => {
           type: 'user',
           created: new Date(),
           staff: false,
+          creatorIdentifier: ticket.data?.get('creatorIdentifier'), // Include creator identifier for verification
           // Compatibility fields
           sender: ticket.creator || 'User',
           senderType: 'user',

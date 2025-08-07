@@ -162,40 +162,36 @@ const PlayerWindow = ({ playerId, isOpen, onClose, initialPosition }: PlayerWind
   const [avatarError, setAvatarError] = useState(false);
   const [avatarLoading, setAvatarLoading] = useState(true);
   const [isApplyingPunishment, setIsApplyingPunishment] = useState(false);
-  const [expandedPunishments, setExpandedPunishments] = useState<Set<string>>(new Set());    // Get current authenticated user
+  const [expandedPunishments, setExpandedPunishments] = useState<Set<string>>(new Set());
+  
+  // Helper function to map severity levels for display (converts 'low' to 'lenient')
+  const mapSeverityForDisplay = (severity: string): string => {
+    return severity.toLowerCase() === 'low' ? 'lenient' : severity;
+  };
+
+  // Get current authenticated user
   const { user } = useAuth();
   const [, setLocation] = useLocation();
     // Initialize the applyPunishment mutation hook
   const applyPunishment = useApplyPunishment();
   const modifyPunishment = useModifyPunishment();
   const addPunishmentNote = useAddPunishmentNote();
-  // Mapping of punishment type names to their ordinals
+  // Get punishment ordinal from actual punishment types data
   const getPunishmentOrdinal = (punishmentName: string): number => {
-    const punishmentMap: { [key: string]: number } = {
-      // Administrative punishments
-      'Kick': 0,
-      'Manual Mute': 1,
-      'Manual Ban': 2,
-      'Security Ban': 3,
-      'Linked Ban': 4,
-      'Blacklist': 5,
-      // Social punishments
-      'Chat Abuse': 6,
-      'Anti Social': 7,
-      'Targeting': 8,
-      'Bad Content': 9,
-      'Bad Skin': 10,
-      'Bad Name': 11,
-      // Gameplay punishments
-      'Team Abuse': 12,
-      'Game Abuse': 13,
-      'Systems Abuse': 14,
-      'Account Abuse': 15,
-      'Game Trading': 16,
-      'Cheating': 17
-    };
+    // First try to find it in the punishment types from settings
+    const allTypes = [
+      ...punishmentTypesByCategory.Administrative,
+      ...punishmentTypesByCategory.Social,
+      ...punishmentTypesByCategory.Gameplay
+    ];
     
-    return punishmentMap[punishmentName] ?? -1;
+    const punishmentType = allTypes.find(type => type.name === punishmentName);
+    if (punishmentType) {
+      return punishmentType.ordinal;
+    }
+    
+    // If not found in settings, return -1 to indicate invalid
+    return -1;
   };
 
   // Convert duration to milliseconds
@@ -1580,7 +1576,7 @@ const PlayerWindow = ({ playerId, isOpen, onClose, initialPosition }: PlayerWind
                                 'bg-orange-100 text-orange-800 border-orange-300' :
                                 'bg-red-100 text-red-800 border-red-300'
                             }`}>
-                              {warning.severity}
+                              {mapSeverityForDisplay(warning.severity)}
                             </Badge>
                           )}
                           {isValidBadgeValue(warning.status) && (
