@@ -32,7 +32,7 @@ import { toast } from '@/hooks/use-toast';
 import MarkdownRenderer from '@/components/ui/markdown-renderer';
 import MarkdownHelp from '@/components/ui/markdown-help';
 import { formatDate } from '@/utils/date-utils';
-import { getCreatorIdentifier, isVerifiedCreator, getUnverifiedExplanation, shouldShowUnverifiedBadge } from '@/utils/creator-verification';
+import { getCreatorIdentifier, getUnverifiedExplanation, shouldShowUnverifiedBadge } from '@/utils/creator-verification';
 
 export interface TicketMessage {
   id: string;
@@ -1074,21 +1074,38 @@ const PlayerTicket = () => {
                           )}
                           {/* Show UNVERIFIED badge for non-staff replies that don't match the original creator */}
                           {message.senderType !== 'staff' && message.senderType !== 'system' &&
-                           shouldShowUnverifiedBadge(ticketDetails.id, message.creatorIdentifier, false) && (
-                            <Tooltip delayDuration={300}>
-                              <TooltipTrigger asChild>
-                                <Badge
-                                  variant="destructive"
-                                  className="text-xs cursor-help"
-                                  title={getUnverifiedExplanation()}
-                                >
-                                  UNVERIFIED
-                                </Badge>
-                              </TooltipTrigger>
-                              <TooltipContent className="max-w-xs p-3 z-50" side="top">
-                                <p className="text-sm">{getUnverifiedExplanation()}</p>
-                              </TooltipContent>
-                            </Tooltip>
+                           index > 0 && (
+                            (() => {
+                              // Find the first user message to get the original creator identifier
+                              const firstUserMessage = ticketDetails.messages.find(m => 
+                                m.senderType === 'user' && m.creatorIdentifier
+                              );
+                              const originalCreatorId = firstUserMessage?.creatorIdentifier;
+                              
+                              // Only show unverified if this message has a creator ID that differs from the original
+                              const isUnverified = originalCreatorId && 
+                                message.creatorIdentifier && 
+                                message.creatorIdentifier !== originalCreatorId;
+                              
+                              if (!isUnverified) return null;
+                              
+                              return (
+                                <Tooltip delayDuration={300}>
+                                  <TooltipTrigger asChild>
+                                    <Badge
+                                      variant="destructive"
+                                      className="text-xs cursor-help"
+                                      title={getUnverifiedExplanation()}
+                                    >
+                                      UNVERIFIED
+                                    </Badge>
+                                  </TooltipTrigger>
+                                  <TooltipContent className="max-w-xs p-3 z-50" side="top">
+                                    <p className="text-sm">{getUnverifiedExplanation()}</p>
+                                  </TooltipContent>
+                                </Tooltip>
+                              );
+                            })()
                           )}
                         </div>
                         <div className="text-sm">
