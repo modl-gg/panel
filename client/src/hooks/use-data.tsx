@@ -638,9 +638,31 @@ export function useApplyPunishment() {
       });
       
       if (!res.ok) {
-        const errorText = await res.text();
-        console.error('Punishment API error:', errorText);
-        throw new Error(`Failed to apply punishment: ${res.status} ${res.statusText}`);
+        let errorMessage = `Failed to apply punishment: ${res.status} ${res.statusText}`;
+        
+        try {
+          const errorData = await res.json();
+          if (res.status === 403) {
+            // Handle permission-specific error
+            errorMessage = `Permission denied: ${errorData.error || 'You do not have permission to apply this punishment type'}`;
+            if (errorData.punishmentType) {
+              errorMessage += ` (${errorData.punishmentType})`;
+            }
+          } else {
+            errorMessage = errorData.error || errorData.message || errorMessage;
+          }
+        } catch (parseError) {
+          // If JSON parsing fails, fall back to text
+          const errorText = await res.text();
+          console.error('Punishment API error:', errorText);
+          if (res.status === 403) {
+            errorMessage = 'Permission denied: You do not have permission to apply this punishment type';
+          } else {
+            errorMessage = errorText || errorMessage;
+          }
+        }
+        
+        throw new Error(errorMessage);
       }
       
       return res.json();
