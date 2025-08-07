@@ -102,8 +102,24 @@ export class PunishmentService {
       
       // Initialize required fields with defaults (matching the existing API route)
       dataMap.set('duration', punishmentData.duration);
-      dataMap.set('blockedName', null);
-      dataMap.set('blockedSkin', null);
+      
+      // Set blockedName and blockedSkin for "permanent until" punishment types
+      if (punishmentData.punishmentType.permanentUntilUsernameChange) {
+        const currentUsername = player.usernames && player.usernames.length > 0 
+          ? player.usernames[player.usernames.length - 1].username 
+          : 'Unknown';
+        dataMap.set('blockedName', currentUsername);
+      } else {
+        dataMap.set('blockedName', null);
+      }
+      
+      if (punishmentData.punishmentType.permanentUntilSkinChange) {
+        const currentSkinHash = player.data?.get('lastSkinHash') || null;
+        dataMap.set('blockedSkin', currentSkinHash);
+      } else {
+        dataMap.set('blockedSkin', null);
+      }
+      
       dataMap.set('linkedBanId', null);
       dataMap.set('linkedBanExpiry', null);
       dataMap.set('chatLog', null);
@@ -198,7 +214,7 @@ export class PunishmentService {
     severity: 'low' | 'regular' | 'severe',
     reason: string,
     ticketId: string
-  ): Promise<{ duration: number; typeName: string } | null> {
+  ): Promise<{ duration: number; typeName: string; punishmentType: any } | null> {
     try {
       
       
@@ -315,7 +331,8 @@ export class PunishmentService {
 
       return {
         duration,
-        typeName: punishmentType.name
+        typeName: punishmentType.name,
+        punishmentType
       };
     } catch (error) {
       console.error('[Punishment Service] Error calculating punishment data:', error);

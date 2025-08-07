@@ -659,10 +659,38 @@ router.post('/:uuid/punishments', async (req: Request<{ uuid: string }, {}, AddP
       const id = uuidv4().substring(0, 8).toUpperCase();
       const punishmentData = new Map<string, any>();
     
+    // Get punishment type to check for "permanent until" types
+    let punishmentType: any = null;
+    try {
+      const Settings = req.serverDbConnection!.model('Settings');
+      const punishmentTypesDoc = await Settings.findOne({ type: 'punishmentTypes' });
+      if (punishmentTypesDoc?.data) {
+        const punishmentTypes = punishmentTypesDoc.data;
+        punishmentType = punishmentTypes.find((pt: any) => pt.ordinal === type_ordinal);
+      }
+    } catch (error) {
+      console.error('Error loading punishment type for blockedName/blockedSkin:', error);
+    }
+
     // Initialize required fields with defaults
     punishmentData.set('duration', 0);
-    punishmentData.set('blockedName', null);
-    punishmentData.set('blockedSkin', null);
+    
+    // Set blockedName and blockedSkin for "permanent until" punishment types
+    if (punishmentType?.permanentUntilUsernameChange) {
+      const currentUsername = player.usernames && player.usernames.length > 0 
+        ? player.usernames[player.usernames.length - 1].username 
+        : 'Unknown';
+      punishmentData.set('blockedName', currentUsername);
+    } else {
+      punishmentData.set('blockedName', null);
+    }
+    
+    if (punishmentType?.permanentUntilSkinChange) {
+      const currentSkinHash = player.data?.get('lastSkinHash') || null;
+      punishmentData.set('blockedSkin', currentSkinHash);
+    } else {
+      punishmentData.set('blockedSkin', null);
+    }
     punishmentData.set('linkedBanId', null);
     punishmentData.set('linkedBanExpiry', null); // Set to null by default, only set for linked bans
     punishmentData.set('chatLog', null);

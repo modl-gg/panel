@@ -1002,14 +1002,28 @@ async function checkAndProcessAutoUnbans(
       
       const punishmentTypeId = punishment.type_ordinal;
       
-      // Check username change unbans
+      // Check username change unbans - check against actual blocked name
       if (hasUsernameChanged && permanentUntilUsernameChangeIds.includes(punishmentTypeId)) {
-        punishmentsToUnban.push(punishment);
+        const blockedName = getPunishmentData(punishment, 'blockedName');
+        const currentUsername = player.usernames && player.usernames.length > 0 
+          ? player.usernames[player.usernames.length - 1].username 
+          : null;
+          
+        // Only unban if the blocked name exists and is different from current name
+        if (blockedName && currentUsername && blockedName !== currentUsername) {
+          punishmentsToUnban.push(punishment);
+        }
       }
       
-      // Check skin change unbans
+      // Check skin change unbans - check against actual blocked skin
       if (hasSkinChanged && permanentUntilSkinChangeIds.includes(punishmentTypeId)) {
-        punishmentsToUnban.push(punishment);
+        const blockedSkin = getPunishmentData(punishment, 'blockedSkin');
+        const currentSkinHash = player.data?.get('lastSkinHash') || null;
+        
+        // Only unban if the blocked skin exists and is different from current skin
+        if (blockedSkin && currentSkinHash && blockedSkin !== currentSkinHash) {
+          punishmentsToUnban.push(punishment);
+        }
       }
     }
     
