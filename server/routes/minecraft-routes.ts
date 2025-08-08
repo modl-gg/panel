@@ -1550,7 +1550,7 @@ export function setupMinecraftRoutes(app: Express): void {
         return res.status(404).json({ status: 404, message: 'Target player not found' });
       }
 
-      const punishmentId = uuidv4().substring(0, 8); // Generate an 8-char ID
+      const punishmentId = uuidv4().substring(0, 8).toUpperCase(); // Generate an 8-char ID
 
       // Determine type_ordinal - either from direct ordinal or from type string
       let finalTypeOrdinal: number;
@@ -2463,7 +2463,7 @@ export function setupMinecraftRoutes(app: Express): void {
         return res.status(404).json({ status: 404, message: 'Target player not found' });
       }
 
-      const punishmentId = uuidv4().substring(0, 8); // Generate an 8-char ID
+      const punishmentId = uuidv4().substring(0, 8).toUpperCase(); // Generate an 8-char ID
 
       // Get punishment type configuration and calculate player status
       const Settings = serverDbConnection.model('Settings');
