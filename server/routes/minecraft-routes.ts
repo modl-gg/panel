@@ -2752,7 +2752,7 @@ export function setupMinecraftRoutes(app: Express): void {
         new Date().getTime() - lastSeen.getTime() < 5 * 60 * 1000; // 5 minutes
 
       // Build profile URLs
-      const baseUrl = process.env.PANEL_URL || 'https://123.cobl.gg';
+      const baseUrl = process.env.PANEL_URL || 'https://123.modl.gg';
       const profileUrl = `${baseUrl}/player/${player.minecraftUuid}`;
       const punishmentsUrl = `${baseUrl}/player/${player.minecraftUuid}/punishments`;
       const ticketsUrl = `${baseUrl}/player/${player.minecraftUuid}/tickets`;

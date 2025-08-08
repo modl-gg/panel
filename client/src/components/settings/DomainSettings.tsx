@@ -261,7 +261,7 @@ const DomainSettings: React.FC = () => {
       <div>
         <h3 className="text-lg font-medium mb-2">Custom Domain Configuration</h3>
         <p className="text-sm text-muted-foreground">
-          Use your own domain instead of {currentDomain}.cobl.gg. We recommend using 'support' as your subdomain.
+          Use your own domain instead of {currentDomain}.modl.gg. We recommend using 'support' as your subdomain.
         </p>
       </div>
 
@@ -386,12 +386,12 @@ const DomainSettings: React.FC = () => {
                   <div className="flex items-center gap-2">
                     <strong>Value/Target:</strong>
                     <code className="bg-muted px-2 py-1 rounded text-sm">
-                      {currentDomain}.cobl.gg
+                      {currentDomain}.modl.gg
                     </code>
                     <Button
                       variant="ghost"
                       size="sm"
-                      onClick={() => copyToClipboard(`${currentDomain}.cobl.gg`)}
+                      onClick={() => copyToClipboard(`${currentDomain}.modl.gg`)}
                     >
                       {copied ? (
                         <Check className="h-4 w-4" />
