@@ -144,11 +144,17 @@ router.post(
         if (!action_url) {
           return res.status(400).json({ message: 'URL is required for URL actions' });
         }
-        // Validate URL format
-        try {
-          new URL(action_url);
-        } catch (e) {
-          return res.status(400).json({ message: 'Invalid URL format' });
+        // Validate URL format - allow absolute URLs and relative paths
+        if (!action_url.startsWith('/') && !action_url.startsWith('http://') && !action_url.startsWith('https://')) {
+          return res.status(400).json({ message: 'URL must be an absolute URL (http/https) or a relative path starting with /' });
+        }
+        // For absolute URLs, validate they are properly formatted
+        if (action_url.startsWith('http')) {
+          try {
+            new URL(action_url);
+          } catch (e) {
+            return res.status(400).json({ message: 'Invalid URL format' });
+          }
         }
       }
       
@@ -252,11 +258,17 @@ router.put(
         if (!actionUrl) {
           return res.status(400).json({ message: 'URL is required for URL actions' });
         }
-        // Validate URL format
-        try {
-          new URL(actionUrl);
-        } catch (e) {
-          return res.status(400).json({ message: 'Invalid URL format' });
+        // Validate URL format - allow absolute URLs and relative paths
+        if (!actionUrl.startsWith('/') && !actionUrl.startsWith('http://') && !actionUrl.startsWith('https://')) {
+          return res.status(400).json({ message: 'URL must be an absolute URL (http/https) or a relative path starting with /' });
+        }
+        // For absolute URLs, validate they are properly formatted
+        if (actionUrl.startsWith('http')) {
+          try {
+            new URL(actionUrl);
+          } catch (e) {
+            return res.status(400).json({ message: 'Invalid URL format' });
+          }
         }
       }
       
