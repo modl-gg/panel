@@ -171,7 +171,7 @@ const HomepageCardSettings: React.FC = () => {
       toast({ title: 'Success', description: 'Homepage card updated successfully.' });
       queryClient.invalidateQueries({ queryKey: ['homepageCards'] });
       setEditingCard(null);
-      resetForm();
+      setIsCreating(false);
     },
     onError: (error) => {
       toast({ title: 'Error', description: error.message, variant: 'destructive' });
