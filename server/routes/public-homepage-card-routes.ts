@@ -67,6 +67,7 @@ router.get('/homepage-cards', async (req: Request, res: Response) => {
           title: card.title,
           description: card.description,
           icon: card.icon,
+          icon_color: card.icon_color,
           action_type: card.action_type,
           action_url: card.action_url,
           action_button_text: card.action_button_text,
