@@ -31,15 +31,29 @@ export default defineConfig({
     emptyOutDir: true,
     rollupOptions: {
       output: {
-        manualChunks: (id) => {
-          // Keep CSRF utilities in the main chunk to prevent 404s
-          if (id.includes('utils/csrf')) {
-            return 'index';
-          }
-          // Keep rate limit handler with CSRF since they're related
-          if (id.includes('utils/rate-limit-handler')) {
-            return 'index';
-          }
+        // Increase chunk size warning limit since we're now using proper code splitting
+        chunkSizeWarningLimit: 1000,
+        manualChunks: {
+          // Vendor chunks for large libraries
+          'react-vendor': ['react', 'react-dom'],
+          'aws-vendor': ['@aws-sdk/client-s3', '@aws-sdk/s3-request-presigner'],
+          'google-ai-vendor': ['@google/generative-ai'],
+          'ui-vendor': ['lucide-react', 'wouter', '@tanstack/react-query'],
+          'radix-vendor': [
+            '@radix-ui/react-accordion',
+            '@radix-ui/react-alert-dialog',
+            '@radix-ui/react-aspect-ratio',
+            '@radix-ui/react-avatar',
+            '@radix-ui/react-checkbox',
+            '@radix-ui/react-collapsible',
+            '@radix-ui/react-context-menu',
+            '@radix-ui/react-dialog',
+            '@radix-ui/react-dropdown-menu',
+            '@radix-ui/react-hover-card',
+            '@radix-ui/react-label',
+            '@radix-ui/react-menubar',
+            '@radix-ui/react-navigation-menu'
+          ]
         }
       }
     }

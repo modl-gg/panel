@@ -27,6 +27,8 @@ const DomainSettings: React.FC = () => {
   const [isLoading, setIsLoading] = useState(false);
   const [isVerifying, setIsVerifying] = useState(false);
   const [copied, setCopied] = useState(false);
+  const [accessingFromCustomDomain, setAccessingFromCustomDomain] = useState(false);
+  const [modlSubdomainUrl, setModlSubdomainUrl] = useState<string>('');
   const { toast } = useToast();
   const { user } = useAuth();
   const { hasPermission } = usePermissions();
@@ -54,6 +56,8 @@ const DomainSettings: React.FC = () => {
           setCustomDomain(data.customDomain);
           setDomainStatus(data.status);
         }
+        setAccessingFromCustomDomain(data.accessingFromCustomDomain || false);
+        setModlSubdomainUrl(data.modlSubdomainUrl || '');
       }
     } catch (error) {
       console.error('Error loading domain configuration:', error);
@@ -267,6 +271,26 @@ const DomainSettings: React.FC = () => {
 
       <Card>
         <CardContent className="space-y-4">
+          {accessingFromCustomDomain && (
+            <Alert className="border-orange-200 bg-orange-50">
+              <AlertCircle className="h-4 w-4 text-orange-600" />
+              <AlertTitle className="text-orange-800">Custom Domain Editing Restricted</AlertTitle>
+              <AlertDescription className="text-orange-700">
+                You cannot modify custom domain settings while accessing from a custom domain.
+                Please access your panel via{' '}
+                <a
+                  href={modlSubdomainUrl}
+                  className="underline font-medium hover:text-orange-900"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                >
+                  {modlSubdomainUrl}
+                </a>
+                {' '}to make changes.
+              </AlertDescription>
+            </Alert>
+          )}
+
           <div>
             <br></br>
             <p className="font-medium">Cloudflare Nameservers Required</p>
@@ -287,13 +311,13 @@ const DomainSettings: React.FC = () => {
                 placeholder="support.examplemc.net"
                 value={customDomain}
                 onChange={(e) => setCustomDomain(e.target.value)}
-                disabled={isLoading}
+                disabled={isLoading || accessingFromCustomDomain}
               />
             </div>
             <div className="flex items-end">
-              <Button 
-                onClick={handleDomainSubmit} 
-                disabled={isLoading || !customDomain.trim()}
+              <Button
+                onClick={handleDomainSubmit}
+                disabled={isLoading || !customDomain.trim() || accessingFromCustomDomain}
                 className="w-full"
               >
                 {isLoading ? (
@@ -323,7 +347,7 @@ const DomainSettings: React.FC = () => {
                     variant="outline"
                     size="sm"
                     onClick={handleVerifyDomain}
-                    disabled={isVerifying}
+                    disabled={isVerifying || accessingFromCustomDomain}
                   >
                     {isVerifying ? (
                       <>
@@ -341,7 +365,7 @@ const DomainSettings: React.FC = () => {
                     variant="destructive"
                     size="sm"
                     onClick={handleRemoveDomain}
-                    disabled={isLoading}
+                    disabled={isLoading || accessingFromCustomDomain}
                   >
                     Remove
                   </Button>

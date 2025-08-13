@@ -60,7 +60,7 @@ router.get('/homepage-cards', async (req: Request, res: Response) => {
       .lean();
 
     // For category dropdown cards, fetch articles
-    const populatedCards = await Promise.all(
+    const populatedCardsWithNulls = await Promise.all(
       cards.map(async (card) => {
         const baseCard = {
           id: (card._id as any).toString(),
@@ -76,6 +76,13 @@ router.get('/homepage-cards', async (req: Request, res: Response) => {
         };
 
         if (card.action_type === 'category_dropdown' && card.category_id) {
+          // Check if category was successfully populated
+          if (!(card as any).category) {
+            // Category doesn't exist (was deleted or invalid reference)
+            // Skip this card by returning null
+            return null;
+          }
+
           // Fetch articles for this category
           const articles = await KnowledgebaseArticle.find({
             category: card.category_id,
@@ -105,6 +112,9 @@ router.get('/homepage-cards', async (req: Request, res: Response) => {
         return baseCard;
       })
     );
+
+    // Filter out null results (cards with invalid category references)
+    const populatedCards = populatedCardsWithNulls.filter(card => card !== null);
 
     res.status(200).json(populatedCards);
   } catch (error: any) {

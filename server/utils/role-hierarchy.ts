@@ -1,7 +1,6 @@
 import { Connection } from 'mongoose';
 // Import shared core functions and types
-import { 
-  RoleHierarchyInfo, 
+import {
   buildRoleHierarchy,
   hasHigherOrEqualAuthority,
   hasHigherAuthority,
@@ -12,12 +11,12 @@ import {
   hasPermission,
   getUserPermissions,
   getUserRoleOrder,
-  canReorderRoles
-} from '../../shared/role-hierarchy-core';
+  canReorderRoles as canReorderRolesShared,
+  type RoleHierarchyInfo
+} from '../../shared/role-hierarchy-core.js';
 
 // Re-export shared functions explicitly
 export {
-  RoleHierarchyInfo,
   buildRoleHierarchy,
   hasHigherOrEqualAuthority,
   hasHigherAuthority,
@@ -28,8 +27,11 @@ export {
   hasPermission,
   getUserPermissions,
   getUserRoleOrder,
-  canReorderRoles
+  canReorderRolesShared
 };
+
+// Re-export types separately
+export type { RoleHierarchyInfo };
 
 export interface RoleHierarchyCache {
   roles: Map<string, RoleHierarchyInfo>;
@@ -97,4 +99,30 @@ export function clearRoleHierarchyCache(serverName?: string): void {
   } else {
     roleHierarchyCache.clear();
   }
+}
+
+/**
+ * Server-specific canReorderRoles function that returns detailed information
+ * about which roles can be reordered and which cannot
+ */
+export function canReorderRoles(
+  userRole: string,
+  rolesToReorder: string[],
+  roleHierarchy: Map<string, RoleHierarchyInfo>
+): { canReorder: boolean; invalidRoles: string[] } {
+  // Check if user has permission to reorder roles at all
+  const hasReorderPermission = canReorderRolesShared(userRole, roleHierarchy);
+
+  if (!hasReorderPermission) {
+    return {
+      canReorder: false,
+      invalidRoles: rolesToReorder
+    };
+  }
+
+  // If user has permission, they can reorder all roles
+  return {
+    canReorder: true,
+    invalidRoles: []
+  };
 }

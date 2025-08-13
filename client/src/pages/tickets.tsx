@@ -1,11 +1,11 @@
 import { useState, useEffect } from 'react';
 import { useLocation } from 'wouter';
-import { 
-  Bug, 
-  Users, 
-  MessageSquare, 
-  LockKeyhole, 
-  Filter, 
+import {
+  Bug,
+  Users,
+  MessageSquare,
+  LockKeyhole,
+  Filter,
   Eye,
   Loader2,
   Search,
@@ -22,6 +22,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@modl-gg/shared-web/components/ui/tabs';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@modl-gg/shared-web/components/ui/select';
 import { useTickets, useTicketCounts } from '@/hooks/use-data';
+import { useIsMobile } from '@/hooks/use-mobile';
 import PageContainer from '@/components/layout/PageContainer';
 
 // Define the Ticket interface to match the MongoDB schema
@@ -72,6 +73,7 @@ const Tickets = () => {
   const [searchQuery, setSearchQuery] = useState("");
   const [currentPage, setCurrentPage] = useState(1);
   const [, setLocation] = useLocation();
+  const isMobile = useIsMobile();
   
   // Debounced search query to avoid too many API calls
   const [debouncedSearchQuery, setDebouncedSearchQuery] = useState("");
@@ -245,6 +247,67 @@ const Tickets = () => {
     </Table>
   );
 
+  // Render mobile-friendly card layout
+  const renderMobileTicketCards = () => {
+    if (isLoading) {
+      return (
+        <div className="space-y-3">
+          {[...Array(3)].map((_, i) => (
+            <Card key={i} className="animate-pulse">
+              <CardContent className="p-4">
+                <div className="h-4 bg-muted rounded w-3/4 mb-2"></div>
+                <div className="h-3 bg-muted rounded w-1/2 mb-2"></div>
+                <div className="h-3 bg-muted rounded w-1/3"></div>
+              </CardContent>
+            </Card>
+          ))}
+        </div>
+      );
+    }
+
+    if (tickets.length === 0) {
+      return (
+        <Card>
+          <CardContent className="p-6 text-center text-muted-foreground">
+            No tickets match your current filters.
+          </CardContent>
+        </Card>
+      );
+    }
+
+    return (
+      <div className="space-y-3">
+        {tickets.map((ticket: Ticket, index: number) => {
+          const lastReplyTimestamp = ticket.lastReply || ticket.date;
+          const statusInfo = getTicketStatusInfo(ticket);
+
+          return (
+            <Card key={index} className="hover:shadow-md transition-shadow cursor-pointer" onClick={() => handleNavigateToTicket(ticket.id)}>
+              <CardContent className="p-4">
+                <div className="flex justify-between items-start mb-2">
+                  <div className="flex-1 min-w-0">
+                    <h4 className="font-medium text-sm truncate">{ticket.subject}</h4>
+                    <p className="text-xs text-muted-foreground">#{ticket.id} • {ticket.reportedBy}</p>
+                  </div>
+                  <Badge
+                    variant="outline"
+                    className={`text-xs px-2 py-0 h-5 ml-2 flex-shrink-0 ${statusInfo.statusClass}`}
+                  >
+                    {statusInfo.statusText}
+                  </Badge>
+                </div>
+                <div className="flex justify-between items-center text-xs text-muted-foreground">
+                  <span>Created {formatTimeAgo(ticket.date)}</span>
+                  <span>Last reply {formatTimeAgo(lastReplyTimestamp)}</span>
+                </div>
+              </CardContent>
+            </Card>
+          );
+        })}
+      </div>
+    );
+  };
+
   // Handle pagination navigation
   const handlePageChange = (page: number) => {
     setCurrentPage(page);
@@ -384,42 +447,42 @@ const Tickets = () => {
 
               <TabsContent value="support" className="p-0 mt-0">
                 <CardContent className="p-4">
-                  {renderTicketTable()}
+                  {isMobile ? renderMobileTicketCards() : renderTicketTable()}
                   {renderPagination()}
                 </CardContent>
               </TabsContent>
-              
+
               <TabsContent value="bug" className="p-0 mt-0">
                 <CardContent className="p-4">
-                  {renderTicketTable()}
+                  {isMobile ? renderMobileTicketCards() : renderTicketTable()}
                   {renderPagination()}
                 </CardContent>
               </TabsContent>
-              
+
               <TabsContent value="player" className="p-0 mt-0">
                 <CardContent className="p-4">
-                  {renderTicketTable()}
+                  {isMobile ? renderMobileTicketCards() : renderTicketTable()}
                   {renderPagination()}
                 </CardContent>
               </TabsContent>
-              
+
               <TabsContent value="chat" className="p-0 mt-0">
                 <CardContent className="p-4">
-                  {renderTicketTable()}
+                  {isMobile ? renderMobileTicketCards() : renderTicketTable()}
                   {renderPagination()}
                 </CardContent>
               </TabsContent>
-              
+
               <TabsContent value="appeal" className="p-0 mt-0">
                 <CardContent className="p-4">
-                  {renderTicketTable()}
+                  {isMobile ? renderMobileTicketCards() : renderTicketTable()}
                   {renderPagination()}
                 </CardContent>
               </TabsContent>
-              
+
               <TabsContent value="staff" className="p-0 mt-0">
                 <CardContent className="p-4">
-                  {renderTicketTable()}
+                  {isMobile ? renderMobileTicketCards() : renderTicketTable()}
                   {renderPagination()}
                 </CardContent>
               </TabsContent>

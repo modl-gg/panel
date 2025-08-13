@@ -1,8 +1,7 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, Suspense, lazy } from "react";
 import { Switch, Route, useLocation } from "wouter";
 import { Toaster } from "@modl-gg/shared-web/components/ui/toaster";
 import { TooltipProvider } from "@modl-gg/shared-web/components/ui/tooltip";
-import NotFound from "@/pages/not-found";
 import Sidebar from "@/components/layout/Sidebar";
 import MobileNavbar from "@/components/layout/MobileNavbar";
 import { SidebarProvider } from "@/hooks/use-sidebar";
@@ -14,29 +13,38 @@ import { useIsMobile } from "@/hooks/use-mobile";
 import { useDocumentTitle } from "@/hooks/use-document-title";
 import { useProvisioningStatusCheck } from "@/hooks/use-provisioning-status";
 import { PlayerWindowProvider } from "@/contexts/PlayerWindowContext";
-import Home from "@/pages/home";
-import Lookup from "@/pages/lookup";
-import LookupPage from "@/pages/lookup-page";
-import PlayerDetailPage from "@/pages/player-detail-page";
-import Tickets from "@/pages/tickets";
-import TicketDetail from "@/pages/ticket-detail";
-import PlayerTicket from "@/pages/player-ticket";
-import Audit from "@/pages/audit";
-import Settings from "@/pages/settings";
-import AuthPage from "@/pages/auth-page";
-import AppealsPage from "@/pages/appeals";
-import ApiDocs from "@/pages/api-docs";
-import ProvisioningInProgressPage from "@/pages/provisioning-in-progress";
-import AcceptInvitationPage from "@/pages/AcceptInvitationPage";
 import { WelcomeModal } from "@/components/layout/WelcomeModal";
-import MaintenancePage from "./pages/MaintenancePage";
-import RateLimitPage from "@/pages/RateLimitPage";
 import { Loader2 } from "lucide-react";
 
+// Lazy load all pages for better code splitting
+const NotFound = lazy(() => import("@/pages/not-found"));
+const Home = lazy(() => import("@/pages/home"));
+const LookupPage = lazy(() => import("@/pages/lookup-page"));
+const PlayerDetailPage = lazy(() => import("@/pages/player-detail-page"));
+const Tickets = lazy(() => import("@/pages/tickets"));
+const TicketDetail = lazy(() => import("@/pages/ticket-detail"));
+const PlayerTicket = lazy(() => import("@/pages/player-ticket"));
+const Audit = lazy(() => import("@/pages/audit"));
+const Settings = lazy(() => import("@/pages/settings"));
+const AuthPage = lazy(() => import("@/pages/auth-page"));
+const AppealsPage = lazy(() => import("@/pages/appeals"));
+const ApiDocs = lazy(() => import("@/pages/api-docs"));
+const ProvisioningInProgressPage = lazy(() => import("@/pages/provisioning-in-progress"));
+const AcceptInvitationPage = lazy(() => import("@/pages/AcceptInvitationPage"));
+const MaintenancePage = lazy(() => import("./pages/MaintenancePage"));
+const RateLimitPage = lazy(() => import("@/pages/RateLimitPage"));
+
 // Knowledgebase Pages
-import KnowledgebasePage from "@/pages/KnowledgebasePage";
-import ArticleDetailPage from "@/pages/ArticleDetailPage";
-import HomePage from "@/pages/HomePage";
+const KnowledgebasePage = lazy(() => import("@/pages/KnowledgebasePage"));
+const ArticleDetailPage = lazy(() => import("@/pages/ArticleDetailPage"));
+const HomePage = lazy(() => import("@/pages/HomePage"));
+
+// Loading component for Suspense fallback
+const PageLoader = () => (
+  <div className="flex items-center justify-center min-h-[200px]">
+    <Loader2 className="h-6 w-6 animate-spin text-primary" />
+  </div>
+);
 
 function Router() {
   const [location] = useLocation();
@@ -54,13 +62,15 @@ function Router() {
   if (!isAdminPanelRoute && !isAuthPage && !isAppealsPage && !isPlayerTicketPage && !isProvisioningPage && !isAcceptInvitationPage) {
     return (
       <main className="h-full bg-background"> {/* Basic wrapper for public pages */}
-        <Switch>
-          <Route path="/" component={HomePage} />
-          <Route path="/knowledgebase" component={KnowledgebasePage} />
-          <Route path="/article/:articleSlug" component={ArticleDetailPage} />
-          {/* Fallback for unmatched public routes */}
-          <Route component={NotFound} />
-        </Switch>
+        <Suspense fallback={<PageLoader />}>
+          <Switch>
+            <Route path="/" component={HomePage} />
+            <Route path="/knowledgebase" component={KnowledgebasePage} />
+            <Route path="/article/:articleSlug" component={ArticleDetailPage} />
+            {/* Fallback for unmatched public routes */}
+            <Route component={NotFound} />
+          </Switch>
+        </Suspense>
       </main>
     );
   }
@@ -70,14 +80,16 @@ function Router() {
   if (isAuthPage || isAppealsPage || isPlayerTicketPage || isProvisioningPage || isAcceptInvitationPage) {
     return (
       <main className="h-full bg-background">
-        <Switch>
-          <AuthRoute path="/auth" component={AuthPage} />
-          <AuthRoute path="/panel/auth" component={AuthPage} />
-          <Route path="/appeal" component={AppealsPage} />
-          <Route path="/ticket/:id" component={PlayerTicket} />
-          <Route path="/provisioning-in-progress" component={ProvisioningInProgressPage} />
-          <Route path="/accept-invitation" component={AcceptInvitationPage} />
-        </Switch>
+        <Suspense fallback={<PageLoader />}>
+          <Switch>
+            <AuthRoute path="/auth" component={AuthPage} />
+            <AuthRoute path="/panel/auth" component={AuthPage} />
+            <Route path="/appeal" component={AppealsPage} />
+            <Route path="/ticket/:id" component={PlayerTicket} />
+            <Route path="/provisioning-in-progress" component={ProvisioningInProgressPage} />
+            <Route path="/accept-invitation" component={AcceptInvitationPage} />
+          </Switch>
+        </Suspense>
       </main>
     );
   }
@@ -87,29 +99,31 @@ function Router() {
     return (
       <div className="flex flex-col h-full bg-background">
         <main className="flex-1 overflow-y-auto bg-background transition-all duration-300 ease-in-out scrollbar pb-16">
-          <Switch>
-            <ProtectedRoute path="/panel" component={Home} />
-            <ProtectedRoute path="/panel/lookup" component={LookupPage} />
-            <ProtectedRoute path="/panel/player/:uuid" component={PlayerDetailPage} />
-            <ProtectedRoute path="/panel/tickets" component={Tickets} />
-            <ProtectedRoute path="/panel/tickets/:id" component={TicketDetail} />
-            <ProtectedRoute path="/panel/audit" component={Audit} />
-            <ProtectedRoute path="/panel/settings" component={Settings} />
-            <ProtectedRoute path="/panel/api-docs" component={ApiDocs} />
-            <AuthRoute path="/panel/auth" component={AuthPage} />
-            {/* These routes are assumed to be outside /panel */}
-            <AuthRoute path="/auth" component={AuthPage} /> {/* For direct /auth access */}
-            <Route path="/appeal" component={AppealsPage} />
-            <Route path="/ticket/:id" component={PlayerTicket} />
-            <Route path="/provisioning-in-progress" component={ProvisioningInProgressPage} />
-            <Route path="/accept-invitation" component={AcceptInvitationPage} />
-            <Route path="/rate-limit" component={RateLimitPage} />
-            {/* Public KB routes for mobile, if accessed directly and not caught by earlier block */}
-            <Route path="/knowledgebase" component={KnowledgebasePage} />
-            <Route path="/article/:articleSlug" component={ArticleDetailPage} />
-            <Route path="/" component={HomePage} />
-            <Route component={NotFound} />
-          </Switch>
+          <Suspense fallback={<PageLoader />}>
+            <Switch>
+              <ProtectedRoute path="/panel" component={Home} />
+              <ProtectedRoute path="/panel/lookup" component={LookupPage} />
+              <ProtectedRoute path="/panel/player/:uuid" component={PlayerDetailPage} />
+              <ProtectedRoute path="/panel/tickets" component={Tickets} />
+              <ProtectedRoute path="/panel/tickets/:id" component={TicketDetail} />
+              <ProtectedRoute path="/panel/audit" component={Audit} />
+              <ProtectedRoute path="/panel/settings" component={Settings} />
+              <ProtectedRoute path="/panel/api-docs" component={ApiDocs} />
+              <AuthRoute path="/panel/auth" component={AuthPage} />
+              {/* These routes are assumed to be outside /panel */}
+              <AuthRoute path="/auth" component={AuthPage} /> {/* For direct /auth access */}
+              <Route path="/appeal" component={AppealsPage} />
+              <Route path="/ticket/:id" component={PlayerTicket} />
+              <Route path="/provisioning-in-progress" component={ProvisioningInProgressPage} />
+              <Route path="/accept-invitation" component={AcceptInvitationPage} />
+              <Route path="/rate-limit" component={RateLimitPage} />
+              {/* Public KB routes for mobile, if accessed directly and not caught by earlier block */}
+              <Route path="/knowledgebase" component={KnowledgebasePage} />
+              <Route path="/article/:articleSlug" component={ArticleDetailPage} />
+              <Route path="/" component={HomePage} />
+              <Route component={NotFound} />
+            </Switch>
+          </Suspense>
         </main>
         { location.startsWith("/panel") && <MobileNavbar /> }
       </div>
@@ -121,29 +135,31 @@ function Router() {
     <div className="flex h-full overflow-hidden bg-background">
       { location.startsWith("/panel") && <Sidebar /> }
       <main className={`flex-1 ${location.startsWith("/panel") ? 'pl-24' : ''} overflow-y-auto bg-background transition-all duration-300 ease-in-out scrollbar`}>
-        <Switch>
-          <ProtectedRoute path="/panel" component={Home} />
-          <ProtectedRoute path="/panel/lookup" component={LookupPage} />
-          <ProtectedRoute path="/panel/player/:uuid" component={PlayerDetailPage} />
-          <ProtectedRoute path="/panel/tickets" component={Tickets} />
-          <ProtectedRoute path="/panel/tickets/:id" component={TicketDetail} />
-          <ProtectedRoute path="/panel/audit" component={Audit} />
-          <ProtectedRoute path="/panel/settings" component={Settings} />
-          <ProtectedRoute path="/panel/api-docs" component={ApiDocs} />
-          <AuthRoute path="/panel/auth" component={AuthPage} />
-           {/* These routes are assumed to be outside /panel */}
-          <AuthRoute path="/auth" component={AuthPage} /> {/* For direct /auth access */}
-          <Route path="/appeal" component={AppealsPage} />
-          <Route path="/ticket/:id" component={PlayerTicket} />
-          <Route path="/provisioning-in-progress" component={ProvisioningInProgressPage} />
-          <Route path="/accept-invitation" component={AcceptInvitationPage} />
-          <Route path="/rate-limit" component={RateLimitPage} />
-          {/* Public KB routes for desktop, if accessed directly and not caught by earlier block */}
-          <Route path="/knowledgebase" component={KnowledgebasePage} />
-          <Route path="/article/:articleSlug" component={ArticleDetailPage} />
-          <Route path="/" component={HomePage} />
-          <Route component={NotFound} />
-        </Switch>
+        <Suspense fallback={<PageLoader />}>
+          <Switch>
+            <ProtectedRoute path="/panel" component={Home} />
+            <ProtectedRoute path="/panel/lookup" component={LookupPage} />
+            <ProtectedRoute path="/panel/player/:uuid" component={PlayerDetailPage} />
+            <ProtectedRoute path="/panel/tickets" component={Tickets} />
+            <ProtectedRoute path="/panel/tickets/:id" component={TicketDetail} />
+            <ProtectedRoute path="/panel/audit" component={Audit} />
+            <ProtectedRoute path="/panel/settings" component={Settings} />
+            <ProtectedRoute path="/panel/api-docs" component={ApiDocs} />
+            <AuthRoute path="/panel/auth" component={AuthPage} />
+             {/* These routes are assumed to be outside /panel */}
+            <AuthRoute path="/auth" component={AuthPage} /> {/* For direct /auth access */}
+            <Route path="/appeal" component={AppealsPage} />
+            <Route path="/ticket/:id" component={PlayerTicket} />
+            <Route path="/provisioning-in-progress" component={ProvisioningInProgressPage} />
+            <Route path="/accept-invitation" component={AcceptInvitationPage} />
+            <Route path="/rate-limit" component={RateLimitPage} />
+            {/* Public KB routes for desktop, if accessed directly and not caught by earlier block */}
+            <Route path="/knowledgebase" component={KnowledgebasePage} />
+            <Route path="/article/:articleSlug" component={ArticleDetailPage} />
+            <Route path="/" component={HomePage} />
+            <Route component={NotFound} />
+          </Switch>
+        </Suspense>
       </main>
     </div>
   );

@@ -22,6 +22,28 @@ interface IModlServer {
 
 const router = express.Router();
 
+// Utility function to check if the request is coming from a custom domain
+function isAccessingFromCustomDomain(req: Request): boolean {
+  const hostname = req.hostname;
+  const server = req.modlServer as IModlServer;
+  const DOMAIN = process.env.DOMAIN || 'modl.gg';
+
+  // If no custom domain is configured, definitely not accessing from custom domain
+  if (!server?.customDomain_override) {
+    return false;
+  }
+
+  // If hostname ends with base domain, it's a modl.gg subdomain
+  if (hostname.endsWith(`.${DOMAIN}`)) {
+    return false;
+  }
+
+  // If hostname matches the custom domain override and custom domain is active,
+  // then user is accessing from custom domain
+  return hostname === server.customDomain_override &&
+         server.customDomain_status === 'active';
+}
+
 // GET /domain - Get current domain configuration
 router.get('/', async (req: Request, res: Response) => {
   try {
@@ -88,8 +110,13 @@ router.get('/', async (req: Request, res: Response) => {
       }
     }
 
+    const DOMAIN = process.env.DOMAIN || 'modl.gg';
+    const modlSubdomainUrl = `https://${server.customDomain}.${DOMAIN}`;
+
     res.json({
       customDomain: server.customDomain_override,
+      accessingFromCustomDomain: isAccessingFromCustomDomain(req),
+      modlSubdomainUrl,
       status: {
         domain: server.customDomain_override,
         status: actualStatus,
@@ -109,6 +136,13 @@ router.get('/', async (req: Request, res: Response) => {
 // POST /domain - Create or update a custom domain for this server
 router.post('/', async (req: Request, res: Response) => {
   try {
+    // Check if accessing from custom domain - if so, block editing
+    if (isAccessingFromCustomDomain(req)) {
+      return res.status(403).json({
+        error: 'Custom domain settings cannot be modified when accessing from a custom domain. Please access your panel via the modl.gg subdomain to make changes.'
+      });
+    }
+
     const { customDomain } = req.body as { customDomain: string };
     const server = req.modlServer as IModlServer;
     if (!server) {
@@ -197,6 +231,13 @@ router.post('/', async (req: Request, res: Response) => {
 // POST /domain/verify - Verify DNS and activate SSL for the custom domain
 router.post('/verify', async (req: Request, res: Response) => {
   try {
+    // Check if accessing from custom domain - if so, block editing
+    if (isAccessingFromCustomDomain(req)) {
+      return res.status(403).json({
+        error: 'Custom domain settings cannot be modified when accessing from a custom domain. Please access your panel via the modl.gg subdomain to make changes.'
+      });
+    }
+
     const { domain } = req.body as { domain: string };
     const server = req.modlServer as IModlServer;
     if (!server) {
@@ -276,6 +317,13 @@ router.post('/verify', async (req: Request, res: Response) => {
 // DELETE /domain - Remove the custom domain and Cloudflare hostname
 router.delete('/', async (req: Request, res: Response) => {
   try {
+    // Check if accessing from custom domain - if so, block editing
+    if (isAccessingFromCustomDomain(req)) {
+      return res.status(403).json({
+        error: 'Custom domain settings cannot be modified when accessing from a custom domain. Please access your panel via the modl.gg subdomain to make changes.'
+      });
+    }
+
     const server = req.modlServer as IModlServer;
     if (!server) {
       return res.status(400).json({ error: 'Server context not found' });

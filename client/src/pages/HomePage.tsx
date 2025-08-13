@@ -188,8 +188,8 @@ const HomePage: React.FC = () => {
       const url = card.action_url || '#';
       
       return (
-        <Card key={card.id} className="group hover:shadow-md transition-all duration-300 hover:-translate-y-1 h-72">
-          <CardContent className="p-6 h-full flex flex-col justify-between">
+        <Card key={card.id} className="group hover:shadow-md transition-all duration-300 hover:-translate-y-1 h-64 sm:h-72">
+          <CardContent className="p-4 sm:p-6 h-full flex flex-col justify-between">
             <div className="text-center">
               <div className="w-14 h-14 bg-primary/10 rounded-full flex items-center justify-center mx-auto mb-4 group-hover:bg-primary/20 transition-colors">
                 <IconComponent className="h-7 w-7" style={{ color: iconColor }} />
@@ -224,13 +224,13 @@ const HomePage: React.FC = () => {
 
   return (
     <div className="min-h-screen bg-background">{/* Removed gradient for better theme compatibility */}
-      {/* Header with Sign In and Theme Toggle - positioned at 3/4 from left edge */}
-      <div className="absolute top-6 left-3/4 z-10 flex items-center gap-2">
+      {/* Header with Sign In and Theme Toggle - responsive positioning */}
+      <div className="absolute top-4 right-4 z-10 flex items-center gap-1 sm:gap-2">
         {/* Theme Toggle */}
-        <Button 
-          variant="secondary" 
-          size="sm" 
-          className="bg-card/80 hover:bg-card/90 text-foreground border-muted"
+        <Button
+          variant="secondary"
+          size="sm"
+          className="bg-card/80 hover:bg-card/90 text-foreground border-muted p-2 sm:px-3"
           onClick={() => setTheme(theme === 'dark' ? 'light' : 'dark')}
         >
           {theme === 'dark' ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
@@ -238,30 +238,31 @@ const HomePage: React.FC = () => {
 
         {/* Sign In / Go To Panel Button */}
         <Link href={user ? "/panel" : "/panel/auth"}>
-          <Button variant="secondary" size="sm" className="bg-card/80 hover:bg-card/90 text-foreground border-muted">
-            <LogIn className="h-4 w-4 mr-2" />
-            {user ? "Go To Panel" : "Sign In"}
+          <Button variant="secondary" size="sm" className="bg-card/80 hover:bg-card/90 text-foreground border-muted text-xs sm:text-sm">
+            <LogIn className="h-4 w-4 mr-1 sm:mr-2" />
+            <span className="hidden sm:inline">{user ? "Go To Panel" : "Sign In"}</span>
+            <span className="sm:hidden">{user ? "Panel" : "Sign In"}</span>
           </Button>
         </Link>
       </div>
 
       {/* Logo and Search Section */}
-      <section className="py-12 px-4">
+      <section className="py-8 sm:py-12 px-4">
         <div className="max-w-6xl mx-auto text-center">
-          {/* Large Logo */}
-          <div className="w-32 h-32 mx-auto mb-6">
-            <img 
-              src={publicSettings?.homepageIconUrl || serverLogo} 
-              alt={publicSettings?.serverDisplayName || "Server Logo"} 
-              className="w-full h-full object-contain" 
+          {/* Large Logo - responsive sizing */}
+          <div className="w-24 h-24 sm:w-32 sm:h-32 mx-auto mb-4 sm:mb-6">
+            <img
+              src={publicSettings?.homepageIconUrl || serverLogo}
+              alt={publicSettings?.serverDisplayName || "Server Logo"}
+              className="w-full h-full object-contain"
             />
           </div>
           
           {/* Descriptive Text */}
-          <p className="text-foreground text-lg mb-8">Search our knowledgebase or contact us here</p>
-          
+          <p className="text-foreground text-base sm:text-lg mb-6 sm:mb-8 px-2">Search our knowledgebase or contact us here</p>
+
           {/* Search Bar */}
-          <div className="max-w-xl mx-auto mb-4">
+          <div className="max-w-xl mx-auto mb-4 px-2">
             <div className="relative">
               <Search className="absolute left-4 top-1/2 transform -translate-y-1/2 text-muted-foreground h-4 w-4" />
               <Input
@@ -269,7 +270,7 @@ const HomePage: React.FC = () => {
                 placeholder="Search knowledgebase..."
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
-                className="pl-12 py-3 rounded-full border-2 focus:border-primary shadow-md"
+                className="pl-12 py-2 sm:py-3 rounded-full border-2 focus:border-primary shadow-md text-sm sm:text-base"
               />
             </div>
             
@@ -300,13 +301,13 @@ const HomePage: React.FC = () => {
           </div>
 
           {/* Quick Actions - Moved closer to search */}
-          <div className="max-w-6xl mx-auto mt-8">
-            <div className="grid grid-cols-2 md:grid-cols-3 gap-6 auto-rows-max">
+          <div className="max-w-6xl mx-auto mt-6 sm:mt-8 px-2">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6 auto-rows-max">
               {isLoading ? (
                 // Loading skeleton
                 [...Array(6)].map((_, i) => (
-                  <Card key={i} className="animate-pulse h-72">
-                    <CardContent className="p-6 h-full flex flex-col">
+                  <Card key={i} className="animate-pulse h-64 sm:h-72">
+                    <CardContent className="p-4 sm:p-6 h-full flex flex-col">
                       <div className="w-14 h-14 bg-muted rounded-full mx-auto mb-4"></div>
                       <div className="h-6 bg-muted rounded w-3/4 mx-auto mb-3"></div>
                       <div className="h-4 bg-muted rounded w-full mb-2"></div>
@@ -320,8 +321,8 @@ const HomePage: React.FC = () => {
               ) : (
                 // Fallback to default cards if no custom cards are configured
                 <>
-                  <Card className="group hover:shadow-md transition-all duration-300 hover:-translate-y-1 h-72">
-                    <CardContent className="p-6 h-full flex flex-col justify-between">
+                  <Card className="group hover:shadow-md transition-all duration-300 hover:-translate-y-1 h-64 sm:h-72">
+                    <CardContent className="p-4 sm:p-6 h-full flex flex-col justify-between">
                       <div className="text-center">
                         <div className="w-14 h-14 bg-amber-500/10 rounded-full flex items-center justify-center mx-auto mb-4 group-hover:bg-amber-500/20 transition-colors">
                           <Shield className="h-7 w-7 text-amber-600" />
@@ -337,8 +338,8 @@ const HomePage: React.FC = () => {
                     </CardContent>
                   </Card>
 
-                  <Card className="group hover:shadow-md transition-all duration-300 hover:-translate-y-1 h-72">
-                    <CardContent className="p-6 h-full flex flex-col justify-between">
+                  <Card className="group hover:shadow-md transition-all duration-300 hover:-translate-y-1 h-64 sm:h-72">
+                    <CardContent className="p-4 sm:p-6 h-full flex flex-col justify-between">
                       <div className="text-center">
                         <div className="w-14 h-14 bg-blue-500/10 rounded-full flex items-center justify-center mx-auto mb-4 group-hover:bg-blue-500/20 transition-colors">
                           <UserPlus className="h-7 w-7 text-blue-600" />
@@ -352,8 +353,8 @@ const HomePage: React.FC = () => {
                     </CardContent>
                   </Card>
 
-                  <Card className="group hover:shadow-md transition-all duration-300 hover:-translate-y-1 h-72">
-                    <CardContent className="p-6 h-full flex flex-col justify-between">
+                  <Card className="group hover:shadow-md transition-all duration-300 hover:-translate-y-1 h-64 sm:h-72">
+                    <CardContent className="p-4 sm:p-6 h-full flex flex-col justify-between">
                       <div className="text-center">
                         <div className="w-14 h-14 bg-green-500/10 rounded-full flex items-center justify-center mx-auto mb-4 group-hover:bg-green-500/20 transition-colors">
                           <MessageCircle className="h-7 w-7 text-green-600" />
@@ -367,8 +368,8 @@ const HomePage: React.FC = () => {
                     </CardContent>
                   </Card>
 
-                  <Card className="group hover:shadow-md transition-all duration-300 hover:-translate-y-1 h-72">
-                    <CardContent className="p-6 h-full flex flex-col justify-between">
+                  <Card className="group hover:shadow-md transition-all duration-300 hover:-translate-y-1 h-64 sm:h-72">
+                    <CardContent className="p-4 sm:p-6 h-full flex flex-col justify-between">
                       <div className="text-center">
                         <div className="w-14 h-14 bg-purple-500/10 rounded-full flex items-center justify-center mx-auto mb-4 group-hover:bg-purple-500/20 transition-colors">
                           <BookOpen className="h-7 w-7 text-purple-600" />
