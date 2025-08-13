@@ -295,7 +295,6 @@ MessageAvatar.displayName = 'MessageAvatar';
 const TicketDetail = () => {
   const [, setLocation] = useLocation();
   const [activeTab, setActiveTab] = useState('conversation');
-  const [punishmentTypes, setPunishmentTypes] = useState<any[]>([]);
   const location = useLocation();
   const { user } = useAuth();
   const { toast } = useToast();
@@ -1813,7 +1812,13 @@ const TicketDetail = () => {
                                 ? 'Applied: ' 
                                 : 'Suggested: '}
                               {(() => {
-                                const punishmentType = punishmentTypes.find(
+                                // Create flattened array of all punishment types from categories
+                                const allPunishmentTypes = [
+                                  ...(punishmentTypesByCategory?.Administrative || []),
+                                  ...(punishmentTypesByCategory?.Social || []),
+                                  ...(punishmentTypesByCategory?.Gameplay || [])
+                                ];
+                                const punishmentType = allPunishmentTypes.find(
                                   pt => pt.ordinal === ticketDetails.aiAnalysis?.suggestedAction?.punishmentTypeId
                                 );
                                 return (punishmentType ? punishmentType.name : 'Unknown Punishment') + " ";
