@@ -18,6 +18,8 @@ interface GeneralSettingsProps {
   // Server Configuration
   serverDisplayName: string;
   setServerDisplayName: (value: string) => void;
+  discordWebhookUrl: string;
+  setDiscordWebhookUrl: (value: string) => void;
   
   // Server Icons
   homepageIconUrl: string;
@@ -51,6 +53,8 @@ interface GeneralSettingsProps {
 const GeneralSettings = ({
   serverDisplayName,
   setServerDisplayName,
+  discordWebhookUrl,
+  setDiscordWebhookUrl,
   homepageIconUrl,
   panelIconUrl,
   uploadingHomepageIcon,
@@ -208,6 +212,23 @@ const GeneralSettings = ({
               />
               <p className="text-sm text-muted-foreground">
                 This name will appear in the browser tab title and on the authentication page
+              </p>
+            </div>
+
+            <Separator />
+
+            {/* Discord Webhook */}
+            <div className="space-y-2">
+              <Label htmlFor="discord-webhook">Discord Webhook URL</Label>
+              <Input
+                id="discord-webhook"
+                type="url"
+                placeholder="https://discord.com/api/webhooks/..."
+                value={discordWebhookUrl}
+                onChange={(e) => setDiscordWebhookUrl(e.target.value)}
+              />
+              <p className="text-sm text-muted-foreground">
+                When configured, notifications for new punishments and finished tickets will be sent to this Discord channel
               </p>
             </div>
 
