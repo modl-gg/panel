@@ -2,6 +2,41 @@ import { Connection, Types, Document } from 'mongoose'; // Added Types, Document
 import { Request, Response, NextFunction, Express } from 'express'; // Added Express for app type
 import { v4 as uuidv4 } from 'uuid'; // For generating new player UUIDs
 import { createSystemLog } from './log-routes'; // Import createSystemLog
+import { DiscordWebhookService } from '../services/discord-webhook-service';
+
+/**
+ * Format duration in milliseconds to human-readable string
+ */
+function formatDuration(durationMs: number): string {
+  if (durationMs <= 0) {
+    return 'Permanent';
+  }
+
+  const seconds = Math.floor(durationMs / 1000);
+  const minutes = Math.floor(seconds / 60);
+  const hours = Math.floor(minutes / 60);
+  const days = Math.floor(hours / 24);
+  const weeks = Math.floor(days / 7);
+  const months = Math.floor(days / 30);
+
+  if (months >= 1) {
+    const remainingDays = days % 30;
+    return remainingDays > 0 ? `${months} month${months > 1 ? 's' : ''} ${remainingDays} day${remainingDays > 1 ? 's' : ''}` : `${months} month${months > 1 ? 's' : ''}`;
+  } else if (weeks >= 1) {
+    const remainingDays = days % 7;
+    return remainingDays > 0 ? `${weeks} week${weeks > 1 ? 's' : ''} ${remainingDays} day${remainingDays > 1 ? 's' : ''}` : `${weeks} week${weeks > 1 ? 's' : ''}`;
+  } else if (days >= 1) {
+    const remainingHours = hours % 24;
+    return remainingHours > 0 ? `${days} day${days > 1 ? 's' : ''} ${remainingHours} hour${remainingHours > 1 ? 's' : ''}` : `${days} day${days > 1 ? 's' : ''}`;
+  } else if (hours >= 1) {
+    const remainingMinutes = minutes % 60;
+    return remainingMinutes > 0 ? `${hours} hour${hours > 1 ? 's' : ''} ${remainingMinutes} minute${remainingMinutes > 1 ? 's' : ''}` : `${hours} hour${hours > 1 ? 's' : ''}`;
+  } else if (minutes >= 1) {
+    return `${minutes} minute${minutes > 1 ? 's' : ''}`;
+  } else {
+    return `${seconds} second${seconds > 1 ? 's' : ''}`;
+  }
+}
 
 /**
  * Create a punishment audit log entry with staff member resolution
@@ -1637,6 +1672,41 @@ export function setupMinecraftRoutes(app: Express): void {
         isDynamic: false
       });
 
+      // Send Discord webhook notification
+      try {
+        const webhookService = new DiscordWebhookService(serverDbConnection);
+        
+        // Get punishment type name for the webhook
+        let punishmentTypeName = 'Unknown';
+        try {
+          const Settings = serverDbConnection.model('Settings');
+          const punishmentTypesDoc = await Settings.findOne({ type: 'punishmentTypes' });
+          if (punishmentTypesDoc?.data) {
+            const punishmentTypes = punishmentTypesDoc.data;
+            const punishmentType = punishmentTypes.find((pt: any) => pt.ordinal === finalTypeOrdinal);
+            if (punishmentType) {
+              punishmentTypeName = punishmentType.name;
+            }
+          }
+        } catch (typeError) {
+          console.error('[Minecraft Routes] Error getting punishment type name for webhook:', typeError);
+        }
+        
+        await webhookService.sendPunishmentNotification({
+          id: punishmentId,
+          playerName: player.usernames?.[0]?.username || player.minecraftUuid,
+          punishmentType: punishmentTypeName,
+          severity: 'Unknown', // Basic minecraft routes don't specify severity
+          reason: reason || 'No reason provided',
+          duration: duration ? formatDuration(Number(duration)) : 'Unknown',
+          issuer: issuerName,
+          ticketId: attachedTicketIds?.[0]
+        });
+      } catch (webhookError) {
+        console.error('[Minecraft Routes] Failed to send Discord webhook notification:', webhookError);
+        // Don't fail the punishment if webhook fails
+      }
+
       return res.status(201).json({
         status: 201,
         message: 'Punishment created successfully',
@@ -2605,6 +2675,25 @@ export function setupMinecraftRoutes(app: Express): void {
         duration: calculatedDuration,
         isDynamic: true
       });
+
+      // Send Discord webhook notification
+      try {
+        const webhookService = new DiscordWebhookService(serverDbConnection);
+        
+        await webhookService.sendPunishmentNotification({
+          id: punishmentId,
+          playerName: player.usernames?.[0]?.username || player.minecraftUuid,
+          punishmentType: punishmentType.name || 'Unknown',
+          severity: finalSeverity || 'Unknown',
+          reason: reason || 'No reason provided',
+          duration: calculatedDuration ? formatDuration(Number(calculatedDuration)) : 'Unknown',
+          issuer: issuerName,
+          ticketId: attachedTicketIds?.[0]
+        });
+      } catch (webhookError) {
+        console.error('[Minecraft Routes] Failed to send Discord webhook notification for dynamic punishment:', webhookError);
+        // Don't fail the punishment if webhook fails
+      }
 
       return res.status(201).json({
         status: 201,
