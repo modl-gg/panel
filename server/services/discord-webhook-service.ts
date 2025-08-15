@@ -41,14 +41,10 @@ export class DiscordWebhookService {
     const webhookUrl = await this.getWebhookUrl();
     
     if (!webhookUrl || !webhookUrl.trim()) {
-      console.log('[Discord Webhook] No webhook URL configured, skipping notification');
       return; // Silently skip if no webhook configured
     }
 
     try {
-      console.log('[Discord Webhook] Sending webhook to:', webhookUrl.substring(0, 50) + '...');
-      console.log('[Discord Webhook] Payload:', JSON.stringify(payload, null, 2));
-      
       const response = await fetch(webhookUrl, {
         method: 'POST',
         headers: {
@@ -61,8 +57,6 @@ export class DiscordWebhookService {
         const responseText = await response.text();
         console.error(`[Discord Webhook] Failed to send webhook: ${response.status} ${response.statusText}`);
         console.error(`[Discord Webhook] Response body: ${responseText}`);
-      } else {
-        console.log('[Discord Webhook] Successfully sent notification');
       }
     } catch (error) {
       console.error('[Discord Webhook] Error sending webhook:', error);
