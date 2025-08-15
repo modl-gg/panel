@@ -41,10 +41,14 @@ export class DiscordWebhookService {
     const webhookUrl = await this.getWebhookUrl();
     
     if (!webhookUrl || !webhookUrl.trim()) {
+      console.log('[Discord Webhook] No webhook URL configured, skipping notification');
       return; // Silently skip if no webhook configured
     }
 
     try {
+      console.log('[Discord Webhook] Sending webhook to:', webhookUrl.substring(0, 50) + '...');
+      console.log('[Discord Webhook] Payload:', JSON.stringify(payload, null, 2));
+      
       const response = await fetch(webhookUrl, {
         method: 'POST',
         headers: {
@@ -54,7 +58,11 @@ export class DiscordWebhookService {
       });
 
       if (!response.ok) {
+        const responseText = await response.text();
         console.error(`[Discord Webhook] Failed to send webhook: ${response.status} ${response.statusText}`);
+        console.error(`[Discord Webhook] Response body: ${responseText}`);
+      } else {
+        console.log('[Discord Webhook] Successfully sent notification');
       }
     } catch (error) {
       console.error('[Discord Webhook] Error sending webhook:', error);
@@ -71,54 +79,63 @@ export class DiscordWebhookService {
     issuer: string;
     ticketId?: string;
   }): Promise<void> {
+    // Helper function to ensure field values meet Discord requirements
+    const sanitizeValue = (value: string | undefined, maxLength: number = 1024): string => {
+      if (!value || value.trim() === '') {
+        return 'Unknown';
+      }
+      const trimmed = value.trim();
+      return trimmed.length > maxLength ? trimmed.substring(0, maxLength - 3) + '...' : trimmed;
+    };
+
     const embed: DiscordEmbed = {
       title: '⚖️ New Punishment Issued',
       color: 0xff4444, // Red color
       fields: [
         {
           name: 'Player',
-          value: punishment.playerName,
+          value: sanitizeValue(punishment.playerName, 1024),
           inline: true,
         },
         {
           name: 'Punishment Type',
-          value: punishment.punishmentType,
+          value: sanitizeValue(punishment.punishmentType, 1024),
           inline: true,
         },
         {
           name: 'Severity',
-          value: punishment.severity.charAt(0).toUpperCase() + punishment.severity.slice(1),
+          value: sanitizeValue(punishment.severity)?.charAt(0).toUpperCase() + sanitizeValue(punishment.severity)?.slice(1) || 'Unknown',
           inline: true,
         },
         {
           name: 'Reason',
-          value: punishment.reason,
+          value: sanitizeValue(punishment.reason, 1024),
           inline: false,
         },
         {
           name: 'Issued By',
-          value: punishment.issuer,
+          value: sanitizeValue(punishment.issuer, 1024),
           inline: true,
         },
       ],
       timestamp: new Date().toISOString(),
       footer: {
-        text: `Punishment ID: ${punishment.id}`,
+        text: `Punishment ID: ${punishment.id || 'Unknown'}`,
       },
     };
 
-    if (punishment.duration) {
+    if (punishment.duration && punishment.duration !== 'Unknown') {
       embed.fields!.splice(3, 0, {
         name: 'Duration',
-        value: punishment.duration,
+        value: sanitizeValue(punishment.duration, 1024),
         inline: true,
       });
     }
 
-    if (punishment.ticketId) {
+    if (punishment.ticketId && punishment.ticketId.trim() !== '') {
       embed.fields!.push({
         name: 'Related Ticket',
-        value: punishment.ticketId,
+        value: sanitizeValue(punishment.ticketId, 1024),
         inline: true,
       });
     }
