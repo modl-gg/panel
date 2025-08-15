@@ -796,12 +796,22 @@ router.post('/:uuid/punishments', async (req: Request<{ uuid: string }, {}, AddP
         console.error('[Player Routes] Error getting punishment type name for webhook:', typeError);
       }
       
+      // Extract reason from data or notes
+      let reasonText = 'No reason provided';
+      if (data?.reason) {
+        reasonText = String(data.reason);
+      } else if (notes && notes.length > 0) {
+        // Notes might be objects with text property or just strings
+        const firstNote = notes[0];
+        reasonText = typeof firstNote === 'string' ? firstNote : (firstNote?.text || 'No reason provided');
+      }
+      
       await webhookService.sendPunishmentNotification({
         id,
         playerName: player.usernames?.[0]?.username || player.minecraftUuid,
         punishmentType: punishmentTypeName,
         severity: severity || 'Unknown',
-        reason: data?.reason || notes?.[0] || 'No reason provided',
+        reason: reasonText,
         duration: data?.duration ? formatDuration(Number(data.duration)) : 'Unknown',
         issuer: issuerName,
         ticketId: attachedTicketIds?.[0]

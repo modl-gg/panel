@@ -80,11 +80,15 @@ export class DiscordWebhookService {
     ticketId?: string;
   }): Promise<void> {
     // Helper function to ensure field values meet Discord requirements
-    const sanitizeValue = (value: string | undefined, maxLength: number = 1024): string => {
-      if (!value || value.trim() === '') {
+    const sanitizeValue = (value: any, maxLength: number = 1024): string => {
+      // Convert to string first
+      const strValue = value !== null && value !== undefined ? String(value) : '';
+      
+      if (!strValue || strValue.trim() === '') {
         return 'Unknown';
       }
-      const trimmed = value.trim();
+      
+      const trimmed = strValue.trim();
       return trimmed.length > maxLength ? trimmed.substring(0, maxLength - 3) + '...' : trimmed;
     };
 
@@ -104,7 +108,12 @@ export class DiscordWebhookService {
         },
         {
           name: 'Severity',
-          value: sanitizeValue(punishment.severity)?.charAt(0).toUpperCase() + sanitizeValue(punishment.severity)?.slice(1) || 'Unknown',
+          value: (() => {
+            const severity = sanitizeValue(punishment.severity);
+            return severity !== 'Unknown' 
+              ? severity.charAt(0).toUpperCase() + severity.slice(1)
+              : 'Unknown';
+          })(),
           inline: true,
         },
         {
