@@ -5,6 +5,7 @@ import { createSystemLog } from './log-routes';
 import { calculatePlayerStatus, updatePunishmentDataStructure } from '../utils/player-status-calculator';
 import { checkPermission } from '../middleware/permission-middleware';
 import { checkRole } from '../middleware/role-middleware';
+import { DiscordWebhookService } from '../services/discord-webhook-service';
 
 // Local type definitions (temporary replacement for missing shared types)
 interface IIPAddress {
@@ -75,6 +76,40 @@ interface IIPInfo {
   as?: string;
   proxy?: boolean;
   hosting?: boolean;
+}
+
+/**
+ * Format duration in milliseconds to human-readable string
+ */
+function formatDuration(durationMs: number): string {
+  if (durationMs <= 0) {
+    return 'Permanent';
+  }
+
+  const seconds = Math.floor(durationMs / 1000);
+  const minutes = Math.floor(seconds / 60);
+  const hours = Math.floor(minutes / 60);
+  const days = Math.floor(hours / 24);
+  const weeks = Math.floor(days / 7);
+  const months = Math.floor(days / 30);
+
+  if (months >= 1) {
+    const remainingDays = days % 30;
+    return remainingDays > 0 ? `${months} month${months > 1 ? 's' : ''} ${remainingDays} day${remainingDays > 1 ? 's' : ''}` : `${months} month${months > 1 ? 's' : ''}`;
+  } else if (weeks >= 1) {
+    const remainingDays = days % 7;
+    return remainingDays > 0 ? `${weeks} week${weeks > 1 ? 's' : ''} ${remainingDays} day${remainingDays > 1 ? 's' : ''}` : `${weeks} week${weeks > 1 ? 's' : ''}`;
+  } else if (days >= 1) {
+    const remainingHours = hours % 24;
+    return remainingHours > 0 ? `${days} day${days > 1 ? 's' : ''} ${remainingHours} hour${remainingHours > 1 ? 's' : ''}` : `${days} day${days > 1 ? 's' : ''}`;
+  } else if (hours >= 1) {
+    const remainingMinutes = minutes % 60;
+    return remainingMinutes > 0 ? `${hours} hour${hours > 1 ? 's' : ''} ${remainingMinutes} minute${remainingMinutes > 1 ? 's' : ''}` : `${hours} hour${hours > 1 ? 's' : ''}`;
+  } else if (minutes >= 1) {
+    return `${minutes} minute${minutes > 1 ? 's' : ''}`;
+  } else {
+    return `${seconds} second${seconds > 1 ? 's' : ''}`;
+  }
 }
 
 const router = express.Router();
@@ -740,6 +775,52 @@ router.post('/:uuid/punishments', async (req: Request<{ uuid: string }, {}, AddP
     player.punishments.push(newPunishment);
     await player.save({ validateBeforeSave: false });
     await createSystemLog(req.serverDbConnection, req.serverName, `Punishment ID ${id} (Type: ${type_ordinal}) added to player ${req.params.uuid} by ${issuerName}.`, 'moderation', 'player-api');
+    
+    // Send Discord webhook notification
+    try {
+      const webhookService = new DiscordWebhookService(req.serverDbConnection!);
+      
+      // Get punishment type name for the webhook
+      let punishmentTypeName = 'Unknown';
+      try {
+        const Settings = req.serverDbConnection!.model('Settings');
+        const punishmentTypesDoc = await Settings.findOne({ type: 'punishmentTypes' });
+        if (punishmentTypesDoc?.data) {
+          const punishmentTypes = punishmentTypesDoc.data;
+          const punishmentType = punishmentTypes.find((pt: any) => pt.ordinal === type_ordinal);
+          if (punishmentType) {
+            punishmentTypeName = punishmentType.name;
+          }
+        }
+      } catch (typeError) {
+        console.error('[Player Routes] Error getting punishment type name for webhook:', typeError);
+      }
+      
+      // Extract reason from data or notes
+      let reasonText = 'No reason provided';
+      if (data?.reason) {
+        reasonText = String(data.reason);
+      } else if (notes && notes.length > 0) {
+        // Notes might be objects with text property or just strings
+        const firstNote = notes[0];
+        reasonText = typeof firstNote === 'string' ? firstNote : (firstNote?.text || 'No reason provided');
+      }
+      
+      await webhookService.sendPunishmentNotification({
+        id,
+        playerName: player.usernames?.[0]?.username || player.minecraftUuid,
+        punishmentType: punishmentTypeName,
+        severity: severity || 'Unknown',
+        reason: reasonText,
+        duration: data?.duration ? formatDuration(Number(data.duration)) : 'Unknown',
+        issuer: issuerName,
+        ticketId: attachedTicketIds?.[0]
+      });
+    } catch (webhookError) {
+      console.error('[Player Routes] Failed to send Discord webhook notification:', webhookError);
+      // Don't fail the punishment if webhook fails
+    }
+    
     res.json(player);
   } catch (error) {
     console.error('Error adding punishment:', error);

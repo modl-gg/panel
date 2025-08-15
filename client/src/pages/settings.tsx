@@ -970,6 +970,7 @@ const Settings = () => {
 
   // General tab states
   const [serverDisplayName, setServerDisplayName] = useState('');
+  const [discordWebhookUrl, setDiscordWebhookUrl] = useState('');
   const [homepageIcon, setHomepageIcon] = useState<File | null>(null);
   const [panelIcon, setPanelIcon] = useState<File | null>(null);
   const [homepageIconUrl, setHomepageIconUrl] = useState('');
@@ -1665,11 +1666,13 @@ const Settings = () => {
     // Handle general settings (both direct properties and nested object)
     if (settingsObject.general) {
       if (settingsObject.general.serverDisplayName !== undefined) setServerDisplayName(settingsObject.general.serverDisplayName);
+      if (settingsObject.general.discordWebhookUrl !== undefined) setDiscordWebhookUrl(settingsObject.general.discordWebhookUrl);
       if (settingsObject.general.homepageIconUrl !== undefined) setHomepageIconUrl(settingsObject.general.homepageIconUrl);
       if (settingsObject.general.panelIconUrl !== undefined) setPanelIconUrl(settingsObject.general.panelIconUrl);
     } else {
       // Fallback for direct properties (backward compatibility)
       if (settingsObject.serverDisplayName !== undefined) setServerDisplayName(settingsObject.serverDisplayName);
+      if (settingsObject.discordWebhookUrl !== undefined) setDiscordWebhookUrl(settingsObject.discordWebhookUrl);
       if (settingsObject.homepageIconUrl !== undefined) setHomepageIconUrl(settingsObject.homepageIconUrl);
       if (settingsObject.panelIconUrl !== undefined) setPanelIconUrl(settingsObject.panelIconUrl);
     }
@@ -1710,6 +1713,7 @@ const Settings = () => {
         hasPasskey,
         general: {
           serverDisplayName,
+          discordWebhookUrl,
           homepageIconUrl,
           panelIconUrl,
         },
@@ -1759,7 +1763,7 @@ const Settings = () => {
       setIsSaving(false);
     }
   }, [
-    punishmentTypes, statusThresholds, serverDisplayName, homepageIconUrl, panelIconUrl,
+    punishmentTypes, statusThresholds, serverDisplayName, discordWebhookUrl, homepageIconUrl, panelIconUrl,
     bugReportTags, playerReportTags, appealTags, ticketForms, quickResponsesState, mongodbUri, has2FA, hasPasskey, toast
   ]);
 
@@ -1817,7 +1821,7 @@ const Settings = () => {
         clearTimeout(saveTimeoutRef.current);
       }
     };  }, [
-    punishmentTypes, statusThresholds, serverDisplayName, homepageIconUrl, panelIconUrl,
+    punishmentTypes, statusThresholds, serverDisplayName, discordWebhookUrl, homepageIconUrl, panelIconUrl,
     bugReportTags, playerReportTags, appealTags, ticketForms, quickResponsesState, mongodbUri, has2FA, hasPasskey, 
     // profileUsername removed - it has its own separate save function
     isLoadingSettings, isFetchingSettings, saveSettings
@@ -2828,6 +2832,8 @@ const Settings = () => {
                   <GeneralSettings
                     serverDisplayName={serverDisplayName}
                     setServerDisplayName={setServerDisplayName}
+                    discordWebhookUrl={discordWebhookUrl}
+                    setDiscordWebhookUrl={setDiscordWebhookUrl}
                     homepageIconUrl={homepageIconUrl}
                     panelIconUrl={panelIconUrl}
                     uploadingHomepageIcon={uploadingHomepageIcon}

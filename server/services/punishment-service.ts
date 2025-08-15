@@ -1,6 +1,7 @@
 import { Connection } from 'mongoose';
 import { v4 as uuidv4 } from 'uuid';
 import { calculatePlayerStatus } from '../utils/player-status-calculator';
+import { DiscordWebhookService } from './discord-webhook-service';
 
 interface PunishmentType {
   id: number;
@@ -34,9 +35,11 @@ interface PunishmentType {
 
 export class PunishmentService {
   private dbConnection: Connection;
+  private discordWebhookService: DiscordWebhookService;
 
   constructor(dbConnection: Connection) {
     this.dbConnection = dbConnection;
+    this.discordWebhookService = new DiscordWebhookService(dbConnection);
   }
 
   /**
@@ -178,10 +181,61 @@ export class PunishmentService {
         await this.issueLinkedBansForAltBlocking(player, punishmentId, issuerName);
       }
       
+      // Send Discord webhook notification
+      try {
+        await this.discordWebhookService.sendPunishmentNotification({
+          id: punishmentId,
+          playerName: player.usernames?.[0]?.username || player.minecraftUuid,
+          punishmentType: punishmentData.typeName,
+          severity,
+          reason,
+          duration: this.formatDuration(punishmentData.duration),
+          issuer: issuerName,
+          ticketId
+        });
+      } catch (webhookError) {
+        // Don't fail the punishment if webhook fails
+        console.error('[Punishment Service] Failed to send Discord webhook notification:', webhookError);
+      }
+      
       return { success: true, punishmentId };
     } catch (error) {
       console.error(`[Punishment Service] Error applying punishment to ${playerIdentifier}:`, error);
       return { success: false, error: `Failed to apply punishment: ${(error as Error).message}` };
+    }
+  }
+
+  /**
+   * Format duration in milliseconds to human-readable string
+   */
+  private formatDuration(durationMs: number): string {
+    if (durationMs <= 0) {
+      return 'Permanent';
+    }
+
+    const seconds = Math.floor(durationMs / 1000);
+    const minutes = Math.floor(seconds / 60);
+    const hours = Math.floor(minutes / 60);
+    const days = Math.floor(hours / 24);
+    const weeks = Math.floor(days / 7);
+    const months = Math.floor(days / 30);
+
+    if (months >= 1) {
+      const remainingDays = days % 30;
+      return remainingDays > 0 ? `${months} month${months > 1 ? 's' : ''} ${remainingDays} day${remainingDays > 1 ? 's' : ''}` : `${months} month${months > 1 ? 's' : ''}`;
+    } else if (weeks >= 1) {
+      const remainingDays = days % 7;
+      return remainingDays > 0 ? `${weeks} week${weeks > 1 ? 's' : ''} ${remainingDays} day${remainingDays > 1 ? 's' : ''}` : `${weeks} week${weeks > 1 ? 's' : ''}`;
+    } else if (days >= 1) {
+      const remainingHours = hours % 24;
+      return remainingHours > 0 ? `${days} day${days > 1 ? 's' : ''} ${remainingHours} hour${remainingHours > 1 ? 's' : ''}` : `${days} day${days > 1 ? 's' : ''}`;
+    } else if (hours >= 1) {
+      const remainingMinutes = minutes % 60;
+      return remainingMinutes > 0 ? `${hours} hour${hours > 1 ? 's' : ''} ${remainingMinutes} minute${remainingMinutes > 1 ? 's' : ''}` : `${hours} hour${hours > 1 ? 's' : ''}`;
+    } else if (minutes >= 1) {
+      return `${minutes} minute${minutes > 1 ? 's' : ''}`;
+    } else {
+      return `${seconds} second${seconds > 1 ? 's' : ''}`;
     }
   }
 

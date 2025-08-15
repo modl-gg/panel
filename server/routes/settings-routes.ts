@@ -886,6 +886,7 @@ export async function createDefaultSettings(dbConnection: Connection, serverName
         type: 'general',
         data: {
           serverDisplayName: serverName || '',
+          discordWebhookUrl: '',
           homepageIconUrl: '',
           panelIconUrl: ''
         }
@@ -1313,7 +1314,7 @@ export async function getAllSettings(dbConnection: Connection): Promise<any> {
       ticketTags: settings.ticketTags || [],
       quickResponses: settings.quickResponses || { categories: [] },
       ticketForms: settings.ticketForms || { bug: { fields: [], sections: [] }, support: { fields: [], sections: [] }, application: { fields: [], sections: [] } },
-      general: settings.general || {},
+      general: settings.general || { serverDisplayName: '', discordWebhookUrl: '', homepageIconUrl: '', panelIconUrl: '' },
       aiModerationSettings: settings.aiModerationSettings || {},
       api_key: settings.api_key,
       ticket_api_key: settings.ticket_api_key,

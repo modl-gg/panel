@@ -7,6 +7,7 @@ import { IReply, ITicket } from '@modl-gg/shared-web/types';
 import { getSettingsValue } from './settings-routes';
 import { ensureTicketSubscription } from './ticket-subscription-routes';
 import { markTicketAsRead } from './ticket-subscription-routes';
+import { DiscordWebhookService } from '../services/discord-webhook-service';
 
 interface INote {
   content: string;
@@ -759,6 +760,25 @@ router.patch('/:id', async (req: Request<{ id: string }, {}, UpdateTicketBody>, 
 
     await ticket.save();
 
+    // Send Discord webhook notification if ticket was closed
+    if (updates.status === 'Closed') {
+      try {
+        const discordWebhookService = new DiscordWebhookService(req.serverDbConnection!);
+        await discordWebhookService.sendTicketCompletionNotification({
+          id: ticket._id,
+          type: ticket.type || 'Unknown',
+          title: ticket.subject,
+          status: 'Closed',
+          closedBy: req.user?.displayName || req.user?.username || 'Staff',
+          resolution: updates.newReply?.content,
+          createdBy: ticket.creatorName || ticket.creator
+        });
+      } catch (webhookError) {
+        // Don't fail the ticket update if webhook fails
+        console.error('[Ticket PATCH] Failed to send Discord webhook notification:', webhookError);
+      }
+    }
+
     // Return the updated ticket
     res.status(200).json({
       id: ticket._id,
@@ -1085,6 +1105,25 @@ router.post('/:id/quick-response', async (req: Request<{ id: string }, {}, Quick
     }
 
     await ticket.save();
+
+    // Send Discord webhook notification if ticket was closed
+    if (ticket.status === 'Closed') {
+      try {
+        const discordWebhookService = new DiscordWebhookService(req.serverDbConnection!);
+        await discordWebhookService.sendTicketCompletionNotification({
+          id: ticket._id,
+          type: ticket.type || 'Unknown',
+          title: ticket.subject,
+          status: 'Closed',
+          closedBy: req.user?.displayName || req.user?.username || 'Staff',
+          resolution: action.message,
+          createdBy: ticket.creatorName || ticket.creator
+        });
+      } catch (webhookError) {
+        // Don't fail the ticket update if webhook fails
+        console.error('[Quick Response] Failed to send Discord webhook notification:', webhookError);
+      }
+    }
 
     res.json({ 
       success: true, 
