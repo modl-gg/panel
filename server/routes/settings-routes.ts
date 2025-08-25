@@ -135,6 +135,38 @@ interface IWebhookSettings {
     newPunishments: boolean;
     auditLogs: boolean;
   };
+  embedTemplates: {
+    newTickets: {
+      title: string;
+      description: string;
+      color: string;
+      fields: Array<{
+        name: string;
+        value: string;
+        inline: boolean;
+      }>;
+    };
+    newPunishments: {
+      title: string;
+      description: string;
+      color: string;
+      fields: Array<{
+        name: string;
+        value: string;
+        inline: boolean;
+      }>;
+    };
+    auditLogs: {
+      title: string;
+      description: string;
+      color: string;
+      fields: Array<{
+        name: string;
+        value: string;
+        inline: boolean;
+      }>;
+    };
+  };
 }
 
 // Settings document interface for separate documents in same collection
@@ -1343,6 +1375,44 @@ export async function getAllSettings(dbConnection: Connection): Promise<any> {
           newPunishments: true,
           auditLogs: false,
         },
+        embedTemplates: {
+          newTickets: {
+            title: '🎫 New Ticket Created',
+            description: 'A new **{{type}}** ticket has been submitted.',
+            color: '#3498db',
+            fields: [
+              { name: 'Ticket ID', value: '#{{id}}', inline: true },
+              { name: 'Priority', value: '{{priority}}', inline: true },
+              { name: 'Category', value: '{{category}}', inline: true },
+              { name: 'Subject', value: '{{title}}', inline: false },
+              { name: 'Submitted By', value: '{{submittedBy}}', inline: true }
+            ]
+          },
+          newPunishments: {
+            title: '⚖️ New Punishment Issued',
+            description: 'A **{{type}}** has been issued.',
+            color: '#e74c3c',
+            fields: [
+              { name: 'Player', value: '{{playerName}}', inline: true },
+              { name: 'Punishment Type', value: '{{type}}', inline: true },
+              { name: 'Severity', value: '{{severity}}', inline: true },
+              { name: 'Reason', value: '{{reason}}', inline: false },
+              { name: 'Duration', value: '{{duration}}', inline: true },
+              { name: 'Issued By', value: '{{issuer}}', inline: true }
+            ]
+          },
+          auditLogs: {
+            title: '📋 Audit Log Entry',
+            description: '{{action}}',
+            color: '#f39c12',
+            fields: [
+              { name: 'User', value: '{{user}}', inline: true },
+              { name: 'Action', value: '{{action}}', inline: true },
+              { name: 'Target', value: '{{target}}', inline: true },
+              { name: 'Details', value: '{{details}}', inline: false }
+            ]
+          }
+        }
       },
       api_key: settings.api_key,
       ticket_api_key: settings.ticket_api_key,

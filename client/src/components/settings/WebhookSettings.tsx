@@ -52,63 +52,84 @@ const WebhookSettings: React.FC<WebhookSettingsProps> = ({
   const [showWebhookUrl, setShowWebhookUrl] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const [isTesting, setIsTesting] = useState(false);
+  const [lastSaved, setLastSaved] = useState<Date | null>(null);
+  const [saveTimeout, setSaveTimeout] = useState<NodeJS.Timeout | null>(null);
 
   useEffect(() => {
     if (webhookSettings) {
       setSettings({
         ...webhookSettings,
-        // Use panel icon as default avatar if no avatar URL is set
-        avatarUrl: webhookSettings.avatarUrl || panelIconUrl || ''
+        // Don't show anything in avatar URL if using default (empty or matches panel icon)
+        avatarUrl: (webhookSettings.avatarUrl && webhookSettings.avatarUrl !== panelIconUrl) ? webhookSettings.avatarUrl : ''
       });
     }
   }, [webhookSettings, panelIconUrl]);
 
-  const handleInputChange = (field: keyof WebhookSettings, value: any) => {
-    setSettings(prev => ({
-      ...prev,
-      [field]: value
-    }));
-  };
-
-  const handleNotificationChange = (key: keyof WebhookSettings['notifications'], value: boolean) => {
-    setSettings(prev => ({
-      ...prev,
-      notifications: {
-        ...prev.notifications,
-        [key]: value
+  // Cleanup timeout on unmount
+  useEffect(() => {
+    return () => {
+      if (saveTimeout) {
+        clearTimeout(saveTimeout);
       }
-    }));
-  };
+    };
+  }, [saveTimeout]);
 
-  const handleSave = async () => {
-    if (!hasPermission('admin.settings.modify')) {
-      toast({
-        title: 'Permission Denied',
-        description: 'You do not have permission to modify webhook settings.',
-        variant: 'destructive',
-      });
+  const autoSave = async (newSettings: WebhookSettings) => {
+    if (!hasPermission('admin.settings.modify') || !onSave) {
       return;
     }
 
-    try {
-      setIsSaving(true);
-      if (onSave) {
-        await onSave(settings);
-        toast({
-          title: 'Webhook Settings Saved',
-          description: 'Your webhook configuration has been updated successfully.',
-        });
-      }
-    } catch (error) {
-      toast({
-        title: 'Save Failed',
-        description: 'Failed to save webhook settings. Please try again.',
-        variant: 'destructive',
-      });
-    } finally {
-      setIsSaving(false);
+    // Clear existing timeout
+    if (saveTimeout) {
+      clearTimeout(saveTimeout);
     }
+
+    // Set new timeout to save after 1 second of no changes
+    const timeoutId = setTimeout(async () => {
+      setIsSaving(true);
+      try {
+        // Use panelIconUrl as default if avatar URL is empty
+        const settingsToSave = {
+          ...newSettings,
+          avatarUrl: newSettings.avatarUrl || panelIconUrl || ''
+        };
+        await onSave(settingsToSave);
+        setLastSaved(new Date());
+      } catch (error) {
+        toast({
+          title: 'Auto-save Failed',
+          description: 'Failed to save webhook settings. Please check your connection.',
+          variant: 'destructive',
+        });
+      } finally {
+        setIsSaving(false);
+      }
+    }, 1000);
+
+    setSaveTimeout(timeoutId);
   };
+
+  const handleInputChange = (field: keyof WebhookSettings, value: any) => {
+    const newSettings = {
+      ...settings,
+      [field]: value
+    };
+    setSettings(newSettings);
+    autoSave(newSettings);
+  };
+
+  const handleNotificationChange = (key: keyof WebhookSettings['notifications'], value: boolean) => {
+    const newSettings = {
+      ...settings,
+      notifications: {
+        ...settings.notifications,
+        [key]: value
+      }
+    };
+    setSettings(newSettings);
+    autoSave(newSettings);
+  };
+
 
   const handleTestWebhook = async () => {
     if (!settings.discordWebhookUrl || !settings.enabled) {
@@ -132,7 +153,7 @@ const WebhookSettings: React.FC<WebhookSettingsProps> = ({
           webhookUrl: settings.discordWebhookUrl,
           adminRoleId: settings.discordAdminRoleId,
           botName: settings.botName,
-          avatarUrl: settings.avatarUrl
+          avatarUrl: settings.avatarUrl || panelIconUrl || undefined
         })
       });
 
@@ -142,12 +163,13 @@ const WebhookSettings: React.FC<WebhookSettingsProps> = ({
           description: 'Test notification sent to Discord successfully!',
         });
       } else {
-        throw new Error('Test failed');
+        const errorData = await response.json().catch(() => ({ error: 'Unknown error' }));
+        throw new Error(errorData.error || 'Test failed');
       }
     } catch (error) {
       toast({
         title: 'Test Failed',
-        description: 'Failed to send test notification. Please check your webhook URL.',
+        description: error instanceof Error ? error.message : 'Failed to send test notification. Please check your webhook URL.',
         variant: 'destructive',
       });
     } finally {
@@ -329,9 +351,28 @@ const WebhookSettings: React.FC<WebhookSettingsProps> = ({
         </CardContent>
       </Card>
 
-      {/* Action Buttons */}
-      {canModify && (
-        <div className="flex gap-2 justify-end">
+      {/* Action Buttons and Status */}
+      <div className="flex items-center justify-between">
+        <div className="text-sm text-muted-foreground">
+          {isSaving && (
+            <span className="flex items-center gap-2">
+              <div className="animate-spin h-3 w-3 border-2 border-blue-500 border-t-transparent rounded-full" />
+              Saving changes...
+            </span>
+          )}
+          {lastSaved && !isSaving && (
+            <span className="text-green-600">
+              Saved {lastSaved.toLocaleTimeString()}
+            </span>
+          )}
+          {!isSaving && !lastSaved && (
+            <span>
+              Changes are saved automatically
+            </span>
+          )}
+        </div>
+        
+        {canModify && (
           <Button
             variant="outline"
             onClick={handleTestWebhook}
@@ -340,12 +381,8 @@ const WebhookSettings: React.FC<WebhookSettingsProps> = ({
             <TestTube className="h-4 w-4 mr-2" />
             {isTesting ? 'Testing...' : 'Test Webhook'}
           </Button>
-          <Button onClick={handleSave} disabled={isSaving || isLoading}>
-            <Save className="h-4 w-4 mr-2" />
-            {isSaving ? 'Saving...' : 'Save Settings'}
-          </Button>
-        </div>
-      )}
+        )}
+      </div>
     </div>
   );
 };

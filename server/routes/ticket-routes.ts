@@ -395,6 +395,22 @@ router.post('/', async (req: Request<{}, {}, CreateTicketBody>, res: Response) =
 
     await newTicket.save();
 
+    // Send Discord webhook notification for new ticket
+    try {
+      const discordWebhookService = new DiscordWebhookService(req.serverDbConnection!);
+      await discordWebhookService.sendNewTicketNotification({
+        id: ticketId,
+        type: category,
+        title: data?.get?.('subject') || data?.get?.('title') || 'New Ticket',
+        priority: data?.get?.('priority'),
+        category: category,
+        submittedBy: creatorName || creator
+      });
+    } catch (webhookError) {
+      // Don't fail ticket creation if webhook fails
+      console.error('[Ticket POST] Failed to send Discord webhook notification:', webhookError);
+    }
+
     // Trigger AI analysis for Player Report tickets with chat messages
     if (req.serverDbConnection) {
       try {

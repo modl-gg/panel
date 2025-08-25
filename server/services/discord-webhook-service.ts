@@ -18,6 +18,9 @@ interface DiscordEmbed {
 
 interface DiscordWebhookPayload {
   embeds: DiscordEmbed[];
+  username?: string;
+  avatar_url?: string;
+  content?: string;
 }
 
 export class DiscordWebhookService {
@@ -27,39 +30,80 @@ export class DiscordWebhookService {
     this.dbConnection = dbConnection;
   }
 
-  private async getWebhookUrl(): Promise<string | null> {
+  private replaceTemplateVariables(template: string, variables: Record<string, any>): string {
+    return template.replace(/\{\{(\w+)\}\}/g, (match, key) => {
+      return variables[key] !== undefined && variables[key] !== null ? String(variables[key]) : 'Unknown';
+    });
+  }
+
+  private hexToDecimalColor(hex: string): number {
+    const cleanHex = hex.replace('#', '');
+    return parseInt(cleanHex, 16);
+  }
+
+  private async getWebhookSettings(): Promise<any> {
     try {
       const settings = await getAllSettings(this.dbConnection);
-      return settings.general?.discordWebhookUrl || null;
+      // First try to get from new webhook settings structure
+      if (settings.webhookSettings?.enabled && settings.webhookSettings?.discordWebhookUrl) {
+        return settings.webhookSettings;
+      }
+      // Fallback to old general settings structure for backward compatibility
+      if (settings.general?.discordWebhookUrl) {
+        return {
+          discordWebhookUrl: settings.general.discordWebhookUrl,
+          botName: 'modl Panel',
+          avatarUrl: settings.general.panelIconUrl || '',
+          enabled: true,
+          notifications: {
+            newTickets: false, // Default off for legacy setups
+            newPunishments: true,
+            auditLogs: false
+          }
+        };
+      }
+      return null;
     } catch (error) {
-      console.error('[Discord Webhook] Error getting webhook URL from settings:', error);
+      console.error('[Discord Webhook] Error getting webhook settings:', error);
       return null;
     }
   }
 
-  private async sendWebhook(payload: DiscordWebhookPayload): Promise<void> {
-    const webhookUrl = await this.getWebhookUrl();
+  private async sendWebhook(payload: Partial<DiscordWebhookPayload>, notificationType?: 'newTickets' | 'newPunishments' | 'auditLogs'): Promise<void> {
+    const webhookSettings = await this.getWebhookSettings();
     
-    if (!webhookUrl || !webhookUrl.trim()) {
+    if (!webhookSettings) {
       return; // Silently skip if no webhook configured
     }
 
+    // Check if this notification type is enabled
+    if (notificationType && webhookSettings.notifications && !webhookSettings.notifications[notificationType]) {
+      return; // Skip if this notification type is disabled
+    }
+
+    const fullPayload: DiscordWebhookPayload = {
+      ...payload,
+      embeds: payload.embeds || [],
+      username: payload.username || webhookSettings.botName || 'modl Panel',
+      avatar_url: payload.avatar_url || (webhookSettings.avatarUrl || undefined)
+    };
+
     try {
-      const response = await fetch(webhookUrl, {
+      const response = await fetch(webhookSettings.discordWebhookUrl, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify(payload),
+        body: JSON.stringify(fullPayload),
       });
 
       if (!response.ok) {
-        const responseText = await response.text();
-        console.error(`[Discord Webhook] Failed to send webhook: ${response.status} ${response.statusText}`);
-        console.error(`[Discord Webhook] Response body: ${responseText}`);
+        // Silently fail for production stability
+        return;
       }
     } catch (error) {
-      console.error('[Discord Webhook] Error sending webhook:', error);
+      // Silently fail for production stability
+      return;
     }
   }
 
@@ -73,77 +117,45 @@ export class DiscordWebhookService {
     issuer: string;
     ticketId?: string;
   }): Promise<void> {
-    // Helper function to ensure field values meet Discord requirements
-    const sanitizeValue = (value: any, maxLength: number = 1024): string => {
-      // Convert to string first
-      const strValue = value !== null && value !== undefined ? String(value) : '';
-      
-      if (!strValue || strValue.trim() === '') {
-        return 'Unknown';
-      }
-      
-      const trimmed = strValue.trim();
-      return trimmed.length > maxLength ? trimmed.substring(0, maxLength - 3) + '...' : trimmed;
+    const webhookSettings = await this.getWebhookSettings();
+    if (!webhookSettings?.embedTemplates?.newPunishments) {
+      return; // No template configured
+    }
+
+    const template = webhookSettings.embedTemplates.newPunishments;
+    const variables = {
+      id: punishment.id,
+      playerName: punishment.playerName,
+      type: punishment.punishmentType,
+      severity: punishment.severity?.charAt(0).toUpperCase() + punishment.severity?.slice(1) || 'Unknown',
+      reason: punishment.reason,
+      duration: punishment.duration || 'Permanent',
+      issuer: punishment.issuer,
+      ticketId: punishment.ticketId
     };
 
     const embed: DiscordEmbed = {
-      title: '⚖️ New Punishment Issued',
-      color: 0xff4444, // Red color
-      fields: [
-        {
-          name: 'Player',
-          value: sanitizeValue(punishment.playerName, 1024),
-          inline: true,
-        },
-        {
-          name: 'Punishment Type',
-          value: sanitizeValue(punishment.punishmentType, 1024),
-          inline: true,
-        },
-        {
-          name: 'Severity',
-          value: (() => {
-            const severity = sanitizeValue(punishment.severity);
-            return severity !== 'Unknown' 
-              ? severity.charAt(0).toUpperCase() + severity.slice(1)
-              : 'Unknown';
-          })(),
-          inline: true,
-        },
-        {
-          name: 'Reason',
-          value: sanitizeValue(punishment.reason, 1024),
-          inline: false,
-        },
-        {
-          name: 'Issued By',
-          value: sanitizeValue(punishment.issuer, 1024),
-          inline: true,
-        },
-      ],
+      title: this.replaceTemplateVariables(template.title, variables),
+      description: this.replaceTemplateVariables(template.description, variables),
+      color: this.hexToDecimalColor(template.color),
+      fields: template.fields
+        .filter(field => {
+          // Filter out fields with empty values unless they're required
+          const replacedValue = this.replaceTemplateVariables(field.value, variables);
+          return replacedValue !== 'Unknown' || ['id', 'playerName', 'type', 'reason', 'issuer'].some(key => field.value.includes(`{{${key}}}`));
+        })
+        .map(field => ({
+          name: this.replaceTemplateVariables(field.name, variables),
+          value: this.replaceTemplateVariables(field.value, variables).substring(0, 1024),
+          inline: field.inline
+        })),
       timestamp: new Date().toISOString(),
       footer: {
-        text: `Punishment ID: ${punishment.id || 'Unknown'}`,
+        text: `modl Panel • Punishment ID: ${punishment.id}`,
       },
     };
 
-    if (punishment.duration && punishment.duration !== 'Unknown') {
-      embed.fields!.splice(3, 0, {
-        name: 'Duration',
-        value: sanitizeValue(punishment.duration, 1024),
-        inline: true,
-      });
-    }
-
-    if (punishment.ticketId && punishment.ticketId.trim() !== '') {
-      embed.fields!.push({
-        name: 'Related Ticket',
-        value: sanitizeValue(punishment.ticketId, 1024),
-        inline: true,
-      });
-    }
-
-    await this.sendWebhook({ embeds: [embed] });
+    await this.sendWebhook({ embeds: [embed] }, 'newPunishments');
   }
 
   async sendTicketCompletionNotification(ticket: {
@@ -210,6 +222,54 @@ export class DiscordWebhookService {
       });
     }
 
-    await this.sendWebhook({ embeds: [embed] });
+    await this.sendWebhook({ embeds: [embed] }, 'newTickets');
+  }
+
+  async sendNewTicketNotification(ticket: {
+    id: string;
+    type: string;
+    title?: string;
+    priority?: string;
+    category?: string;
+    submittedBy?: string;
+  }): Promise<void> {
+    const webhookSettings = await this.getWebhookSettings();
+    if (!webhookSettings?.embedTemplates?.newTickets) {
+      return; // No template configured
+    }
+
+    const template = webhookSettings.embedTemplates.newTickets;
+    const variables = {
+      id: ticket.id,
+      type: ticket.type,
+      title: ticket.title || 'No subject provided',
+      priority: ticket.priority || 'Normal',
+      category: ticket.category || ticket.type,
+      submittedBy: ticket.submittedBy || 'Unknown user'
+    };
+
+    const embed: DiscordEmbed = {
+      title: this.replaceTemplateVariables(template.title, variables),
+      description: this.replaceTemplateVariables(template.description, variables),
+      color: this.hexToDecimalColor(template.color),
+      fields: template.fields
+        .filter(field => {
+          // Filter out fields with empty values unless they're required
+          const replacedValue = this.replaceTemplateVariables(field.value, variables);
+          return replacedValue !== 'Unknown' && replacedValue !== 'No subject provided' && replacedValue !== 'Unknown user' 
+            || ['id', 'type'].some(key => field.value.includes(`{{${key}}}`));
+        })
+        .map(field => ({
+          name: this.replaceTemplateVariables(field.name, variables),
+          value: this.replaceTemplateVariables(field.value, variables).substring(0, 1024),
+          inline: field.inline
+        })),
+      timestamp: new Date().toISOString(),
+      footer: {
+        text: `modl Panel • Ticket Created`,
+      },
+    };
+
+    await this.sendWebhook({ embeds: [embed] }, 'newTickets');
   }
 }
