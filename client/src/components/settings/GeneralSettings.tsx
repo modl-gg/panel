@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { CreditCard, SettingsIcon, Globe, Key, Upload, Eye, EyeOff, Check, Copy, RefreshCw, Trash2, Plus, ChevronDown, ChevronRight, HardDrive } from 'lucide-react';
+import { CreditCard, SettingsIcon, Globe, Key, Upload, Eye, EyeOff, Check, Copy, RefreshCw, Trash2, Plus, ChevronDown, ChevronRight, HardDrive, MessageCircle } from 'lucide-react';
 import { Button } from '@modl-gg/shared-web/components/ui/button';
 import { Input } from '@modl-gg/shared-web/components/ui/input';
 import { Label } from '@modl-gg/shared-web/components/ui/label';
@@ -11,6 +11,7 @@ import { usePermissions } from '@/hooks/use-permissions';
 import BillingSettings from './BillingSettings';
 import DomainSettings from './DomainSettings';
 import UsageSettings from './UsageSettings';
+import WebhookSettings from './WebhookSettings';
 import { queryClient } from '@/lib/queryClient';
 import { toast } from '@/hooks/use-toast';
 
@@ -48,6 +49,12 @@ interface GeneralSettingsProps {
   getUsageSummary: () => string;
   getServerConfigSummary: () => string;
   getDomainSummary: () => string;
+
+  // Webhook Settings
+  webhookSettings?: any;
+  getWebhookSummary: () => string;
+  handleWebhookSave: (settings: any) => Promise<void>;
+  savingWebhookSettings?: boolean;
 }
 
 const GeneralSettings = ({
@@ -76,7 +83,11 @@ const GeneralSettings = ({
   getBillingSummary,
   getUsageSummary,
   getServerConfigSummary,
-  getDomainSummary
+  getDomainSummary,
+  webhookSettings,
+  getWebhookSummary,
+  handleWebhookSave,
+  savingWebhookSettings
 }: GeneralSettingsProps) => {
   const { user } = useAuth();
   const { hasPermission } = usePermissions();
@@ -86,6 +97,7 @@ const GeneralSettings = ({
   const [isUsageExpanded, setIsUsageExpanded] = useState(false);
   const [isServerConfigExpanded, setIsServerConfigExpanded] = useState(false);
   const [isDomainExpanded, setIsDomainExpanded] = useState(false);
+  const [isWebhookExpanded, setIsWebhookExpanded] = useState(false);
 
   useEffect(() => {
     const urlParams = new URLSearchParams(window.location.search);
@@ -212,23 +224,6 @@ const GeneralSettings = ({
               />
               <p className="text-sm text-muted-foreground">
                 This name will appear in the browser tab title and on the authentication page
-              </p>
-            </div>
-
-            <Separator />
-
-            {/* Discord Webhook */}
-            <div className="space-y-2">
-              <Label htmlFor="discord-webhook">Discord Webhook URL</Label>
-              <Input
-                id="discord-webhook"
-                type="url"
-                placeholder="https://discord.com/api/webhooks/..."
-                value={discordWebhookUrl}
-                onChange={(e) => setDiscordWebhookUrl(e.target.value)}
-              />
-              <p className="text-sm text-muted-foreground">
-                When configured, notifications for new punishments and finished tickets will be sent to this Discord channel
               </p>
             </div>
 
@@ -443,6 +438,31 @@ const GeneralSettings = ({
             </CollapsibleTrigger>
             <CollapsibleContent className="pt-4">
               <DomainSettings />
+            </CollapsibleContent>
+          </Collapsible>
+        )}
+
+        {/* Discord Webhook Settings */}
+        {hasPermission('admin.settings.view') && (
+          <Collapsible open={isWebhookExpanded} onOpenChange={setIsWebhookExpanded}>
+            <CollapsibleTrigger className="flex items-center justify-between w-full p-4 bg-muted/50 rounded-lg hover:bg-muted/70 transition-colors">
+              <div className="flex items-center">
+                <MessageCircle className="h-4 w-4 mr-2" />
+                <h4 className="text-base font-medium">Discord Webhooks</h4>
+              </div>
+              <div className="flex items-center space-x-2">
+                {!isWebhookExpanded && (
+                  <span className="text-sm text-muted-foreground">{getWebhookSummary()}</span>
+                )}
+                {isWebhookExpanded ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
+              </div>
+            </CollapsibleTrigger>
+            <CollapsibleContent className="pt-4">
+              <WebhookSettings
+                webhookSettings={webhookSettings}
+                onSave={handleWebhookSave}
+                isLoading={savingWebhookSettings}
+              />
             </CollapsibleContent>
           </Collapsible>
         )}

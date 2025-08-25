@@ -34,6 +34,7 @@ import AccountSettings from '@/components/settings/AccountSettings';
 import GeneralSettings from '@/components/settings/GeneralSettings';
 import PunishmentSettings from '@/components/settings/PunishmentSettings';
 import TicketSettings from '@/components/settings/TicketSettings';
+import WebhookSettings from '@/components/settings/WebhookSettings';
 import { DndProvider, useDrag, useDrop } from 'react-dnd';
 import { HTML5Backend } from 'react-dnd-html5-backend';
 import { QuickResponsesConfiguration, defaultQuickResponsesConfig } from '@/types/quickResponses';
@@ -1088,6 +1089,44 @@ const Settings = () => {
     // We'll need to add domain status fetching here
     // For now, show a basic summary
     return "Configure custom domain";
+  };
+
+  const getWebhookSummary = () => {
+    const webhookSettings = settingsData?.settings?.webhookSettings;
+    if (!webhookSettings) return "Loading webhook settings...";
+    
+    if (!webhookSettings.enabled) {
+      return "Disabled";
+    }
+    
+    if (!webhookSettings.discordWebhookUrl) {
+      return "Enabled but not configured";
+    }
+    
+    const notificationCount = Object.values(webhookSettings.notifications || {}).filter(Boolean).length;
+    return `Enabled • ${notificationCount} notification types active`;
+  };
+
+  const [savingWebhookSettings, setSavingWebhookSettings] = useState(false);
+
+  const handleWebhookSave = async (webhookSettings: any) => {
+    setSavingWebhookSettings(true);
+    try {
+      const response = await fetch('/api/panel/settings', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ webhookSettings }),
+        credentials: 'include'
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to save webhook settings');
+      }
+
+      queryClient.invalidateQueries({ queryKey: ['/api/panel/settings'] });
+    } finally {
+      setSavingWebhookSettings(false);
+    }
   };
 
   // Create aliases for the state variables to maintain backward compatibility
@@ -2856,6 +2895,10 @@ const Settings = () => {
                     getUsageSummary={getUsageSummary}
                     getServerConfigSummary={getServerConfigSummary}
                     getDomainSummary={getDomainSummary}
+                    webhookSettings={settingsData?.settings?.webhookSettings}
+                    getWebhookSummary={getWebhookSummary}
+                    handleWebhookSave={handleWebhookSave}
+                    savingWebhookSettings={savingWebhookSettings}
                   />
                 </TabsContent>
               )}

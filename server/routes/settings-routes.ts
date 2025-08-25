@@ -124,6 +124,19 @@ interface IAIModerationSettings {
   aiPunishmentConfigs: Record<number, IAIPunishmentConfig>; // Map punishment type ID to AI config
 }
 
+interface IWebhookSettings {
+  discordWebhookUrl: string;
+  discordAdminRoleId: string;
+  botName: string;
+  avatarUrl: string;
+  enabled: boolean;
+  notifications: {
+    errors: boolean;
+    serverProvisioningFailures: boolean;
+    rateLimits: boolean;
+  };
+}
+
 // Settings document interface for separate documents in same collection
 interface ISettingsDocument extends MongooseDocument {
   type: string; // 'punishmentTypes', 'statusThresholds', 'systemSettings', etc.
@@ -1298,6 +1311,9 @@ export async function getAllSettings(dbConnection: Connection): Promise<any> {
         case 'aiModerationSettings':
           settings.aiModerationSettings = doc.data;
           break;
+        case 'webhookSettings':
+          settings.webhookSettings = doc.data;
+          break;
         case 'apiKeys':
           settings.api_key = doc.data.api_key;
           settings.ticket_api_key = doc.data.ticket_api_key;
@@ -1316,6 +1332,18 @@ export async function getAllSettings(dbConnection: Connection): Promise<any> {
       ticketForms: settings.ticketForms || { bug: { fields: [], sections: [] }, support: { fields: [], sections: [] }, application: { fields: [], sections: [] } },
       general: settings.general || { serverDisplayName: '', discordWebhookUrl: '', homepageIconUrl: '', panelIconUrl: '' },
       aiModerationSettings: settings.aiModerationSettings || {},
+      webhookSettings: settings.webhookSettings || {
+        discordWebhookUrl: '',
+        discordAdminRoleId: '',
+        botName: 'MODL Panel',
+        avatarUrl: '',
+        enabled: false,
+        notifications: {
+          errors: true,
+          serverProvisioningFailures: true,
+          rateLimits: false,
+        },
+      },
       api_key: settings.api_key,
       ticket_api_key: settings.ticket_api_key,
       minecraft_api_key: settings.minecraft_api_key
@@ -1478,6 +1506,21 @@ export async function updateSettings(dbConnection: Connection, requestBody: any)
       models.Settings.findOneAndUpdate(
         { type: 'aiModerationSettings' },
         { type: 'aiModerationSettings', data: mergedData },
+        { upsert: true, new: true }
+      )
+    );
+  }
+
+  if (requestBody.webhookSettings !== undefined) {
+    // Get existing webhook settings and merge with new data
+    const existingDoc = await models.Settings.findOne({ type: 'webhookSettings' });
+    const existingData = existingDoc?.data || {};
+    const mergedData = { ...existingData, ...requestBody.webhookSettings };
+
+    updates.push(
+      models.Settings.findOneAndUpdate(
+        { type: 'webhookSettings' },
+        { type: 'webhookSettings', data: mergedData },
         { upsert: true, new: true }
       )
     );
@@ -4640,6 +4683,76 @@ router.delete('/ai-punishment-types/:id', async (req: Request, res: Response) =>
   } catch (error) {
     console.error('Error deleting AI punishment type:', error);
     res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+// Test webhook endpoint
+router.post('/test-webhook', async (req: Request, res: Response) => {
+  if (!(await checkRoutePermission(req, res, 'admin.settings.modify'))) return;
+  
+  try {
+    const { webhookUrl, adminRoleId, botName, avatarUrl } = req.body;
+    
+    if (!webhookUrl) {
+      return res.status(400).json({ error: 'Webhook URL is required' });
+    }
+
+    const testPayload = {
+      username: botName || 'MODL Panel',
+      avatar_url: avatarUrl || undefined,
+      embeds: [{
+        title: '🧪 Test Webhook',
+        description: 'This is a test notification from your MODL Panel webhook configuration.',
+        color: 0x00FF00, // Green color
+        timestamp: new Date().toISOString(),
+        footer: {
+          text: 'MODL Panel Test'
+        },
+        fields: [
+          {
+            name: 'Status',
+            value: 'Webhook configuration is working correctly!',
+            inline: false
+          },
+          {
+            name: 'Server',
+            value: req.serverName || 'Unknown',
+            inline: true
+          },
+          {
+            name: 'Timestamp',
+            value: new Date().toLocaleString(),
+            inline: true
+          }
+        ]
+      }]
+    };
+
+    // Add admin role ping if provided
+    if (adminRoleId) {
+      testPayload.content = `<@&${adminRoleId}> Test webhook notification`;
+    }
+
+    const response = await fetch(webhookUrl, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(testPayload)
+    });
+
+    if (!response.ok) {
+      const errorText = await response.text();
+      return res.status(400).json({ 
+        error: 'Failed to send test webhook', 
+        details: `Discord API returned: ${response.status} ${errorText}`
+      });
+    }
+
+    res.json({ success: true, message: 'Test webhook sent successfully' });
+  } catch (error) {
+    console.error('Error sending test webhook:', error);
+    res.status(500).json({ error: 'Failed to send test webhook' });
   }
 });
 
