@@ -273,7 +273,8 @@ const WebhookSettings: React.FC<WebhookSettingsProps> = ({
 
     try {
       setIsTesting(true);
-      const response = await fetch('/api/panel/settings/test-webhook', {
+      const { csrfFetch } = await import('@/utils/csrf');
+      const response = await csrfFetch('/api/panel/settings/test-webhook', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
