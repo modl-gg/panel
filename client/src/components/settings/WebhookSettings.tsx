@@ -166,33 +166,17 @@ const WebhookSettings: React.FC<WebhookSettingsProps> = ({
         }
       };
 
-      // Backward compatibility: if webhook URL is set but enabled is false, enable it
-      const shouldAutoEnable = webhookSettings.discordWebhookUrl && !webhookSettings.enabled;
-
       setSettings({
         ...webhookSettings,
         // Don't show anything in avatar URL if using default (empty or matches panel icon)
         avatarUrl: (webhookSettings.avatarUrl && webhookSettings.avatarUrl !== panelIconUrl) ? webhookSettings.avatarUrl : '',
-        // Enable webhook if URL is set (backward compatibility)
-        enabled: shouldAutoEnable ? true : webhookSettings.enabled,
+        // Keep the enabled state as is from the saved settings
+        enabled: webhookSettings.enabled || false,
         // Ensure embedTemplates exist with defaults
         embedTemplates: webhookSettings.embedTemplates || defaultEmbedTemplates
       });
-
-      // If we auto-enabled due to backward compatibility, save the settings
-      if (shouldAutoEnable && onSave) {
-        const newSettings = {
-          ...webhookSettings,
-          avatarUrl: (webhookSettings.avatarUrl && webhookSettings.avatarUrl !== panelIconUrl) ? webhookSettings.avatarUrl : '',
-          enabled: true,
-          embedTemplates: webhookSettings.embedTemplates || defaultEmbedTemplates
-        };
-        onSave(newSettings).catch(() => {
-          // Silent failure for auto-enable
-        });
-      }
     }
-  }, [webhookSettings, panelIconUrl, onSave]);
+  }, [webhookSettings, panelIconUrl]);
 
   // Cleanup timeout on unmount
   useEffect(() => {
@@ -239,6 +223,11 @@ const WebhookSettings: React.FC<WebhookSettingsProps> = ({
   };
 
   const handleInputChange = (field: keyof WebhookSettings, value: any) => {
+    // Prevent clearing important fields unintentionally
+    if (field === 'discordWebhookUrl' && value === undefined) {
+      return;
+    }
+    
     const newSettings = {
       ...settings,
       [field]: value
@@ -375,7 +364,7 @@ const WebhookSettings: React.FC<WebhookSettingsProps> = ({
                   id="webhook-url"
                   type={showWebhookUrl ? 'text' : 'password'}
                   placeholder="https://discord.com/api/webhooks/..."
-                  value={settings.discordWebhookUrl}
+                  value={settings.discordWebhookUrl || ''}
                   onChange={(e) => handleInputChange('discordWebhookUrl', e.target.value)}
                   disabled={!canModify}
                 />
@@ -402,7 +391,7 @@ const WebhookSettings: React.FC<WebhookSettingsProps> = ({
             <Input
               id="admin-role-id"
               placeholder="123456789012345678"
-              value={settings.discordAdminRoleId}
+              value={settings.discordAdminRoleId || ''}
               onChange={(e) => handleInputChange('discordAdminRoleId', e.target.value)}
               disabled={!canModify}
             />
@@ -417,7 +406,7 @@ const WebhookSettings: React.FC<WebhookSettingsProps> = ({
             <Input
               id="bot-name"
               placeholder="modl Panel"
-              value={settings.botName}
+              value={settings.botName || ''}
               onChange={(e) => handleInputChange('botName', e.target.value)}
               disabled={!canModify}
             />
@@ -432,7 +421,7 @@ const WebhookSettings: React.FC<WebhookSettingsProps> = ({
             <Input
               id="avatar-url"
               placeholder="https://cdn.discordapp.com/avatars/123456789/avatar.png"
-              value={settings.avatarUrl}
+              value={settings.avatarUrl || ''}
               onChange={(e) => handleInputChange('avatarUrl', e.target.value)}
               disabled={!canModify}
             />
@@ -525,7 +514,7 @@ const WebhookSettings: React.FC<WebhookSettingsProps> = ({
               template={settings.embedTemplates!.newTickets}
               templateType="newTickets"
               onChange={(template) => handleEmbedTemplateChange('newTickets', template)}
-              disabled={!canModify || !settings.enabled}
+              disabled={!canModify}
             />
           </div>
 
@@ -540,7 +529,7 @@ const WebhookSettings: React.FC<WebhookSettingsProps> = ({
               template={settings.embedTemplates!.newPunishments}
               templateType="newPunishments"
               onChange={(template) => handleEmbedTemplateChange('newPunishments', template)}
-              disabled={!canModify || !settings.enabled}
+              disabled={!canModify}
             />
           </div>
 
@@ -555,7 +544,7 @@ const WebhookSettings: React.FC<WebhookSettingsProps> = ({
               template={settings.embedTemplates!.auditLogs}
               templateType="auditLogs"
               onChange={(template) => handleEmbedTemplateChange('auditLogs', template)}
-              disabled={!canModify || !settings.enabled}
+              disabled={!canModify}
             />
           </div>
         </CardContent>
