@@ -1112,18 +1112,32 @@ const Settings = () => {
   const handleWebhookSave = async (webhookSettings: any) => {
     setSavingWebhookSettings(true);
     try {
-      const response = await fetch('/api/panel/settings', {
+      console.log('[DEBUG CLIENT] Saving webhook settings:', JSON.stringify(webhookSettings, null, 2));
+      
+      const { csrfFetch } = await import('@/utils/csrf');
+      const response = await csrfFetch('/api/panel/settings', {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ webhookSettings }),
         credentials: 'include'
       });
 
+      console.log('[DEBUG CLIENT] Response status:', response.status);
+      console.log('[DEBUG CLIENT] Response headers:', Object.fromEntries(response.headers.entries()));
+
       if (!response.ok) {
+        const errorText = await response.text();
+        console.error('[DEBUG CLIENT] Error response:', errorText);
         throw new Error('Failed to save webhook settings');
       }
 
+      const responseData = await response.json();
+      console.log('[DEBUG CLIENT] Response data webhook settings:', JSON.stringify(responseData.settings?.webhookSettings, null, 2));
+
       queryClient.invalidateQueries({ queryKey: ['/api/panel/settings'] });
+    } catch (error) {
+      console.error('[DEBUG CLIENT] Error saving webhook settings:', error);
+      throw error;
     } finally {
       setSavingWebhookSettings(false);
     }

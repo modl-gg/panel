@@ -1656,10 +1656,15 @@ export async function updateSettings(dbConnection: Connection, requestBody: any)
   }
 
   if (requestBody.webhookSettings !== undefined) {
+    console.log('[DEBUG] Processing webhookSettings update:', JSON.stringify(requestBody.webhookSettings, null, 2));
+    
     // Get existing webhook settings and merge with new data
     const existingDoc = await models.Settings.findOne({ type: 'webhookSettings' });
     const existingData = existingDoc?.data || {};
+    console.log('[DEBUG] Existing webhook settings:', JSON.stringify(existingData, null, 2));
+    
     const mergedData = { ...existingData, ...requestBody.webhookSettings };
+    console.log('[DEBUG] Merged webhook settings:', JSON.stringify(mergedData, null, 2));
 
     updates.push(
       models.Settings.findOneAndUpdate(
@@ -1668,6 +1673,8 @@ export async function updateSettings(dbConnection: Connection, requestBody: any)
         { upsert: true, new: true }
       )
     );
+    
+    console.log('[DEBUG] Added webhook settings update to queue');
   }
   
   // Handle API keys separately
@@ -1697,7 +1704,22 @@ export async function updateSettings(dbConnection: Connection, requestBody: any)
   }
   
   if (updates.length > 0) {
-    await Promise.all(updates);
+    console.log('[DEBUG] Executing', updates.length, 'database updates');
+    try {
+      const results = await Promise.all(updates);
+      console.log('[DEBUG] All updates completed successfully. Results count:', results.length);
+      
+      // Log webhook settings result specifically
+      const webhookResult = results.find(result => result?.type === 'webhookSettings');
+      if (webhookResult) {
+        console.log('[DEBUG] Webhook settings saved:', JSON.stringify(webhookResult.data, null, 2));
+      }
+    } catch (error) {
+      console.error('[DEBUG] Error during database updates:', error);
+      throw error;
+    }
+  } else {
+    console.log('[DEBUG] No updates to process');
   }
 }
 
@@ -3059,8 +3081,14 @@ router.get('/', async (req: Request, res: Response) => {
 router.patch('/', async (req: Request, res: Response) => {
   if (!(await checkRoutePermission(req, res, 'admin.settings.modify'))) return;
   try {
+    console.log('[DEBUG] PATCH /api/panel/settings - Request body:', JSON.stringify(req.body, null, 2));
+    console.log('[DEBUG] Database connection state:', req.serverDbConnection?.readyState);
+    console.log('[DEBUG] Database name:', req.serverDbConnection?.db?.databaseName);
+    
     // Update settings documents
     await updateSettings(req.serverDbConnection!, req.body);
+    
+    console.log('[DEBUG] Settings updated successfully');
     
     // Clean up orphaned AI punishment configs if punishment types were updated
     if ('punishmentTypes' in req.body) {
@@ -3068,6 +3096,7 @@ router.patch('/', async (req: Request, res: Response) => {
     }
     
     const allSettings = await getAllSettings(req.serverDbConnection!);
+    console.log('[DEBUG] Retrieved settings after save:', JSON.stringify(allSettings.webhookSettings, null, 2));
     res.json({ settings: allSettings });
   } catch (error) {
     console.error('Error in settings PATCH route:', error);
@@ -3079,8 +3108,14 @@ router.patch('/', async (req: Request, res: Response) => {
 router.post('/', async (req: Request, res: Response) => {
   if (!(await checkRoutePermission(req, res, 'admin.settings.modify'))) return;
   try {
+    console.log('[DEBUG] POST /api/panel/settings - Request body:', JSON.stringify(req.body, null, 2));
+    console.log('[DEBUG] Database connection state:', req.serverDbConnection?.readyState);
+    console.log('[DEBUG] Database name:', req.serverDbConnection?.db?.databaseName);
+    
     // Update settings documents
     await updateSettings(req.serverDbConnection!, req.body);
+    
+    console.log('[DEBUG] Settings updated successfully');
     
     // Clean up orphaned AI punishment configs if punishment types were updated
     if ('punishmentTypes' in req.body) {
@@ -3088,6 +3123,7 @@ router.post('/', async (req: Request, res: Response) => {
     }
     
     const allSettings = await getAllSettings(req.serverDbConnection!);
+    console.log('[DEBUG] Retrieved settings after save:', JSON.stringify(allSettings.webhookSettings, null, 2));
     res.json({ settings: allSettings });
   } catch (error) {
     console.error('Error in settings POST route:', error);
