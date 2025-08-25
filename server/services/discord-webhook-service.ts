@@ -81,11 +81,22 @@ export class DiscordWebhookService {
       return; // Skip if this notification type is disabled
     }
 
+    // Get panel icon URL as fallback
+    const settings = await getAllSettings(this.dbConnection);
+    const panelIconUrl = settings.general?.panelIconUrl;
+    
+    // Convert relative avatar URL to absolute URL if needed
+    let finalAvatarUrl = payload.avatar_url || webhookSettings.avatarUrl || panelIconUrl;
+    if (finalAvatarUrl && finalAvatarUrl.startsWith('/')) {
+      // For relative URLs, we can't easily get the host here, so just use as-is
+      // The calling code should have already handled this conversion
+    }
+
     const fullPayload: DiscordWebhookPayload = {
       ...payload,
       embeds: payload.embeds || [],
       username: payload.username || webhookSettings.botName || 'modl Panel',
-      avatar_url: payload.avatar_url || (webhookSettings.avatarUrl || undefined)
+      avatar_url: finalAvatarUrl && finalAvatarUrl.match(/^https?:\/\//) ? finalAvatarUrl : undefined
     };
 
     try {

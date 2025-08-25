@@ -4226,25 +4226,35 @@ router.post('/upload-icon', upload.single('icon'), async (req: Request, res: Res
     const fileUrl = `/uploads/${serverName}/${fileName}`;
 
     // If this is a panel icon upload, update webhook settings avatar URL
+    // Only if webhook settings exist and are enabled
     if (iconType === 'panel') {
       try {
         const models = getSettingsModels(req.serverDbConnection!);
         
         // Get existing webhook settings
         const existingWebhookDoc = await models.Settings.findOne({ type: 'webhookSettings' });
-        if (existingWebhookDoc?.data) {
-          // Update the webhook settings with the new avatar URL
-          await models.Settings.findOneAndUpdate(
-            { type: 'webhookSettings' },
-            { 
-              type: 'webhookSettings', 
-              data: { 
-                ...existingWebhookDoc.data, 
-                avatarUrl: fileUrl 
-              } 
-            },
-            { upsert: true, new: true }
-          );
+        if (existingWebhookDoc?.data && existingWebhookDoc.data.enabled) {
+          // Only update if webhook is enabled and user hasn't set a custom avatar URL
+          const currentAvatarUrl = existingWebhookDoc.data.avatarUrl;
+          
+          // Update only if: no custom avatar URL set, or current avatar URL is empty/matches old panel icon
+          const shouldUpdate = !currentAvatarUrl || 
+                              currentAvatarUrl === '' || 
+                              currentAvatarUrl.includes('/uploads/') && currentAvatarUrl.includes('/panel-icon-');
+          
+          if (shouldUpdate) {
+            await models.Settings.findOneAndUpdate(
+              { type: 'webhookSettings' },
+              { 
+                type: 'webhookSettings', 
+                data: { 
+                  ...existingWebhookDoc.data, 
+                  avatarUrl: fileUrl 
+                } 
+              },
+              { upsert: true, new: true }
+            );
+          }
         }
       } catch (error) {
         console.error('Error updating webhook avatar URL:', error);

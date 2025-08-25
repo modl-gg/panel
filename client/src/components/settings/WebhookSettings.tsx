@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Eye, EyeOff, Save, TestTube, MessageCircle } from 'lucide-react';
+import { Eye, EyeOff, Save, TestTube, MessageCircle, ChevronDown, ChevronRight } from 'lucide-react';
 import { Button } from '@modl-gg/shared-web/components/ui/button';
 import { Input } from '@modl-gg/shared-web/components/ui/input';
 import { Label } from '@modl-gg/shared-web/components/ui/label';
@@ -7,6 +7,7 @@ import { Switch } from '@modl-gg/shared-web/components/ui/switch';
 import { Separator } from '@modl-gg/shared-web/components/ui/separator';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@modl-gg/shared-web/components/ui/card';
 import { Badge } from '@modl-gg/shared-web/components/ui/badge';
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@modl-gg/shared-web/components/ui/collapsible';
 import { usePermissions } from '@/hooks/use-permissions';
 import { toast } from '@/hooks/use-toast';
 import EmbedTemplateEditor from './EmbedTemplateEditor';
@@ -123,6 +124,11 @@ const WebhookSettings: React.FC<WebhookSettingsProps> = ({
   const [isTesting, setIsTesting] = useState(false);
   const [lastSaved, setLastSaved] = useState<Date | null>(null);
   const [saveTimeout, setSaveTimeout] = useState<NodeJS.Timeout | null>(null);
+  
+  // Collapsible state for embed templates
+  const [isNewTicketsExpanded, setIsNewTicketsExpanded] = useState(false);
+  const [isNewPunishmentsExpanded, setIsNewPunishmentsExpanded] = useState(false);
+  const [isAuditLogsExpanded, setIsAuditLogsExpanded] = useState(false);
 
   useEffect(() => {
     if (webhookSettings) {
@@ -168,8 +174,11 @@ const WebhookSettings: React.FC<WebhookSettingsProps> = ({
 
       setSettings({
         ...webhookSettings,
-        // Don't show anything in avatar URL if using default (empty or matches panel icon)
-        avatarUrl: (webhookSettings.avatarUrl && webhookSettings.avatarUrl !== panelIconUrl) ? webhookSettings.avatarUrl : '',
+        // Show avatar URL only if it's explicitly set and different from panel icon
+        avatarUrl: (webhookSettings.avatarUrl && 
+                   webhookSettings.avatarUrl !== panelIconUrl && 
+                   webhookSettings.avatarUrl !== '' &&
+                   !webhookSettings.avatarUrl.includes('/panel-icon-')) ? webhookSettings.avatarUrl : '',
         // Keep the enabled state as is from the saved settings
         enabled: webhookSettings.enabled || false,
         // Ensure embedTemplates exist with defaults
@@ -504,50 +513,77 @@ const WebhookSettings: React.FC<WebhookSettingsProps> = ({
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-6">
-          <div className="space-y-2">
-            <div className="flex items-center justify-between">
-              <Label className="text-base font-medium">New Tickets Template</Label>
-              {!settings.notifications.newTickets && (
-                <Badge variant="secondary" className="text-xs">Disabled</Badge>
+          <Collapsible open={isNewTicketsExpanded} onOpenChange={setIsNewTicketsExpanded}>
+            <CollapsibleTrigger className="flex items-center justify-between w-full p-3 bg-muted/30 rounded-lg hover:bg-muted/50 transition-colors">
+              <div className="flex items-center gap-2">
+                <Label className="text-base font-medium">New Tickets Template</Label>
+                {!settings.notifications.newTickets && (
+                  <Badge variant="secondary" className="text-xs">Disabled</Badge>
+                )}
+              </div>
+              {isNewTicketsExpanded ? (
+                <ChevronDown className="h-4 w-4" />
+              ) : (
+                <ChevronRight className="h-4 w-4" />
               )}
-            </div>
-            <EmbedTemplateEditor
-              template={settings.embedTemplates!.newTickets}
-              templateType="newTickets"
-              onChange={(template) => handleEmbedTemplateChange('newTickets', template)}
-              disabled={!canModify}
-            />
-          </div>
+            </CollapsibleTrigger>
+            <CollapsibleContent className="pt-4">
+              <EmbedTemplateEditor
+                template={settings.embedTemplates!.newTickets}
+                templateType="newTickets"
+                onChange={(template) => handleEmbedTemplateChange('newTickets', template)}
+                disabled={!canModify}
+              />
+            </CollapsibleContent>
+          </Collapsible>
 
-          <div className="space-y-2">
-            <div className="flex items-center justify-between">
-              <Label className="text-base font-medium">New Punishments Template</Label>
-              {!settings.notifications.newPunishments && (
-                <Badge variant="secondary" className="text-xs">Disabled</Badge>
+          <Collapsible open={isNewPunishmentsExpanded} onOpenChange={setIsNewPunishmentsExpanded}>
+            <CollapsibleTrigger className="flex items-center justify-between w-full p-3 bg-muted/30 rounded-lg hover:bg-muted/50 transition-colors">
+              <div className="flex items-center gap-2">
+                <Label className="text-base font-medium">New Punishments Template</Label>
+                {!settings.notifications.newPunishments && (
+                  <Badge variant="secondary" className="text-xs">Disabled</Badge>
+                )}
+              </div>
+              {isNewPunishmentsExpanded ? (
+                <ChevronDown className="h-4 w-4" />
+              ) : (
+                <ChevronRight className="h-4 w-4" />
               )}
-            </div>
-            <EmbedTemplateEditor
-              template={settings.embedTemplates!.newPunishments}
-              templateType="newPunishments"
-              onChange={(template) => handleEmbedTemplateChange('newPunishments', template)}
-              disabled={!canModify}
-            />
-          </div>
+            </CollapsibleTrigger>
+            <CollapsibleContent className="pt-4">
+              <EmbedTemplateEditor
+                template={settings.embedTemplates!.newPunishments}
+                templateType="newPunishments"
+                onChange={(template) => handleEmbedTemplateChange('newPunishments', template)}
+                disabled={!canModify}
+              />
+            </CollapsibleContent>
+          </Collapsible>
 
-          <div className="space-y-2">
-            <div className="flex items-center justify-between">
-              <Label className="text-base font-medium">Audit Logs Template</Label>
-              {!settings.notifications.auditLogs && (
-                <Badge variant="secondary" className="text-xs">Disabled</Badge>
+          <Collapsible open={isAuditLogsExpanded} onOpenChange={setIsAuditLogsExpanded}>
+            <CollapsibleTrigger className="flex items-center justify-between w-full p-3 bg-muted/30 rounded-lg hover:bg-muted/50 transition-colors">
+              <div className="flex items-center gap-2">
+                <Label className="text-base font-medium">Audit Logs Template</Label>
+                {!settings.notifications.auditLogs && (
+                  <Badge variant="secondary" className="text-xs">Disabled</Badge>
+                )}
+              </div>
+              {isAuditLogsExpanded ? (
+                <ChevronDown className="h-4 w-4" />
+              ) : (
+                <ChevronRight className="h-4 w-4" />
               )}
-            </div>
-            <EmbedTemplateEditor
-              template={settings.embedTemplates!.auditLogs}
-              templateType="auditLogs"
-              onChange={(template) => handleEmbedTemplateChange('auditLogs', template)}
-              disabled={!canModify}
-            />
-          </div>
+            </CollapsibleTrigger>
+            <CollapsibleContent className="pt-4">
+              <EmbedTemplateEditor
+                template={settings.embedTemplates!.auditLogs}
+                templateType="auditLogs"
+                onChange={(template) => handleEmbedTemplateChange('auditLogs', template)}
+                disabled={!canModify}
+              />
+            </CollapsibleContent>
+          </Collapsible>
         </CardContent>
       </Card>
     </div>

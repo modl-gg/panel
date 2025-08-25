@@ -223,8 +223,8 @@ const EmbedTemplateEditor: React.FC<EmbedTemplateEditorProps> = ({
     const borderColor = rgb ? `rgb(${rgb.r}, ${rgb.g}, ${rgb.b})` : '#3498db';
 
     return (
-      <div className="bg-[#2f3136] p-4 rounded-lg">
-        <div className="bg-[#36393f] rounded-lg p-4 border-l-4" style={{ borderLeftColor: borderColor }}>
+      <div className="bg-[#2f3136] p-4 rounded-lg max-w-md mx-auto">
+        <div className="bg-[#36393f] rounded-lg p-4 border-l-4 max-w-[432px]" style={{ borderLeftColor: borderColor }}>
           {template.title && (
             <div className="text-white font-semibold text-sm mb-1">
               {replaceVariablesForPreview(template.title)}
@@ -427,9 +427,9 @@ const EmbedTemplateEditor: React.FC<EmbedTemplateEditorProps> = ({
                             size="sm"
                             onClick={() => removeField(index)}
                             disabled={disabled}
-                            className="h-6 w-6 p-0"
+                            className="h-8 w-8 p-0 ml-2"
                           >
-                            <Trash2 className="h-3 w-3" />
+                            <Trash2 className="h-4 w-4" />
                           </Button>
                         </div>
                       </div>
