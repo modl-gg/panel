@@ -462,6 +462,7 @@ const GeneralSettings = ({
                 webhookSettings={webhookSettings}
                 onSave={handleWebhookSave}
                 isLoading={savingWebhookSettings}
+                panelIconUrl={panelIconUrl}
               />
             </CollapsibleContent>
           </Collapsible>

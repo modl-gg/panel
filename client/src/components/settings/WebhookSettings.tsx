@@ -16,9 +16,9 @@ interface WebhookSettings {
   avatarUrl: string;
   enabled: boolean;
   notifications: {
-    errors: boolean;
-    serverProvisioningFailures: boolean;
-    rateLimits: boolean;
+    newTickets: boolean;
+    newPunishments: boolean;
+    auditLogs: boolean;
   };
 }
 
@@ -26,24 +26,26 @@ interface WebhookSettingsProps {
   webhookSettings?: WebhookSettings;
   onSave?: (settings: WebhookSettings) => Promise<void>;
   isLoading?: boolean;
+  panelIconUrl?: string;
 }
 
 const WebhookSettings: React.FC<WebhookSettingsProps> = ({
   webhookSettings,
   onSave,
-  isLoading = false
+  isLoading = false,
+  panelIconUrl
 }) => {
   const { hasPermission } = usePermissions();
   const [settings, setSettings] = useState<WebhookSettings>({
     discordWebhookUrl: '',
     discordAdminRoleId: '',
-    botName: 'MODL Panel',
-    avatarUrl: '',
+    botName: 'modl Panel',
+    avatarUrl: panelIconUrl || '',
     enabled: false,
     notifications: {
-      errors: true,
-      serverProvisioningFailures: true,
-      rateLimits: false,
+      newTickets: true,
+      newPunishments: true,
+      auditLogs: false,
     }
   });
 
@@ -53,9 +55,13 @@ const WebhookSettings: React.FC<WebhookSettingsProps> = ({
 
   useEffect(() => {
     if (webhookSettings) {
-      setSettings(webhookSettings);
+      setSettings({
+        ...webhookSettings,
+        // Use panel icon as default avatar if no avatar URL is set
+        avatarUrl: webhookSettings.avatarUrl || panelIconUrl || ''
+      });
     }
-  }, [webhookSettings]);
+  }, [webhookSettings, panelIconUrl]);
 
   const handleInputChange = (field: keyof WebhookSettings, value: any) => {
     setSettings(prev => ({
@@ -160,7 +166,7 @@ const WebhookSettings: React.FC<WebhookSettingsProps> = ({
             Discord Webhook Configuration
           </CardTitle>
           <CardDescription>
-            Configure Discord webhooks for receiving notifications from your MODL panel.
+            Configure Discord webhooks for receiving notifications from your modl panel.
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
@@ -234,7 +240,7 @@ const WebhookSettings: React.FC<WebhookSettingsProps> = ({
             <Label htmlFor="bot-name">Bot Name</Label>
             <Input
               id="bot-name"
-              placeholder="MODL Panel"
+              placeholder="modl Panel"
               value={settings.botName}
               onChange={(e) => handleInputChange('botName', e.target.value)}
               disabled={!canModify}
@@ -249,13 +255,13 @@ const WebhookSettings: React.FC<WebhookSettingsProps> = ({
             <Label htmlFor="avatar-url">Avatar URL (Optional)</Label>
             <Input
               id="avatar-url"
-              placeholder="https://example.com/avatar.png"
+              placeholder={panelIconUrl || "https://example.com/avatar.png"}
               value={settings.avatarUrl}
               onChange={(e) => handleInputChange('avatarUrl', e.target.value)}
               disabled={!canModify}
             />
             <p className="text-sm text-muted-foreground">
-              URL of image to display as webhook avatar
+              URL of image to display as webhook avatar. Defaults to your server icon if configured.
             </p>
           </div>
         </CardContent>
@@ -272,51 +278,51 @@ const WebhookSettings: React.FC<WebhookSettingsProps> = ({
         <CardContent className="space-y-4">
           <div className="flex items-center justify-between">
             <div>
-              <Label htmlFor="notify-errors" className="text-base font-medium">
-                Error Notifications
+              <Label htmlFor="notify-tickets" className="text-base font-medium">
+                New Tickets
               </Label>
               <p className="text-sm text-muted-foreground">
-                Receive notifications for system errors and exceptions
+                Receive notifications when new tickets are created
               </p>
             </div>
             <Switch
-              id="notify-errors"
-              checked={settings.notifications.errors}
-              onCheckedChange={(checked) => handleNotificationChange('errors', checked)}
+              id="notify-tickets"
+              checked={settings.notifications.newTickets}
+              onCheckedChange={(checked) => handleNotificationChange('newTickets', checked)}
               disabled={!canModify}
             />
           </div>
 
           <div className="flex items-center justify-between">
             <div>
-              <Label htmlFor="notify-provisioning" className="text-base font-medium">
-                Server Provisioning Failures
+              <Label htmlFor="notify-punishments" className="text-base font-medium">
+                New Punishments
               </Label>
               <p className="text-sm text-muted-foreground">
-                Receive notifications when server provisioning fails
+                Receive notifications when new punishments are issued
               </p>
             </div>
             <Switch
-              id="notify-provisioning"
-              checked={settings.notifications.serverProvisioningFailures}
-              onCheckedChange={(checked) => handleNotificationChange('serverProvisioningFailures', checked)}
+              id="notify-punishments"
+              checked={settings.notifications.newPunishments}
+              onCheckedChange={(checked) => handleNotificationChange('newPunishments', checked)}
               disabled={!canModify}
             />
           </div>
 
           <div className="flex items-center justify-between">
             <div>
-              <Label htmlFor="notify-rate-limits" className="text-base font-medium">
-                Rate Limit Violations
+              <Label htmlFor="notify-audit" className="text-base font-medium">
+                Audit Log Entries
               </Label>
               <p className="text-sm text-muted-foreground">
-                Receive notifications when users hit rate limits
+                Receive notifications for important audit log events
               </p>
             </div>
             <Switch
-              id="notify-rate-limits"
-              checked={settings.notifications.rateLimits}
-              onCheckedChange={(checked) => handleNotificationChange('rateLimits', checked)}
+              id="notify-audit"
+              checked={settings.notifications.auditLogs}
+              onCheckedChange={(checked) => handleNotificationChange('auditLogs', checked)}
               disabled={!canModify}
             />
           </div>

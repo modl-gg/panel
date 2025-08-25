@@ -131,9 +131,9 @@ interface IWebhookSettings {
   avatarUrl: string;
   enabled: boolean;
   notifications: {
-    errors: boolean;
-    serverProvisioningFailures: boolean;
-    rateLimits: boolean;
+    newTickets: boolean;
+    newPunishments: boolean;
+    auditLogs: boolean;
   };
 }
 
@@ -1335,13 +1335,13 @@ export async function getAllSettings(dbConnection: Connection): Promise<any> {
       webhookSettings: settings.webhookSettings || {
         discordWebhookUrl: '',
         discordAdminRoleId: '',
-        botName: 'MODL Panel',
+        botName: 'modl Panel',
         avatarUrl: '',
         enabled: false,
         notifications: {
-          errors: true,
-          serverProvisioningFailures: true,
-          rateLimits: false,
+          newTickets: true,
+          newPunishments: true,
+          auditLogs: false,
         },
       },
       api_key: settings.api_key,
@@ -4698,15 +4698,15 @@ router.post('/test-webhook', async (req: Request, res: Response) => {
     }
 
     const testPayload = {
-      username: botName || 'MODL Panel',
+      username: botName || 'modl Panel',
       avatar_url: avatarUrl || undefined,
       embeds: [{
         title: '🧪 Test Webhook',
-        description: 'This is a test notification from your MODL Panel webhook configuration.',
+        description: 'This is a test notification from your modl panel webhook configuration.',
         color: 0x00FF00, // Green color
         timestamp: new Date().toISOString(),
         footer: {
-          text: 'MODL Panel Test'
+          text: 'modl Panel Test'
         },
         fields: [
           {
