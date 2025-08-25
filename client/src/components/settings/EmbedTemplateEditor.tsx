@@ -275,13 +275,13 @@ const EmbedTemplateEditor: React.FC<EmbedTemplateEditorProps> = ({
               {/* Title */}
               <div className="space-y-2">
                 <div className="flex items-center gap-2">
-                  <Label htmlFor="title">Embed Title</Label>
+                  <Label htmlFor={`title-${templateType}`}>Embed Title</Label>
                   <VariableHelper onInsert={(variable) => {
                     updateTemplate({ title: template.title + variable });
                   }} />
                 </div>
                 <Input
-                  id="title"
+                  id={`title-${templateType}`}
                   value={template.title}
                   onChange={(e) => updateTemplate({ title: e.target.value })}
                   placeholder="🎫 New Ticket Created"
@@ -292,13 +292,13 @@ const EmbedTemplateEditor: React.FC<EmbedTemplateEditorProps> = ({
               {/* Description */}
               <div className="space-y-2">
                 <div className="flex items-center gap-2">
-                  <Label htmlFor="description">Description</Label>
+                  <Label htmlFor={`description-${templateType}`}>Description</Label>
                   <VariableHelper onInsert={(variable) => {
                     updateTemplate({ description: template.description + variable });
                   }} />
                 </div>
                 <Textarea
-                  id="description"
+                  id={`description-${templateType}`}
                   value={template.description}
                   onChange={(e) => updateTemplate({ description: e.target.value })}
                   placeholder="A new **{{type}}** ticket has been submitted."

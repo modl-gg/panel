@@ -4861,9 +4861,18 @@ router.post('/test-webhook', async (req: Request, res: Response) => {
       return res.status(400).json({ error: 'Webhook URL is required' });
     }
 
+    // Convert relative avatar URL to absolute URL if needed
+    let fullAvatarUrl = avatarUrl;
+    if (avatarUrl && avatarUrl.startsWith('/')) {
+      // Get the base URL from the request
+      const protocol = req.headers['x-forwarded-proto'] || (req.connection.encrypted ? 'https' : 'http');
+      const host = req.headers.host;
+      fullAvatarUrl = `${protocol}://${host}${avatarUrl}`;
+    }
+
     const testPayload = {
       username: botName || 'modl Panel',
-      avatar_url: avatarUrl || undefined,
+      avatar_url: fullAvatarUrl && fullAvatarUrl.match(/^https?:\/\//) ? fullAvatarUrl : undefined,
       embeds: [{
         title: '🧪 Test Webhook',
         description: 'This is a test notification from your modl panel webhook configuration.',
