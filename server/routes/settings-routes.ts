@@ -124,6 +124,51 @@ interface IAIModerationSettings {
   aiPunishmentConfigs: Record<number, IAIPunishmentConfig>; // Map punishment type ID to AI config
 }
 
+interface IWebhookSettings {
+  discordWebhookUrl: string;
+  discordAdminRoleId: string;
+  botName: string;
+  avatarUrl: string;
+  enabled: boolean;
+  notifications: {
+    newTickets: boolean;
+    newPunishments: boolean;
+    auditLogs: boolean;
+  };
+  embedTemplates: {
+    newTickets: {
+      title: string;
+      description: string;
+      color: string;
+      fields: Array<{
+        name: string;
+        value: string;
+        inline: boolean;
+      }>;
+    };
+    newPunishments: {
+      title: string;
+      description: string;
+      color: string;
+      fields: Array<{
+        name: string;
+        value: string;
+        inline: boolean;
+      }>;
+    };
+    auditLogs: {
+      title: string;
+      description: string;
+      color: string;
+      fields: Array<{
+        name: string;
+        value: string;
+        inline: boolean;
+      }>;
+    };
+  };
+}
+
 // Settings document interface for separate documents in same collection
 interface ISettingsDocument extends MongooseDocument {
   type: string; // 'punishmentTypes', 'statusThresholds', 'systemSettings', etc.
@@ -1238,6 +1283,77 @@ export async function migrateTicketForms(dbConnection: Connection): Promise<void
 }
 
 // Function to retrieve all settings from separate documents
+// Helper function to migrate legacy webhook settings
+async function migrateLegacyWebhookSettings(models: any, settings: any): Promise<void> {
+  try {
+    // Check if we have legacy webhook URL in general settings but no webhook settings
+    if (settings.general?.discordWebhookUrl && !settings.webhookSettings?.discordWebhookUrl) {
+      const defaultWebhookSettings = {
+        discordWebhookUrl: settings.general.discordWebhookUrl,
+        discordAdminRoleId: '',
+        botName: 'modl Panel',
+        avatarUrl: settings.general.panelIconUrl || '',
+        enabled: true, // Enable automatically for backward compatibility
+        notifications: {
+          newTickets: true,
+          newPunishments: true,
+          auditLogs: false,
+        },
+        embedTemplates: {
+          newTickets: {
+            title: '🎫 New Ticket Created',
+            description: 'A new **{{type}}** ticket has been submitted.',
+            color: '#3498db',
+            fields: [
+              { name: 'Ticket ID', value: '#{{id}}', inline: true },
+              { name: 'Priority', value: '{{priority}}', inline: true },
+              { name: 'Category', value: '{{category}}', inline: true },
+              { name: 'Subject', value: '{{title}}', inline: false },
+              { name: 'Submitted By', value: '{{submittedBy}}', inline: true }
+            ]
+          },
+          newPunishments: {
+            title: '⚖️ New Punishment Issued',
+            description: 'A **{{type}}** has been issued.',
+            color: '#e74c3c',
+            fields: [
+              { name: 'Player', value: '{{playerName}}', inline: true },
+              { name: 'Punishment Type', value: '{{type}}', inline: true },
+              { name: 'Severity', value: '{{severity}}', inline: true },
+              { name: 'Duration', value: '{{duration}}', inline: true },
+              { name: 'Reason', value: '{{reason}}', inline: false },
+              { name: 'Issued By', value: '{{issuer}}', inline: true }
+            ]
+          },
+          auditLogs: {
+            title: '📋 Audit Log Entry',
+            description: 'A new audit log entry has been recorded.',
+            color: '#f39c12',
+            fields: [
+              { name: 'User', value: '{{user}}', inline: true },
+              { name: 'Action', value: '{{action}}', inline: true },
+              { name: 'Target', value: '{{target}}', inline: true },
+              { name: 'Details', value: '{{details}}', inline: false }
+            ]
+          }
+        }
+      };
+
+      // Create the new webhook settings document
+      await models.Settings.findOneAndUpdate(
+        { type: 'webhookSettings' },
+        { type: 'webhookSettings', data: defaultWebhookSettings },
+        { upsert: true, new: true }
+      );
+
+      // Update the settings object for this request
+      settings.webhookSettings = defaultWebhookSettings;
+    }
+  } catch (error) {
+    console.error('[Webhook Migration] Error migrating legacy webhook settings:', error);
+  }
+}
+
 export async function getAllSettings(dbConnection: Connection): Promise<any> {
   const models = getSettingsModels(dbConnection);
   
@@ -1298,6 +1414,9 @@ export async function getAllSettings(dbConnection: Connection): Promise<any> {
         case 'aiModerationSettings':
           settings.aiModerationSettings = doc.data;
           break;
+        case 'webhookSettings':
+          settings.webhookSettings = doc.data;
+          break;
         case 'apiKeys':
           settings.api_key = doc.data.api_key;
           settings.ticket_api_key = doc.data.ticket_api_key;
@@ -1305,6 +1424,9 @@ export async function getAllSettings(dbConnection: Connection): Promise<any> {
           break;
       }
     }
+
+    // Check and migrate legacy webhook settings if needed
+    await migrateLegacyWebhookSettings(models, settings);
 
     // Provide defaults if documents don't exist
     return {
@@ -1316,6 +1438,56 @@ export async function getAllSettings(dbConnection: Connection): Promise<any> {
       ticketForms: settings.ticketForms || { bug: { fields: [], sections: [] }, support: { fields: [], sections: [] }, application: { fields: [], sections: [] } },
       general: settings.general || { serverDisplayName: '', discordWebhookUrl: '', homepageIconUrl: '', panelIconUrl: '' },
       aiModerationSettings: settings.aiModerationSettings || {},
+      webhookSettings: settings.webhookSettings || {
+        discordWebhookUrl: '',
+        discordAdminRoleId: '',
+        botName: 'modl Panel',
+        avatarUrl: '',
+        enabled: false,
+        notifications: {
+          newTickets: true,
+          newPunishments: true,
+          auditLogs: false,
+        },
+        embedTemplates: {
+          newTickets: {
+            title: '🎫 New Ticket Created',
+            description: 'A new **{{type}}** ticket has been submitted.',
+            color: '#3498db',
+            fields: [
+              { name: 'Ticket ID', value: '#{{id}}', inline: true },
+              { name: 'Priority', value: '{{priority}}', inline: true },
+              { name: 'Category', value: '{{category}}', inline: true },
+              { name: 'Subject', value: '{{title}}', inline: false },
+              { name: 'Submitted By', value: '{{submittedBy}}', inline: true }
+            ]
+          },
+          newPunishments: {
+            title: '⚖️ New Punishment Issued',
+            description: 'A **{{type}}** has been issued.',
+            color: '#e74c3c',
+            fields: [
+              { name: 'Player', value: '{{playerName}}', inline: true },
+              { name: 'Punishment Type', value: '{{type}}', inline: true },
+              { name: 'Severity', value: '{{severity}}', inline: true },
+              { name: 'Reason', value: '{{reason}}', inline: false },
+              { name: 'Duration', value: '{{duration}}', inline: true },
+              { name: 'Issued By', value: '{{issuer}}', inline: true }
+            ]
+          },
+          auditLogs: {
+            title: '📋 Audit Log Entry',
+            description: '{{action}}',
+            color: '#f39c12',
+            fields: [
+              { name: 'User', value: '{{user}}', inline: true },
+              { name: 'Action', value: '{{action}}', inline: true },
+              { name: 'Target', value: '{{target}}', inline: true },
+              { name: 'Details', value: '{{details}}', inline: false }
+            ]
+          }
+        }
+      },
       api_key: settings.api_key,
       ticket_api_key: settings.ticket_api_key,
       minecraft_api_key: settings.minecraft_api_key
@@ -1478,6 +1650,21 @@ export async function updateSettings(dbConnection: Connection, requestBody: any)
       models.Settings.findOneAndUpdate(
         { type: 'aiModerationSettings' },
         { type: 'aiModerationSettings', data: mergedData },
+        { upsert: true, new: true }
+      )
+    );
+  }
+
+  if (requestBody.webhookSettings !== undefined) {
+    // Get existing webhook settings and merge with new data
+    const existingDoc = await models.Settings.findOne({ type: 'webhookSettings' });
+    const existingData = existingDoc?.data || {};
+    const mergedData = { ...existingData, ...requestBody.webhookSettings };
+
+    updates.push(
+      models.Settings.findOneAndUpdate(
+        { type: 'webhookSettings' },
+        { type: 'webhookSettings', data: mergedData },
         { upsert: true, new: true }
       )
     );
@@ -2888,6 +3075,26 @@ router.patch('/', async (req: Request, res: Response) => {
   }
 });
 
+// POST handler for backward compatibility (same as PATCH)
+router.post('/', async (req: Request, res: Response) => {
+  if (!(await checkRoutePermission(req, res, 'admin.settings.modify'))) return;
+  try {
+    // Update settings documents
+    await updateSettings(req.serverDbConnection!, req.body);
+    
+    // Clean up orphaned AI punishment configs if punishment types were updated
+    if ('punishmentTypes' in req.body) {
+      await cleanupOrphanedAIPunishmentConfigs(req.serverDbConnection!);
+    }
+    
+    const allSettings = await getAllSettings(req.serverDbConnection!);
+    res.json({ settings: allSettings });
+  } catch (error) {
+    console.error('Error in settings POST route:', error);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
 router.post('/reset', async (req: Request, res: Response) => {
   if (!(await checkRoutePermission(req, res, 'admin.settings.modify'))) return;
   try {
@@ -4018,6 +4225,43 @@ router.post('/upload-icon', upload.single('icon'), async (req: Request, res: Res
     // Generate URL for the uploaded file
     const fileUrl = `/uploads/${serverName}/${fileName}`;
 
+    // If this is a panel icon upload, update webhook settings avatar URL
+    // Only if webhook settings exist and are enabled
+    if (iconType === 'panel') {
+      try {
+        const models = getSettingsModels(req.serverDbConnection!);
+        
+        // Get existing webhook settings
+        const existingWebhookDoc = await models.Settings.findOne({ type: 'webhookSettings' });
+        if (existingWebhookDoc?.data && existingWebhookDoc.data.enabled) {
+          // Only update if webhook is enabled and user hasn't set a custom avatar URL
+          const currentAvatarUrl = existingWebhookDoc.data.avatarUrl;
+          
+          // Update only if: no custom avatar URL set, or current avatar URL is empty/matches old panel icon
+          const shouldUpdate = !currentAvatarUrl || 
+                              currentAvatarUrl === '' || 
+                              currentAvatarUrl.includes('/uploads/') && currentAvatarUrl.includes('/panel-icon-');
+          
+          if (shouldUpdate) {
+            await models.Settings.findOneAndUpdate(
+              { type: 'webhookSettings' },
+              { 
+                type: 'webhookSettings', 
+                data: { 
+                  ...existingWebhookDoc.data, 
+                  avatarUrl: fileUrl 
+                } 
+              },
+              { upsert: true, new: true }
+            );
+          }
+        }
+      } catch (error) {
+        console.error('Error updating webhook avatar URL:', error);
+        // Don't fail the upload if webhook update fails
+      }
+    }
+
     res.json({ 
       success: true, 
       url: fileUrl,
@@ -4640,6 +4884,85 @@ router.delete('/ai-punishment-types/:id', async (req: Request, res: Response) =>
   } catch (error) {
     console.error('Error deleting AI punishment type:', error);
     res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+// Test webhook endpoint
+router.post('/test-webhook', async (req: Request, res: Response) => {
+  if (!(await checkRoutePermission(req, res, 'admin.settings.modify'))) return;
+  
+  try {
+    const { webhookUrl, adminRoleId, botName, avatarUrl } = req.body;
+    
+    if (!webhookUrl) {
+      return res.status(400).json({ error: 'Webhook URL is required' });
+    }
+
+    // Convert relative avatar URL to absolute URL if needed
+    let fullAvatarUrl = avatarUrl;
+    if (avatarUrl && avatarUrl.startsWith('/')) {
+      // Get the base URL from the request
+      const protocol = req.headers['x-forwarded-proto'] || (req.connection.encrypted ? 'https' : 'http');
+      const host = req.headers.host;
+      fullAvatarUrl = `${protocol}://${host}${avatarUrl}`;
+    }
+
+    const testPayload = {
+      username: botName || 'modl Panel',
+      avatar_url: fullAvatarUrl && fullAvatarUrl.match(/^https?:\/\//) ? fullAvatarUrl : undefined,
+      embeds: [{
+        title: '🧪 Test Webhook',
+        description: 'This is a test notification from your modl panel webhook configuration.',
+        color: 0x00FF00, // Green color
+        timestamp: new Date().toISOString(),
+        footer: {
+          text: 'modl Panel Test'
+        },
+        fields: [
+          {
+            name: 'Status',
+            value: 'Webhook configuration is working correctly!',
+            inline: false
+          },
+          {
+            name: 'Server',
+            value: req.serverName || 'Unknown',
+            inline: true
+          },
+          {
+            name: 'Timestamp',
+            value: new Date().toLocaleString(),
+            inline: true
+          }
+        ]
+      }]
+    };
+
+    // Add admin role ping if provided
+    if (adminRoleId) {
+      testPayload.content = `<@&${adminRoleId}> Test webhook notification`;
+    }
+
+    const response = await fetch(webhookUrl, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(testPayload)
+    });
+
+    if (!response.ok) {
+      const errorText = await response.text();
+      return res.status(400).json({ 
+        error: 'Failed to send test webhook', 
+        details: `Discord API returned: ${response.status} ${errorText}`
+      });
+    }
+
+    res.json({ success: true, message: 'Test webhook sent successfully' });
+  } catch (error) {
+    console.error('Error sending test webhook:', error);
+    res.status(500).json({ error: 'Failed to send test webhook' });
   }
 });
 

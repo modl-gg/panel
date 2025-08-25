@@ -6,6 +6,8 @@ declare global {
       serverName?: string;
       serverDbConnection?: Connection;
       modlServer?: any;
+      user?: any;
+      webhookSettings?: any;
     }
   }
 }

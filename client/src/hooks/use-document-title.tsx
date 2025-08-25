@@ -37,7 +37,7 @@ function getPageName(location: string): string {
  * Hook to manage document title and favicon based on server settings
  */
 export function useDocumentTitle() {
-  const { data: publicSettings } = usePublicSettings();
+  const { data: publicSettings, isLoading } = usePublicSettings();
   const [location] = useLocation();
 
   useEffect(() => {
@@ -53,10 +53,14 @@ export function useDocumentTitle() {
     const iconUrl = isHomepageRoute ? homepageIconUrl : panelIconUrl;
 
     // Update document title
-    if (serverDisplayName) {
+    if (isLoading) {
+      // Keep showing Loading... while settings are being fetched
+      document.title = 'Loading...';
+    } else if (serverDisplayName) {
       document.title = pageName ? `${pageName} - ${serverDisplayName}` : serverDisplayName;
     } else {
-      document.title = pageName ? `${pageName} - modl` : 'modl';
+      // If no server display name is set, show a generic title
+      document.title = pageName ? `${pageName}` : 'Panel';
     }
 
     // Update favicon if available

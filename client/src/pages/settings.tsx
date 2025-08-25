@@ -34,6 +34,7 @@ import AccountSettings from '@/components/settings/AccountSettings';
 import GeneralSettings from '@/components/settings/GeneralSettings';
 import PunishmentSettings from '@/components/settings/PunishmentSettings';
 import TicketSettings from '@/components/settings/TicketSettings';
+import WebhookSettings from '@/components/settings/WebhookSettings';
 import { DndProvider, useDrag, useDrop } from 'react-dnd';
 import { HTML5Backend } from 'react-dnd-html5-backend';
 import { QuickResponsesConfiguration, defaultQuickResponsesConfig } from '@/types/quickResponses';
@@ -1090,6 +1091,48 @@ const Settings = () => {
     return "Configure custom domain";
   };
 
+  const getWebhookSummary = () => {
+    const webhookSettings = settingsData?.settings?.webhookSettings;
+    if (!webhookSettings) return "Loading webhook settings...";
+    
+    if (!webhookSettings.enabled) {
+      return "Disabled";
+    }
+    
+    if (!webhookSettings.discordWebhookUrl) {
+      return "Enabled but not configured";
+    }
+    
+    const notificationCount = Object.values(webhookSettings.notifications || {}).filter(Boolean).length;
+    return `Enabled • ${notificationCount} notification types active`;
+  };
+
+  const [savingWebhookSettings, setSavingWebhookSettings] = useState(false);
+
+  const handleWebhookSave = async (webhookSettings: any) => {
+    setSavingWebhookSettings(true);
+    try {
+      const { csrfFetch } = await import('@/utils/csrf');
+      const response = await csrfFetch('/api/panel/settings', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ webhookSettings }),
+        credentials: 'include'
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to save webhook settings');
+      }
+
+      queryClient.invalidateQueries({ queryKey: ['/api/panel/settings'] });
+    } catch (error) {
+      console.error('Error saving webhook settings:', error);
+      throw error;
+    } finally {
+      setSavingWebhookSettings(false);
+    }
+  };
+
   // Create aliases for the state variables to maintain backward compatibility
   const punishmentTypes = punishmentTypesState;
   const newPunishmentName = newPunishmentNameState;
@@ -1189,9 +1232,13 @@ const Settings = () => {
     if (uploadedUrl) {
       setPanelIcon(file);
       setPanelIconUrl(uploadedUrl);
+      
+      // Refresh webhook settings to get updated avatar URL
+      queryClient.invalidateQueries({ queryKey: ['/api/panel/settings'] });
+      
       toast({
         title: "Panel Icon Uploaded",
-        description: "Your panel icon has been successfully uploaded.",
+        description: "Your panel icon has been successfully uploaded. Webhook avatar URL updated automatically.",
       });    }
     setUploadingPanelIcon(false);
   };
@@ -2856,6 +2903,10 @@ const Settings = () => {
                     getUsageSummary={getUsageSummary}
                     getServerConfigSummary={getServerConfigSummary}
                     getDomainSummary={getDomainSummary}
+                    webhookSettings={settingsData?.settings?.webhookSettings}
+                    getWebhookSummary={getWebhookSummary}
+                    handleWebhookSave={handleWebhookSave}
+                    savingWebhookSettings={savingWebhookSettings}
                   />
                 </TabsContent>
               )}
