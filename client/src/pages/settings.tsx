@@ -1113,7 +1113,7 @@ const Settings = () => {
     setSavingWebhookSettings(true);
     try {
       const response = await fetch('/api/panel/settings', {
-        method: 'POST',
+        method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ webhookSettings }),
         credentials: 'include'

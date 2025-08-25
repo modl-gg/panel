@@ -3075,6 +3075,26 @@ router.patch('/', async (req: Request, res: Response) => {
   }
 });
 
+// POST handler for backward compatibility (same as PATCH)
+router.post('/', async (req: Request, res: Response) => {
+  if (!(await checkRoutePermission(req, res, 'admin.settings.modify'))) return;
+  try {
+    // Update settings documents
+    await updateSettings(req.serverDbConnection!, req.body);
+    
+    // Clean up orphaned AI punishment configs if punishment types were updated
+    if ('punishmentTypes' in req.body) {
+      await cleanupOrphanedAIPunishmentConfigs(req.serverDbConnection!);
+    }
+    
+    const allSettings = await getAllSettings(req.serverDbConnection!);
+    res.json({ settings: allSettings });
+  } catch (error) {
+    console.error('Error in settings POST route:', error);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
 router.post('/reset', async (req: Request, res: Response) => {
   if (!(await checkRoutePermission(req, res, 'admin.settings.modify'))) return;
   try {
