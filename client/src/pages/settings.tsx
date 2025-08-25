@@ -1232,9 +1232,13 @@ const Settings = () => {
     if (uploadedUrl) {
       setPanelIcon(file);
       setPanelIconUrl(uploadedUrl);
+      
+      // Refresh webhook settings to get updated avatar URL
+      queryClient.invalidateQueries({ queryKey: ['/api/panel/settings'] });
+      
       toast({
         title: "Panel Icon Uploaded",
-        description: "Your panel icon has been successfully uploaded.",
+        description: "Your panel icon has been successfully uploaded. Webhook avatar URL updated automatically.",
       });    }
     setUploadingPanelIcon(false);
   };

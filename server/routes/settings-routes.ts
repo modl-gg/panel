@@ -4225,6 +4225,33 @@ router.post('/upload-icon', upload.single('icon'), async (req: Request, res: Res
     // Generate URL for the uploaded file
     const fileUrl = `/uploads/${serverName}/${fileName}`;
 
+    // If this is a panel icon upload, update webhook settings avatar URL
+    if (iconType === 'panel') {
+      try {
+        const models = getSettingsModels(req.serverDbConnection!);
+        
+        // Get existing webhook settings
+        const existingWebhookDoc = await models.Settings.findOne({ type: 'webhookSettings' });
+        if (existingWebhookDoc?.data) {
+          // Update the webhook settings with the new avatar URL
+          await models.Settings.findOneAndUpdate(
+            { type: 'webhookSettings' },
+            { 
+              type: 'webhookSettings', 
+              data: { 
+                ...existingWebhookDoc.data, 
+                avatarUrl: fileUrl 
+              } 
+            },
+            { upsert: true, new: true }
+          );
+        }
+      } catch (error) {
+        console.error('Error updating webhook avatar URL:', error);
+        // Don't fail the upload if webhook update fails
+      }
+    }
+
     res.json({ 
       success: true, 
       url: fileUrl,

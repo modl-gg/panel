@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Plus, Minus, GripVertical, Palette, Eye, Info } from 'lucide-react';
+import { Plus, Minus, GripVertical, Palette, Eye, Info, Trash2 } from 'lucide-react';
 import { Button } from '@modl-gg/shared-web/components/ui/button';
 import { Input } from '@modl-gg/shared-web/components/ui/input';
 import { Label } from '@modl-gg/shared-web/components/ui/label';
@@ -236,17 +236,87 @@ const EmbedTemplateEditor: React.FC<EmbedTemplateEditorProps> = ({
             </div>
           )}
           {template.fields.length > 0 && (
-            <div className="grid gap-2">
-              {template.fields.map((field, index) => (
-                <div key={index} className={field.inline ? "inline-block w-1/2 pr-2" : "block"}>
-                  <div className="text-white font-medium text-xs mb-1">
-                    {replaceVariablesForPreview(field.name)}
-                  </div>
-                  <div className="text-[#dcddde] text-xs">
-                    {replaceVariablesForPreview(field.value)}
-                  </div>
-                </div>
-              ))}
+            <div className="space-y-2">
+              {(() => {
+                const fields = template.fields;
+                const result = [];
+                let i = 0;
+                
+                while (i < fields.length) {
+                  const currentField = fields[i];
+                  
+                  if (currentField.inline && i < fields.length - 1 && fields[i + 1].inline) {
+                    // Two inline fields side by side
+                    result.push(
+                      <div key={`inline-row-${i}`} className="flex gap-4">
+                        <div className="flex-1">
+                          <div className="text-white font-medium text-xs mb-1">
+                            {replaceVariablesForPreview(currentField.name)}
+                          </div>
+                          <div className="text-[#dcddde] text-xs">
+                            {replaceVariablesForPreview(currentField.value)}
+                          </div>
+                        </div>
+                        <div className="flex-1">
+                          <div className="text-white font-medium text-xs mb-1">
+                            {replaceVariablesForPreview(fields[i + 1].name)}
+                          </div>
+                          <div className="text-[#dcddde] text-xs">
+                            {replaceVariablesForPreview(fields[i + 1].value)}
+                          </div>
+                        </div>
+                      </div>
+                    );
+                    i += 2; // Skip next field as we've already processed it
+                  } else if (currentField.inline && i < fields.length - 1 && fields[i + 1].inline && i < fields.length - 2 && fields[i + 2].inline) {
+                    // Three inline fields in a row
+                    result.push(
+                      <div key={`inline-row-${i}`} className="flex gap-2">
+                        <div className="flex-1">
+                          <div className="text-white font-medium text-xs mb-1">
+                            {replaceVariablesForPreview(currentField.name)}
+                          </div>
+                          <div className="text-[#dcddde] text-xs">
+                            {replaceVariablesForPreview(currentField.value)}
+                          </div>
+                        </div>
+                        <div className="flex-1">
+                          <div className="text-white font-medium text-xs mb-1">
+                            {replaceVariablesForPreview(fields[i + 1].name)}
+                          </div>
+                          <div className="text-[#dcddde] text-xs">
+                            {replaceVariablesForPreview(fields[i + 1].value)}
+                          </div>
+                        </div>
+                        <div className="flex-1">
+                          <div className="text-white font-medium text-xs mb-1">
+                            {replaceVariablesForPreview(fields[i + 2].name)}
+                          </div>
+                          <div className="text-[#dcddde] text-xs">
+                            {replaceVariablesForPreview(fields[i + 2].value)}
+                          </div>
+                        </div>
+                      </div>
+                    );
+                    i += 3; // Skip next two fields
+                  } else {
+                    // Single field (either non-inline or single inline)
+                    result.push(
+                      <div key={`field-${i}`} className={currentField.inline ? "flex-1" : "block"}>
+                        <div className="text-white font-medium text-xs mb-1">
+                          {replaceVariablesForPreview(currentField.name)}
+                        </div>
+                        <div className="text-[#dcddde] text-xs">
+                          {replaceVariablesForPreview(currentField.value)}
+                        </div>
+                      </div>
+                    );
+                    i += 1;
+                  }
+                }
+                
+                return result;
+              })()}
             </div>
           )}
           <div className="text-[#72767d] text-xs mt-3">
@@ -353,12 +423,13 @@ const EmbedTemplateEditor: React.FC<EmbedTemplateEditorProps> = ({
                             <Label htmlFor={`inline-${index}`} className="text-sm">Inline</Label>
                           </div>
                           <Button
-                            variant="destructive"
+                            variant="outline"
                             size="sm"
                             onClick={() => removeField(index)}
                             disabled={disabled}
+                            className="h-6 w-6 p-0"
                           >
-                            <Minus className="h-4 w-4" />
+                            <Trash2 className="h-3 w-3" />
                           </Button>
                         </div>
                       </div>
