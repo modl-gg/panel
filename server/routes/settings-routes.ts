@@ -1283,6 +1283,77 @@ export async function migrateTicketForms(dbConnection: Connection): Promise<void
 }
 
 // Function to retrieve all settings from separate documents
+// Helper function to migrate legacy webhook settings
+async function migrateLegacyWebhookSettings(models: any, settings: any): Promise<void> {
+  try {
+    // Check if we have legacy webhook URL in general settings but no webhook settings
+    if (settings.general?.discordWebhookUrl && !settings.webhookSettings?.discordWebhookUrl) {
+      const defaultWebhookSettings = {
+        discordWebhookUrl: settings.general.discordWebhookUrl,
+        discordAdminRoleId: '',
+        botName: 'modl Panel',
+        avatarUrl: settings.general.panelIconUrl || '',
+        enabled: true, // Enable automatically for backward compatibility
+        notifications: {
+          newTickets: true,
+          newPunishments: true,
+          auditLogs: false,
+        },
+        embedTemplates: {
+          newTickets: {
+            title: '🎫 New Ticket Created',
+            description: 'A new **{{type}}** ticket has been submitted.',
+            color: '#3498db',
+            fields: [
+              { name: 'Ticket ID', value: '#{{id}}', inline: true },
+              { name: 'Priority', value: '{{priority}}', inline: true },
+              { name: 'Category', value: '{{category}}', inline: true },
+              { name: 'Subject', value: '{{title}}', inline: false },
+              { name: 'Submitted By', value: '{{submittedBy}}', inline: true }
+            ]
+          },
+          newPunishments: {
+            title: '⚖️ New Punishment Issued',
+            description: 'A **{{type}}** has been issued.',
+            color: '#e74c3c',
+            fields: [
+              { name: 'Player', value: '{{playerName}}', inline: true },
+              { name: 'Punishment Type', value: '{{type}}', inline: true },
+              { name: 'Severity', value: '{{severity}}', inline: true },
+              { name: 'Duration', value: '{{duration}}', inline: true },
+              { name: 'Reason', value: '{{reason}}', inline: false },
+              { name: 'Issued By', value: '{{issuer}}', inline: true }
+            ]
+          },
+          auditLogs: {
+            title: '📋 Audit Log Entry',
+            description: 'A new audit log entry has been recorded.',
+            color: '#f39c12',
+            fields: [
+              { name: 'User', value: '{{user}}', inline: true },
+              { name: 'Action', value: '{{action}}', inline: true },
+              { name: 'Target', value: '{{target}}', inline: true },
+              { name: 'Details', value: '{{details}}', inline: false }
+            ]
+          }
+        }
+      };
+
+      // Create the new webhook settings document
+      await models.Settings.findOneAndUpdate(
+        { type: 'webhookSettings' },
+        { type: 'webhookSettings', data: defaultWebhookSettings },
+        { upsert: true, new: true }
+      );
+
+      // Update the settings object for this request
+      settings.webhookSettings = defaultWebhookSettings;
+    }
+  } catch (error) {
+    console.error('[Webhook Migration] Error migrating legacy webhook settings:', error);
+  }
+}
+
 export async function getAllSettings(dbConnection: Connection): Promise<any> {
   const models = getSettingsModels(dbConnection);
   
@@ -1353,6 +1424,9 @@ export async function getAllSettings(dbConnection: Connection): Promise<any> {
           break;
       }
     }
+
+    // Check and migrate legacy webhook settings if needed
+    await migrateLegacyWebhookSettings(models, settings);
 
     // Provide defaults if documents don't exist
     return {

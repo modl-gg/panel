@@ -6,6 +6,7 @@ import { Label } from '@modl-gg/shared-web/components/ui/label';
 import { Switch } from '@modl-gg/shared-web/components/ui/switch';
 import { Separator } from '@modl-gg/shared-web/components/ui/separator';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@modl-gg/shared-web/components/ui/card';
+import { Badge } from '@modl-gg/shared-web/components/ui/badge';
 import { usePermissions } from '@/hooks/use-permissions';
 import { toast } from '@/hooks/use-toast';
 import EmbedTemplateEditor from './EmbedTemplateEditor';
@@ -125,53 +126,73 @@ const WebhookSettings: React.FC<WebhookSettingsProps> = ({
 
   useEffect(() => {
     if (webhookSettings) {
+      const defaultEmbedTemplates = {
+        newTickets: {
+          title: '🎫 New Ticket Created',
+          description: 'A new **{{type}}** ticket has been submitted.',
+          color: '#3498db',
+          fields: [
+            { name: 'Ticket ID', value: '{{id}}', inline: true },
+            { name: 'Type', value: '{{type}}', inline: true },
+            { name: 'Priority', value: '{{priority}}', inline: true },
+            { name: 'Title', value: '{{title}}', inline: false },
+            { name: 'Submitted By', value: '{{submittedBy}}', inline: true }
+          ]
+        },
+        newPunishments: {
+          title: '⚖️ New Punishment Issued',
+          description: 'A **{{type}}** has been issued to **{{playerName}}**.',
+          color: '#e74c3c',
+          fields: [
+            { name: 'Punishment ID', value: '{{id}}', inline: true },
+            { name: 'Player', value: '{{playerName}}', inline: true },
+            { name: 'Type', value: '{{type}}', inline: true },
+            { name: 'Severity', value: '{{severity}}', inline: true },
+            { name: 'Duration', value: '{{duration}}', inline: true },
+            { name: 'Issued By', value: '{{issuer}}', inline: true },
+            { name: 'Reason', value: '{{reason}}', inline: false }
+          ]
+        },
+        auditLogs: {
+          title: '📋 Audit Log Entry',
+          description: 'A new audit log entry has been recorded.',
+          color: '#f39c12',
+          fields: [
+            { name: 'User', value: '{{user}}', inline: true },
+            { name: 'Action', value: '{{action}}', inline: true },
+            { name: 'Target', value: '{{target}}', inline: true },
+            { name: 'Details', value: '{{details}}', inline: false }
+          ]
+        }
+      };
+
+      // Backward compatibility: if webhook URL is set but enabled is false, enable it
+      const shouldAutoEnable = webhookSettings.discordWebhookUrl && !webhookSettings.enabled;
+
       setSettings({
         ...webhookSettings,
         // Don't show anything in avatar URL if using default (empty or matches panel icon)
         avatarUrl: (webhookSettings.avatarUrl && webhookSettings.avatarUrl !== panelIconUrl) ? webhookSettings.avatarUrl : '',
+        // Enable webhook if URL is set (backward compatibility)
+        enabled: shouldAutoEnable ? true : webhookSettings.enabled,
         // Ensure embedTemplates exist with defaults
-        embedTemplates: webhookSettings.embedTemplates || {
-          newTickets: {
-            title: '🎫 New Ticket Created',
-            description: 'A new **{{type}}** ticket has been submitted.',
-            color: '#3498db',
-            fields: [
-              { name: 'Ticket ID', value: '{{id}}', inline: true },
-              { name: 'Type', value: '{{type}}', inline: true },
-              { name: 'Priority', value: '{{priority}}', inline: true },
-              { name: 'Title', value: '{{title}}', inline: false },
-              { name: 'Submitted By', value: '{{submittedBy}}', inline: true }
-            ]
-          },
-          newPunishments: {
-            title: '⚖️ New Punishment Issued',
-            description: 'A **{{type}}** has been issued to **{{playerName}}**.',
-            color: '#e74c3c',
-            fields: [
-              { name: 'Punishment ID', value: '{{id}}', inline: true },
-              { name: 'Player', value: '{{playerName}}', inline: true },
-              { name: 'Type', value: '{{type}}', inline: true },
-              { name: 'Severity', value: '{{severity}}', inline: true },
-              { name: 'Duration', value: '{{duration}}', inline: true },
-              { name: 'Issued By', value: '{{issuer}}', inline: true },
-              { name: 'Reason', value: '{{reason}}', inline: false }
-            ]
-          },
-          auditLogs: {
-            title: '📋 Audit Log Entry',
-            description: 'A new audit log entry has been recorded.',
-            color: '#f39c12',
-            fields: [
-              { name: 'User', value: '{{user}}', inline: true },
-              { name: 'Action', value: '{{action}}', inline: true },
-              { name: 'Target', value: '{{target}}', inline: true },
-              { name: 'Details', value: '{{details}}', inline: false }
-            ]
-          }
-        }
+        embedTemplates: webhookSettings.embedTemplates || defaultEmbedTemplates
       });
+
+      // If we auto-enabled due to backward compatibility, save the settings
+      if (shouldAutoEnable && onSave) {
+        const newSettings = {
+          ...webhookSettings,
+          avatarUrl: (webhookSettings.avatarUrl && webhookSettings.avatarUrl !== panelIconUrl) ? webhookSettings.avatarUrl : '',
+          enabled: true,
+          embedTemplates: webhookSettings.embedTemplates || defaultEmbedTemplates
+        };
+        onSave(newSettings).catch(() => {
+          // Silent failure for auto-enable
+        });
+      }
     }
-  }, [webhookSettings, panelIconUrl]);
+  }, [webhookSettings, panelIconUrl, onSave]);
 
   // Cleanup timeout on unmount
   useEffect(() => {
@@ -410,7 +431,7 @@ const WebhookSettings: React.FC<WebhookSettingsProps> = ({
             <Label htmlFor="avatar-url">Avatar URL (Optional)</Label>
             <Input
               id="avatar-url"
-              placeholder={panelIconUrl || "https://example.com/avatar.png"}
+              placeholder="https://cdn.discordapp.com/avatars/123456789/avatar.png"
               value={settings.avatarUrl}
               onChange={(e) => handleInputChange('avatarUrl', e.target.value)}
               disabled={!canModify}
@@ -485,53 +506,60 @@ const WebhookSettings: React.FC<WebhookSettingsProps> = ({
       </Card>
 
       {/* Embed Template Customization */}
-      {settings.enabled && (
-        <Card>
-          <CardHeader>
-            <CardTitle>Embed Templates</CardTitle>
-            <CardDescription>
-              Customize the Discord embed messages for each notification type.
-            </CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-6">
-            {settings.notifications.newTickets && (
-              <div className="space-y-2">
-                <Label className="text-base font-medium">New Tickets Template</Label>
-                <EmbedTemplateEditor
-                  template={settings.embedTemplates!.newTickets}
-                  templateType="newTickets"
-                  onChange={(template) => handleEmbedTemplateChange('newTickets', template)}
-                  disabled={!canModify}
-                />
-              </div>
-            )}
+      <Card>
+        <CardHeader>
+          <CardTitle>Embed Templates</CardTitle>
+          <CardDescription>
+            Customize the Discord embed messages for each notification type.
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-6">
+          <div className="space-y-2">
+            <div className="flex items-center justify-between">
+              <Label className="text-base font-medium">New Tickets Template</Label>
+              {!settings.notifications.newTickets && (
+                <Badge variant="secondary" className="text-xs">Disabled</Badge>
+              )}
+            </div>
+            <EmbedTemplateEditor
+              template={settings.embedTemplates!.newTickets}
+              templateType="newTickets"
+              onChange={(template) => handleEmbedTemplateChange('newTickets', template)}
+              disabled={!canModify || !settings.enabled}
+            />
+          </div>
 
-            {settings.notifications.newPunishments && (
-              <div className="space-y-2">
-                <Label className="text-base font-medium">New Punishments Template</Label>
-                <EmbedTemplateEditor
-                  template={settings.embedTemplates!.newPunishments}
-                  templateType="newPunishments"
-                  onChange={(template) => handleEmbedTemplateChange('newPunishments', template)}
-                  disabled={!canModify}
-                />
-              </div>
-            )}
+          <div className="space-y-2">
+            <div className="flex items-center justify-between">
+              <Label className="text-base font-medium">New Punishments Template</Label>
+              {!settings.notifications.newPunishments && (
+                <Badge variant="secondary" className="text-xs">Disabled</Badge>
+              )}
+            </div>
+            <EmbedTemplateEditor
+              template={settings.embedTemplates!.newPunishments}
+              templateType="newPunishments"
+              onChange={(template) => handleEmbedTemplateChange('newPunishments', template)}
+              disabled={!canModify || !settings.enabled}
+            />
+          </div>
 
-            {settings.notifications.auditLogs && (
-              <div className="space-y-2">
-                <Label className="text-base font-medium">Audit Logs Template</Label>
-                <EmbedTemplateEditor
-                  template={settings.embedTemplates!.auditLogs}
-                  templateType="auditLogs"
-                  onChange={(template) => handleEmbedTemplateChange('auditLogs', template)}
-                  disabled={!canModify}
-                />
-              </div>
-            )}
-          </CardContent>
-        </Card>
-      )}
+          <div className="space-y-2">
+            <div className="flex items-center justify-between">
+              <Label className="text-base font-medium">Audit Logs Template</Label>
+              {!settings.notifications.auditLogs && (
+                <Badge variant="secondary" className="text-xs">Disabled</Badge>
+              )}
+            </div>
+            <EmbedTemplateEditor
+              template={settings.embedTemplates!.auditLogs}
+              templateType="auditLogs"
+              onChange={(template) => handleEmbedTemplateChange('auditLogs', template)}
+              disabled={!canModify || !settings.enabled}
+            />
+          </div>
+        </CardContent>
+      </Card>
     </div>
   );
 };
