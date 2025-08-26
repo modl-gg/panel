@@ -93,7 +93,7 @@ const WebhookSettings: React.FC<WebhookSettingsProps> = ({
       },
       newPunishments: {
         title: '⚖️ New Punishment Issued',
-        description: 'A **{{type}}** has been issued to **{{playerName}}**.',
+        description: 'A(n) **{{type}}** punishment has been issued for **{{playerName}}**.',
         color: '#e74c3c',
         fields: [
           { name: 'Punishment ID', value: '{{id}}', inline: true },

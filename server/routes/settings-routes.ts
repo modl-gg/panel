@@ -1314,7 +1314,7 @@ async function migrateLegacyWebhookSettings(models: any, settings: any): Promise
           },
           newPunishments: {
             title: '⚖️ New Punishment Issued',
-            description: 'A **{{type}}** has been issued.',
+            description: 'A(n) **{{type}}** punishment has been issued.',
             color: '#e74c3c',
             fields: [
               { name: 'Player', value: '{{playerName}}', inline: true },
@@ -1464,7 +1464,7 @@ export async function getAllSettings(dbConnection: Connection): Promise<any> {
           },
           newPunishments: {
             title: '⚖️ New Punishment Issued',
-            description: 'A **{{type}}** has been issued.',
+            description: 'A(n) **{{type}}** punishment has been issued.',
             color: '#e74c3c',
             fields: [
               { name: 'Player', value: '{{playerName}}', inline: true },
