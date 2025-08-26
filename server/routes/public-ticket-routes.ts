@@ -2,6 +2,7 @@ import express, { Request, Response } from 'express';
 import { verifyTicketApiKey } from '../middleware/ticket-api-auth';
 import { getSettingsValue } from './settings-routes';
 import { strictRateLimit } from '../middleware/rate-limiter';
+import { DiscordWebhookService } from '../services/discord-webhook-service';
 
 const router = express.Router();
 
@@ -265,6 +266,21 @@ router.post('/tickets', verifyTicketApiKey, async (req: Request, res: Response) 
     const newTicket = new Ticket(ticketData);
     await newTicket.save();
     
+    // Send Discord webhook notification for new ticket
+    try {
+      const discordWebhookService = new DiscordWebhookService(req.serverDbConnection!);
+      await discordWebhookService.sendNewTicketNotification({
+        id: ticketId,
+        type: type,
+        title: ticketSubject,
+        priority: priority,
+        category: type,
+        submittedBy: creatorName || 'API User'
+      });
+    } catch (webhookError) {
+      console.error('[Public Ticket API] Failed to send Discord webhook notification:', webhookError);
+    }
+    
     // Trigger AI analysis for Player Report tickets with chat messages
     if (req.serverDbConnection && type === 'chat' && chatMessages && chatMessages.length > 0) {
       try {
@@ -476,6 +492,21 @@ router.post('/tickets/unfinished', strictRateLimit, async (req: Request, res: Re
     // Create and save ticket
     const newTicket = new Ticket(ticketData);
     await newTicket.save();
+    
+    // Send Discord webhook notification for new unfinished ticket
+    try {
+      const discordWebhookService = new DiscordWebhookService(req.serverDbConnection!);
+      await discordWebhookService.sendNewTicketNotification({
+        id: ticketId,
+        type: type,
+        title: subject,
+        priority: priority,
+        category: type,
+        submittedBy: creatorName || 'API User'
+      });
+    } catch (webhookError) {
+      console.error('[Public Ticket API] Failed to send Discord webhook notification for unfinished ticket:', webhookError);
+    }
     
     // Trigger AI analysis for Player Report tickets with chat messages
     if (req.serverDbConnection && type === 'chat' && chatMessages && chatMessages.length > 0) {
@@ -955,6 +986,21 @@ router.post('/tickets/:id/submit', async (req: Request, res: Response) => {
     ticket.status = 'Open';
     
     await ticket.save();
+    
+    // Send Discord webhook notification for ticket submission (status change to Open)
+    try {
+      const discordWebhookService = new DiscordWebhookService(req.serverDbConnection!);
+      await discordWebhookService.sendNewTicketNotification({
+        id: ticket._id,
+        type: ticket.type,
+        title: ticket.subject,
+        priority: ticket.data?.get('priority'),
+        category: ticket.type,
+        submittedBy: ticket.creator
+      });
+    } catch (webhookError) {
+      console.error('[Public Ticket API] Failed to send Discord webhook notification for ticket submission:', webhookError);
+    }
     
     // Debug: Verify what was actually saved
     const savedTicket = await Ticket.findById(ticket._id);

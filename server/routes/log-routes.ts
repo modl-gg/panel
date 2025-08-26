@@ -1,6 +1,7 @@
 import { Router } from 'express';
 import { Connection, Document } from 'mongoose';
 import { ISystemLog } from '@modl-gg/shared-web/types';
+import { DiscordWebhookService } from '../services/discord-webhook-service';
 
 export async function createSystemLog(
   dbConnection: Connection | undefined | null,
@@ -24,6 +25,22 @@ export async function createSystemLog(
     });
     await logEntry.save();
     const serverIdMessage = serverName || dbConnection.name;
+    
+    // Send Discord webhook notification for audit logs (excluding routine system logs)
+    if (level === 'moderation' || (level === 'info' && source !== 'system' && source !== 'minecraft-api')) {
+      try {
+        const discordWebhookService = new DiscordWebhookService(dbConnection);
+        await discordWebhookService.sendAuditLogNotification({
+          id: logEntry._id?.toString() || 'unknown',
+          action: description,
+          performedBy: source || 'System',
+          timestamp: new Date().toISOString()
+        });
+      } catch (webhookError) {
+        console.error('[System Log] Failed to send Discord audit webhook notification:', webhookError);
+      }
+    }
+    
     return logEntry;
   } catch (error) {
     const serverIdMessage = serverName || (dbConnection ? dbConnection.name : 'Unknown Server');

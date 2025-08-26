@@ -16,6 +16,12 @@ interface DiscordEmbed {
   };
 }
 
+interface EmbedField {
+  name: string;
+  value: string;
+  inline?: boolean;
+}
+
 interface DiscordWebhookPayload {
   embeds: DiscordEmbed[];
   username?: string;
@@ -150,20 +156,17 @@ export class DiscordWebhookService {
       description: this.replaceTemplateVariables(template.description, variables),
       color: this.hexToDecimalColor(template.color),
       fields: template.fields
-        .filter(field => {
+        .filter((field: EmbedField) => {
           // Filter out fields with empty values unless they're required
           const replacedValue = this.replaceTemplateVariables(field.value, variables);
           return replacedValue !== 'Unknown' || ['id', 'playerName', 'type', 'reason', 'issuer'].some(key => field.value.includes(`{{${key}}}`));
         })
-        .map(field => ({
+        .map((field: EmbedField) => ({
           name: this.replaceTemplateVariables(field.name, variables),
           value: this.replaceTemplateVariables(field.value, variables).substring(0, 1024),
           inline: field.inline
         })),
       timestamp: new Date().toISOString(),
-      footer: {
-        text: `modl Panel • Punishment ID: ${punishment.id}`,
-      },
     };
 
     await this.sendWebhook({ embeds: [embed] }, 'newPunishments');
@@ -264,23 +267,64 @@ export class DiscordWebhookService {
       description: this.replaceTemplateVariables(template.description, variables),
       color: this.hexToDecimalColor(template.color),
       fields: template.fields
-        .filter(field => {
+        .filter((field: EmbedField) => {
           // Filter out fields with empty values unless they're required
           const replacedValue = this.replaceTemplateVariables(field.value, variables);
-          return replacedValue !== 'Unknown' && replacedValue !== 'No subject provided' && replacedValue !== 'Unknown user' 
+          return replacedValue !== 'Unknown' && replacedValue !== 'No subject provided' && replacedValue !== 'Unknown user'
             || ['id', 'type'].some(key => field.value.includes(`{{${key}}}`));
         })
-        .map(field => ({
+        .map((field: EmbedField) => ({
           name: this.replaceTemplateVariables(field.name, variables),
           value: this.replaceTemplateVariables(field.value, variables).substring(0, 1024),
           inline: field.inline
         })),
       timestamp: new Date().toISOString(),
-      footer: {
-        text: `modl Panel • Ticket Created`,
-      },
     };
 
     await this.sendWebhook({ embeds: [embed] }, 'newTickets');
+  }
+
+  async sendAuditLogNotification(auditLog: {
+    id: string;
+    action: string;
+    performedBy: string;
+    targetUser?: string;
+    details?: string;
+    timestamp: string;
+  }): Promise<void> {
+    const webhookSettings = await this.getWebhookSettings();
+    if (!webhookSettings?.embedTemplates?.auditLogs) {
+      return; // No template configured
+    }
+
+    const template = webhookSettings.embedTemplates.auditLogs;
+    const variables = {
+      id: auditLog.id,
+      action: auditLog.action,
+      performedBy: auditLog.performedBy,
+      targetUser: auditLog.targetUser || 'N/A',
+      details: auditLog.details || 'No additional details',
+      timestamp: auditLog.timestamp
+    };
+
+    const embed: DiscordEmbed = {
+      title: this.replaceTemplateVariables(template.title, variables),
+      description: this.replaceTemplateVariables(template.description, variables),
+      color: this.hexToDecimalColor(template.color),
+      fields: template.fields
+        .filter((field: EmbedField) => {
+          const replacedValue = this.replaceTemplateVariables(field.value, variables);
+          return replacedValue !== 'Unknown' && replacedValue !== 'N/A'
+            || ['id', 'action', 'performedBy'].some(key => field.value.includes(`{{${key}}}`));
+        })
+        .map((field: EmbedField) => ({
+          name: this.replaceTemplateVariables(field.name, variables),
+          value: this.replaceTemplateVariables(field.value, variables).substring(0, 1024),
+          inline: field.inline
+        })),
+      timestamp: new Date().toISOString(),
+    };
+
+    await this.sendWebhook({ embeds: [embed] }, 'auditLogs');
   }
 }
