@@ -1,5 +1,4 @@
 import { Connection } from 'mongoose';
-import { getAllSettings } from '../routes/settings-routes';
 
 interface DiscordEmbed {
   title: string;
@@ -49,6 +48,7 @@ export class DiscordWebhookService {
 
   private async getWebhookSettings(): Promise<any> {
     try {
+      const { getAllSettings } = await import('../routes/settings-routes');
       const settings = await getAllSettings(this.dbConnection);
       // First try to get from new webhook settings structure
       if (settings.webhookSettings?.enabled && settings.webhookSettings?.discordWebhookUrl) {
@@ -88,6 +88,7 @@ export class DiscordWebhookService {
     }
 
     // Get panel icon URL as fallback
+    const { getAllSettings } = await import('../routes/settings-routes');
     const settings = await getAllSettings(this.dbConnection);
     const panelIconUrl = settings.general?.panelIconUrl;
     

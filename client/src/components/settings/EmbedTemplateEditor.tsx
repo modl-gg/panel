@@ -319,9 +319,6 @@ const EmbedTemplateEditor: React.FC<EmbedTemplateEditorProps> = ({
               })()}
             </div>
           )}
-          <div className="text-[#72767d] text-xs mt-3">
-            modl Panel • Today at {new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-          </div>
         </div>
       </div>
     );
