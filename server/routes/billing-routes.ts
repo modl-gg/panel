@@ -682,8 +682,17 @@ webhookRouter.post('/stripe-webhooks', express.raw({ type: 'application/json' })
           const updateData: any = {
             stripe_subscription_id: subscription.id,
             subscription_status: subscription.status, // Use status from the event
-            plan: 'premium', // Assume new subscriptions are premium
           };
+
+          // Set plan based on subscription status
+          if (subscription.status === 'active') {
+            updateData.plan = 'premium';
+          } else if (subscription.status === 'past_due' || subscription.status === 'unpaid' || subscription.status === 'incomplete' || subscription.status === 'incomplete_expired') {
+            updateData.plan = 'free';
+          } else {
+            // For trialing, paused, etc., keep as premium since user should have access
+            updateData.plan = 'premium';
+          }
           
           if (periodStartDate) {
             updateData.current_period_start = periodStartDate;
@@ -734,12 +743,21 @@ webhookRouter.post('/stripe-webhooks', express.raw({ type: 'application/json' })
           let effectiveStatus = subscription.status;
           if (subscription.cancel_at_period_end === true && subscription.status === 'active') {
             effectiveStatus = 'canceled';
-            
           }
 
           const updateData: any = {
             subscription_status: effectiveStatus,
           };
+
+          // Set plan based on subscription status
+          if (effectiveStatus === 'active') {
+            updateData.plan = 'premium';
+          } else if (effectiveStatus === 'past_due' || effectiveStatus === 'unpaid' || effectiveStatus === 'incomplete' || effectiveStatus === 'incomplete_expired') {
+            updateData.plan = 'free';
+          } else if (effectiveStatus === 'canceled') {
+            // Don't change plan for canceled - let the existing logic handle it based on period end
+            // The plan will be set to free when the period actually ends
+          }
 
           // Always update period dates if we have valid dates, even for canceled subscriptions
           // This is important for canceled subscriptions so users know when access ends
@@ -754,8 +772,6 @@ webhookRouter.post('/stripe-webhooks', express.raw({ type: 'application/json' })
             { _id: server._id },
             updateData
           );
-
-          
           
           // Special logging for cancelled subscriptions
           if (effectiveStatus === 'canceled') {
@@ -797,7 +813,31 @@ webhookRouter.post('/stripe-webhooks', express.raw({ type: 'application/json' })
           if (server) {
             await Server.findOneAndUpdate(
               { _id: server._id },
-              { subscription_status: 'past_due' }
+              { 
+                subscription_status: 'past_due',
+                plan: 'free'
+              }
+            );
+            
+          }
+        }
+        break;
+      }
+
+      case 'invoice.payment_succeeded': {
+        const invoice = event.data.object as any; // Use any to access Stripe properties
+        
+
+        if (invoice.subscription) {
+          const server = await Server.findOne({ stripe_subscription_id: invoice.subscription });
+          if (server && server.subscription_status === 'past_due') {
+            // Payment succeeded for a past due subscription, restore to premium
+            await Server.findOneAndUpdate(
+              { _id: server._id },
+              { 
+                subscription_status: 'active',
+                plan: 'premium'
+              }
             );
             
           }
