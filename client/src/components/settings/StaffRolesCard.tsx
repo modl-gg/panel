@@ -481,6 +481,15 @@ export default function StaffRolesCard() {
       return;
     }
 
+    if (!roleFormData.description.trim()) {
+      toast({
+        title: "Invalid Role Description",
+        description: "Role description cannot be empty.",
+        variant: "destructive"
+      });
+      return;
+    }
+
     try {
       if (isCreatingRole) {
         await createRoleMutation.mutateAsync({
@@ -576,6 +585,11 @@ export default function StaffRolesCard() {
     return role.permissions.includes(permissionId);
   };
 
+  // Helper function to check if the role form is valid
+  const isRoleFormValid = () => {
+    return roleFormData.name.trim() !== '' && roleFormData.description.trim() !== '';
+  };
+
   return (
     <div className="space-y-6">
       <Card>
@@ -644,21 +658,23 @@ export default function StaffRolesCard() {
             {/* Basic Info */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div className="space-y-2">
-                <Label htmlFor="role-name">Role Name</Label>
+                <Label htmlFor="role-name">Role Name <span className="text-destructive">*</span></Label>
                 <Input
                   id="role-name"
                   value={roleFormData.name}
                   onChange={(e) => setRoleFormData(prev => ({ ...prev, name: e.target.value }))}
                   placeholder="Enter role name"
+                  required
                 />
               </div>
               <div className="space-y-2">
-                <Label htmlFor="role-description">Description</Label>
+                <Label htmlFor="role-description">Description <span className="text-destructive">*</span></Label>
                 <Input
                   id="role-description"
                   value={roleFormData.description}
                   onChange={(e) => setRoleFormData(prev => ({ ...prev, description: e.target.value }))}
                   placeholder="Enter role description"
+                  required
                 />
               </div>
             </div>
@@ -748,7 +764,7 @@ export default function StaffRolesCard() {
             </Button>
             <Button 
               onClick={handleSaveRole}
-              disabled={createRoleMutation.isPending || updateRoleMutation.isPending}
+              disabled={createRoleMutation.isPending || updateRoleMutation.isPending || !isRoleFormValid()}
             >
               <Save className="h-4 w-4 mr-2" />
               {createRoleMutation.isPending || updateRoleMutation.isPending 
