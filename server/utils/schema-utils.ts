@@ -15,7 +15,7 @@ export function getStaffRoleModel(connection: Connection): Model<any> {
       description: { type: String, required: true },
       permissions: [{ type: String }],
       isDefault: { type: Boolean, default: false },
-      order: { type: Number, default: 0 }
+      order: { type: Number, default: 999 }
     }, { timestamps: true });
     
     return connection.model('StaffRole', StaffRoleSchema);

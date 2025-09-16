@@ -145,6 +145,9 @@ router.get('/', async (req: Request, res: Response) => {
     const { getStaffRoleModel } = await import('../utils/schema-utils');
     const StaffRoles = getStaffRoleModel(db);
     
+    // Fix any custom roles with incorrect ordering (one-time fix)
+    await fixCustomRoleOrdering(db);
+    
     const allRoles = await StaffRoles.find({}).sort({ order: 1, createdAt: 1 });
 
     // Get staff counts for each role
@@ -235,15 +238,25 @@ router.post('/', strictRateLimit, async (req: Request, res: Response) => {
       });
     }
     
+    // Find the highest order number among existing roles and add 1
+    // This ensures custom roles are placed at the bottom of the hierarchy
+    const existingRoles = await StaffRoles.find({}).sort({ order: -1 }).limit(1);
+    const nextOrder = existingRoles.length > 0 ? (existingRoles[0].order || 0) + 1 : 4;
+    
     const newRole = new StaffRoles({
       id,
       name,
       description,
       permissions,
-      isDefault: false
+      isDefault: false,
+      order: nextOrder
     });
     
     await newRole.save();
+    
+    // Clear role hierarchy cache to ensure changes are reflected immediately
+    const { clearRoleHierarchyCache } = await import('../utils/role-hierarchy');
+    clearRoleHierarchyCache();
     
     res.status(201).json({ 
       message: 'Role created successfully',
@@ -420,6 +433,43 @@ router.post('/reorder', strictRateLimit, async (req: Request, res: Response) => 
     res.status(500).json({ error: 'Internal server error' });
   }
 });
+
+/**
+ * Fix order values for custom roles that may have incorrect order values
+ * This ensures custom roles are properly ordered below default roles
+ */
+export async function fixCustomRoleOrdering(dbConnection: Connection): Promise<void> {
+  try {
+    const { getStaffRoleModel } = await import('../utils/schema-utils');
+    const StaffRoles = getStaffRoleModel(dbConnection);
+
+    // Find all custom roles with order 0 (which should only be Super Admin)
+    const problematicCustomRoles = await StaffRoles.find({ 
+      isDefault: false, 
+      order: { $lte: 3 } // Any custom role with order 0-3 needs fixing
+    });
+
+    if (problematicCustomRoles.length > 0) {
+      // Find the highest order among all roles
+      const allRoles = await StaffRoles.find({}).sort({ order: -1 }).limit(1);
+      let nextOrder = allRoles.length > 0 ? Math.max(allRoles[0].order || 0, 3) + 1 : 4;
+
+      // Update each problematic custom role
+      for (const role of problematicCustomRoles) {
+        await StaffRoles.findByIdAndUpdate(role._id, { order: nextOrder });
+        nextOrder++;
+      }
+
+      // Clear role hierarchy cache to ensure changes are reflected immediately
+      const { clearRoleHierarchyCache } = await import('../utils/role-hierarchy');
+      clearRoleHierarchyCache();
+
+      console.log(`Fixed ordering for ${problematicCustomRoles.length} custom roles`);
+    }
+  } catch (error) {
+    console.error('Error fixing custom role ordering:', error);
+  }
+}
 
 /**
  * Create default staff roles in the database
