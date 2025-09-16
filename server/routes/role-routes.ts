@@ -446,7 +446,7 @@ export async function fixCustomRoleOrdering(dbConnection: Connection): Promise<v
     // Find all custom roles with order 0 (which should only be Super Admin)
     const problematicCustomRoles = await StaffRoles.find({ 
       isDefault: false, 
-      order: { $lte: 3 } // Any custom role with order 0-3 needs fixing
+      order: 0
     });
 
     if (problematicCustomRoles.length > 0) {
