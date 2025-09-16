@@ -98,6 +98,14 @@ router.post('/invite', authRateLimit, async (req: Request, res: Response) => {
   const { email, role } = req.body;
   const invitingUser = req.currentUser!;
 
+  // Validate that the role exists (either as default or custom role)
+  try {
+    const { getUserPermissions } = await import('../middleware/permission-middleware');
+    await getUserPermissions(req, role);
+  } catch (error) {
+    return res.status(400).json({ message: `Invalid role specified: '${role}'. Role does not exist.` });
+  }
+
   // Check if inviting user can invite users with this role level
   // Users can only invite users with roles that have equal or fewer permissions than themselves
   try {
