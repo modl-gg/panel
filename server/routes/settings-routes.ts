@@ -3157,7 +3157,6 @@ router.get('/api-key', async (req: Request, res: Response) => {
       maskedKey: maskedKey
     });
   } catch (error) {
-    console.error('[Unified API Key GET] Error:', error);
     res.status(500).json({ error: 'Internal server error' });
   }
 });
@@ -3189,7 +3188,6 @@ router.post('/api-key/generate', async (req: Request, res: Response) => {
       message: 'New API key generated successfully. Please save this key as it will not be shown again.' 
     });
   } catch (error) {
-    console.error('[Unified API Key GENERATE] Error:', error);
     res.status(500).json({ error: 'Internal server error' });
   }
 });
@@ -3212,7 +3210,6 @@ router.get('/api-key/reveal', async (req: Request, res: Response) => {
       apiKey: apiKey
     });
   } catch (error) {
-    console.error('[Unified API Key REVEAL] Error:', error);
     res.status(500).json({ error: 'Internal server error' });
   }
 });

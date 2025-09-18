@@ -29,7 +29,6 @@ export async function verifyMinecraftApiKey(req: Request, res: Response, next: N
 
     // Check for serverDbConnection (should be populated by preceding middleware)
     if (!req.serverDbConnection) {
-      console.error('[Unified API Auth] Error: serverDbConnection not found on request. Ensure subdomainDbMiddleware runs before this.');
       return res.status(503).json({
         status: 503,
         message: 'Service unavailable. Database connection not configured for authentication.'
@@ -42,7 +41,6 @@ export async function verifyMinecraftApiKey(req: Request, res: Response, next: N
     
     
     if (configuredApiKey === undefined || configuredApiKey === null) {
-      console.warn(`[Unified API Auth - ${req.serverName || 'Unknown Server'}] API key not configured in settings. Please generate an API key in the admin panel.`);
       return res.status(401).json({
         status: 401,
         message: 'API key not configured in server settings. Please generate an API key in the admin panel.'
@@ -51,7 +49,6 @@ export async function verifyMinecraftApiKey(req: Request, res: Response, next: N
     
     // Verify the provided API key
     if (configuredApiKey !== apiKey) {
-      console.warn(`[Unified API Auth - ${req.serverName || 'Unknown Server'}] Invalid API key provided.`);
       return res.status(401).json({
         status: 401, 
         message: 'Invalid API key'
@@ -61,7 +58,6 @@ export async function verifyMinecraftApiKey(req: Request, res: Response, next: N
     // API key is valid, proceed
     next();
   } catch (error) {
-    console.error(`[Unified API Auth - ${req.serverName || 'Unknown Server'}] Error verifying API key:`, error);
     return res.status(500).json({
       status: 500,
       message: 'Internal server error during authentication'

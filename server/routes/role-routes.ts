@@ -27,7 +27,7 @@ async function checkRolePermission(req: Request, res: Response, requireSuperAdmi
       
       if (!adminEmail || !userEmail || userEmail !== adminEmail) {
         res.status(403).json({ 
-          message: 'Forbidden: Only the server administrator can modify roles.',
+          message: 'Forbidden: Only the Super Admin can create/modify/delete roles!',
           required: ['server_admin']
         });
         return false;
