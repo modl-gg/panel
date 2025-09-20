@@ -1531,7 +1531,7 @@ const PlayerWindow = ({ playerId, isOpen, onClose, initialPosition }: PlayerWind
                   >
                     <div className="flex justify-between items-start">
                       <div className="flex-1">                        <div className="flex items-center gap-2 mb-1">
-                          {/* Show punishment status: Active, Inactive, or Unstarted (but not for kicks) */}
+                          {/* Show punishment status: Active, Inactive, Pardoned, or Unstarted (but not for kicks) */}
                           {isPunishment && warning.type !== 'Kick' && (() => {
                             // Check if punishment is unstarted (started field is null/undefined)
                             if (!warning.started) {
@@ -1545,6 +1545,19 @@ const PlayerWindow = ({ playerId, isOpen, onClose, initialPosition }: PlayerWind
                             // Check if punishment is inactive (based on effective state)
                             const effectiveState = getEffectivePunishmentState(warning);
                             const isInactive = !effectiveState.effectiveActive;
+                            
+                            // Check if punishment is pardoned
+                            const pardonModification = effectiveState.modifications.find((mod: any) => 
+                              mod.type === 'MANUAL_PARDON' || mod.type === 'APPEAL_ACCEPT'
+                            );
+                            
+                            if (pardonModification) {
+                              return (
+                                <Badge variant="outline" className="text-xs bg-blue-100 text-blue-800 border-blue-300">
+                                  Pardoned
+                                </Badge>
+                              );
+                            }
                             
                             if (isInactive) {
                               return (
