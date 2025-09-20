@@ -463,6 +463,21 @@ const TicketSettings = ({
     pt.isCustomizable && (!aiModerationSettings.aiPunishmentConfigs?.[pt.id] || !aiModerationSettings.aiPunishmentConfigs[pt.id].enabled)
   ) || [];
 
+  // Clear form when dialog opens for new field (not editing)
+  useEffect(() => {
+    if (isAddTicketFormFieldDialogOpen && !selectedTicketFormField) {
+      // This is for adding a new field, ensure form is clean
+      setNewTicketFormFieldLabel('');
+      setNewTicketFormFieldType('text');
+      setNewTicketFormFieldDescription('');
+      setNewTicketFormFieldRequired(false);
+      setNewTicketFormFieldOptions([]);
+      setNewTicketFormFieldGoToSection('');
+      setNewTicketFormFieldOptionSectionMapping({});
+      setIsOptionNavigationExpanded(false);
+    }
+  }, [isAddTicketFormFieldDialogOpen, selectedTicketFormField]);
+
   return (
     <div className="space-y-6 p-6">
       <div>
@@ -880,7 +895,17 @@ const TicketSettings = ({
                               }}
                               onDeleteField={removeTicketFormField}
                               onAddField={() => {
+                                // Clear all field form state for new field
+                                setSelectedTicketFormField(null);
+                                setNewTicketFormFieldLabel('');
+                                setNewTicketFormFieldType('text');
+                                setNewTicketFormFieldDescription('');
+                                setNewTicketFormFieldRequired(false);
+                                setNewTicketFormFieldOptions([]);
                                 setNewTicketFormFieldSectionId(section.id);
+                                setNewTicketFormFieldGoToSection('');
+                                setNewTicketFormFieldOptionSectionMapping({});
+                                setIsOptionNavigationExpanded(false);
                                 setIsAddTicketFormFieldDialogOpen(true);
                               }}
                               moveField={moveFieldInForm}
