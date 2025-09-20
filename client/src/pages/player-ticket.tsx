@@ -62,7 +62,7 @@ interface TicketDetails {
 interface FormField {
   id: string;
   label: string;
-  type: 'text' | 'textarea' | 'dropdown' | 'multiple_choice' | 'checkbox' | 'file_upload' | 'checkboxes';
+  type: 'text' | 'textarea' | 'dropdown' | 'multiple_choice' | 'checkbox' | 'file_upload' | 'checkboxes' | 'description';
   description?: string;
   required: boolean;
   options?: string[];
@@ -500,6 +500,11 @@ const PlayerTicket = () => {
         continue;
       }
       
+      // Skip validation for description fields (they don't take input)
+      if (field.type === 'description') {
+        continue;
+      }
+      
       if (field.required && (!formData[field.id] || formData[field.id].trim() === '')) {
         toast({
           title: "Required Field Missing",
@@ -742,20 +747,35 @@ const PlayerTicket = () => {
       return true; // All fields are shown by default
     };
 
-    const renderField = (field: FormField) => (
-      <div key={field.id} className="space-y-1">
-        {field.type !== 'checkbox' ?
-          <Label htmlFor={field.id} className="font-medium">
-            {field.label}
-            {field.required && <span className="text-destructive ml-1">*</span>}
-          </Label> : null
-        }
-        
-        {field.description && (
-          <p className="text-sm text-muted-foreground mb-1">{field.description}</p>
-        )}
-        
-        {field.type === 'textarea' ? (
+    const renderField = (field: FormField) => {
+      // Handle description fields (display-only)
+      if (field.type === 'description') {
+        return (
+          <div key={field.id} className="space-y-1">
+            {field.label && (
+              <Label className="font-medium">{field.label}</Label>
+            )}
+            {field.description && (
+              <p className="text-sm text-muted-foreground">{field.description}</p>
+            )}
+          </div>
+        );
+      }
+      
+      return (
+        <div key={field.id} className="space-y-1">
+          {field.type !== 'checkbox' ?
+            <Label htmlFor={field.id} className="font-medium">
+              {field.label}
+              {field.required && <span className="text-destructive ml-1">*</span>}
+            </Label> : null
+          }
+          
+          {field.description && (
+            <p className="text-sm text-muted-foreground mb-1">{field.description}</p>
+          )}
+          
+          {field.type === 'textarea' ? (
           <Textarea
             id={field.id}
             placeholder={`Enter ${field.label.toLowerCase()}`}
@@ -886,8 +906,9 @@ const PlayerTicket = () => {
             required={field.required}
           />
         )}
-      </div>
-    );
+        </div>
+      );
+    };
     
     return (
       <form onSubmit={handleFormSubmit} className="space-y-6">

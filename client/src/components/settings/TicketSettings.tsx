@@ -21,7 +21,7 @@ import { useAuth } from '@/hooks/use-auth';
 // Import the types we need for the form builder
 interface TicketFormField {
   id: string;
-  type: 'text' | 'textarea' | 'dropdown' | 'multiple_choice' | 'checkbox' | 'file_upload' | 'checkboxes';
+  type: 'text' | 'textarea' | 'dropdown' | 'multiple_choice' | 'checkbox' | 'file_upload' | 'checkboxes' | 'description';
   label: string;
   description?: string;
   required: boolean;
@@ -167,7 +167,7 @@ const TicketSettings = ({
   const [isAddTicketFormFieldDialogOpen, setIsAddTicketFormFieldDialogOpen] = useState(false);
   const [isAddTicketFormSectionDialogOpen, setIsAddTicketFormSectionDialogOpen] = useState(false);
   const [newTicketFormFieldLabel, setNewTicketFormFieldLabel] = useState('');
-  const [newTicketFormFieldType, setNewTicketFormFieldType] = useState<'text' | 'textarea' | 'dropdown' | 'multiple_choice' | 'checkbox' | 'file_upload' | 'checkboxes'>('text');
+  const [newTicketFormFieldType, setNewTicketFormFieldType] = useState<'text' | 'textarea' | 'dropdown' | 'multiple_choice' | 'checkbox' | 'file_upload' | 'checkboxes' | 'description'>('text');
   const [newTicketFormFieldDescription, setNewTicketFormFieldDescription] = useState('');
   const [newTicketFormFieldRequired, setNewTicketFormFieldRequired] = useState(false);
   const [newTicketFormFieldOptions, setNewTicketFormFieldOptions] = useState<string[]>([]);
@@ -1409,11 +1409,12 @@ const TicketSettings = ({
             {/* Field Type */}
             <div className="space-y-2">
               <Label htmlFor="field-type">Field Type</Label>
-              <Select value={newTicketFormFieldType} onValueChange={(value: 'text' | 'textarea' | 'dropdown' | 'multiple_choice' | 'checkbox' | 'file_upload' | 'checkboxes') => setNewTicketFormFieldType(value)}>
+              <Select value={newTicketFormFieldType} onValueChange={(value: 'text' | 'textarea' | 'dropdown' | 'multiple_choice' | 'checkbox' | 'file_upload' | 'checkboxes' | 'description') => setNewTicketFormFieldType(value)}>
                 <SelectTrigger>
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
+                  <SelectItem value="description">Description (Display Only)</SelectItem>
                   <SelectItem value="text">Text Input</SelectItem>
                   <SelectItem value="textarea">Textarea</SelectItem>
                   <SelectItem value="dropdown">Dropdown</SelectItem>
@@ -1436,15 +1437,17 @@ const TicketSettings = ({
               />
             </div>
 
-            {/* Required Toggle */}
-            <div className="flex items-center space-x-2">
-              <Switch
-                id="field-required"
-                checked={newTicketFormFieldRequired}
-                onCheckedChange={setNewTicketFormFieldRequired}
-              />
-              <Label htmlFor="field-required">Required Field</Label>
-            </div>
+            {/* Required Toggle - Hide for description fields */}
+            {newTicketFormFieldType !== 'description' && (
+              <div className="flex items-center space-x-2">
+                <Switch
+                  id="field-required"
+                  checked={newTicketFormFieldRequired}
+                  onCheckedChange={setNewTicketFormFieldRequired}
+                />
+                <Label htmlFor="field-required">Required Field</Label>
+              </div>
+            )}
 
             {/* Section Assignment */}
             <div className="space-y-2">
@@ -2039,6 +2042,7 @@ const DraggableFieldCard = ({
       case 'checkbox': return 'Checkbox';
       case 'file_upload': return 'File Upload';
       case 'checkboxes': return 'Checkboxes';
+      case 'description': return 'Description';
       default: return type;
     }
   };

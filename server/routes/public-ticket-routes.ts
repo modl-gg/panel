@@ -163,6 +163,10 @@ router.post('/tickets', verifyTicketApiKey, async (req: Request, res: Response) 
       orderedFields.forEach((field) => {
         const key = field.id;
         const value = formData[key];
+        
+        // Skip description fields as they don't take input
+        if (field.type === 'description') return;
+        
         if (value === undefined || value === null || value === '') return;
         
         // Skip chatlog for chat reports as it's already handled above
@@ -878,17 +882,24 @@ router.post('/tickets/:id/submit', async (req: Request, res: Response) => {
         console.warn('Could not fetch ticket forms configuration');
       }
       
-      // Create a map of field IDs to labels
+      // Create a map of field IDs to labels and field types
       const fieldLabels: Record<string, string> = {};
+      const fieldTypes: Record<string, string> = {};
       if (ticketForms && ticketForms[ticket.type] && ticketForms[ticket.type].fields) {
         ticketForms[ticket.type].fields.forEach((field: any) => {
           fieldLabels[field.id] = field.label;
+          fieldTypes[field.id] = field.type;
         });
       }
       
       Object.entries(formData).forEach(([key, value]) => {
         // Skip email field from message content as it's used for notifications only
         if (key === 'email' || key === 'contact_email') {
+          return;
+        }
+        
+        // Skip description fields as they don't take input
+        if (fieldTypes[key] === 'description') {
           return;
         }
         
