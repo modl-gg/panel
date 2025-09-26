@@ -26,6 +26,15 @@ interface DiscordWebhookPayload {
   username?: string;
   avatar_url?: string;
   content?: string;
+  components?: Array<{
+    type: number;
+    components: Array<{
+      type: number;
+      style: number;
+      label: string;
+      url: string;
+    }>;
+  }>;
 }
 
 export class DiscordWebhookService {
@@ -282,7 +291,39 @@ export class DiscordWebhookService {
       timestamp: new Date().toISOString(),
     };
 
-    await this.sendWebhook({ embeds: [embed] }, 'newTickets');
+    // Get panel URL to construct ticket link
+    const { getAllSettings } = await import('../routes/settings-routes');
+    const settings = await getAllSettings(this.dbConnection);
+    const panelUrl = settings.general?.panelUrl;
+
+    let components: Array<{
+      type: number;
+      components: Array<{
+        type: number;
+        style: number;
+        label: string;
+        url: string;
+      }>;
+    }> = [];
+
+    // Add ticket button if panel URL is configured
+    if (panelUrl) {
+      const ticketUrl = `${panelUrl.replace(/\/$/, '')}/tickets/${ticket.id}`;
+      components = [{
+        type: 1, // Action Row
+        components: [{
+          type: 2, // Button
+          style: 5, // Link style
+          label: 'View Ticket',
+          url: ticketUrl
+        }]
+      }];
+    }
+
+    await this.sendWebhook({ 
+      embeds: [embed],
+      components: components.length > 0 ? components : undefined
+    }, 'newTickets');
   }
 
   async sendAuditLogNotification(auditLog: {
