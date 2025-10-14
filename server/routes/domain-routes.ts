@@ -196,12 +196,21 @@ router.post('/', async (req: Request, res: Response) => {
     }
 
     // Update server configuration
-    await ServerModel.findByIdAndUpdate(server._id, {
+    const updateData: any = {
       customDomain_override: customDomain,
       customDomain_status: 'pending',
       customDomain_lastChecked: new Date(),
-      customDomain_error: null,
       customDomain_cloudflareId: cloudflareHostname.id
+    };
+    
+    // Clear any previous error by unsetting the field
+    const unsetData: any = {
+      customDomain_error: ""
+    };
+
+    await ServerModel.findByIdAndUpdate(server._id, {
+      $set: updateData,
+      $unset: unsetData
     });
 
     res.json({
@@ -276,12 +285,23 @@ router.post('/verify', async (req: Request, res: Response) => {
     // Update server status in database
     const globalDb = await connectToGlobalModlDb();
     const ServerModel = globalDb.models.ModlServer || globalDb.model('ModlServer', ModlServerSchema);
-    const updatedServer = await ServerModel.findByIdAndUpdate(server._id, {
+    
+    const updateData: any = {
       customDomain_status: internalStatus,
       customDomain_lastChecked: new Date(),
-      customDomain_error: verifyResult.error || null,
       customDomain_cloudflareId: verifyResult.cname_target || server.customDomain_cloudflareId
-    }, { new: true });
+    };
+
+    // Handle error field properly - either set it or unset it
+    const updateOperation: any = { $set: updateData };
+    
+    if (verifyResult.error) {
+      updateData.customDomain_error = verifyResult.error;
+    } else {
+      updateOperation.$unset = { customDomain_error: "" };
+    }
+
+    const updatedServer = await ServerModel.findByIdAndUpdate(server._id, updateOperation, { new: true });
 
     // If the domain is now active, log the success
     if (internalStatus === 'active' && server.customDomain_status !== 'active') {
@@ -344,11 +364,13 @@ router.delete('/', async (req: Request, res: Response) => {
     const globalDb = await connectToGlobalModlDb();
     const ServerModel = globalDb.models.ModlServer || globalDb.model('ModlServer', ModlServerSchema);
     await ServerModel.findByIdAndUpdate(server._id, {
-      customDomain_override: null,
-      customDomain_status: null,
-      customDomain_lastChecked: null,
-      customDomain_error: null,
-      customDomain_cloudflareId: null
+      $unset: {
+        customDomain_override: "",
+        customDomain_status: "",
+        customDomain_lastChecked: "",
+        customDomain_error: "",
+        customDomain_cloudflareId: ""
+      }
     });
 
     res.json({ message: 'Custom domain removed successfully.' });
