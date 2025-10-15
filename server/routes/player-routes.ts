@@ -6,6 +6,7 @@ import { calculatePlayerStatus, updatePunishmentDataStructure } from '../utils/p
 import { checkPermission } from '../middleware/permission-middleware';
 import { checkRole } from '../middleware/role-middleware';
 import { DiscordWebhookService } from '../services/discord-webhook-service';
+import { updateServerStats } from '../utils/updateServerStats';
 
 // Local type definitions (temporary replacement for missing shared types)
 interface IIPAddress {
@@ -481,6 +482,12 @@ router.post('/login', async (req: Request<{}, {}, PlayerLoginBody>, res: Respons
 
     await player.save({ validateBeforeSave: false });
     await createSystemLog(req.serverDbConnection, req.serverName, `New player ${username} (${minecraftUuid}) created and logged in. IP: ${ipAddress}.`, 'info', 'player-api');
+    
+    updateServerStats(req.serverName!, {
+      incrementUserCount: true,
+      updateLastActivity: true
+    }).catch(err => console.error('Failed to update server stats:', err));
+    
     res.status(201).json(player);
   } catch (error) {
     console.error('Error in player login/creation:', error);
@@ -519,6 +526,12 @@ router.post('/', async (req: Request<{}, {}, CreatePlayerBody>, res: Response): 
     
     await player.save({ validateBeforeSave: false });
     await createSystemLog(req.serverDbConnection, req.serverName, `New player ${username} (${minecraftUuid}) created via API.`, 'info', 'player-api');
+    
+    updateServerStats(req.serverName!, {
+      incrementUserCount: true,
+      updateLastActivity: true
+    }).catch(err => console.error('Failed to update server stats:', err));
+    
     res.status(201).json(player);
   } catch (error) {
     console.error('Error creating player:', error);

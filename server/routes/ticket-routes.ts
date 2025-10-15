@@ -8,6 +8,7 @@ import { getSettingsValue } from './settings-routes';
 import { ensureTicketSubscription } from './ticket-subscription-routes';
 import { markTicketAsRead } from './ticket-subscription-routes';
 import { DiscordWebhookService } from '../services/discord-webhook-service';
+import { updateServerStats } from '../utils/updateServerStats';
 
 interface INote {
   content: string;
@@ -421,6 +422,11 @@ router.post('/', async (req: Request<{}, {}, CreateTicketBody>, res: Response) =
         // Don't fail the ticket creation if AI processing fails
       }
     }
+
+    updateServerStats(req.serverName!, {
+      incrementTicketCount: true,
+      updateLastActivity: true
+    }).catch(err => console.error('Failed to update server stats:', err));
 
     res.status(201).json(newTicket);
   } catch (error: any) {

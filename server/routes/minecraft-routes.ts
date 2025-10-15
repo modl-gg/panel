@@ -3,6 +3,7 @@ import { Request, Response, NextFunction, Express } from 'express'; // Added Exp
 import { v4 as uuidv4 } from 'uuid'; // For generating new player UUIDs
 import { createSystemLog } from './log-routes'; // Import createSystemLog
 import { DiscordWebhookService } from '../services/discord-webhook-service';
+import { updateServerStats } from '../utils/updateServerStats';
 
 /**
  * Format duration in milliseconds to human-readable string
@@ -1253,6 +1254,11 @@ export function setupMinecraftRoutes(app: Express): void {
         await player.save({ validateBeforeSave: false });
         await createSystemLog(serverDbConnection, serverName, `New player ${username} (${minecraftUuid}) registered`, 'info', 'system-login');
         
+        updateServerStats(serverName, {
+          incrementUserCount: true,
+          updateLastActivity: true
+        }).catch(err => console.error('Failed to update server stats:', err));
+        
         // Check for linked accounts for new players
         if (ipAddress) {
           // Run account linking asynchronously to avoid blocking login
@@ -1553,6 +1559,11 @@ export function setupMinecraftRoutes(app: Express): void {
 
       await newTicket.save();
       await createSystemLog(serverDbConnection, serverName, `New ticket ${ticketId} created by ${creatorUsername} (${creatorUuid}). Type: ${type}.`, 'info', 'minecraft-api');
+
+      updateServerStats(serverName, {
+        incrementTicketCount: true,
+        updateLastActivity: true
+      }).catch(err => console.error('Failed to update server stats:', err));
 
       return res.status(201).json({
         status: 201,
