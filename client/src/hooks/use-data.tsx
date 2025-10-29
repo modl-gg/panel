@@ -1184,3 +1184,54 @@ export function useTicketCounts(options?: {
 
   return { counts, isLoading, isError };
 }
+
+// Migration-related hooks
+export function useMigrationStatus() {
+  return useQuery({
+    queryKey: ['/api/panel/migration/status'],
+    queryFn: async () => {
+      const res = await fetch('/api/panel/migration/status');
+      if (!res.ok) {
+        throw new Error('Failed to fetch migration status');
+      }
+      return res.json();
+    },
+    refetchInterval: (data) => {
+      // Poll every 2 seconds if there's an active migration
+      const isActive = data?.currentMigration && 
+        data.currentMigration.status !== 'completed' && 
+        data.currentMigration.status !== 'failed';
+      return isActive ? 2000 : false;
+    },
+    refetchOnMount: true,
+    refetchOnWindowFocus: true
+  });
+}
+
+export function useStartMigration() {
+  const queryClient = useQueryClient();
+  
+  return useMutation({
+    mutationFn: async ({ migrationType }: { migrationType: string }) => {
+      const { csrfFetch } = await import('@/utils/csrf');
+      const res = await csrfFetch('/api/panel/migration/start', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({ migrationType })
+      });
+      
+      if (!res.ok) {
+        const errorData = await res.json();
+        throw new Error(errorData.error || 'Failed to start migration');
+      }
+      
+      return res.json();
+    },
+    onSuccess: () => {
+      // Invalidate migration status to refresh it
+      queryClient.invalidateQueries({ queryKey: ['/api/panel/migration/status'] });
+    }
+  });
+}

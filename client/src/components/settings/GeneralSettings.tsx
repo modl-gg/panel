@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { CreditCard, SettingsIcon, Globe, Key, Upload, Eye, EyeOff, Check, Copy, RefreshCw, Trash2, Plus, ChevronDown, ChevronRight, HardDrive, MessageCircle } from 'lucide-react';
+import { CreditCard, SettingsIcon, Globe, Key, Upload, Eye, EyeOff, Check, Copy, RefreshCw, Trash2, Plus, ChevronDown, ChevronRight, HardDrive, MessageCircle, Database } from 'lucide-react';
 import { Button } from '@modl-gg/shared-web/components/ui/button';
 import { Input } from '@modl-gg/shared-web/components/ui/input';
 import { Label } from '@modl-gg/shared-web/components/ui/label';
@@ -12,6 +12,7 @@ import BillingSettings from './BillingSettings';
 import DomainSettings from './DomainSettings';
 import UsageSettings from './UsageSettings';
 import WebhookSettings from './WebhookSettings';
+import MigrationTool from './MigrationTool';
 import { queryClient } from '@/lib/queryClient';
 import { toast } from '@/hooks/use-toast';
 
@@ -98,6 +99,7 @@ const GeneralSettings = ({
   const [isServerConfigExpanded, setIsServerConfigExpanded] = useState(false);
   const [isDomainExpanded, setIsDomainExpanded] = useState(false);
   const [isWebhookExpanded, setIsWebhookExpanded] = useState(false);
+  const [isMigrationExpanded, setIsMigrationExpanded] = useState(false);
 
   useEffect(() => {
     const urlParams = new URLSearchParams(window.location.search);
@@ -464,6 +466,27 @@ const GeneralSettings = ({
                 isLoading={savingWebhookSettings}
                 panelIconUrl={panelIconUrl}
               />
+            </CollapsibleContent>
+          </Collapsible>
+        )}
+
+        {/* Migration Tool - Super Admin Only */}
+        {user && user.role === "Super Admin" && (
+          <Collapsible open={isMigrationExpanded} onOpenChange={setIsMigrationExpanded}>
+            <CollapsibleTrigger className="flex items-center justify-between w-full p-4 bg-muted/50 rounded-lg hover:bg-muted/70 transition-colors">
+              <div className="flex items-center">
+                <Database className="h-4 w-4 mr-2" />
+                <h4 className="text-base font-medium">Migration Tool</h4>
+              </div>
+              <div className="flex items-center space-x-2">
+                {!isMigrationExpanded && (
+                  <span className="text-sm text-muted-foreground">Import data from external systems</span>
+                )}
+                {isMigrationExpanded ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
+              </div>
+            </CollapsibleTrigger>
+            <CollapsibleContent className="pt-4">
+              <MigrationTool />
             </CollapsibleContent>
           </Collapsible>
         )}

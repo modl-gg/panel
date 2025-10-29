@@ -2242,6 +2242,26 @@ export function setupMinecraftRoutes(app: Express): void {
 
       // Note: Staff permissions are now loaded separately via /api/minecraft/staff-permissions endpoint
 
+      // 6. Check for pending migration task
+      let migrationTask = null;
+      try {
+        const Settings = serverDbConnection.model('Settings');
+        const migrationSettings = await Settings.findOne({ type: 'migration' });
+        
+        if (migrationSettings?.data?.currentMigration) {
+          const currentMigration = migrationSettings.data.currentMigration;
+          // Only send migration task if it's just started (idle status)
+          if (currentMigration.status === 'idle') {
+            migrationTask = {
+              taskId: currentMigration.id,
+              type: currentMigration.migrationType
+            };
+          }
+        }
+      } catch (migrationError) {
+        console.error('Error checking for migration task:', migrationError);
+      }
+
       return res.status(200).json({
         status: 200,
         timestamp: now.toISOString(),
@@ -2254,7 +2274,8 @@ export function setupMinecraftRoutes(app: Express): void {
           serverStatus: {
             lastSync: now.toISOString(),
             onlinePlayerCount: stats.onlinePlayers
-          }
+          },
+          migrationTask
         }
       });
     } catch (error: any) {
