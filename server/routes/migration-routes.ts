@@ -104,25 +104,28 @@ export function createPanelMigrationRouter(): Router {
    * POST /migration/start
    * Initiate migration task (Super Admin only, checks cooldown)
    */
-  router.post('/migration/start', requireSuperAdmin, async (req: Request, res: Response) => {
+  router.post('/migration/start', requireSuperAdmin, async (req: Request, res: Response): Promise<void> => {
     try {
       const serverDbConnection = req.serverDbConnection!;
       const { migrationType } = req.body;
       
       if (!migrationType) {
-        return res.status(400).json({ error: 'Migration type is required' });
+        res.status(400).json({ error: 'Migration type is required' });
+        return;
       }
       
       // Validate migration type
       const validTypes = ['litebans'];
       if (!validTypes.includes(migrationType.toLowerCase())) {
-        return res.status(400).json({ error: 'Invalid migration type' });
+        res.status(400).json({ error: 'Invalid migration type' });
+        return;
       }
       
       const result = await startMigration(migrationType.toLowerCase(), serverDbConnection);
       
       if (!result.success) {
-        return res.status(400).json({ error: result.error });
+        res.status(400).json({ error: result.error });
+        return;
       }
       
       res.json({
@@ -133,6 +136,38 @@ export function createPanelMigrationRouter(): Router {
     } catch (error) {
       console.error('Error starting migration:', error);
       res.status(500).json({ error: 'Failed to start migration' });
+    }
+  });
+  
+  /**
+   * POST /migration/cancel
+   * Cancel/clear current migration task (Super Admin only)
+   */
+  router.post('/migration/cancel', requireSuperAdmin, async (req: Request, res: Response): Promise<void> => {
+    try {
+      const serverDbConnection = req.serverDbConnection!;
+      
+      const status = await getMigrationStatus(serverDbConnection);
+      
+      if (!status.currentMigration) {
+        res.status(400).json({ error: 'No active migration to cancel' });
+        return;
+      }
+      
+      // Mark the migration as failed/cancelled
+      await updateMigrationProgress('failed', {
+        message: 'Migration cancelled by administrator',
+        recordsProcessed: status.currentMigration.progress?.recordsProcessed || 0,
+        recordsSkipped: status.currentMigration.progress?.recordsSkipped || 0
+      }, serverDbConnection, 'Cancelled by administrator');
+      
+      res.json({
+        success: true,
+        message: 'Migration cancelled successfully'
+      });
+    } catch (error) {
+      console.error('Error cancelling migration:', error);
+      res.status(500).json({ error: 'Failed to cancel migration' });
     }
   });
   
@@ -147,14 +182,15 @@ export default function setupMigrationRoutes(app: Express) {
    * POST /api/minecraft/migration/upload
    * Receive JSON file from Minecraft server (API key auth, validates file size)
    */
-  app.post('/api/minecraft/migration/upload', verifyMinecraftApiKey, upload.single('migrationFile'), async (req: Request, res: Response) => {
+  app.post('/api/minecraft/migration/upload', verifyMinecraftApiKey, upload.single('migrationFile'), async (req: Request, res: Response): Promise<void> => {
     try {
       const serverDbConnection = req.serverDbConnection!;
       const serverName = req.serverName!;
       const file = req.file;
       
       if (!file) {
-        return res.status(400).json({ error: 'No file uploaded' });
+        res.status(400).json({ error: 'No file uploaded' });
+        return;
       }
       
       // Validate file size
@@ -178,12 +214,13 @@ export default function setupMigrationRoutes(app: Express) {
         const fileSizeGB = (file.size / (1024 * 1024 * 1024)).toFixed(2);
         const limitGB = (fileSizeLimit / (1024 * 1024 * 1024)).toFixed(2);
         
-        return res.status(413).json({
+        res.status(413).json({
           error: 'Migration file exceeds size limit',
           message: `File size (${fileSizeGB}GB) exceeds the limit of ${limitGB}GB. Please contact support to increase your limit.`,
           fileSize: file.size,
           limit: fileSizeLimit
         });
+        return;
       }
       
       // Update migration status to uploading complete
@@ -232,13 +269,14 @@ export default function setupMigrationRoutes(app: Express) {
    * POST /api/minecraft/migration/progress
    * Update migration progress from Minecraft server (API key auth)
    */
-  app.post('/api/minecraft/migration/progress', verifyMinecraftApiKey, async (req: Request, res: Response) => {
+  app.post('/api/minecraft/migration/progress', verifyMinecraftApiKey, async (req: Request, res: Response): Promise<void> => {
     try {
       const serverDbConnection = req.serverDbConnection!;
       const { status, message, recordsProcessed, totalRecords } = req.body;
       
       if (!status || !message) {
-        return res.status(400).json({ error: 'Status and message are required' });
+        res.status(400).json({ error: 'Status and message are required' });
+        return;
       }
       
       await updateMigrationProgress(status, {

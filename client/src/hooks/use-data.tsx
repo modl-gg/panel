@@ -1230,7 +1230,32 @@ export function useStartMigration() {
       return res.json();
     },
     onSuccess: () => {
-      // Invalidate migration status to refresh it
+      queryClient.invalidateQueries({ queryKey: ['/api/panel/migration/status'] });
+    }
+  });
+}
+
+export function useCancelMigration() {
+  const queryClient = useQueryClient();
+  
+  return useMutation({
+    mutationFn: async () => {
+      const { csrfFetch } = await import('@/utils/csrf');
+      const res = await csrfFetch('/api/panel/migration/cancel', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        }
+      });
+      
+      if (!res.ok) {
+        const errorData = await res.json();
+        throw new Error(errorData.error || 'Failed to cancel migration');
+      }
+      
+      return res.json();
+    },
+    onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['/api/panel/migration/status'] });
     }
   });

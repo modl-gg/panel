@@ -1,11 +1,11 @@
 import React, { useState } from 'react';
-import { Database, Download, AlertCircle, CheckCircle2, Clock, Upload, Loader2 } from 'lucide-react';
+import { Database, Download, AlertCircle, CheckCircle2, Clock, Upload, Loader2, X } from 'lucide-react';
 import { Button } from '@modl-gg/shared-web/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@modl-gg/shared-web/components/ui/select';
 import { Alert, AlertDescription } from '@modl-gg/shared-web/components/ui/alert';
 import { Progress } from '@modl-gg/shared-web/components/ui/progress';
 import { Card } from '@modl-gg/shared-web/components/ui/card';
-import { useMigrationStatus, useStartMigration } from '@/hooks/use-data';
+import { useMigrationStatus, useStartMigration, useCancelMigration } from '@/hooks/use-data';
 
 const MIGRATION_TYPES = [
   { value: 'litebans', label: 'LiteBans' }
@@ -16,6 +16,7 @@ const MigrationTool: React.FC = () => {
   
   const { data: migrationStatus, isLoading: statusLoading } = useMigrationStatus();
   const startMigration = useStartMigration();
+  const cancelMigration = useCancelMigration();
 
   const currentMigration = migrationStatus?.currentMigration;
   const isActive = currentMigration && 
@@ -29,9 +30,19 @@ const MigrationTool: React.FC = () => {
     
     try {
       await startMigration.mutateAsync({ migrationType: selectedType });
-      setSelectedType(''); // Reset selection
+      setSelectedType('');
     } catch (error) {
       console.error('Failed to start migration:', error);
+    }
+  };
+
+  const handleCancelMigration = async () => {
+    if (!isActive) return;
+    
+    try {
+      await cancelMigration.mutateAsync();
+    } catch (error) {
+      console.error('Failed to cancel migration:', error);
     }
   };
 
@@ -139,6 +150,21 @@ const MigrationTool: React.FC = () => {
                   </p>
                 </div>
               </div>
+              <Button
+                variant="destructive"
+                size="sm"
+                onClick={handleCancelMigration}
+                disabled={cancelMigration.isPending}
+              >
+                {cancelMigration.isPending ? (
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                ) : (
+                  <>
+                    <X className="h-4 w-4 mr-1" />
+                    Cancel
+                  </>
+                )}
+              </Button>
             </div>
 
             {currentMigration.progress && (
