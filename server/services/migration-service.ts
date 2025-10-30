@@ -428,18 +428,18 @@ function mergePlayerDocument(existing: IPlayer, migration: MigrationPlayerData):
     notes: [],
     evidence: [],
     attachedTicketIds: [],
-    data: new Map(Object.entries(p.data || {}))
+    data: p.data || {}
   }))];
   
   // Merge data objects (migration data takes precedence)
   if (migration.data) {
     // Convert both to objects for merging, then back to Map
-    const existingDataObj = existing.data instanceof Map ? Object.fromEntries(existing.data) : existing.data;
+    const existingDataObj = existing.data || {};
     const mergedData = {
       ...existingDataObj,
       ...migration.data
     };
-    existing.data = new Map(Object.entries(mergedData));
+    existing.data = mergedData;
   }
   
   return existing;
@@ -519,9 +519,14 @@ export async function processMigrationFile(
       
       if (validPlayers.length === 0) continue;
       
-      const existingPlayers = await Player.find({ 
-        minecraftUuid: { $in: uuidsInBatch } 
+      const existingPlayers = await Player.find({
+        minecraftUuid: { $in: uuidsInBatch }
       }).lean();
+
+      console.log(`Found ${existingPlayers.length} existing players in database for batch UUIDs:`, uuidsInBatch.slice(0, 3));
+      if (existingPlayers.length > 0) {
+        console.log('Sample existing player:', JSON.stringify(existingPlayers[0], null, 2));
+      }
       
       const existingPlayersMap = new Map(
         existingPlayers.map(p => [p.minecraftUuid, p])
@@ -534,6 +539,7 @@ export async function processMigrationFile(
           const existingPlayer = existingPlayersMap.get(playerData.minecraftUuid);
           
           if (existingPlayer) {
+            console.log(`Updating existing player: ${playerData.minecraftUuid}`);
             const tempPlayer: IPlayer = {
               ...existingPlayer,
               usernames: existingPlayer.usernames || [],
@@ -592,17 +598,17 @@ export async function processMigrationFile(
                   notes: [], // Initialize empty - migration data doesn't have this
                   evidence: [], // Initialize empty - migration data doesn't have this
                   attachedTicketIds: [], // Initialize empty - migration data doesn't have this
-                  data: new Map(Object.entries(p.data || {})) // Convert object to Map
+                  data: p.data || {} // Keep as object for MongoDB compatibility
                 };
 
                 console.log('Converted punishment:', JSON.stringify(convertedPunishment, null, 2));
                 return convertedPunishment;
               }) || [],
               pendingNotifications: [],
-              data: new Map(Object.entries(playerData.data || {}))
+              data: playerData.data || {} // MongoDB doesn't support Maps, keep as object
             };
 
-            console.log(`Creating new player document for UUID: ${playerData.minecraftUuid}`);
+            console.log(`Creating NEW player document for UUID: ${playerData.minecraftUuid}`);
             console.log('New player document structure:', JSON.stringify(newPlayerDoc, null, 2));
 
             bulkOps.push({
