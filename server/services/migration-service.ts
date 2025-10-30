@@ -117,17 +117,26 @@ async function getMigrationSettings(serverDbConnection: Connection): Promise<ISe
       currentMigration: null,
       history: []
     };
+    migrationSettings.markModified('data');
     await migrationSettings.save();
   } else {
     // Ensure all required fields exist in data
+    let needsSave = false;
     if (!migrationSettings.data.history) {
       migrationSettings.data.history = [];
+      needsSave = true;
     }
     if (!migrationSettings.data.hasOwnProperty('currentMigration')) {
       migrationSettings.data.currentMigration = null;
+      needsSave = true;
     }
     if (!migrationSettings.data.hasOwnProperty('lastMigrationTimestamp')) {
       migrationSettings.data.lastMigrationTimestamp = null;
+      needsSave = true;
+    }
+    if (needsSave) {
+      migrationSettings.markModified('data');
+      await migrationSettings.save();
     }
   }
   
@@ -221,6 +230,8 @@ export async function startMigration(
       }
     };
     
+    // Mark the data field as modified so Mongoose saves it
+    migrationSettings.markModified('data');
     await migrationSettings.save();
     
     return { success: true, taskId };
@@ -289,6 +300,8 @@ export async function updateMigrationProgress(
       migrationSettings.data.currentMigration = null;
     }
     
+    // Mark the data field as modified so Mongoose saves it
+    migrationSettings.markModified('data');
     await migrationSettings.save();
   } catch (error) {
     console.error('Error updating migration progress:', error);
