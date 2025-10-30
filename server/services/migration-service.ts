@@ -433,13 +433,13 @@ function mergePlayerDocument(existing: IPlayer, migration: MigrationPlayerData):
   
   // Merge data objects (migration data takes precedence)
   if (migration.data) {
-    // Convert both to objects for merging, then back to Map
-    const existingDataObj = existing.data || {};
+    // Handle both Map and object formats
+    const existingDataObj = existing.data instanceof Map ? Object.fromEntries(existing.data) : (existing.data || {});
     const mergedData = {
       ...existingDataObj,
       ...migration.data
     };
-    existing.data = mergedData;
+    existing.data = new Map(Object.entries(mergedData));
   }
   
   return existing;
@@ -568,6 +568,7 @@ export async function processMigrationFile(
             });
           } else {
             const newPlayerDoc = {
+              _id: uuidv4(), // Add explicit _id like in login function
               minecraftUuid: playerData.minecraftUuid,
               usernames: playerData.usernames?.map(u => ({
                 username: u.username,
@@ -605,15 +606,17 @@ export async function processMigrationFile(
                 return convertedPunishment;
               }) || [],
               pendingNotifications: [],
-              data: playerData.data || {} // MongoDB doesn't support Maps, keep as object
+              data: new Map(Object.entries(playerData.data || {})) // Use Map like in login function
             };
 
             console.log(`Creating NEW player document for UUID: ${playerData.minecraftUuid}`);
             console.log('New player document structure:', JSON.stringify(newPlayerDoc, null, 2));
 
+            // Use Player constructor like in login function
+            const playerInstance = new Player(newPlayerDoc);
             bulkOps.push({
               insertOne: {
-                document: newPlayerDoc
+                document: playerInstance
               }
             });
           }
@@ -639,9 +642,35 @@ export async function processMigrationFile(
             matchedCount: result.matchedCount
           });
 
+          // Check for write errors
           if (result.writeErrors && result.writeErrors.length > 0) {
-            console.error('Bulk write errors:', result.writeErrors);
+            console.error('Bulk write errors:', JSON.stringify(result.writeErrors, null, 2));
           }
+
+          // Check for write concern errors
+          if (result.writeConcernErrors && result.writeConcernErrors.length > 0) {
+            console.error('Write concern errors:', JSON.stringify(result.writeConcernErrors, null, 2));
+          }
+
+          // Check if inserts failed but didn't throw errors
+          if (bulkOps.filter(op => op.insertOne).length > 0 && result.insertedCount === 0) {
+            console.error('ERROR: All insert operations failed silently!');
+            console.error('Expected inserts:', bulkOps.filter(op => op.insertOne).length);
+            console.error('Actual inserts:', result.insertedCount);
+          }
+
+          // Test a simple direct insert to check schema validation
+          if (result.insertedCount === 0 && bulkOps.length > 0 && bulkOps[0].insertOne) {
+            console.log('Testing direct insert to check schema validation...');
+            try {
+              const testDoc = new Player(bulkOps[0].insertOne.document);
+              await testDoc.validate();
+              console.log('Schema validation passed for test document');
+            } catch (validationError) {
+              console.error('Schema validation failed:', validationError);
+            }
+          }
+
         } catch (bulkError) {
           console.error('Bulk write operation failed:', bulkError);
           throw bulkError;
