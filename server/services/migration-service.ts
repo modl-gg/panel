@@ -604,7 +604,8 @@ export async function processMigrationFile(
     
     throw error;
   } finally {
-    await cleanupMigrationFiles(filePath);
+    // await cleanupMigrationFiles(filePath);
+    console.log('Migration log not cleaned for testing purposes')
   }
 }
 
