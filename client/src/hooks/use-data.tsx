@@ -1196,12 +1196,19 @@ export function useMigrationStatus() {
       }
       return res.json();
     },
-    refetchInterval: (data) => {
+    refetchInterval: (query) => {
       // Poll every 2 seconds if there's an active migration
-      const isActive = data?.currentMigration && 
-        data.currentMigration.status !== 'completed' && 
-        data.currentMigration.status !== 'failed';
-      return isActive ? 2000 : false;
+      const data = query.state.data;
+      const currentMigration = data?.currentMigration;
+      const isActive = currentMigration && 
+        currentMigration.status !== 'completed' && 
+        currentMigration.status !== 'failed';
+      
+      // Also poll for a few seconds after completion to ensure UI updates
+      const isRecentlyCompleted = currentMigration &&
+        (currentMigration.status === 'completed' || currentMigration.status === 'failed');
+      
+      return (isActive || isRecentlyCompleted) ? 2000 : false;
     },
     refetchOnMount: true,
     refetchOnWindowFocus: true

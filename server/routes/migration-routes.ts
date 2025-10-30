@@ -8,7 +8,8 @@ import {
   startMigration,
   getMigrationStatus,
   updateMigrationProgress,
-  processMigrationFile
+  processMigrationFile,
+  clearCompletedMigration
 } from '../services/migration-service';
 import { isSuperAdminRole } from '../../shared/role-hierarchy-core';
 import { verifyMinecraftApiKey } from '../middleware/api-auth';

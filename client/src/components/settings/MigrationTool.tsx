@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Database, Download, AlertCircle, CheckCircle2, Clock, Upload, Loader2, X } from 'lucide-react';
 import { Button } from '@modl-gg/shared-web/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@modl-gg/shared-web/components/ui/select';
@@ -13,6 +13,8 @@ const MIGRATION_TYPES = [
 
 const MigrationTool: React.FC = () => {
   const [selectedType, setSelectedType] = useState<string>('');
+  const [showCompletedAlert, setShowCompletedAlert] = useState(false);
+  const [lastCompletedMigration, setLastCompletedMigration] = useState<any>(null);
   
   const { data: migrationStatus, isLoading: statusLoading } = useMigrationStatus();
   const startMigration = useStartMigration();
@@ -25,8 +27,30 @@ const MigrationTool: React.FC = () => {
   const onCooldown = migrationStatus?.cooldown?.onCooldown;
   const cooldownRemainingMs = migrationStatus?.cooldown?.remainingTime || 0;
   
+  // Track when migration completes and show alert
+  useEffect(() => {
+    if (currentMigration && 
+        (currentMigration.status === 'completed' || currentMigration.status === 'failed')) {
+      setShowCompletedAlert(true);
+      setLastCompletedMigration(currentMigration);
+      
+      // Auto-hide the alert after 10 seconds
+      const timer = setTimeout(() => {
+        setShowCompletedAlert(false);
+      }, 10000);
+      
+      return () => clearTimeout(timer);
+    }
+    
+    return undefined;
+  }, [currentMigration?.id, currentMigration?.status]);
+  
   const handleStartMigration = async () => {
     if (!selectedType || onCooldown || isActive) return;
+    
+    // Hide any previous completion alert
+    setShowCompletedAlert(false);
+    setLastCompletedMigration(null);
     
     try {
       await startMigration.mutateAsync({ migrationType: selectedType });
@@ -204,27 +228,27 @@ const MigrationTool: React.FC = () => {
       )}
 
       {/* Completed/Failed Migration Result */}
-      {!isActive && currentMigration && (
-        <Alert variant={currentMigration.status === 'completed' ? 'default' : 'destructive'}>
-          {currentMigration.status === 'completed' ? (
+      {showCompletedAlert && lastCompletedMigration && (
+        <Alert variant={lastCompletedMigration.status === 'completed' ? 'default' : 'destructive'}>
+          {lastCompletedMigration.status === 'completed' ? (
             <CheckCircle2 className="h-4 w-4" />
           ) : (
             <AlertCircle className="h-4 w-4" />
           )}
           <AlertDescription>
-            {currentMigration.status === 'completed' ? (
+            {lastCompletedMigration.status === 'completed' ? (
               <>
-                Last migration completed successfully.
-                {currentMigration.progress && (
+                Migration completed successfully!
+                {lastCompletedMigration.progress && (
                   <span className="ml-1">
-                    Processed {currentMigration.progress.recordsProcessed} records
-                    {currentMigration.progress.recordsSkipped > 0 && 
-                      `, skipped ${currentMigration.progress.recordsSkipped}`}.
+                    Processed {lastCompletedMigration.progress.recordsProcessed} records
+                    {lastCompletedMigration.progress.recordsSkipped > 0 && 
+                      `, skipped ${lastCompletedMigration.progress.recordsSkipped}`}.
                   </span>
                 )}
               </>
             ) : (
-              currentMigration.error || 'Migration failed. You can retry immediately.'
+              lastCompletedMigration.error || 'Migration failed. You can retry immediately.'
             )}
           </AlertDescription>
         </Alert>
@@ -287,7 +311,7 @@ const MigrationTool: React.FC = () => {
         <div className="space-y-3">
           <h5 className="text-sm font-medium">Recent Migrations</h5>
           <div className="space-y-2">
-            {migrationStatus.history.slice(0, 5).map((entry: any, index: number) => (
+            {migrationStatus.history.map((entry: any, index: number) => (
               <div
                 key={entry.id || index}
                 className="flex items-center justify-between p-3 rounded-lg border bg-muted/30"

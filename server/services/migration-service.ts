@@ -207,7 +207,7 @@ export async function startMigration(
     
     const migrationSettings = await getMigrationSettings(serverDbConnection);
     
-    // Check if there's already an active migration
+    // Check if there's already an active migration (not completed or failed)
     if (migrationSettings.data.currentMigration && 
         migrationSettings.data.currentMigration.status !== 'completed' && 
         migrationSettings.data.currentMigration.status !== 'failed') {
@@ -219,7 +219,7 @@ export async function startMigration(
     
     const taskId = uuidv4();
     
-    // Initialize migration state
+    // Initialize migration state (this will replace any completed/failed migration)
     migrationSettings.data.currentMigration = {
       id: taskId,
       status: 'idle',
@@ -241,6 +241,26 @@ export async function startMigration(
       success: false,
       error: 'Failed to start migration. Please try again.'
     };
+  }
+}
+
+/**
+ * Clear completed or failed migration from view
+ */
+export async function clearCompletedMigration(serverDbConnection: Connection): Promise<void> {
+  try {
+    const migrationSettings = await getMigrationSettings(serverDbConnection);
+    
+    // Only clear if the current migration is completed or failed
+    if (migrationSettings.data.currentMigration &&
+        (migrationSettings.data.currentMigration.status === 'completed' ||
+         migrationSettings.data.currentMigration.status === 'failed')) {
+      migrationSettings.data.currentMigration = null;
+      migrationSettings.markModified('data');
+      await migrationSettings.save();
+    }
+  } catch (error) {
+    console.error('Error clearing completed migration:', error);
   }
 }
 
@@ -268,7 +288,7 @@ export async function updateMigrationProgress(
       migrationSettings.data.currentMigration.error = error;
     }
     
-    // If migration completed or failed, update history and reset current migration
+    // If migration completed or failed, update history
     if (status === 'completed' || status === 'failed') {
       const historyEntry: MigrationHistoryEntry = {
         id: migrationSettings.data.currentMigration.id,
@@ -284,11 +304,11 @@ export async function updateMigrationProgress(
       if (!migrationSettings.data.history) {
         migrationSettings.data.history = [];
       }
-      migrationSettings.data.history.push(historyEntry);
+      migrationSettings.data.history.unshift(historyEntry); // Add to beginning for most recent first
       
       // Keep only last 10 history entries
       if (migrationSettings.data.history.length > 10) {
-        migrationSettings.data.history = migrationSettings.data.history.slice(-10);
+        migrationSettings.data.history = migrationSettings.data.history.slice(0, 10);
       }
       
       // Update last migration timestamp only on success
@@ -296,8 +316,8 @@ export async function updateMigrationProgress(
         migrationSettings.data.lastMigrationTimestamp = new Date();
       }
       
-      // Reset current migration
-      migrationSettings.data.currentMigration = null;
+      // Keep current migration visible but mark it as completed/failed
+      // Don't reset to null immediately so the UI can show the completion state
     }
     
     // Mark the data field as modified so Mongoose saves it
