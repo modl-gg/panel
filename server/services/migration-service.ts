@@ -1,4 +1,4 @@
-import { Connection } from 'mongoose';
+import { Connection, Schema, Document } from 'mongoose';
 import { promises as fs } from 'fs';
 import path from 'path';
 import { v4 as uuidv4 } from 'uuid';
@@ -7,6 +7,18 @@ import { connectToGlobalModlDb } from '../db/connectionManager';
 
 const DEFAULT_FILE_SIZE_LIMIT = 5 * 1024 * 1024 * 1024; // 5GB in bytes
 const MIGRATIONS_TEMP_DIR = path.join(process.cwd(), 'uploads', 'migrations');
+
+// Settings document interface
+interface ISettingsDocument extends Document {
+  type: string;
+  data: any;
+}
+
+// Settings schema definition (matching settings-routes.ts)
+const SettingsSchema = new Schema({
+  type: { type: String, required: true },
+  data: { type: Schema.Types.Mixed, required: true }
+});
 
 interface MigrationProgress {
   message: string;
@@ -67,10 +79,24 @@ async function ensureMigrationsTempDir(): Promise<void> {
 }
 
 /**
+ * Get Settings model with proper schema
+ * This ensures the model is properly initialized with the correct schema
+ */
+function getSettingsModel(serverDbConnection: Connection) {
+  try {
+    // Try to get existing model first
+    return serverDbConnection.model<ISettingsDocument>('Settings');
+  } catch (error) {
+    // Model doesn't exist, create it with our schema
+    return serverDbConnection.model<ISettingsDocument>('Settings', SettingsSchema);
+  }
+}
+
+/**
  * Get or create migration settings document
  */
-async function getMigrationSettings(serverDbConnection: Connection): Promise<any> {
-  const Settings = serverDbConnection.model('Settings');
+async function getMigrationSettings(serverDbConnection: Connection): Promise<ISettingsDocument> {
+  const Settings = getSettingsModel(serverDbConnection);
   
   let migrationSettings = await Settings.findOne({ type: 'migration' });
   
@@ -84,6 +110,25 @@ async function getMigrationSettings(serverDbConnection: Connection): Promise<any
       }
     });
     await migrationSettings.save();
+  } else if (!migrationSettings.data) {
+    // Ensure data field exists and is properly initialized
+    migrationSettings.data = {
+      lastMigrationTimestamp: null,
+      currentMigration: null,
+      history: []
+    };
+    await migrationSettings.save();
+  } else {
+    // Ensure all required fields exist in data
+    if (!migrationSettings.data.history) {
+      migrationSettings.data.history = [];
+    }
+    if (!migrationSettings.data.hasOwnProperty('currentMigration')) {
+      migrationSettings.data.currentMigration = null;
+    }
+    if (!migrationSettings.data.hasOwnProperty('lastMigrationTimestamp')) {
+      migrationSettings.data.lastMigrationTimestamp = null;
+    }
   }
   
   return migrationSettings;
@@ -256,10 +301,17 @@ export async function updateMigrationProgress(
 export async function getMigrationStatus(serverDbConnection: Connection): Promise<any> {
   const migrationSettings = await getMigrationSettings(serverDbConnection);
   
+  // Defensive programming: ensure data exists
+  const data = migrationSettings?.data || {
+    currentMigration: null,
+    lastMigrationTimestamp: null,
+    history: []
+  };
+  
   return {
-    currentMigration: migrationSettings.data.currentMigration,
-    lastMigrationTimestamp: migrationSettings.data.lastMigrationTimestamp,
-    history: migrationSettings.data.history || []
+    currentMigration: data.currentMigration || null,
+    lastMigrationTimestamp: data.lastMigrationTimestamp || null,
+    history: data.history || []
   };
 }
 
