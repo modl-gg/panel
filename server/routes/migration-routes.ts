@@ -1,4 +1,4 @@
-import { Express, Request, Response } from 'express';
+import { Express, Request, Response, Router } from 'express';
 import multer from 'multer';
 import path from 'path';
 import { promises as fs } from 'fs';
@@ -12,6 +12,7 @@ import {
 } from '../services/migration-service';
 import { isSuperAdminRole } from '../../shared/role-hierarchy-core';
 import { verifyMinecraftApiKey } from '../middleware/api-auth';
+import { isAuthenticated } from '../middleware/auth-middleware';
 
 const MIGRATIONS_TEMP_DIR = path.join(process.cwd(), 'uploads', 'migrations');
 
@@ -45,16 +46,18 @@ const upload = multer({
 /**
  * Middleware to check Super Admin role
  */
-async function requireSuperAdmin(req: Request, res: Response, next: Function) {
+async function requireSuperAdmin(req: Request, res: Response, next: Function): Promise<void> {
   try {
-    const user = (req as any).user;
+    const user = (req as any).currentUser;
     
     if (!user || !user.role) {
-      return res.status(401).json({ error: 'Unauthorized' });
+      res.status(401).json({ error: 'Unauthorized' });
+      return;
     }
     
     if (!isSuperAdminRole(user.role)) {
-      return res.status(403).json({ error: 'Forbidden: Super Admin access required' });
+      res.status(403).json({ error: 'Forbidden: Super Admin access required' });
+      return;
     }
     
     next();
@@ -64,12 +67,20 @@ async function requireSuperAdmin(req: Request, res: Response, next: Function) {
   }
 }
 
-export default function setupMigrationRoutes(app: Express) {
+/**
+ * Create and return a router for panel migration routes (requires authentication)
+ */
+export function createPanelMigrationRouter(): Router {
+  const router = Router();
+  
+  // Apply authentication to all panel migration routes
+  router.use(isAuthenticated);
+  
   /**
-   * GET /api/panel/migration/status
+   * GET /migration/status
    * Get current migration status (Super Admin only)
    */
-  app.get('/api/panel/migration/status', requireSuperAdmin, async (req: Request, res: Response) => {
+  router.get('/migration/status', requireSuperAdmin, async (req: Request, res: Response) => {
     try {
       const serverDbConnection = req.serverDbConnection!;
       
@@ -90,10 +101,10 @@ export default function setupMigrationRoutes(app: Express) {
   });
   
   /**
-   * POST /api/panel/migration/start
+   * POST /migration/start
    * Initiate migration task (Super Admin only, checks cooldown)
    */
-  app.post('/api/panel/migration/start', requireSuperAdmin, async (req: Request, res: Response) => {
+  router.post('/migration/start', requireSuperAdmin, async (req: Request, res: Response) => {
     try {
       const serverDbConnection = req.serverDbConnection!;
       const { migrationType } = req.body;
@@ -125,6 +136,13 @@ export default function setupMigrationRoutes(app: Express) {
     }
   });
   
+  return router;
+}
+
+/**
+ * Setup Minecraft API migration routes (API key authentication)
+ */
+export default function setupMigrationRoutes(app: Express) {
   /**
    * POST /api/minecraft/migration/upload
    * Receive JSON file from Minecraft server (API key auth, validates file size)

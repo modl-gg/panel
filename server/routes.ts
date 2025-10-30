@@ -30,7 +30,7 @@ import analyticsRoutes from './routes/analytics-routes'; // Import analytics rou
 import auditRoutes from './routes/audit-routes'; // Import audit routes
 import dashboardRoutes from './routes/dashboard-routes'; // Import dashboard routes
 import ticketSubscriptionRoutes from './routes/ticket-subscription-routes'; // Import ticket subscription routes
-import setupMigrationRoutes from './routes/migration-routes'; // Import migration routes
+import setupMigrationRoutes, { createPanelMigrationRouter } from './routes/migration-routes'; // Import migration routes
 
 export async function registerRoutes(app: Express): Promise<Server> {
   let globalDbConnection: MongooseConnection | undefined = undefined;
@@ -341,6 +341,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   panelRouter.use('/audit', auditRoutes); // Add audit routes to panel
   panelRouter.use('/dashboard', dashboardRoutes); // Add dashboard routes to panel
   panelRouter.use('/ticket-subscriptions', ticketSubscriptionRoutes); // Add ticket subscription routes to panel
+  panelRouter.use('/', createPanelMigrationRouter()); // Add migration routes to panel
 
   panelRouter.get('/activity/recent', async (req: any, res) => {
     try {
@@ -811,8 +812,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // These routes have their own API key authentication via verifyMinecraftApiKey middleware
   setupMinecraftRoutes(app); // Setup Minecraft routes with /api/minecraft prefix
   
-  // Migration routes - includes both panel routes (/api/panel/migration/*) and Minecraft routes (/api/minecraft/migration/*)
-  setupMigrationRoutes(app); // Setup migration routes
+  // Minecraft migration routes - uses API key authentication (panel migration routes are in panelRouter)
+  setupMigrationRoutes(app); // Setup Minecraft migration routes (/api/minecraft/migration/*)
 
   // Public player lookup (if intended to be public)
   app.get('/api/player/:identifier', async (req, res) => {
