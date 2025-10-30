@@ -11,7 +11,6 @@ import {
   processMigrationFile
 } from '../services/migration-service';
 import { isSuperAdminRole } from '../../shared/role-hierarchy-core';
-import { getRoleHierarchy } from '../utils/role-hierarchy';
 import { verifyMinecraftApiKey } from '../middleware/api-auth';
 
 const MIGRATIONS_TEMP_DIR = path.join(process.cwd(), 'uploads', 'migrations');

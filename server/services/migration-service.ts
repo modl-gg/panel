@@ -351,28 +351,28 @@ function mergePlayerDocument(existing: IPlayer, migration: MigrationPlayerData):
 }
 
 /**
- * Process migration file and import data to MongoDB
+ * Process migration file and import data to MongoDB with batch operations
  */
 export async function processMigrationFile(
   filePath: string,
   serverDbConnection: Connection
 ): Promise<void> {
+  const BATCH_SIZE = 500;
+  const PROGRESS_UPDATE_INTERVAL = 1000;
+  
   let recordsProcessed = 0;
   let recordsSkipped = 0;
   
   try {
-    // Update status to processing
     await updateMigrationProgress('processing_data', {
       message: 'Reading and validating migration file...',
       recordsProcessed: 0,
       recordsSkipped: 0
     }, serverDbConnection);
     
-    // Read and parse JSON file
     const fileContent = await fs.readFile(filePath, 'utf-8');
     const migrationData = JSON.parse(fileContent);
     
-    // Validate JSON structure
     const validation = validateMigrationJSON(migrationData);
     if (!validation.valid) {
       throw new Error(validation.error || 'Invalid migration data');
@@ -389,74 +389,119 @@ export async function processMigrationFile(
     
     const Player = serverDbConnection.model<IPlayer>('Player');
     
-    // Process each player record
-    for (const playerData of migrationData.players) {
-      try {
-        // Validate player data (lenient)
+    for (let i = 0; i < migrationData.players.length; i += BATCH_SIZE) {
+      const batch = migrationData.players.slice(i, i + BATCH_SIZE);
+      const validPlayers: MigrationPlayerData[] = [];
+      const uuidsInBatch: string[] = [];
+      
+      for (const playerData of batch) {
         if (!playerData.minecraftUuid || typeof playerData.minecraftUuid !== 'string') {
           console.warn('Skipping player record: missing or invalid minecraftUuid');
           recordsSkipped++;
           continue;
         }
-        
-        // Check if player exists
-        const existingPlayer = await Player.findOne({ minecraftUuid: playerData.minecraftUuid });
-        
-        if (existingPlayer) {
-          // Merge with existing player
-          const mergedPlayer = mergePlayerDocument(existingPlayer, playerData);
-          await Player.updateOne(
-            { minecraftUuid: playerData.minecraftUuid },
-            { $set: mergedPlayer }
-          );
-        } else {
-          // Create new player
-          const newPlayer = new Player({
-            minecraftUuid: playerData.minecraftUuid,
-            usernames: playerData.usernames?.map(u => ({
-              username: u.username,
-              date: new Date(u.date)
-            })) || [],
-            notes: playerData.notes?.map(n => ({
-              text: n.text,
-              date: new Date(n.date),
-              issuerName: n.issuerName
-            })) || [],
-            ipList: playerData.ipList?.map(ip => ({
-              ipAddress: ip.ipAddress,
-              country: ip.country,
-              firstLogin: new Date(ip.firstLogin),
-              logins: ip.logins.map(l => new Date(l))
-            })) || [],
-            punishments: playerData.punishments?.map(p => ({
-              ...p,
-              issued: new Date(p.issued),
-              started: p.started ? new Date(p.started) : undefined
-            })) || [],
-            pendingNotifications: [],
-            data: playerData.data || {}
-          });
-          await newPlayer.save();
+        validPlayers.push(playerData);
+        uuidsInBatch.push(playerData.minecraftUuid);
+      }
+      
+      if (validPlayers.length === 0) continue;
+      
+      const existingPlayers = await Player.find({ 
+        minecraftUuid: { $in: uuidsInBatch } 
+      }).lean();
+      
+      const existingPlayersMap = new Map(
+        existingPlayers.map(p => [p.minecraftUuid, p])
+      );
+      
+      const bulkOps: any[] = [];
+      
+      for (const playerData of validPlayers) {
+        try {
+          const existingPlayer = existingPlayersMap.get(playerData.minecraftUuid);
+          
+          if (existingPlayer) {
+            const tempPlayer: IPlayer = {
+              ...existingPlayer,
+              usernames: existingPlayer.usernames || [],
+              notes: existingPlayer.notes || [],
+              ipList: existingPlayer.ipList || [],
+              punishments: existingPlayer.punishments || [],
+              pendingNotifications: existingPlayer.pendingNotifications || [],
+              data: existingPlayer.data || {}
+            } as IPlayer;
+            
+            const mergedPlayer = mergePlayerDocument(tempPlayer, playerData);
+            
+            bulkOps.push({
+              updateOne: {
+                filter: { minecraftUuid: playerData.minecraftUuid },
+                update: { 
+                  $set: {
+                    usernames: mergedPlayer.usernames,
+                    notes: mergedPlayer.notes,
+                    ipList: mergedPlayer.ipList,
+                    punishments: mergedPlayer.punishments,
+                    data: mergedPlayer.data
+                  }
+                }
+              }
+            });
+          } else {
+            const newPlayerDoc = {
+              minecraftUuid: playerData.minecraftUuid,
+              usernames: playerData.usernames?.map(u => ({
+                username: u.username,
+                date: new Date(u.date)
+              })) || [],
+              notes: playerData.notes?.map(n => ({
+                text: n.text,
+                date: new Date(n.date),
+                issuerName: n.issuerName
+              })) || [],
+              ipList: playerData.ipList?.map(ip => ({
+                ipAddress: ip.ipAddress,
+                country: ip.country,
+                firstLogin: new Date(ip.firstLogin),
+                logins: ip.logins.map(l => new Date(l))
+              })) || [],
+              punishments: playerData.punishments?.map(p => ({
+                ...p,
+                issued: new Date(p.issued),
+                started: p.started ? new Date(p.started) : undefined
+              })) || [],
+              pendingNotifications: [],
+              data: playerData.data || {}
+            };
+            
+            bulkOps.push({
+              insertOne: {
+                document: newPlayerDoc
+              }
+            });
+          }
+          
+          recordsProcessed++;
+        } catch (error) {
+          console.error('Error preparing player record:', error);
+          recordsSkipped++;
         }
-        
-        recordsProcessed++;
-        
-        // Update progress every 10 records
-        if (recordsProcessed % 10 === 0) {
-          await updateMigrationProgress('processing_data', {
-            message: `Processing player records... (${recordsProcessed}/${totalRecords})`,
-            recordsProcessed,
-            recordsSkipped,
-            totalRecords
-          }, serverDbConnection);
-        }
-      } catch (error) {
-        console.error('Error processing player record:', error);
-        recordsSkipped++;
+      }
+      
+      if (bulkOps.length > 0) {
+        await Player.bulkWrite(bulkOps, { ordered: false });
+      }
+      
+      if (recordsProcessed % PROGRESS_UPDATE_INTERVAL === 0 || i + BATCH_SIZE >= totalRecords) {
+        await updateMigrationProgress('processing_data', {
+          message: `Processing player records... (${recordsProcessed}/${totalRecords})`,
+          recordsProcessed,
+          recordsSkipped,
+          totalRecords
+        }, serverDbConnection);
       }
     }
     
-    // Migration completed successfully
     await updateMigrationProgress('completed', {
       message: 'Migration completed successfully',
       recordsProcessed,
@@ -474,7 +519,6 @@ export async function processMigrationFile(
     
     throw error;
   } finally {
-    // Clean up temporary file
     await cleanupMigrationFiles(filePath);
   }
 }
