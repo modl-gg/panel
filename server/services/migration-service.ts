@@ -416,20 +416,30 @@ function mergePlayerDocument(existing: IPlayer, migration: MigrationPlayerData):
   });
   
   // Append all punishments (use unique _id to avoid duplicates)
-  const existingPunishmentIds = new Set(existing.punishments.map(p => p._id?.toString()));
+  const existingPunishmentIds = new Set(existing.punishments.map(p => p.id?.toString()));
   const newPunishments = migration.punishments.filter(p => !existingPunishmentIds.has(p._id));
   existing.punishments = [...existing.punishments, ...newPunishments.map(p => ({
-    ...p,
+    id: p._id,  // Convert _id to id for schema compatibility
+    issuerName: p.issuerName,
     issued: new Date(p.issued),
-    started: p.started ? new Date(p.started) : undefined
+    started: p.started ? new Date(p.started) : undefined,
+    type_ordinal: p.type_ordinal,
+    modifications: [], // Initialize empty arrays for schema compliance
+    notes: [],
+    evidence: [],
+    attachedTicketIds: [],
+    data: p.data || {}
   }))];
   
   // Merge data objects (migration data takes precedence)
   if (migration.data) {
-    existing.data = {
-      ...existing.data,
+    // Handle both Map and object formats
+    const existingDataObj = existing.data instanceof Map ? Object.fromEntries(existing.data) : (existing.data || {});
+    const mergedData = {
+      ...existingDataObj,
       ...migration.data
     };
+    existing.data = new Map(Object.entries(mergedData));
   }
   
   return existing;
@@ -462,8 +472,14 @@ export async function processMigrationFile(
     if (!validation.valid) {
       throw new Error(validation.error || 'Invalid migration data');
     }
-    
+
     const totalRecords = migrationData.players.length;
+    console.log(`Migration JSON validation passed. Total records: ${totalRecords}`);
+
+    // Log first player record structure for debugging
+    if (migrationData.players.length > 0) {
+      console.log('Sample player record from JSON:', JSON.stringify(migrationData.players[0], null, 2));
+    }
     
     await updateMigrationProgress('processing_data', {
       message: `Processing ${totalRecords} player records...`,
@@ -473,6 +489,13 @@ export async function processMigrationFile(
     }, serverDbConnection);
     
     const Player = serverDbConnection.model<IPlayer>('Player');
+    console.log('Player model retrieved:', !!Player);
+    console.log('Server DB connection state:', serverDbConnection.readyState);
+    console.log('Server DB name:', serverDbConnection.name);
+
+    // Check if Player collection exists and count existing documents
+    const existingPlayerCount = await Player.countDocuments();
+    console.log(`Existing players in database: ${existingPlayerCount}`);
     
     for (let i = 0; i < migrationData.players.length; i += BATCH_SIZE) {
       const batch = migrationData.players.slice(i, i + BATCH_SIZE);
@@ -481,19 +504,29 @@ export async function processMigrationFile(
       
       for (const playerData of batch) {
         if (!playerData.minecraftUuid || typeof playerData.minecraftUuid !== 'string') {
-          console.warn('Skipping player record: missing or invalid minecraftUuid');
+          console.warn('Skipping player record: missing or invalid minecraftUuid', playerData);
           recordsSkipped++;
           continue;
         }
         validPlayers.push(playerData);
         uuidsInBatch.push(playerData.minecraftUuid);
       }
+
+      console.log(`Batch ${Math.floor(i / BATCH_SIZE) + 1}: Processing ${validPlayers.length} valid players, skipped ${batch.length - validPlayers.length}`);
+      if (validPlayers.length > 0) {
+        console.log('Sample valid player from batch:', JSON.stringify(validPlayers[0], null, 2));
+      }
       
       if (validPlayers.length === 0) continue;
       
-      const existingPlayers = await Player.find({ 
-        minecraftUuid: { $in: uuidsInBatch } 
+      const existingPlayers = await Player.find({
+        minecraftUuid: { $in: uuidsInBatch }
       }).lean();
+
+      console.log(`Found ${existingPlayers.length} existing players in database for batch UUIDs:`, uuidsInBatch.slice(0, 3));
+      if (existingPlayers.length > 0) {
+        console.log('Sample existing player:', JSON.stringify(existingPlayers[0], null, 2));
+      }
       
       const existingPlayersMap = new Map(
         existingPlayers.map(p => [p.minecraftUuid, p])
@@ -506,6 +539,7 @@ export async function processMigrationFile(
           const existingPlayer = existingPlayersMap.get(playerData.minecraftUuid);
           
           if (existingPlayer) {
+            console.log(`Updating existing player: ${playerData.minecraftUuid}`);
             const tempPlayer: IPlayer = {
               ...existingPlayer,
               usernames: existingPlayer.usernames || [],
@@ -534,6 +568,7 @@ export async function processMigrationFile(
             });
           } else {
             const newPlayerDoc = {
+              _id: uuidv4(), // Add explicit _id like in login function
               minecraftUuid: playerData.minecraftUuid,
               usernames: playerData.usernames?.map(u => ({
                 username: u.username,
@@ -550,18 +585,38 @@ export async function processMigrationFile(
                 firstLogin: new Date(ip.firstLogin),
                 logins: ip.logins.map(l => new Date(l))
               })) || [],
-              punishments: playerData.punishments?.map(p => ({
-                ...p,
-                issued: new Date(p.issued),
-                started: p.started ? new Date(p.started) : undefined
-              })) || [],
+              punishments: playerData.punishments?.map(p => {
+                console.log('Converting punishment:', JSON.stringify(p, null, 2));
+
+                // Convert from migration format to IPlayer punishment format
+                const convertedPunishment = {
+                  id: p._id,  // Convert _id to id
+                  issuerName: p.issuerName,
+                  issued: new Date(p.issued),
+                  started: p.started ? new Date(p.started) : undefined,
+                  type_ordinal: p.type_ordinal,
+                  modifications: [], // Initialize empty - migration data doesn't have this
+                  notes: [], // Initialize empty - migration data doesn't have this
+                  evidence: [], // Initialize empty - migration data doesn't have this
+                  attachedTicketIds: [], // Initialize empty - migration data doesn't have this
+                  data: p.data || {} // Keep as object for MongoDB compatibility
+                };
+
+                console.log('Converted punishment:', JSON.stringify(convertedPunishment, null, 2));
+                return convertedPunishment;
+              }) || [],
               pendingNotifications: [],
-              data: playerData.data || {}
+              data: new Map(Object.entries(playerData.data || {})) // Use Map like in login function
             };
-            
+
+            console.log(`Creating NEW player document for UUID: ${playerData.minecraftUuid}`);
+            console.log('New player document structure:', JSON.stringify(newPlayerDoc, null, 2));
+
+            // Use Player constructor like in login function
+            const playerInstance = new Player(newPlayerDoc);
             bulkOps.push({
               insertOne: {
-                document: newPlayerDoc
+                document: playerInstance
               }
             });
           }
@@ -574,7 +629,54 @@ export async function processMigrationFile(
       }
       
       if (bulkOps.length > 0) {
-        await Player.bulkWrite(bulkOps, { ordered: false });
+        console.log(`Executing bulk write with ${bulkOps.length} operations`);
+        console.log('Sample operation:', JSON.stringify(bulkOps[0], null, 2));
+
+        try {
+          const result = await Player.bulkWrite(bulkOps, { ordered: false });
+          console.log('Bulk write result:', {
+            insertedCount: result.insertedCount,
+            modifiedCount: result.modifiedCount,
+            deletedCount: result.deletedCount,
+            upsertedCount: result.upsertedCount,
+            matchedCount: result.matchedCount
+          });
+
+          // Check for write errors
+          if (result.writeErrors && result.writeErrors.length > 0) {
+            console.error('Bulk write errors:', JSON.stringify(result.writeErrors, null, 2));
+          }
+
+          // Check for write concern errors
+          if (result.writeConcernErrors && result.writeConcernErrors.length > 0) {
+            console.error('Write concern errors:', JSON.stringify(result.writeConcernErrors, null, 2));
+          }
+
+          // Check if inserts failed but didn't throw errors
+          if (bulkOps.filter(op => op.insertOne).length > 0 && result.insertedCount === 0) {
+            console.error('ERROR: All insert operations failed silently!');
+            console.error('Expected inserts:', bulkOps.filter(op => op.insertOne).length);
+            console.error('Actual inserts:', result.insertedCount);
+          }
+
+          // Test a simple direct insert to check schema validation
+          if (result.insertedCount === 0 && bulkOps.length > 0 && bulkOps[0].insertOne) {
+            console.log('Testing direct insert to check schema validation...');
+            try {
+              const testDoc = new Player(bulkOps[0].insertOne.document);
+              await testDoc.validate();
+              console.log('Schema validation passed for test document');
+            } catch (validationError) {
+              console.error('Schema validation failed:', validationError);
+            }
+          }
+
+        } catch (bulkError) {
+          console.error('Bulk write operation failed:', bulkError);
+          throw bulkError;
+        }
+      } else {
+        console.log('No bulk operations to execute for this batch');
       }
       
       if (recordsProcessed % PROGRESS_UPDATE_INTERVAL === 0 || i + BATCH_SIZE >= totalRecords) {
@@ -604,7 +706,8 @@ export async function processMigrationFile(
     
     throw error;
   } finally {
-    await cleanupMigrationFiles(filePath);
+    // await cleanupMigrationFiles(filePath);
+    console.log('Migration log not cleaned for testing purposes')
   }
 }
 

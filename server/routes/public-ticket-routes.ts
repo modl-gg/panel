@@ -421,22 +421,77 @@ router.post('/tickets/unfinished', strictRateLimit, async (req: Request, res: Re
       } catch (error) {
         console.warn('Could not fetch ticket forms configuration');
       }
-      
-      // Create a map of field IDs to labels
+
+      // Create a map of field IDs to labels and field objects
       const fieldLabels: Record<string, string> = {};
+      const fieldMap: Record<string, any> = {};
+      let orderedFields: any[] = [];
+
       if (ticketForms && ticketForms[type] && ticketForms[type].fields) {
         ticketForms[type].fields.forEach((field: any) => {
           fieldLabels[field.id] = field.label;
+          fieldMap[field.id] = field;
         });
+        // Sort fields by order
+        orderedFields = ticketForms[type].fields.sort((a: any, b: any) => (a.order || 0) - (b.order || 0));
       }
-      
-      Object.entries(formData).forEach(([key, value]) => {
+
+      // Process fields in order
+      orderedFields.forEach((field) => {
+        const key = field.id;
+        const value = formData[key];
+
+        // Skip description fields as they don't take input
+        if (field.type === 'description') return;
+
+        if (value === undefined || value === null || value === '') return;
+
         // Skip chatlog for chat reports as it's already handled above
         if (type === 'chat' && key === 'chatlog') return;
-        
-        // Get the field label or fallback to the key
-        const fieldLabel = fieldLabels[key] || key;
-        contentString += `${fieldLabel}: ${value}\n\n`;
+
+        // Get the field label
+        const fieldLabel = field.label || key;
+
+        // Special formatting for Chat Messages field
+        if (fieldLabel === 'Chat Messages' && typeof value === 'string') {
+          contentString += `**${fieldLabel}:**\n`;
+          try {
+            // Try to parse each line as JSON
+            const lines = value.split('\n').filter(line => line.trim());
+            lines.forEach(line => {
+              try {
+                const msg = JSON.parse(line);
+                if (msg.username && msg.message && msg.timestamp) {
+                  const timestamp = new Date(msg.timestamp).toLocaleString();
+                  contentString += `\`[${timestamp}]\` **${msg.username}**: ${msg.message}\n`;
+                } else {
+                  contentString += `${line}\n`;
+                }
+              } catch {
+                // If not valid JSON, just add the line as-is
+                contentString += `${line}\n`;
+              }
+            });
+            contentString += `\n`;
+          } catch (error) {
+            // Fallback to original format if parsing fails
+            contentString += `${value}\n\n`;
+          }
+        } else if (field.type === 'multiple_choice' && field.options) {
+          // For multiple choice, show the option label instead of the value
+          const selectedOption = field.options.find((opt: string) => opt === value);
+          contentString += `**${fieldLabel}:** ${selectedOption || value}\n\n`;
+        } else {
+          contentString += `**${fieldLabel}:** ${value}\n\n`;
+        }
+      });
+
+      // Add any formData fields that weren't in the form configuration
+      Object.entries(formData).forEach(([key, value]) => {
+        if (!fieldMap[key] && value !== undefined && value !== null && value !== '') {
+          if (type === 'chat' && key === 'chatlog') return;
+          contentString += `**${key}:** ${value}\n\n`;
+        }
       });
     }
     
@@ -881,76 +936,99 @@ router.post('/tickets/:id/submit', async (req: Request, res: Response) => {
       } catch (error) {
         console.warn('Could not fetch ticket forms configuration');
       }
-      
-      // Create a map of field IDs to labels and field types
+
+      // Create a map of field IDs to labels and field objects
       const fieldLabels: Record<string, string> = {};
-      const fieldTypes: Record<string, string> = {};
+      const fieldMap: Record<string, any> = {};
+      let orderedFields: any[] = [];
+
       if (ticketForms && ticketForms[ticket.type] && ticketForms[ticket.type].fields) {
         ticketForms[ticket.type].fields.forEach((field: any) => {
           fieldLabels[field.id] = field.label;
-          fieldTypes[field.id] = field.type;
+          fieldMap[field.id] = field;
         });
+        // Sort fields by order
+        orderedFields = ticketForms[ticket.type].fields.sort((a: any, b: any) => (a.order || 0) - (b.order || 0));
       }
-      
-      Object.entries(formData).forEach(([key, value]) => {
+
+      // Process fields in order
+      orderedFields.forEach((field) => {
+        const key = field.id;
+        const value = formData[key];
+
         // Skip email field from message content as it's used for notifications only
         if (key === 'email' || key === 'contact_email') {
           return;
         }
-        
+
         // Skip description fields as they don't take input
-        if (fieldTypes[key] === 'description') {
+        if (field.type === 'description') {
           return;
         }
-        
-        if (value && value.toString().trim()) {
-          // Special handling for chat reports
-          if (ticket.type === 'chat' && key === 'chatlog' && ticket.chatMessages && ticket.chatMessages.length > 0) {
-            // Format chat messages with timestamps and player links
-            contentString += `**Chat Messages:**\n`;
-            try {
-              // Try to parse the chatMessages if they're stored as objects
-              const chatMessages = Array.isArray(ticket.chatMessages) ? ticket.chatMessages : [];
-              if (chatMessages.length > 0) {
-                chatMessages.forEach((msg: any) => {
-                  if (typeof msg === 'object' && msg.username && msg.message) {
-                    const timestamp = msg.timestamp ? new Date(msg.timestamp).toLocaleString() : 'Unknown time';
-                    const username = msg.username;
-                    const message = msg.message;
-                    contentString += `\`[${timestamp}]\` **${username}**: ${message}\n`;
-                  } else if (typeof msg === 'string') {
-                    // Handle string format chat messages
-                    contentString += `${msg}\n`;
-                  }
-                });
-              } else {
-                // Fallback to original chatlog field if chatMessages is empty
-                contentString += `${value}\n`;
-              }
-            } catch (error) {
-              // Fallback to original chatlog field if parsing fails
+
+        if (value === undefined || value === null || value === '') return;
+
+        // Special handling for chat reports
+        if (ticket.type === 'chat' && key === 'chatlog' && ticket.chatMessages && ticket.chatMessages.length > 0) {
+          // Format chat messages with timestamps and player links
+          contentString += `**Chat Messages:**\n`;
+          try {
+            // Try to parse the chatMessages if they're stored as objects
+            const chatMessages = Array.isArray(ticket.chatMessages) ? ticket.chatMessages : [];
+            if (chatMessages.length > 0) {
+              chatMessages.forEach((msg: any) => {
+                if (typeof msg === 'object' && msg.username && msg.message) {
+                  const timestamp = msg.timestamp ? new Date(msg.timestamp).toLocaleString() : 'Unknown time';
+                  const username = msg.username;
+                  const message = msg.message;
+                  contentString += `\`[${timestamp}]\` **${username}**: ${message}\n`;
+                } else if (typeof msg === 'string') {
+                  // Handle string format chat messages
+                  contentString += `${msg}\n`;
+                }
+              });
+            } else {
+              // Fallback to original chatlog field if chatMessages is empty
               contentString += `${value}\n`;
             }
-            contentString += `\n`;
-          } else {
-            // Get the field label from form configuration or use better fallbacks
-            let fieldLabel = fieldLabels[key];
-            
-            // If no label found, check for common field patterns or use formatted key
-            if (!fieldLabel) {
-              if (key.includes('description') || key.toLowerCase().includes('desc')) {
-                fieldLabel = 'Description';
-              } else if (key.includes('attachment') || key.toLowerCase().includes('file')) {
-                fieldLabel = 'Attachments';
-              } else if (value.includes('http') && (value.includes('.pdf') || value.includes('.png') || value.includes('.jpg'))) {
-                fieldLabel = 'Attachments';
-              } else {
-                fieldLabel = key.charAt(0).toUpperCase() + key.slice(1).replace(/([A-Z])/g, ' $1');
-              }
-            }
-            
-            contentString += `**${fieldLabel}:**\n${value}\n\n`;
+          } catch (error) {
+            // Fallback to original chatlog field if parsing fails
+            contentString += `${value}\n`;
           }
+          contentString += `\n`;
+        } else if (field.type === 'multiple_choice' && field.options) {
+          // For multiple choice, show the option label instead of the value
+          const selectedOption = field.options.find((opt: string) => opt === value);
+          const fieldLabel = field.label || key;
+          contentString += `**${fieldLabel}:** ${selectedOption || value}\n\n`;
+        } else {
+          // Get the field label
+          const fieldLabel = field.label || key;
+          contentString += `**${fieldLabel}:**\n${value}\n\n`;
+        }
+      });
+
+      // Add any formData fields that weren't in the form configuration
+      Object.entries(formData).forEach(([key, value]) => {
+        // Skip email fields
+        if (key === 'email' || key === 'contact_email') {
+          return;
+        }
+
+        if (!fieldMap[key] && value !== undefined && value !== null && value !== '') {
+          // Get a better label for unmapped fields
+          let fieldLabel = key;
+          if (key.includes('description') || key.toLowerCase().includes('desc')) {
+            fieldLabel = 'Description';
+          } else if (key.includes('attachment') || key.toLowerCase().includes('file')) {
+            fieldLabel = 'Attachments';
+          } else if (typeof value === 'string' && value.includes('http') && (value.includes('.pdf') || value.includes('.png') || value.includes('.jpg'))) {
+            fieldLabel = 'Attachments';
+          } else {
+            fieldLabel = key.charAt(0).toUpperCase() + key.slice(1).replace(/([A-Z])/g, ' $1');
+          }
+
+          contentString += `**${fieldLabel}:**\n${value}\n\n`;
         }
       });
       
