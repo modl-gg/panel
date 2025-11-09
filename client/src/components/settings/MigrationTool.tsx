@@ -8,7 +8,7 @@ import { Card } from '@modl-gg/shared-web/components/ui/card';
 import { useMigrationStatus, useStartMigration, useCancelMigration } from '@/hooks/use-data';
 
 const MIGRATION_TYPES = [
-  { value: 'litebans', label: 'LiteBans' }
+  { value: 'LiteBans', label: 'LiteBans (Spigot/Velocity/BungeeCord)' }
 ];
 
 const MigrationTool: React.FC = () => {
@@ -91,7 +91,7 @@ const MigrationTool: React.FC = () => {
   const getStatusText = (status: string) => {
     switch (status) {
       case 'idle':
-        return 'Waiting for Minecraft server...';
+        return 'Connecting to Minecraft server...';
       case 'building_json':
         return 'Building export file on Minecraft server...';
       case 'uploading_json':
@@ -99,11 +99,11 @@ const MigrationTool: React.FC = () => {
       case 'processing_data':
         return 'Processing and importing data...';
       case 'completed':
-        return 'Migration completed successfully';
+        return 'Migration completed successfully!';
       case 'failed':
-        return 'Migration failed';
+        return 'Migration failed! Make sure your Minecraft server can access ' + currentMigration.migrationType + "'s database.";
       default:
-        return 'Unknown status';
+        return 'Unknown status. Please contact support.';
     }
   };
 
@@ -170,7 +170,7 @@ const MigrationTool: React.FC = () => {
                 <div>
                   <p className="font-medium">{getStatusText(currentMigration.status)}</p>
                   <p className="text-sm text-muted-foreground">
-                    Migrating from {currentMigration.migrationType.toUpperCase()}
+                    Migrating from {currentMigration.migrationType}...
                   </p>
                 </div>
               </div>
@@ -311,7 +311,7 @@ const MigrationTool: React.FC = () => {
         <div className="space-y-3">
           <h5 className="text-sm font-medium">Recent Migrations</h5>
           <div className="space-y-2">
-            {migrationStatus.history.map((entry: any, index: number) => (
+            {migrationStatus.history.slice(0, 5).map((entry: any, index: number) => (
               <div
                 key={entry.id || index}
                 className="flex items-center justify-between p-3 rounded-lg border bg-muted/30"

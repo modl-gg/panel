@@ -116,7 +116,7 @@ export function createPanelMigrationRouter(): Router {
       }
       
       // Validate migration type
-      const validTypes = ['litebans'];
+      const validTypes = ['LiteBans'];
       if (!validTypes.includes(migrationType.toLowerCase())) {
         res.status(400).json({ error: 'Invalid migration type' });
         return;
