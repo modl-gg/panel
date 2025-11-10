@@ -1,6 +1,6 @@
 const MONGODB_OPERATOR_REGEX = /^\$/;
 const UUID_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
-const MINECRAFT_UUID_REGEX = /^[0-9a-f]{32}$/i;
+const MINECRAFT_UUID_REGEX = /^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$/i;
 const IP_ADDRESS_REGEX = /^(\d{1,3}\.){3}\d{1,3}$/;
 
 export class ValidationError extends Error {
@@ -31,13 +31,11 @@ export function validateMinecraftUuid(uuid: any): string {
     throw new ValidationError('Minecraft UUID must be a string');
   }
 
-  const normalized = uuid.replace(/-/g, '').toLowerCase();
-
-  if (!MINECRAFT_UUID_REGEX.test(normalized)) {
+  if (!MINECRAFT_UUID_REGEX.test(uuid)) {
     throw new ValidationError('Invalid Minecraft UUID format');
   }
 
-  return normalized;
+  return uuid;
 }
 
 export function validateUuid(uuid: any): string {
