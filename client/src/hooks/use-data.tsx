@@ -1204,11 +1204,7 @@ export function useMigrationStatus() {
         currentMigration.status !== 'completed' && 
         currentMigration.status !== 'failed';
       
-      // Also poll for a few seconds after completion to ensure UI updates
-      const isRecentlyCompleted = currentMigration &&
-        (currentMigration.status === 'completed' || currentMigration.status === 'failed');
-      
-      return (isActive || isRecentlyCompleted) ? 2000 : false;
+      return (isActive) ? 2 * 1000 : 30 * 1000;
     },
     refetchOnMount: true,
     refetchOnWindowFocus: true
