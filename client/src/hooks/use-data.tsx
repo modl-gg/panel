@@ -1197,14 +1197,14 @@ export function useMigrationStatus() {
       return res.json();
     },
     refetchInterval: (query) => {
-      // Poll every 2 seconds if there's an active migration
+      // Poll every second if there's an active migration
       const data = query.state.data;
       const currentMigration = data?.currentMigration;
       const isActive = currentMigration && 
         currentMigration.status !== 'completed' && 
         currentMigration.status !== 'failed';
       
-      return (isActive) ? 2 * 1000 : 30 * 1000;
+      return (isActive) ? 1000 : 30 * 1000;
     },
     refetchOnMount: true,
     refetchOnWindowFocus: true
