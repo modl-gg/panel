@@ -1,7 +1,6 @@
 import express, { type Express } from "express";
 import { createServer, type Server } from "http";
 import { WebSocketServer, WebSocket } from 'ws';
-import { setupApiRoutes } from "./api/routes";
 import { setupVerificationAndProvisioningRoutes } from './routes/verify-provision';
 import { connectToGlobalModlDb } from './db/connectionManager';
 import { type Connection as MongooseConnection } from 'mongoose';
@@ -23,6 +22,7 @@ import homepageCardRoutes from './routes/homepage-card-routes'; // Import homepa
 import publicHomepageCardRoutes from './routes/public-homepage-card-routes'; // Import public homepage card routes
 import publicTicketRoutes from './routes/public-ticket-routes'; // Import public ticket routes
 import publicPunishmentRoutes from './routes/public-punishment-routes'; // Import public punishment routes
+import publicAppealRoutes from './routes/public-appeal-routes'; // Import public appeal routes
 import { setupMinecraftRoutes } from './routes/minecraft-routes';
 import mediaRoutes from './routes/media-routes'; // Import media routes
 import storageRoutes from './routes/storage-routes'; // Import storage routes
@@ -41,8 +41,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
     console.error('Failed to connect to MongoDB:', error);
   }
 
-  // Public API, verification, and auth routes
-  setupApiRoutes(app); // Assuming these are general public APIs if any, or handled internally
   setupVerificationAndProvisioningRoutes(app);
   app.use('/api/auth', authRoutes);
   app.use('/stripe-public-webhooks', webhookRouter); // Stripe webhook on a distinct top-level public path
@@ -50,6 +48,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.use('/api/public', publicHomepageCardRoutes); // Public homepage cards
   app.use('/api/public', publicTicketRoutes); // Public ticket routes (API key protected)
   app.use('/api/public', publicPunishmentRoutes); // Public punishment routes
+  app.use('/api/public', publicAppealRoutes); // Public appeal routes
 
   // Public staff invitation acceptance - no authentication required
   app.get('/api/staff/invitations/accept', strictRateLimit, async (req, res) => {
@@ -241,6 +240,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(400).json({ error: 'No file uploaded' });
       }
 
+      // Check file size (10MB limit)
+      if (file.size > 10 * 1024 * 1024) {
+        // Clean up temp file
+        if (fs.default.existsSync(file.path)) {
+          fs.default.unlinkSync(file.path);
+        }
+        return res.status(400).json({ error: 'File size exceeds 10MB limit' });
+      }
+
       // Check if file exists
       if (!fs.default.existsSync(file.path)) {
         return res.status(400).json({ error: 'Uploaded file not found' });
@@ -249,65 +257,122 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Import services
       const { uploadMedia, isBackblazeConfigured } = await import('./services/backblaze-service');
 
+      // Check if Backblaze is configured
+      if (!isBackblazeConfigured()) {
+        // Clean up temp file
+        fs.default.unlinkSync(file.path);
+        return res.status(503).json({ 
+          error: 'Upload failed',
+          message: 'File storage service is not configured. Please contact support.'
+        });
+      }
+
       // Read file buffer
       const fileBuffer = fs.default.readFileSync(file.path);
 
       // Always clean up temp file
       fs.default.unlinkSync(file.path);
 
-      // Try Backblaze B2 first if configured, otherwise fall back to local storage
-      if (isBackblazeConfigured()) {
-        try {
-          const result = await uploadMedia({
-            file: fileBuffer,
-            fileName: file.originalname,
-            contentType: file.mimetype,
-            folder: 'tickets' as any,
-            subFolder: req.body.ticketId
-          });
+      // Upload to Backblaze B2
+      try {
+        const result = await uploadMedia({
+          file: fileBuffer,
+          fileName: file.originalname,
+          contentType: file.mimetype,
+          folder: 'tickets' as any,
+          subFolder: req.body.ticketId
+        });
 
-          return res.json({
-            success: true,
-            url: result.url,
-            key: result.key,
-            storage: 'backblaze'
-          });
-        } catch (backblazeError) {
-          console.error('[Public Upload] Backblaze upload failed, falling back to local:', backblazeError);
-          // Fall through to local storage
-        }
+        return res.json({
+          success: true,
+          url: result.url,
+          key: result.key,
+          storage: 'backblaze'
+        });
+      } catch (uploadError) {
+        console.error('[Public Upload] Backblaze upload failed for ticket:', uploadError);
+        return res.status(500).json({ 
+          error: 'Upload failed',
+          message: 'Failed to upload file to storage service. Please try again.'
+        });
       }
-
-      // Local storage fallback
-      const timestamp = Date.now();
-      const ext = path.default.extname(file.originalname);
-      const filename = `${path.default.basename(file.originalname, ext)}-${timestamp}${ext}`;
-      
-      let relativePath = `uploads/tickets`;
-      if (req.body.ticketId) {
-        relativePath += `/${req.body.ticketId}`;
-      }
-      relativePath += `/${filename}`;
-      
-      // Ensure directory exists
-      const fullDir = path.default.dirname(relativePath);
-      if (!fs.default.existsSync(fullDir)) {
-        fs.default.mkdirSync(fullDir, { recursive: true });
-      }
-      
-      // Write file to final location
-      fs.default.writeFileSync(relativePath, fileBuffer);
-      
-      return res.json({
-        success: true,
-        url: `/${relativePath}`,
-        key: relativePath,
-        storage: 'local',
-        message: 'File uploaded to local storage (Backblaze B2 not configured)'
-      });
 
     } catch (error) {
-      console.error('[Public Upload] Upload error:', error);
+      console.error('[Public Upload] Ticket upload error:', error);
+      return res.status(500).json({ 
+        error: 'Upload failed',
+        details: error instanceof Error ? error.message : 'Unknown error'
+      });
+    }
+  });
+
+  // Public media upload endpoint for appeals - no authentication required
+  app.post('/api/public/media/upload/appeal', publicUpload.single('file'), async (req: any, res: any) => {
+    try {
+      const file = req.file;
+      if (!file) {
+        return res.status(400).json({ error: 'No file uploaded' });
+      }
+
+      // Check file size (10MB limit)
+      if (file.size > 10 * 1024 * 1024) {
+        // Clean up temp file
+        if (fs.default.existsSync(file.path)) {
+          fs.default.unlinkSync(file.path);
+        }
+        return res.status(400).json({ error: 'File size exceeds 10MB limit' });
+      }
+
+      // Check if file exists
+      if (!fs.default.existsSync(file.path)) {
+        return res.status(400).json({ error: 'Uploaded file not found' });
+      }
+
+      // Import services
+      const { uploadMedia, isBackblazeConfigured } = await import('./services/backblaze-service');
+
+      // Check if Backblaze is configured
+      if (!isBackblazeConfigured()) {
+        // Clean up temp file
+        fs.default.unlinkSync(file.path);
+        return res.status(503).json({ 
+          error: 'Upload failed',
+          message: 'File storage service is not configured. Please contact support.'
+        });
+      }
+
+      // Read file buffer
+      const fileBuffer = fs.default.readFileSync(file.path);
+
+      // Always clean up temp file
+      fs.default.unlinkSync(file.path);
+
+      // Upload to Backblaze B2
+      try {
+        const result = await uploadMedia({
+          file: fileBuffer,
+          fileName: file.originalname,
+          contentType: file.mimetype,
+          folder: 'appeals' as any,
+          subFolder: req.body.appealId
+        });
+
+        return res.json({
+          success: true,
+          url: result.url,
+          key: result.key,
+          storage: 'backblaze'
+        });
+      } catch (uploadError) {
+        console.error('[Public Upload] Backblaze upload failed for appeal:', uploadError);
+        return res.status(500).json({ 
+          error: 'Upload failed',
+          message: 'Failed to upload file to storage service. Please try again.'
+        });
+      }
+
+    } catch (error) {
+      console.error('[Public Upload] Appeal upload error:', error);
       return res.status(500).json({ 
         error: 'Upload failed',
         details: error instanceof Error ? error.message : 'Unknown error'

@@ -430,22 +430,21 @@ router.post('/login', async (req: Request<{}, {}, PlayerLoginBody>, res: Respons
       return res.status(400).json({ error: 'Missing minecraftUuid, username, or ipAddress' });
     }
 
-    let ipInfo: IIPInfo = {};
-    try {
-      const response = await fetch(`http://ip-api.com/json/${ipAddress}?fields=status,message,countryCode,regionName,city,as,proxy,hosting`);
-      ipInfo = await response.json() as IIPInfo;
-      if (ipInfo.status !== 'success') {
-        console.warn(`Failed to fetch IP info for ${ipAddress}: ${ipInfo.message}`);
-      }
-    } catch (fetchError) {
-      console.error(`Error fetching IP info for ${ipAddress}:`, fetchError);
-    }
-
     let player = await Player.findOne({ minecraftUuid }); if (player) {
       const existingIp = player.ipAddresses.find((ip: any) => ip.ipAddress === ipAddress);
       if (existingIp) {
         existingIp.logins.push(new Date());
       } else {
+        let ipInfo: IIPInfo = {};
+        try {
+          const response = await fetch(`http://ip-api.com/json/${ipAddress}?fields=status,message,countryCode,regionName,city,as,proxy,hosting`);
+          ipInfo = await response.json() as IIPInfo;
+          if (ipInfo.status !== 'success') {
+            console.warn(`Failed to fetch IP info for ${ipAddress}: ${ipInfo.message}`);
+          }
+        } catch (fetchError) {
+          console.error(`Error fetching IP info for ${ipAddress}:`, fetchError);
+        }
         player.ipAddresses.push({
           ipAddress,
           country: ipInfo.countryCode,
@@ -468,7 +467,20 @@ router.post('/login', async (req: Request<{}, {}, PlayerLoginBody>, res: Respons
       await player.save({ validateBeforeSave: false });
       await createSystemLog(req.serverDbConnection, req.serverName, `Player ${username} (${minecraftUuid}) logged in. IP: ${ipAddress}.`, 'info', 'player-api');
       return res.status(200).json(player);
-    } player = new Player({
+    }
+    
+    let ipInfo: IIPInfo = {};
+    try {
+      const response = await fetch(`http://ip-api.com/json/${ipAddress}?fields=status,message,countryCode,regionName,city,as,proxy,hosting`);
+      ipInfo = await response.json() as IIPInfo;
+      if (ipInfo.status !== 'success') {
+        console.warn(`Failed to fetch IP info for ${ipAddress}: ${ipInfo.message}`);
+      }
+    } catch (fetchError) {
+      console.error(`Error fetching IP info for ${ipAddress}:`, fetchError);
+    }
+    
+    player = new Player({
       _id: uuidv4(),
       minecraftUuid,
       usernames: [{ username, date: new Date() }],

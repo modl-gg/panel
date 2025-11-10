@@ -3,19 +3,24 @@ import { Model } from 'mongoose';
 import { createSystemLog } from './log-routes';
 import { ITicket, IPlayer } from '@modl-gg/shared-web/types';
 
+/**
+ * Public appeal routes - accessible without authentication
+ * These routes allow players to submit appeals and view their appeal status
+ * Staff-only appeal management routes remain in appeal-routes.ts under authentication
+ */
 const router = express.Router();
 
 // Middleware to check for serverDbConnection
 router.use((req: Request, res: Response, next: NextFunction) => {
   if (!req.serverDbConnection) {
-    console.error('Appeal route accessed without serverDbConnection.');
+    console.error('Public appeal route accessed without serverDbConnection.');
     return res.status(503).json({
       status: 503,
       error: 'Service Unavailable: Database connection not established for this server.'
     });
   }
   if (!req.serverName) {
-    console.error('Appeal route accessed without serverName.');
+    console.error('Public appeal route accessed without serverName.');
     return res.status(500).json({
       status: 500,
       error: 'Internal Server Error: Server name not identified.'
@@ -24,25 +29,8 @@ router.use((req: Request, res: Response, next: NextFunction) => {
   next();
 });
 
-// Get appeals by punishment ID
-router.get('/punishment/:id', async (req: Request, res: Response) => {
-  const Ticket: Model<ITicket> = req.serverDbConnection!.model<ITicket>('Ticket');
-  try {
-    const appeals = await Ticket.find({ 'data.punishmentId': req.params.id, type: 'appeal' });
-    
-    if (!appeals || appeals.length === 0) {
-      return res.status(404).json({ error: 'No appeals found for this punishment' });
-    }
-    
-    res.json(appeals);
-  } catch (error) {
-    console.error(`[Server: ${req.serverName}] Error fetching appeals:`, error);
-    res.status(500).json({ error: 'Internal server error' });
-  }
-});
-
-// Get appeal by ID
-router.get('/:id', async (req: Request, res: Response) => {
+// Get appeal by ID (public access for players to check their appeal status)
+router.get('/appeals/:id', async (req: Request, res: Response) => {
   const Ticket: Model<ITicket> = req.serverDbConnection!.model<ITicket>('Ticket');
   try {
     const appeal = await Ticket.findById(req.params.id);
@@ -62,8 +50,8 @@ router.get('/:id', async (req: Request, res: Response) => {
   }
 });
 
-// Create new appeal
-router.post('/', async (req: Request, res: Response) => {
+// Create new appeal (public access for players to submit appeals)
+router.post('/appeals', async (req: Request, res: Response) => {
   const Player: Model<IPlayer> = req.serverDbConnection!.model<IPlayer>('Player');
   const Ticket: Model<ITicket> = req.serverDbConnection!.model<ITicket>('Ticket');
 
@@ -76,7 +64,7 @@ router.post('/', async (req: Request, res: Response) => {
       evidence,
       additionalData,
       attachments,
-      fieldLabels  // Add field labels mapping
+      fieldLabels
     } = req.body;
     
     if (!punishmentId || !playerUuid || !email) {
@@ -149,18 +137,15 @@ router.post('/', async (req: Request, res: Response) => {
       initialReplyContent += '\nAdditional Information:\n';
       for (const [key, value] of Object.entries(additionalData)) {
         if (Array.isArray(value)) {
-          // Handle arrays (checkboxes, multiple selections, file uploads)
           if (value.length > 0) {
             const fieldLabel = (fieldLabels && fieldLabels[key]) || key.replace(/([A-Z])/g, ' $1').replace(/^./, (str: string) => str.toUpperCase());
             
-            // Check if this is a file upload field
             const isFileUpload = value.some(item => 
               typeof item === 'object' && (item.url || item.fileName) ||
               typeof item === 'string' && (item.includes('/') || item.includes('http'))
             );
             
             if (isFileUpload) {
-              // Handle file uploads - show file names
               const fileNames = value.map(file => {
                 if (typeof file === 'object' && file.fileName) {
                   return `• ${file.fileName}`;
@@ -171,13 +156,11 @@ router.post('/', async (req: Request, res: Response) => {
               }).join('\n');
               initialReplyContent += `${fieldLabel}:\n${fileNames}\n`;
             } else {
-              // Handle regular arrays (checkboxes, multiple selections)
               const listItems = value.map(item => `• ${item}`).join('\n');
               initialReplyContent += `${fieldLabel}:\n${listItems}\n`;
             }
           }
         } else if (typeof value === 'object' && value !== null) {
-          // Handle single file upload objects
           const fieldLabel = (fieldLabels && fieldLabels[key]) || key.replace(/([A-Z])/g, ' $1').replace(/^./, (str: string) => str.toUpperCase());
           const fileObj = value as { fileName?: string; url?: string };
           if (fileObj.fileName || fileObj.url) {
@@ -185,7 +168,6 @@ router.post('/', async (req: Request, res: Response) => {
             initialReplyContent += `${fieldLabel}:\n• ${fileName}\n`;
           }
         } else if (value !== null && value !== undefined) {
-          // Handle regular fields
           const displayValue = typeof value === 'boolean' ? (value ? 'Yes' : 'No') : value;
           const fieldLabel = (fieldLabels && fieldLabels[key]) || key.replace(/([A-Z])/g, ' $1').replace(/^./, (str: string) => str.toUpperCase());
           initialReplyContent += `${fieldLabel}: ${displayValue}\n`;
@@ -195,7 +177,6 @@ router.post('/', async (req: Request, res: Response) => {
     
     initialReplyContent += `\nContact Email: ${email}`;
     
-    // If no content was added, provide a default message
     if (initialReplyContent.trim() === `Contact Email: ${email}`) {
       initialReplyContent = `Appeal submitted for punishment ${punishmentId}.\n\nContact Email: ${email}`;
     }
@@ -226,8 +207,8 @@ router.post('/', async (req: Request, res: Response) => {
   }
 });
 
-// Add reply to appeal
-router.post('/:id/replies', async (req: Request, res: Response) => {
+// Add reply to appeal (public access for players to reply to their appeals)
+router.post('/appeals/:id/replies', async (req: Request, res: Response) => {
   const Ticket: Model<ITicket> = req.serverDbConnection!.model<ITicket>('Ticket');
   try {
     const { name, content, type, staff, action, avatar, attachments } = req.body;
@@ -268,110 +249,5 @@ router.post('/:id/replies', async (req: Request, res: Response) => {
   }
 });
 
-// Update appeal status (and potentially other fields like locked)
-router.patch('/:id/status', async (req: Request, res: Response) => {
-  const Ticket: Model<ITicket> = req.serverDbConnection!.model<ITicket>('Ticket');
-  const Player: Model<IPlayer> = req.serverDbConnection!.model<IPlayer>('Player');
-  try {
-    const { status, locked, staffUsername, resolution } = req.body;
-    
-    const appeal = await Ticket.findById(req.params.id);
-    if (!appeal) {
-      return res.status(404).json({ error: 'Appeal not found' });
-    }
-    
-    if (appeal.type !== 'appeal') {
-      return res.status(400).json({ error: 'Ticket is not an appeal' });
-    }
-
-    const changes: string[] = [];
-
-    if (status && appeal.status !== status) {
-        const allowedAppealStatuses = ['Open', 'Closed', 'Under Review', 'Pending Player Response', 'Resolved', 'Approved', 'Denied', 'Accepted', 'Rejected'];
-        if (!allowedAppealStatuses.includes(status)) {
-            return res.status(400).json({ error: `Invalid status value: ${status}` });
-        }
-        changes.push(`status: '${appeal.status}' -> '${status}'`);
-        appeal.status = status;
-        
-        appeal.replies.push({
-            name: staffUsername || 'System',
-            content: `Status changed to ${status}.`,
-            type: 'system',
-            created: new Date(),
-            staff: true, 
-            action: `STATUS_${status.toUpperCase().replace(/\s+/g, '_')}`
-        });
-    }
-
-    if (resolution && appeal.data.get('resolution') !== resolution) {
-        changes.push(`resolution: '${appeal.data.get('resolution')}' -> '${resolution}'`);
-        appeal.data.set('resolution', resolution);
-         appeal.replies.push({
-            name: staffUsername || 'System',
-            content: `Resolution set to ${resolution}.`,
-            type: 'system',
-            created: new Date(),
-            staff: true,
-            action: `RESOLUTION_${resolution.toUpperCase().replace(/\s+/g, '_')}`
-        });
-    }
-
-    if (typeof locked === 'boolean' && appeal.locked !== locked) {
-        changes.push(`locked: ${appeal.locked} -> ${locked}`);
-        appeal.locked = locked;
-        appeal.replies.push({
-            name: staffUsername || 'System',
-            content: `Ticket ${locked ? 'locked' : 'unlocked'}.`,
-            type: 'system',
-            created: new Date(),
-            staff: true,
-            action: locked ? 'LOCKED' : 'UNLOCKED'
-        });
-    }
-    
-    if ((status === 'Closed' || status === 'Resolved') && (resolution === 'Approved' || resolution === 'Accepted')) {
-      const punishmentId = appeal.data.get('punishmentId');
-      const playerUuid = appeal.data.get('playerUuid');
-
-      if (punishmentId && playerUuid) {
-        const player = await Player.findOne({ minecraftUuid: playerUuid, 'punishments.id': punishmentId });
-        
-        if (player) {
-          const punishment = player.punishments.find(p => p.id === punishmentId);
-          
-          if (punishment) {
-            changes.push(`punishment ${punishmentId} modified due to appeal approval`);
-            punishment.modifications = punishment.modifications || [];
-            punishment.modifications.push({
-              type: 'Appeal Approved', 
-              issuerName: staffUsername || 'System',
-              issued: new Date(),
-            });
-            punishment.data = punishment.data || new Map<string, any>();
-            punishment.data.set('active', false); 
-            punishment.data.set('appealOutcome', resolution);
-            punishment.data.set('appealTicketId', appeal._id);
-            
-            await player.save();
-          }
-        }
-      }
-    }
-    
-    if (changes.length > 0) {
-        appeal.updatedAt = new Date();
-        await appeal.save();
-        const logMessage = `Appeal ${appeal._id} updated by ${staffUsername || 'System'}. Changes: ${changes.join(', ')}`;
-        await createSystemLog(req.serverDbConnection, req.serverName, logMessage, 'info', 'appeal-update');
-    }
-
-    res.json(appeal);
-  } catch (error) {
-    console.error(`[Server: ${req.serverName}] Error updating appeal status:`, error);
-    await createSystemLog(req.serverDbConnection, req.serverName, `Failed to update appeal ${req.params.id}: ${(error as Error).message}`, 'error', 'appeal-update');
-    res.status(500).json({ error: 'Internal server error' });
-  }
-});
-
 export default router;
+

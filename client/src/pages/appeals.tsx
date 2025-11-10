@@ -589,7 +589,7 @@ const AppealsPage = () => {
   // Fetch full appeal details when an existing appeal is found
   const fetchAppealDetails = async (appealId: string) => {
     try {
-      const response = await fetch(`/api/panel/appeals/${appealId}`);
+      const response = await fetch(`/api/public/appeals/${appealId}`);
       if (!response.ok) {
         throw new Error('Failed to fetch appeal details');
       }
@@ -627,7 +627,7 @@ const AppealsPage = () => {
 
     try {
       const { csrfFetch } = await import('@/utils/csrf');
-      const response = await csrfFetch(`/api/panel/appeals/${appealInfo.id}/replies`, {
+      const response = await csrfFetch(`/api/public/appeals/${appealInfo.id}/replies`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

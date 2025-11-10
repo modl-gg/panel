@@ -277,7 +277,7 @@ export function useCreateAppeal() {
   return useMutation({
     mutationFn: async (appealData: any) => {
       const { csrfFetch } = await import('@/utils/csrf');
-      const res = await csrfFetch('/api/panel/appeals', {
+      const res = await csrfFetch('/api/public/appeals', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json'

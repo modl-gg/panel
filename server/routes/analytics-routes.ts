@@ -1,5 +1,5 @@
 import express from 'express';
-import { startOfMonth, endOfMonth, subMonths, startOfDay, endOfDay, eachDayOfInterval, format } from 'date-fns';
+import { subMonths } from 'date-fns';
 import { isAuthenticated } from '../middleware/auth-middleware';
 // Note: Permission functions will be imported dynamically to avoid circular dependency issues
 
@@ -119,7 +119,6 @@ router.get('/overview', async (req, res) => {
     const Ticket = db.model('Ticket');
     const Player = db.model('Player');
     const Staff = db.model('Staff');
-    const Log = db.model('Log');
 
     const now = new Date();
     const thirtyDaysAgo = subMonths(now, 1);
