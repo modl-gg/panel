@@ -1,4 +1,5 @@
 import { Express, Request, Response, Router } from 'express';
+import express from 'express';
 import multer from 'multer';
 import path from 'path';
 import { promises as fs } from 'fs';
@@ -14,8 +15,10 @@ import {
 import { isSuperAdminRole } from '../../shared/role-hierarchy-core';
 import { verifyMinecraftApiKey } from '../middleware/api-auth';
 import { isAuthenticated } from '../middleware/auth-middleware';
+import { migrationUploadRateLimit } from '../middleware/migration-rate-limiter';
 
 const MIGRATIONS_TEMP_DIR = path.join(process.cwd(), 'uploads', 'migrations');
+const MIGRATION_STATUS_JSON_SIZE_LIMIT = '10mb';
 
 // Configure multer for file uploads
 const storage = multer.diskStorage({
@@ -36,13 +39,55 @@ const storage = multer.diskStorage({
 const upload = multer({
   storage,
   fileFilter: (req, file, cb) => {
-    if (file.mimetype === 'application/json' || file.originalname.endsWith('.json')) {
-      cb(null, true);
-    } else {
-      cb(new Error('Only JSON files are allowed'));
+    if (!file.originalname.endsWith('.json')) {
+      cb(new Error('Only JSON files are allowed (must have .json extension)'));
+      return;
     }
+    
+    const allowedMimeTypes = ['application/json', 'text/json', 'application/octet-stream'];
+    if (!allowedMimeTypes.includes(file.mimetype)) {
+      cb(new Error('Invalid MIME type for JSON file'));
+      return;
+    }
+    
+    cb(null, true);
+  },
+  limits: {
+    files: 1
   }
 });
+
+/**
+ * Verify that uploaded file is actually valid JSON
+ */
+async function verifyJsonContent(filePath: string): Promise<{ valid: boolean; error?: string }> {
+  try {
+    const fileContent = await fs.readFile(filePath, 'utf-8');
+    
+    if (fileContent.length === 0) {
+      return { valid: false, error: 'File is empty' };
+    }
+    
+    if (fileContent.length > 5 * 1024 * 1024 * 1024) {
+      return { valid: false, error: 'File content exceeds maximum size' };
+    }
+    
+    const firstChar = fileContent.trim()[0];
+    if (firstChar !== '{' && firstChar !== '[') {
+      return { valid: false, error: 'File does not appear to be valid JSON' };
+    }
+    
+    try {
+      JSON.parse(fileContent.substring(0, Math.min(1000, fileContent.length)));
+    } catch (parseError) {
+      return { valid: false, error: 'File content is not valid JSON format' };
+    }
+    
+    return { valid: true };
+  } catch (error: any) {
+    return { valid: false, error: `Failed to verify file content: ${error.message}` };
+  }
+}
 
 /**
  * Middleware to check Super Admin role
@@ -183,7 +228,7 @@ export default function setupMigrationRoutes(app: Express) {
    * POST /api/minecraft/migration/upload
    * Receive JSON file from Minecraft server (API key auth, validates file size)
    */
-  app.post('/api/minecraft/migration/upload', verifyMinecraftApiKey, upload.single('migrationFile'), async (req: Request, res: Response): Promise<void> => {
+  app.post('/api/minecraft/migration/upload', verifyMinecraftApiKey, migrationUploadRateLimit, upload.single('migrationFile'), async (req: Request, res: Response): Promise<void> => {
     try {
       const serverDbConnection = req.serverDbConnection!;
       const serverName = req.serverName!;
@@ -191,6 +236,27 @@ export default function setupMigrationRoutes(app: Express) {
       
       if (!file) {
         res.status(400).json({ error: 'No file uploaded' });
+        return;
+      }
+
+      const jsonVerification = await verifyJsonContent(file.path);
+      if (!jsonVerification.valid) {
+        try {
+          await fs.unlink(file.path);
+        } catch (unlinkError) {
+          console.error('Error deleting invalid file:', unlinkError);
+        }
+        
+        await updateMigrationProgress('failed', {
+          message: 'Invalid file format',
+          recordsProcessed: 0,
+          recordsSkipped: 0
+        }, serverDbConnection, jsonVerification.error || 'File is not valid JSON');
+        
+        res.status(400).json({
+          error: 'Invalid file format',
+          message: jsonVerification.error || 'File is not valid JSON'
+        });
         return;
       }
       
@@ -270,20 +336,59 @@ export default function setupMigrationRoutes(app: Express) {
    * POST /api/minecraft/migration/progress
    * Update migration progress from Minecraft server (API key auth)
    */
-  app.post('/api/minecraft/migration/progress', verifyMinecraftApiKey, async (req: Request, res: Response): Promise<void> => {
+  app.post('/api/minecraft/migration/progress', verifyMinecraftApiKey, express.json({ limit: MIGRATION_STATUS_JSON_SIZE_LIMIT }), async (req: Request, res: Response): Promise<void> => {
     try {
       const serverDbConnection = req.serverDbConnection!;
       const { status, message, recordsProcessed, totalRecords } = req.body;
       
-      if (!status || !message) {
-        res.status(400).json({ error: 'Status and message are required' });
+      if (!status || typeof status !== 'string') {
+        res.status(400).json({ error: 'Valid status is required' });
+        return;
+      }
+
+      if (status.length > 50) {
+        res.status(400).json({ error: 'Status exceeds maximum length' });
+        return;
+      }
+
+      const validStatuses = ['idle', 'building_json', 'uploading_json', 'processing_data', 'completed', 'failed'];
+      if (!validStatuses.includes(status)) {
+        res.status(400).json({ error: 'Invalid status value' });
+        return;
+      }
+      
+      if (!message || typeof message !== 'string') {
+        res.status(400).json({ error: 'Valid message is required' });
+        return;
+      }
+
+      if (message.length > 1000) {
+        res.status(400).json({ error: 'Message exceeds maximum length' });
+        return;
+      }
+
+      const sanitizedRecordsProcessed = recordsProcessed !== undefined 
+        ? Math.max(0, Math.floor(Number(recordsProcessed))) 
+        : undefined;
+      
+      const sanitizedTotalRecords = totalRecords !== undefined 
+        ? Math.max(0, Math.floor(Number(totalRecords))) 
+        : undefined;
+
+      if (sanitizedRecordsProcessed !== undefined && (isNaN(sanitizedRecordsProcessed) || sanitizedRecordsProcessed < 0)) {
+        res.status(400).json({ error: 'Invalid recordsProcessed value' });
+        return;
+      }
+
+      if (sanitizedTotalRecords !== undefined && (isNaN(sanitizedTotalRecords) || sanitizedTotalRecords < 0)) {
+        res.status(400).json({ error: 'Invalid totalRecords value' });
         return;
       }
       
       await updateMigrationProgress(status, {
-        message,
-        recordsProcessed,
-        totalRecords
+        message: message.trim(),
+        recordsProcessed: sanitizedRecordsProcessed,
+        totalRecords: sanitizedTotalRecords
       }, serverDbConnection);
       
       res.json({ success: true });

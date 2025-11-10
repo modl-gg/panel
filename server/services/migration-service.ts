@@ -4,6 +4,19 @@ import path from 'path';
 import { v4 as uuidv4 } from 'uuid';
 import { IPlayer } from '@modl-gg/shared-web/types';
 import { connectToGlobalModlDb } from '../db/connectionManager';
+import { parseSecureJSON, SecureJSONError } from '../utils/secure-json';
+import {
+  sanitizeString,
+  validateMinecraftUuid,
+  validateDate,
+  validateOptionalDate,
+  validateNumber,
+  validateBoolean,
+  validateIpAddress,
+  validateArray,
+  sanitizeObject,
+  ValidationError
+} from '../utils/input-sanitization';
 
 const DEFAULT_FILE_SIZE_LIMIT = 5 * 1024 * 1024 * 1024; // 5GB in bytes
 const MIGRATIONS_TEMP_DIR = path.join(process.cwd(), 'uploads', 'migrations');
@@ -51,7 +64,16 @@ interface MigrationPlayerData {
   minecraftUuid: string;
   usernames: Array<{ username: string; date: string }>;
   notes: Array<{ text: string; date: string; issuerName: string }>;
-  ipList: Array<{ ipAddress: string; country?: string; firstLogin: string; logins: string[] }>;
+  ipList: Array<{ 
+    ipAddress: string; 
+    country?: string; 
+    region?: string;
+    asn?: string;
+    proxy?: boolean;
+    hosting?: boolean;
+    firstLogin: string; 
+    logins: string[] 
+  }>;
   punishments: Array<{
     _id: string;
     type: string;
@@ -61,6 +83,10 @@ interface MigrationPlayerData {
     issuerName: string;
     duration?: number;
     started?: string;
+    notes?: Array<{ text: string; issuerName: string; date: string }>;
+    evidence?: Array<string | { text: string; issuerName: string; date: string }>;
+    attachedTicketIds?: string[];
+    modifications?: any[];
     data?: Record<string, any>;
   }>;
   data?: Record<string, any>;
@@ -349,19 +375,188 @@ export async function getMigrationStatus(serverDbConnection: Connection): Promis
 }
 
 /**
- * Validate migration JSON schema
+ * Validate migration JSON schema with comprehensive security checks
  */
 export function validateMigrationJSON(data: any): { valid: boolean; error?: string } {
-  if (!data || typeof data !== 'object') {
-    return { valid: false, error: 'Invalid JSON structure' };
+  try {
+    if (!data || typeof data !== 'object') {
+      return { valid: false, error: 'Invalid JSON structure' };
+    }
+    
+    if (!Array.isArray(data.players)) {
+      return { valid: false, error: 'Missing or invalid "players" array' };
+    }
+
+    if (data.players.length === 0) {
+      return { valid: false, error: 'Players array cannot be empty' };
+    }
+
+    if (data.players.length > 1000000) {
+      return { valid: false, error: 'Players array exceeds maximum allowed length of 1,000,000' };
+    }
+
+    const sampleSize = Math.min(100, data.players.length);
+    for (let i = 0; i < sampleSize; i++) {
+      const randomIndex = Math.floor(Math.random() * data.players.length);
+      const player = data.players[randomIndex];
+
+      if (!player || typeof player !== 'object') {
+        return { valid: false, error: `Invalid player object at index ${randomIndex}` };
+      }
+
+      if (!player.minecraftUuid || typeof player.minecraftUuid !== 'string') {
+        return { valid: false, error: `Missing or invalid minecraftUuid at index ${randomIndex}` };
+      }
+
+      try {
+        validateMinecraftUuid(player.minecraftUuid);
+      } catch (error: any) {
+        return { valid: false, error: `Invalid Minecraft UUID format at index ${randomIndex}: ${error.message}` };
+      }
+
+      if (player.usernames !== undefined && !Array.isArray(player.usernames)) {
+        return { valid: false, error: `Invalid usernames field at index ${randomIndex}` };
+      }
+
+      if (player.usernames && player.usernames.length > 1000) {
+        return { valid: false, error: `Too many usernames (${player.usernames.length}) at index ${randomIndex}` };
+      }
+
+      if (player.notes !== undefined && !Array.isArray(player.notes)) {
+        return { valid: false, error: `Invalid notes field at index ${randomIndex}` };
+      }
+
+      if (player.notes && player.notes.length > 10000) {
+        return { valid: false, error: `Too many notes (${player.notes.length}) at index ${randomIndex}` };
+      }
+
+      if (player.ipList !== undefined && !Array.isArray(player.ipList)) {
+        return { valid: false, error: `Invalid ipList field at index ${randomIndex}` };
+      }
+
+      if (player.ipList && player.ipList.length > 10000) {
+        return { valid: false, error: `Too many IP addresses (${player.ipList.length}) at index ${randomIndex}` };
+      }
+
+      if (player.punishments !== undefined && !Array.isArray(player.punishments)) {
+        return { valid: false, error: `Invalid punishments field at index ${randomIndex}` };
+      }
+
+      if (player.punishments && player.punishments.length > 50000) {
+        return { valid: false, error: `Too many punishments (${player.punishments.length}) at index ${randomIndex}` };
+      }
+    }
+    
+    return { valid: true };
+  } catch (error: any) {
+    return { valid: false, error: `Validation error: ${error.message}` };
   }
-  
-  if (!Array.isArray(data.players)) {
-    return { valid: false, error: 'Missing or invalid "players" array' };
+}
+
+/**
+ * Validate and sanitize a player data object from migration
+ */
+function validateAndSanitizePlayerData(playerData: any, recordIndex: number): MigrationPlayerData {
+  try {
+    const minecraftUuid = validateMinecraftUuid(playerData.minecraftUuid);
+
+    const usernames = validateArray(playerData.usernames || [], 'usernames', 1000).map((u: any, idx: number) => ({
+      username: sanitizeString(u.username, `username at ${recordIndex}:${idx}`, 100),
+      date: validateDate(u.date, `username.date at ${recordIndex}:${idx}`).toISOString()
+    }));
+
+    const notes = validateArray(playerData.notes || [], 'notes', 10000).map((n: any, idx: number) => ({
+      text: sanitizeString(n.text, `note.text at ${recordIndex}:${idx}`, 5000),
+      date: validateDate(n.date, `note.date at ${recordIndex}:${idx}`).toISOString(),
+      issuerName: sanitizeString(n.issuerName, `note.issuerName at ${recordIndex}:${idx}`, 100)
+    }));
+
+    const ipList = validateArray(playerData.ipList || [], 'ipList', 10000).map((ip: any, idx: number) => {
+      const ipAddress = validateIpAddress(ip.ipAddress, `ipAddress at ${recordIndex}:${idx}`);
+      const logins = validateArray(ip.logins || [], `logins at ${recordIndex}:${idx}`, 100000).map((l: any) =>
+        validateDate(l, `login date at ${recordIndex}:${idx}`).toISOString()
+      );
+
+      return {
+        ipAddress,
+        country: ip.country ? sanitizeString(ip.country, `country at ${recordIndex}:${idx}`, 100) : undefined,
+        region: ip.region ? sanitizeString(ip.region, `region at ${recordIndex}:${idx}`, 100) : undefined,
+        asn: ip.asn ? sanitizeString(ip.asn, `asn at ${recordIndex}:${idx}`, 100) : undefined,
+        proxy: validateBoolean(ip.proxy, `proxy at ${recordIndex}:${idx}`, false),
+        hosting: validateBoolean(ip.hosting, `hosting at ${recordIndex}:${idx}`, false),
+        firstLogin: validateDate(ip.firstLogin, `firstLogin at ${recordIndex}:${idx}`).toISOString(),
+        logins
+      };
+    });
+
+    const punishments = validateArray(playerData.punishments || [], 'punishments', 50000).map((p: any, idx: number) => {
+      const punishment: any = {
+        _id: sanitizeString(p._id, `punishment._id at ${recordIndex}:${idx}`, 100),
+        type: sanitizeString(p.type, `punishment.type at ${recordIndex}:${idx}`, 50),
+        type_ordinal: validateNumber(p.type_ordinal, `punishment.type_ordinal at ${recordIndex}:${idx}`, 0, 10),
+        reason: sanitizeString(p.reason || '', `punishment.reason at ${recordIndex}:${idx}`, 1000),
+        issued: validateDate(p.issued, `punishment.issued at ${recordIndex}:${idx}`).toISOString(),
+        issuerName: sanitizeString(p.issuerName, `punishment.issuerName at ${recordIndex}:${idx}`, 100)
+      };
+
+      if (p.duration !== undefined) {
+        punishment.duration = validateNumber(p.duration, `punishment.duration at ${recordIndex}:${idx}`, -1);
+      }
+
+      if (p.started) {
+        punishment.started = validateDate(p.started, `punishment.started at ${recordIndex}:${idx}`).toISOString();
+      }
+
+      if (p.notes && Array.isArray(p.notes)) {
+        punishment.notes = validateArray(p.notes, `punishment.notes at ${recordIndex}:${idx}`, 1000).map((note: any, nIdx: number) => ({
+          text: sanitizeString(note.text || '', `punishment.note.text at ${recordIndex}:${idx}:${nIdx}`, 5000),
+          issuerName: sanitizeString(note.issuerName || 'Unknown', `punishment.note.issuerName at ${recordIndex}:${idx}:${nIdx}`, 100),
+          date: validateDate(note.date || p.issued, `punishment.note.date at ${recordIndex}:${idx}:${nIdx}`).toISOString()
+        }));
+      }
+
+      if (p.evidence && Array.isArray(p.evidence)) {
+        punishment.evidence = validateArray(p.evidence, `punishment.evidence at ${recordIndex}:${idx}`, 1000).map((ev: any) => {
+          if (typeof ev === 'string') {
+            return sanitizeString(ev, `punishment.evidence string at ${recordIndex}:${idx}`, 10000);
+          }
+          return {
+            text: sanitizeString(ev.text || '', `punishment.evidence.text at ${recordIndex}:${idx}`, 10000),
+            issuerName: sanitizeString(ev.issuerName || 'Unknown', `punishment.evidence.issuerName at ${recordIndex}:${idx}`, 100),
+            date: validateDate(ev.date || p.issued, `punishment.evidence.date at ${recordIndex}:${idx}`).toISOString()
+          };
+        });
+      }
+
+      if (p.attachedTicketIds && Array.isArray(p.attachedTicketIds)) {
+        punishment.attachedTicketIds = validateArray(p.attachedTicketIds, `punishment.attachedTicketIds at ${recordIndex}:${idx}`, 100)
+          .map((tid: any) => sanitizeString(tid, `punishment.attachedTicketId at ${recordIndex}:${idx}`, 100));
+      }
+
+      if (p.modifications && Array.isArray(p.modifications)) {
+        punishment.modifications = sanitizeObject(validateArray(p.modifications, `punishment.modifications at ${recordIndex}:${idx}`, 1000));
+      }
+
+      if (p.data && typeof p.data === 'object') {
+        punishment.data = sanitizeObject(p.data);
+      }
+
+      return punishment;
+    });
+
+    const data = playerData.data && typeof playerData.data === 'object' ? sanitizeObject(playerData.data) : undefined;
+
+    return {
+      minecraftUuid,
+      usernames,
+      notes,
+      ipList,
+      punishments,
+      data
+    };
+  } catch (error: any) {
+    throw new ValidationError(`Player validation failed at record ${recordIndex}: ${error.message}`);
   }
-  
-  // Basic structure validation (lenient - we'll skip invalid records during processing)
-  return { valid: true };
 }
 
 /**
@@ -369,9 +564,9 @@ export function validateMigrationJSON(data: any): { valid: boolean; error?: stri
  */
 function mergePlayerDocument(existing: IPlayer, migration: MigrationPlayerData): IPlayer {
   // Merge usernames (deduplicate by username)
-  const existingUsernames = new Set(existing.usernames.map(u => u.username));
-  const newUsernames = migration.usernames.filter(u => !existingUsernames.has(u.username));
-  existing.usernames = [...existing.usernames, ...newUsernames.map(u => ({
+  const existingUsernames = new Set(existing.usernames.map((u: any) => u.username));
+  const newUsernames = migration.usernames.filter((u: any) => !existingUsernames.has(u.username));
+  existing.usernames = [...existing.usernames, ...newUsernames.map((u: any) => ({
     username: u.username,
     date: new Date(u.date)
   }))];
@@ -384,19 +579,19 @@ function mergePlayerDocument(existing: IPlayer, migration: MigrationPlayerData):
   }))];
   
   // Merge IP list
-  const existingIPs = new Map(existing.ipList.map(ip => [ip.ipAddress, ip]));
-  migration.ipList.forEach(migrationIP => {
-    const existingIP = existingIPs.get(migrationIP.ipAddress);
+  const existingIPs = new Map(existing.ipList.map((ip: any) => [ip.ipAddress, ip]));
+  migration.ipList.forEach((migrationIP: any) => {
+    const existingIP = existingIPs.get(migrationIP.ipAddress) as any;
     if (existingIP) {
       // Merge login arrays
       const allLogins = [
-        ...existingIP.logins.map(l => new Date(l)),
-        ...migrationIP.logins.map(l => new Date(l))
+        ...existingIP.logins.map((l: any) => new Date(l)),
+        ...migrationIP.logins.map((l: any) => new Date(l))
       ];
       // Sort and deduplicate
-      const uniqueLogins = Array.from(new Set(allLogins.map(d => d.getTime())))
+      const uniqueLogins = Array.from(new Set(allLogins.map((d: any) => d.getTime())))
         .sort()
-        .map(t => new Date(t));
+        .map((t: number) => new Date(t));
       existingIP.logins = uniqueLogins;
       
       // Update first login if migration has an earlier one
@@ -404,31 +599,62 @@ function mergePlayerDocument(existing: IPlayer, migration: MigrationPlayerData):
       if (migrationFirstLogin < new Date(existingIP.firstLogin)) {
         existingIP.firstLogin = migrationFirstLogin;
       }
+      
+      // Update optional fields if migration has them and existing doesn't
+      if (migrationIP.region && !existingIP.region) {
+        existingIP.region = migrationIP.region;
+      }
+      if (migrationIP.asn && !existingIP.asn) {
+        existingIP.asn = migrationIP.asn;
+      }
+      if (migrationIP.proxy !== undefined && existingIP.proxy === undefined) {
+        existingIP.proxy = migrationIP.proxy;
+      }
+      if (migrationIP.hosting !== undefined && existingIP.hosting === undefined) {
+        existingIP.hosting = migrationIP.hosting;
+      }
     } else {
       // Add new IP
       existing.ipList.push({
         ipAddress: migrationIP.ipAddress,
         country: migrationIP.country,
+        region: migrationIP.region,
+        asn: migrationIP.asn,
+        proxy: migrationIP.proxy ?? false,
+        hosting: migrationIP.hosting ?? false,
         firstLogin: new Date(migrationIP.firstLogin),
-        logins: migrationIP.logins.map(l => new Date(l))
+        logins: migrationIP.logins.map((l: any) => new Date(l))
       });
     }
   });
   
   // Append all punishments (use unique _id to avoid duplicates)
-  const existingPunishmentIds = new Set(existing.punishments.map(p => p.id?.toString()));
-  const newPunishments = migration.punishments.filter(p => !existingPunishmentIds.has(p._id));
-  existing.punishments = [...existing.punishments, ...newPunishments.map(p => ({
+  const existingPunishmentIds = new Set(existing.punishments.map((p: any) => p.id?.toString()));
+  const newPunishments = migration.punishments.filter((p: any) => !existingPunishmentIds.has(p._id));
+  existing.punishments = [...existing.punishments, ...newPunishments.map((p: any) => ({
     id: p._id,  // Convert _id to id for schema compatibility
     issuerName: p.issuerName,
     issued: new Date(p.issued),
     started: p.started ? new Date(p.started) : undefined,
     type_ordinal: p.type_ordinal,
-    modifications: [], // Initialize empty arrays for schema compliance
-    notes: [],
-    evidence: [],
-    attachedTicketIds: [],
-    data: p.data || {}
+    modifications: p.modifications || [], // Use from migration if available
+    notes: p.notes?.map((note: any) => ({
+      text: note.text || '',
+      issuerName: note.issuerName || 'Unknown',
+      date: new Date(note.date || p.issued)
+    })) || [], // Use notes from migration if available
+    evidence: p.evidence?.map((ev: any) => {
+      if (typeof ev === 'string') {
+        return ev;
+      }
+      return {
+        text: ev.text || '',
+        issuerName: ev.issuerName || 'Unknown',
+        date: new Date(ev.date || p.issued)
+      };
+    }) || [], // Use evidence from migration if available
+    attachedTicketIds: p.attachedTicketIds || [], // Use from migration if available
+    data: p.data || {} // Keep as object for MongoDB compatibility
   }))];
   
   // Merge data objects (migration data takes precedence)
@@ -465,8 +691,19 @@ export async function processMigrationFile(
       recordsSkipped: 0
     }, serverDbConnection);
     
-    const fileContent = await fs.readFile(filePath, 'utf-8');
-    const migrationData = JSON.parse(fileContent);
+    let migrationData: any;
+    try {
+      migrationData = await parseSecureJSON(filePath, {
+        maxArrayLength: 1000000,
+        maxStringLength: 10000,
+        maxNestingDepth: 20
+      });
+    } catch (error: any) {
+      if (error instanceof SecureJSONError) {
+        throw new Error(`Security validation failed: ${error.message}`);
+      }
+      throw error;
+    }
     
     const validation = validateMigrationJSON(migrationData);
     if (!validation.valid) {
@@ -502,14 +739,25 @@ export async function processMigrationFile(
       const validPlayers: MigrationPlayerData[] = [];
       const uuidsInBatch: string[] = [];
       
-      for (const playerData of batch) {
-        if (!playerData.minecraftUuid || typeof playerData.minecraftUuid !== 'string') {
-          console.warn('Skipping player record: missing or invalid minecraftUuid', playerData);
+      for (let j = 0; j < batch.length; j++) {
+        const playerData = batch[j];
+        const recordIndex = i + j;
+        
+        try {
+          if (!playerData.minecraftUuid || typeof playerData.minecraftUuid !== 'string') {
+            console.warn(`Skipping player record ${recordIndex}: missing or invalid minecraftUuid`);
+            recordsSkipped++;
+            continue;
+          }
+
+          const sanitizedPlayer = validateAndSanitizePlayerData(playerData, recordIndex);
+          validPlayers.push(sanitizedPlayer);
+          uuidsInBatch.push(sanitizedPlayer.minecraftUuid);
+        } catch (error: any) {
+          console.warn(`Skipping player record ${recordIndex}: ${error.message}`);
           recordsSkipped++;
           continue;
         }
-        validPlayers.push(playerData);
-        uuidsInBatch.push(playerData.minecraftUuid);
       }
 
       console.log(`Batch ${Math.floor(i / BATCH_SIZE) + 1}: Processing ${validPlayers.length} valid players, skipped ${batch.length - validPlayers.length}`);
@@ -582,6 +830,10 @@ export async function processMigrationFile(
               ipList: playerData.ipList?.map(ip => ({
                 ipAddress: ip.ipAddress,
                 country: ip.country,
+                region: ip.region,
+                asn: ip.asn,
+                proxy: ip.proxy ?? false,
+                hosting: ip.hosting ?? false,
                 firstLogin: new Date(ip.firstLogin),
                 logins: ip.logins.map(l => new Date(l))
               })) || [],
@@ -595,10 +847,23 @@ export async function processMigrationFile(
                   issued: new Date(p.issued),
                   started: p.started ? new Date(p.started) : undefined,
                   type_ordinal: p.type_ordinal,
-                  modifications: [], // Initialize empty - migration data doesn't have this
-                  notes: [], // Initialize empty - migration data doesn't have this
-                  evidence: [], // Initialize empty - migration data doesn't have this
-                  attachedTicketIds: [], // Initialize empty - migration data doesn't have this
+                  modifications: p.modifications || [], // Use from migration if available
+                  notes: p.notes?.map((note: any) => ({
+                    text: note.text || '',
+                    issuerName: note.issuerName || 'Unknown',
+                    date: new Date(note.date || p.issued)
+                  })) || [], // Use notes from migration if available
+                  evidence: p.evidence?.map((ev: any) => {
+                    if (typeof ev === 'string') {
+                      return ev;
+                    }
+                    return {
+                      text: ev.text || '',
+                      issuerName: ev.issuerName || 'Unknown',
+                      date: new Date(ev.date || p.issued)
+                    };
+                  }) || [], // Use evidence from migration if available
+                  attachedTicketIds: p.attachedTicketIds || [], // Use from migration if available
                   data: p.data || {} // Keep as object for MongoDB compatibility
                 };
 
@@ -643,13 +908,14 @@ export async function processMigrationFile(
           });
 
           // Check for write errors
-          if (result.writeErrors && result.writeErrors.length > 0) {
-            console.error('Bulk write errors:', JSON.stringify(result.writeErrors, null, 2));
+          if (result.hasWriteErrors()) {
+            console.error('Bulk write errors:', JSON.stringify(result.getWriteErrors(), null, 2));
           }
 
           // Check for write concern errors
-          if (result.writeConcernErrors && result.writeConcernErrors.length > 0) {
-            console.error('Write concern errors:', JSON.stringify(result.writeConcernErrors, null, 2));
+          const writeConcernError = result.getWriteConcernError();
+          if (writeConcernError) {
+            console.error('Write concern error:', JSON.stringify(writeConcernError, null, 2));
           }
 
           // Check if inserts failed but didn't throw errors
@@ -706,8 +972,11 @@ export async function processMigrationFile(
     
     throw error;
   } finally {
-    // await cleanupMigrationFiles(filePath);
-    console.log('Migration log not cleaned for testing purposes')
+    try {
+      await cleanupMigrationFiles(filePath);
+    } catch (cleanupError) {
+      console.error('Error during file cleanup (non-fatal):', cleanupError);
+    }
   }
 }
 
