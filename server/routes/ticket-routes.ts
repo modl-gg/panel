@@ -60,28 +60,7 @@ async function addNotificationToPlayer(
     const playerExists = await Player.countDocuments({ minecraftUuid: playerUuid });
     
     if (!playerExists) {
-      // Try to create a new player document
-      try {
-        const newPlayer = new Player({
-          _id: `player-${playerUuid}`,
-          minecraftUuid: playerUuid,
-          usernames: [],
-          notes: [],
-          ipList: [],
-          ipAddresses: [],
-          punishments: [],
-          pendingNotifications: [notification],
-          data: new Map()
-        });
-        
-        await newPlayer.save();
-        return;
-      } catch (saveError: any) {
-        // If save fails due to duplicate key, player was created by another process
-        if (saveError.code !== 11000) {
-          throw saveError;
-        }
-      }
+      return;
     }
 
     // First, check if we need to migrate from old string format
@@ -518,9 +497,7 @@ router.post('/:id/replies', async (req: Request<{ id: string }, {}, AddReplyBody
     // Add notification for staff replies
     if (newReply.staff && ticket.creatorUuid) {
       // Build panel URL from server name
-      const panelUrl = process.env.NODE_ENV === 'development' 
-        ? `http://localhost:5173`
-        : `https://${req.serverName}.${process.env.DOMAIN || 'modl.gg'}`;
+      const panelUrl = 'https://' + (req.modlServer?.customDomain_override || `${req.modlServer?.customDomain}.${process.env.DOMAIN || 'modl.gg'}`);
       
       const notification = createTicketReplyNotification(
         req.params.id, 
@@ -712,9 +689,7 @@ router.patch('/:id', async (req: Request<{ id: string }, {}, UpdateTicketBody>, 
         
         
         // Build panel URL from server name
-        const panelUrl = process.env.NODE_ENV === 'development' 
-          ? `http://localhost:5173`
-          : `https://${req.serverName}.${process.env.DOMAIN || 'modl.gg'}`;
+        const panelUrl = 'https://' + (req.modlServer?.customDomain_override || `${req.modlServer?.customDomain}.${process.env.DOMAIN || 'modl.gg'}`);
         
         const notification = createTicketReplyNotification(
           req.params.id, 

@@ -139,30 +139,37 @@ router.get('/', async (req: Request, res: Response): Promise<void> => {
   const Player = req.serverDbConnection!.model<IPlayer>('Player');
   try {
     const search = req.query.search as string;
-    let query = {};
-    
-    if (search) {
-      // Check if search term is a UUID
-      const isUuid = /^[0-9a-f]{8}-?[0-9a-f]{4}-?[0-9a-f]{4}-?[0-9a-f]{4}-?[0-9a-f]{12}$/i.test(search);
-      
-      if (isUuid) {
-        query = { minecraftUuid: search };
-      } else {
-        // Search by username (case-insensitive, exact match for better accuracy)
-        query = {
-          'usernames.username': { $regex: new RegExp(`^${search.replace(/[-\/\\^$*+?.()|[\]{}]/g, '\\$&')}$`, 'i') }
-        };
-      }
+
+    if (!search || search.trim().length < 2) {
+      res.status(400).json({
+        error: 'Search parameter is required and must be at least 2 characters long'
+      });
+      return;
     }
-    
-    const players = await Player.find(query);
+
+    const searchTerm = search.trim();
+    let query = {};
+
+    // Check if search term is a UUID
+    const isUuid = /^[0-9a-f]{8}-?[0-9a-f]{4}-?[0-9a-f]{4}-?[0-9a-f]{4}-?[0-9a-f]{12}$/i.test(searchTerm);
+
+    if (isUuid) {
+      query = { minecraftUuid: searchTerm };
+    } else {
+      // Search by username (case-insensitive, exact match for better accuracy)
+      query = {
+        'usernames.username': { $regex: new RegExp(`^${searchTerm.replace(/[-\/\\^$*+?.()|[\]{}]/g, '\\$&')}$`, 'i') }
+      };
+    }
+
+    const players = await Player.find(query).limit(100);
     const formattedPlayers = players.map(player => {
       // Check if player is currently online
       const isOnline = player.data?.get('isOnline') === true;
-      
+
       // Check if player is banned
       const isBanned = player.punishments?.some((p: any) => p.type === 'BAN' && p.active);
-      
+
       // Determine status
       let status = 'Offline';
       if (isBanned) {
@@ -170,11 +177,11 @@ router.get('/', async (req: Request, res: Response): Promise<void> => {
       } else if (isOnline) {
         status = 'Online';
       }
-      
+
       return {
         uuid: player.minecraftUuid,
-        username: player.usernames?.length > 0 
-          ? player.usernames[player.usernames.length - 1].username 
+        username: player.usernames?.length > 0
+          ? player.usernames[player.usernames.length - 1].username
           : 'Unknown',
         status: status,
         lastOnline: player.data?.get('lastLogin') || null
@@ -200,7 +207,7 @@ router.get('/:uuid', async (req: Request<{ uuid: string }>, res: Response): Prom
     try {
       const Settings = req.serverDbConnection!.model('Settings');
       const settings = await Settings.findOne({});
-      
+
       let punishmentTypes = [];
       let thresholds = {
         gameplay: { medium: 5, habitual: 10 },
@@ -210,8 +217,8 @@ router.get('/:uuid', async (req: Request<{ uuid: string }>, res: Response): Prom
       if (settings?.settings) {
         // Get punishment types
         if (settings.settings.punishmentTypes) {
-          punishmentTypes = typeof settings.settings.punishmentTypes === 'string' 
-            ? JSON.parse(settings.settings.punishmentTypes) 
+          punishmentTypes = typeof settings.settings.punishmentTypes === 'string'
+            ? JSON.parse(settings.settings.punishmentTypes)
             : settings.settings.punishmentTypes;
         }
 
@@ -220,7 +227,7 @@ router.get('/:uuid', async (req: Request<{ uuid: string }>, res: Response): Prom
           const settingsThresholds = typeof settings.settings.statusThresholds === 'string'
             ? JSON.parse(settings.settings.statusThresholds)
             : settings.settings.statusThresholds;
-          
+
           if (settingsThresholds) {
             thresholds = settingsThresholds;
           }
@@ -238,19 +245,19 @@ router.get('/:uuid', async (req: Request<{ uuid: string }>, res: Response): Prom
       if (ipList && ipList.length > 0) {
         // Sort IPs by recency first
         const sortedIPs = ipList.sort((a, b) => {
-          const aLatest = a.logins && a.logins.length > 0 ? 
-            Math.max(...a.logins.map(login => new Date(login).getTime())) : 
+          const aLatest = a.logins && a.logins.length > 0 ?
+            Math.max(...a.logins.map(login => new Date(login).getTime())) :
             new Date(a.firstLogin).getTime();
-          const bLatest = b.logins && b.logins.length > 0 ? 
-            Math.max(...b.logins.map(login => new Date(login).getTime())) : 
+          const bLatest = b.logins && b.logins.length > 0 ?
+            Math.max(...b.logins.map(login => new Date(login).getTime())) :
             new Date(b.firstLogin).getTime();
           return bLatest - aLatest;
         });
-        
+
         // Prefer latest non-proxy IP, fallback to latest proxy IP if no non-proxy exists
         const latestNonProxyIP = sortedIPs.find(ip => !ip.proxy && !ip.hosting);
         const latestIP = latestNonProxyIP || sortedIPs[0];
-        
+
         if (latestIP) {
           latestIPData = {
             country: latestIP.country,
@@ -266,7 +273,7 @@ router.get('/:uuid', async (req: Request<{ uuid: string }>, res: Response): Prom
       // Calculate additional player metrics
       const totalPlaytime = player.data?.get('totalPlaytime') || 0; // in milliseconds
       const lastServer = player.data?.get('lastServer') || 'Unknown';
-      
+
       // Convert player data Map to plain object for JSON serialization
       const playerObj = player.toObject();
       const dataObj: { [key: string]: any } = {};
@@ -292,7 +299,7 @@ router.get('/:uuid', async (req: Request<{ uuid: string }>, res: Response): Prom
         // Transform punishments to include properly extracted data from Maps
         punishments: player.punishments.map((punishment: any) => {
           const punishmentObj = punishment.toObject ? punishment.toObject() : punishment;
-          
+
           // If data is a Map, convert it to a plain object
           if (punishmentObj.data && punishmentObj.data instanceof Map) {
             const dataObj: { [key: string]: any } = {};
@@ -301,12 +308,12 @@ router.get('/:uuid', async (req: Request<{ uuid: string }>, res: Response): Prom
             }
             punishmentObj.data = dataObj;
           }
-          
+
           // Extract common fields that might be in the data Map
           const expires = punishmentObj.data?.expires;
           const duration = punishmentObj.data?.duration;
           const active = punishmentObj.data?.active;
-          
+
           return {
             ...punishmentObj,
             expires: expires,
@@ -316,28 +323,29 @@ router.get('/:uuid', async (req: Request<{ uuid: string }>, res: Response): Prom
         })
       };
 
-      res.json(enhancedPlayer);    } catch (statusError) {
+      res.json(enhancedPlayer);
+    } catch (statusError) {
       console.error('Error calculating player status:', statusError);
-      
+
       // Calculate latest IP data with proxy/non-proxy priority (same as above)
       let latestIPData = null;
       const ipList = player.ipList || player.ipAddresses || []; // Support both field names
       if (ipList && ipList.length > 0) {
         // Sort IPs by recency first
         const sortedIPs = ipList.sort((a, b) => {
-          const aLatest = a.logins && a.logins.length > 0 ? 
-            Math.max(...a.logins.map(login => new Date(login).getTime())) : 
+          const aLatest = a.logins && a.logins.length > 0 ?
+            Math.max(...a.logins.map(login => new Date(login).getTime())) :
             new Date(a.firstLogin).getTime();
-          const bLatest = b.logins && b.logins.length > 0 ? 
-            Math.max(...b.logins.map(login => new Date(login).getTime())) : 
+          const bLatest = b.logins && b.logins.length > 0 ?
+            Math.max(...b.logins.map(login => new Date(login).getTime())) :
             new Date(b.firstLogin).getTime();
           return bLatest - aLatest;
         });
-        
+
         // Prefer latest non-proxy IP, fallback to latest proxy IP if no non-proxy exists
         const latestNonProxyIP = sortedIPs.find(ip => !ip.proxy && !ip.hosting);
         const latestIP = latestNonProxyIP || sortedIPs[0];
-        
+
         if (latestIP) {
           latestIPData = {
             country: latestIP.country,
@@ -349,11 +357,11 @@ router.get('/:uuid', async (req: Request<{ uuid: string }>, res: Response): Prom
           };
         }
       }
-      
+
       // Calculate additional player metrics (same as above)
       const totalPlaytime = player.data?.get('totalPlaytime') || 0; // in milliseconds
       const lastServer = player.data?.get('lastServer') || 'Unknown';
-      
+
       // Convert player data Map to plain object for JSON serialization (same as above)
       const playerObj = player.toObject();
       const dataObj: { [key: string]: any } = {};
@@ -364,7 +372,7 @@ router.get('/:uuid', async (req: Request<{ uuid: string }>, res: Response): Prom
       } else if (playerObj.data) {
         Object.assign(dataObj, playerObj.data);
       }
-      
+
       // Return player without calculated status if calculation fails, but still process punishments
       const enhancedPlayer = {
         ...playerObj,
@@ -375,7 +383,7 @@ router.get('/:uuid', async (req: Request<{ uuid: string }>, res: Response): Prom
         // Transform punishments to include properly extracted data from Maps
         punishments: player.punishments.map((punishment: any) => {
           const punishmentObj = punishment.toObject ? punishment.toObject() : punishment;
-          
+
           // If data is a Map, convert it to a plain object
           if (punishmentObj.data && punishmentObj.data instanceof Map) {
             const dataObj: { [key: string]: any } = {};
@@ -384,12 +392,12 @@ router.get('/:uuid', async (req: Request<{ uuid: string }>, res: Response): Prom
             }
             punishmentObj.data = dataObj;
           }
-          
+
           // Extract common fields that might be in the data Map
           const expires = punishmentObj.data?.expires;
           const duration = punishmentObj.data?.duration;
           const active = punishmentObj.data?.active;
-          
+
           return {
             ...punishmentObj,
             expires: expires,
@@ -414,26 +422,26 @@ interface PlayerLoginBody {
 
 router.post('/login', async (req: Request<{}, {}, PlayerLoginBody>, res: Response): Promise<void> => {
   const Player = req.serverDbConnection!.model<IPlayer>('Player');
-  
+
   try {
     const { minecraftUuid, username, ipAddress } = req.body;
 
     if (!minecraftUuid || !username || !ipAddress) {
-        return res.status(400).json({ error: 'Missing minecraftUuid, username, or ipAddress' });
+      return res.status(400).json({ error: 'Missing minecraftUuid, username, or ipAddress' });
     }
 
     let ipInfo: IIPInfo = {};
     try {
-        const response = await fetch(`http://ip-api.com/json/${ipAddress}?fields=status,message,countryCode,regionName,city,as,proxy,hosting`);
-        ipInfo = await response.json() as IIPInfo;
-        if (ipInfo.status !== 'success') {
-            console.warn(`Failed to fetch IP info for ${ipAddress}: ${ipInfo.message}`);
-        }
+      const response = await fetch(`http://ip-api.com/json/${ipAddress}?fields=status,message,countryCode,regionName,city,as,proxy,hosting`);
+      ipInfo = await response.json() as IIPInfo;
+      if (ipInfo.status !== 'success') {
+        console.warn(`Failed to fetch IP info for ${ipAddress}: ${ipInfo.message}`);
+      }
     } catch (fetchError) {
-        console.error(`Error fetching IP info for ${ipAddress}:`, fetchError);
+      console.error(`Error fetching IP info for ${ipAddress}:`, fetchError);
     }
 
-    let player = await Player.findOne({ minecraftUuid });    if (player) {
+    let player = await Player.findOne({ minecraftUuid }); if (player) {
       const existingIp = player.ipAddresses.find((ip: any) => ip.ipAddress === ipAddress);
       if (existingIp) {
         existingIp.logins.push(new Date());
@@ -456,11 +464,11 @@ router.post('/login', async (req: Request<{}, {}, PlayerLoginBody>, res: Respons
       }
       player.data = player.data || new Map<string, any>();
       player.data.set('lastLogin', new Date());
-      
+
       await player.save({ validateBeforeSave: false });
       await createSystemLog(req.serverDbConnection, req.serverName, `Player ${username} (${minecraftUuid}) logged in. IP: ${ipAddress}.`, 'info', 'player-api');
       return res.status(200).json(player);
-    }    player = new Player({
+    } player = new Player({
       _id: uuidv4(),
       minecraftUuid,
       usernames: [{ username, date: new Date() }],
@@ -482,12 +490,12 @@ router.post('/login', async (req: Request<{}, {}, PlayerLoginBody>, res: Respons
 
     await player.save({ validateBeforeSave: false });
     await createSystemLog(req.serverDbConnection, req.serverName, `New player ${username} (${minecraftUuid}) created and logged in. IP: ${ipAddress}.`, 'info', 'player-api');
-    
+
     updateServerStats(req.serverName!, {
       incrementUserCount: true,
       updateLastActivity: true
     }).catch(err => console.error('Failed to update server stats:', err));
-    
+
     res.status(201).json(player);
   } catch (error) {
     console.error('Error in player login/creation:', error);
@@ -497,23 +505,23 @@ router.post('/login', async (req: Request<{}, {}, PlayerLoginBody>, res: Respons
 });
 
 interface CreatePlayerBody {
-    minecraftUuid: string;
-    username: string;
+  minecraftUuid: string;
+  username: string;
 }
 router.post('/', async (req: Request<{}, {}, CreatePlayerBody>, res: Response): Promise<void> => {
   const Player = req.serverDbConnection!.model<IPlayer>('Player');
   try {
-    const { minecraftUuid, username } = req.body;    if (!minecraftUuid || !username) {
-        res.status(400).json({ error: 'Missing minecraftUuid or username' });
-        return;
+    const { minecraftUuid, username } = req.body; if (!minecraftUuid || !username) {
+      res.status(400).json({ error: 'Missing minecraftUuid or username' });
+      return;
     }
-        
+
     const existingPlayer = await Player.findOne({ minecraftUuid });
     if (existingPlayer) {
       res.status(400).json({ error: 'Player already exists' });
       return;
     }
-      const player = new Player({
+    const player = new Player({
       _id: uuidv4(),
       minecraftUuid,
       usernames: [{ username, date: new Date() }],
@@ -523,15 +531,15 @@ router.post('/', async (req: Request<{}, {}, CreatePlayerBody>, res: Response): 
       pendingNotifications: [],
       data: new Map<string, any>([['firstJoin', new Date()]])
     });
-    
+
     await player.save({ validateBeforeSave: false });
     await createSystemLog(req.serverDbConnection, req.serverName, `New player ${username} (${minecraftUuid}) created via API.`, 'info', 'player-api');
-    
+
     updateServerStats(req.serverName!, {
       incrementUserCount: true,
       updateLastActivity: true
     }).catch(err => console.error('Failed to update server stats:', err));
-    
+
     res.status(201).json(player);
   } catch (error) {
     console.error('Error creating player:', error);
@@ -541,24 +549,24 @@ router.post('/', async (req: Request<{}, {}, CreatePlayerBody>, res: Response): 
 });
 
 interface AddUsernameBody {
-    username: string;
+  username: string;
 }
 router.post('/:uuid/usernames', async (req: Request<{ uuid: string }, {}, AddUsernameBody>, res: Response): Promise<void> => {
   const Player = req.serverDbConnection!.model<IPlayer>('Player');
   try {
     const { username } = req.body;
     if (!username) return res.status(400).json({ error: 'Username is required' });
-    
+
     const player = await Player.findOne({ minecraftUuid: req.params.uuid });
     if (!player) {
       return res.status(404).json({ error: 'Player not found' });
     }
-    
+
     const existingUsername = player.usernames.find((u: any) => u.username.toLowerCase() === username.toLowerCase());
     if (!existingUsername) {
-        player.usernames.push({ username, date: new Date() });
-        await player.save({ validateBeforeSave: false });
-        await createSystemLog(req.serverDbConnection, req.serverName, `Username ${username} added to player ${req.params.uuid}.`, 'info', 'player-api');
+      player.usernames.push({ username, date: new Date() });
+      await player.save({ validateBeforeSave: false });
+      await createSystemLog(req.serverDbConnection, req.serverName, `Username ${username} added to player ${req.params.uuid}.`, 'info', 'player-api');
     }
     res.json(player);
   } catch (error) {
@@ -568,21 +576,21 @@ router.post('/:uuid/usernames', async (req: Request<{ uuid: string }, {}, AddUse
 });
 
 interface AddNoteBody {
-    text: string;
-    issuerName: string;
-    issuerId?: string;
+  text: string;
+  issuerName: string;
+  issuerId?: string;
 }
 router.post('/:uuid/notes', async (req: Request<{ uuid: string }, {}, AddNoteBody>, res: Response): Promise<void> => {
   const Player = req.serverDbConnection!.model<IPlayer>('Player');
   try {
     const { text, issuerName, issuerId } = req.body;
     if (!text || !issuerName) return res.status(400).json({ error: 'Text and issuerName are required for notes' });
-    
+
     const player = await Player.findOne({ minecraftUuid: req.params.uuid });
     if (!player) {
       return res.status(404).json({ error: 'Player not found' });
     }
-    
+
     player.notes.push({ text, issuerName, issuerId, date: new Date() });
     await player.save({ validateBeforeSave: false });
     await createSystemLog(req.serverDbConnection, req.serverName, `Note added to player ${req.params.uuid} by ${issuerName}.`, 'info', 'player-api');
@@ -594,30 +602,30 @@ router.post('/:uuid/notes', async (req: Request<{ uuid: string }, {}, AddNoteBod
 });
 
 interface AddIpBody {
-    ipAddress: string;
+  ipAddress: string;
 }
 router.post('/:uuid/ips', async (req: Request<{ uuid: string }, {}, AddIpBody>, res: Response): Promise<void> => {
   const Player = req.serverDbConnection!.model<IPlayer>('Player');
   try {
-    const { ipAddress } = req.body; 
+    const { ipAddress } = req.body;
     if (!ipAddress) return res.status(400).json({ error: 'ipAddress is required' });
 
     let ipInfo: IIPInfo = {};
     try {
-        const response = await fetch(`http://ip-api.com/json/${ipAddress}?fields=status,message,countryCode,regionName,city,as,proxy,hosting`);
-        ipInfo = await response.json() as IIPInfo;
-        if (ipInfo.status !== 'success') {
-            console.warn(`Failed to fetch IP info for ${ipAddress}: ${ipInfo.message}`);
-        }
+      const response = await fetch(`http://ip-api.com/json/${ipAddress}?fields=status,message,countryCode,regionName,city,as,proxy,hosting`);
+      ipInfo = await response.json() as IIPInfo;
+      if (ipInfo.status !== 'success') {
+        console.warn(`Failed to fetch IP info for ${ipAddress}: ${ipInfo.message}`);
+      }
     } catch (fetchError) {
-        console.error(`Error fetching IP info for ${ipAddress}:`, fetchError);
+      console.error(`Error fetching IP info for ${ipAddress}:`, fetchError);
     }
-    
+
     const player = await Player.findOne({ minecraftUuid: req.params.uuid });
     if (!player) {
       return res.status(404).json({ error: 'Player not found' });
     }
-      const existingIp = player.ipAddresses.find((ip: any) => ip.ipAddress === ipAddress);
+    const existingIp = player.ipAddresses.find((ip: any) => ip.ipAddress === ipAddress);
     if (existingIp) {
       existingIp.logins.push(new Date());
     } else {
@@ -631,7 +639,7 @@ router.post('/:uuid/ips', async (req: Request<{ uuid: string }, {}, AddIpBody>, 
         logins: [new Date()]
       });
     }
-    
+
     await player.save({ validateBeforeSave: false });
     await createSystemLog(req.serverDbConnection, req.serverName, `IP ${ipAddress} added/updated for player ${req.params.uuid}.`, 'info', 'player-api');
     res.json(player);
@@ -642,23 +650,23 @@ router.post('/:uuid/ips', async (req: Request<{ uuid: string }, {}, AddIpBody>, 
 });
 
 interface AddPunishmentBody {
-    issuerName: string;
-    type_ordinal: number;
-    notes?: string[];
-    evidence?: string[];
-    attachedTicketIds?: string[];
-    severity?: string;
-    status?: string;
-    data?: Record<string, any>; // For Map conversion
+  issuerName: string;
+  type_ordinal: number;
+  notes?: string[];
+  evidence?: string[];
+  attachedTicketIds?: string[];
+  severity?: string;
+  status?: string;
+  data?: Record<string, any>; // For Map conversion
 }
 router.post('/:uuid/punishments', async (req: Request<{ uuid: string }, {}, AddPunishmentBody>, res: Response): Promise<void> => {
   // Permission checking is handled dynamically based on punishment type
   const Player = req.serverDbConnection!.model<IPlayer>('Player');
   try {
     const {
-      issuerName, 
+      issuerName,
       type_ordinal,
-      notes, 
+      notes,
       evidence,
       attachedTicketIds,
       severity,
@@ -667,7 +675,7 @@ router.post('/:uuid/punishments', async (req: Request<{ uuid: string }, {}, AddP
     } = req.body;
 
     if (!issuerName || type_ordinal === undefined) {
-        return res.status(400).json({ error: 'issuerName and type_ordinal are required for punishments' });
+      return res.status(400).json({ error: 'issuerName and type_ordinal are required for punishments' });
     }
 
     // Check permission based on punishment type
@@ -675,7 +683,7 @@ router.post('/:uuid/punishments', async (req: Request<{ uuid: string }, {}, AddP
       const Settings = req.serverDbConnection!.model('Settings');
       const punishmentTypesDoc = await Settings.findOne({ type: 'punishmentTypes' });
       let punishmentTypeName = 'Unknown';
-      
+
       if (punishmentTypesDoc?.data) {
         const punishmentTypes = punishmentTypesDoc.data;
         const punishmentType = punishmentTypes.find((pt: any) => pt.ordinal === type_ordinal);
@@ -687,9 +695,9 @@ router.post('/:uuid/punishments', async (req: Request<{ uuid: string }, {}, AddP
       const requiredPermission = `punishment.apply.${punishmentTypeName.toLowerCase().replace(/\s+/g, '-')}`;
       const { hasPermission } = await import('../middleware/permission-middleware');
       const hasRequiredPermission = await hasPermission(req, requiredPermission);
-      
+
       if (!hasRequiredPermission) {
-        return res.status(403).json({ 
+        return res.status(403).json({
           error: 'Forbidden: You do not have permission to apply this punishment type',
           required: requiredPermission,
           punishmentType: punishmentTypeName
@@ -699,14 +707,14 @@ router.post('/:uuid/punishments', async (req: Request<{ uuid: string }, {}, AddP
       console.error('Error checking punishment permission:', permissionError);
       return res.status(500).json({ error: 'Internal server error while checking permissions' });
     }
-    
+
     const player = await Player.findOne({ minecraftUuid: req.params.uuid });
     if (!player) {
       return res.status(404).json({ error: 'Player not found' });
     }
-      const id = uuidv4().substring(0, 8).toUpperCase();
-      const punishmentData = new Map<string, any>();
-    
+    const id = uuidv4().substring(0, 8).toUpperCase();
+    const punishmentData = new Map<string, any>();
+
     // Get punishment type to check for "permanent until" types
     let punishmentType: any = null;
     try {
@@ -722,17 +730,17 @@ router.post('/:uuid/punishments', async (req: Request<{ uuid: string }, {}, AddP
 
     // Initialize required fields with defaults
     punishmentData.set('duration', 0);
-    
+
     // Set blockedName and blockedSkin for "permanent until" punishment types
     if (punishmentType?.permanentUntilUsernameChange) {
-      const currentUsername = player.usernames && player.usernames.length > 0 
-        ? player.usernames[player.usernames.length - 1].username 
+      const currentUsername = player.usernames && player.usernames.length > 0
+        ? player.usernames[player.usernames.length - 1].username
         : 'Unknown';
       punishmentData.set('blockedName', currentUsername);
     } else {
       punishmentData.set('blockedName', null);
     }
-    
+
     if (punishmentType?.permanentUntilSkinChange) {
       const currentSkinHash = player.data?.get('lastSkinHash') || null;
       punishmentData.set('blockedSkin', currentSkinHash);
@@ -744,33 +752,33 @@ router.post('/:uuid/punishments', async (req: Request<{ uuid: string }, {}, AddP
     punishmentData.set('chatLog', null);
     punishmentData.set('altBlocking', false);
     punishmentData.set('wipeAfterExpiry', false);
-    
+
     // Add severity and status to data map
     if (severity) {
-        punishmentData.set('severity', severity);
+      punishmentData.set('severity', severity);
     }
     if (status) {
-        punishmentData.set('status', status);
+      punishmentData.set('status', status);
     }
-    
+
     // Override with any provided data (duration and other fields come from here now)
     if (data && typeof data === 'object') {
-        for (const [key, value] of Object.entries(data)) {
-            // Don't include reason in data - it should be the first note
-            if (key !== 'reason') {
-                punishmentData.set(key, value);
-            }
+      for (const [key, value] of Object.entries(data)) {
+        // Don't include reason in data - it should be the first note
+        if (key !== 'reason') {
+          punishmentData.set(key, value);
         }
+      }
     }
-    
+
     // Set linkedBanExpiry only for linked bans
     if (data?.linkedBanId) {
-        punishmentData.set('linkedBanExpiry', new Date());
+      punishmentData.set('linkedBanExpiry', new Date());
     }
 
     // Don't set expiry date until punishment is started by server
     // Duration will be used to calculate expiry when punishment is acknowledged as started
-    
+
     const newPunishment: IPunishment = {
       id,
       issuerName,
@@ -788,11 +796,11 @@ router.post('/:uuid/punishments', async (req: Request<{ uuid: string }, {}, AddP
     player.punishments.push(newPunishment);
     await player.save({ validateBeforeSave: false });
     await createSystemLog(req.serverDbConnection, req.serverName, `Punishment ID ${id} (Type: ${type_ordinal}) added to player ${req.params.uuid} by ${issuerName}.`, 'moderation', 'player-api');
-    
+
     // Send Discord webhook notification
     try {
       const webhookService = new DiscordWebhookService(req.serverDbConnection!);
-      
+
       // Get punishment type name for the webhook
       let punishmentTypeName = 'Unknown';
       try {
@@ -808,7 +816,7 @@ router.post('/:uuid/punishments', async (req: Request<{ uuid: string }, {}, AddP
       } catch (typeError) {
         console.error('[Player Routes] Error getting punishment type name for webhook:', typeError);
       }
-      
+
       // Extract reason from data or notes
       let reasonText = 'No reason provided';
       if (data?.reason) {
@@ -818,7 +826,7 @@ router.post('/:uuid/punishments', async (req: Request<{ uuid: string }, {}, AddP
         const firstNote = notes[0];
         reasonText = typeof firstNote === 'string' ? firstNote : (firstNote?.text || 'No reason provided');
       }
-      
+
       await webhookService.sendPunishmentNotification({
         id,
         playerName: player.usernames?.[0]?.username || player.minecraftUuid,
@@ -833,7 +841,7 @@ router.post('/:uuid/punishments', async (req: Request<{ uuid: string }, {}, AddP
       console.error('[Player Routes] Failed to send Discord webhook notification:', webhookError);
       // Don't fail the punishment if webhook fails
     }
-    
+
     res.json(player);
   } catch (error) {
     console.error('Error adding punishment:', error);
@@ -842,28 +850,28 @@ router.post('/:uuid/punishments', async (req: Request<{ uuid: string }, {}, AddP
 });
 
 interface AddPunishmentModificationBody {
-    type: string;
-    issuerName: string;
-    effectiveDuration?: number;
-    reason?: string;
-    appealTicketId?: string;
+  type: string;
+  issuerName: string;
+  effectiveDuration?: number;
+  reason?: string;
+  appealTicketId?: string;
 }
 router.post('/:uuid/punishments/:punishmentId/modifications', async (req: Request<{ uuid: string, punishmentId: string }, {}, AddPunishmentModificationBody>, res: Response): Promise<void> => {
   const Player = req.serverDbConnection!.model<IPlayer>('Player');
   try {
     const { type, issuerName, effectiveDuration, reason, appealTicketId } = req.body;
     if (!type || !issuerName) return res.status(400).json({ error: 'Type and issuerName are required for modifications' });
-    
+
     const player = await Player.findOne({ minecraftUuid: req.params.uuid });
     if (!player) {
       return res.status(404).json({ error: 'Player not found' });
     }
-    
+
     const punishment = player.punishments.find((p: any) => p.id === req.params.punishmentId);
     if (!punishment) {
       return res.status(404).json({ error: 'Punishment not found' });
     }
-      punishment.modifications.push({
+    punishment.modifications.push({
       type,
       issuerName,
       issued: new Date(),
@@ -871,7 +879,7 @@ router.post('/:uuid/punishments/:punishmentId/modifications', async (req: Reques
       reason,
       appealTicketId
     });
-    
+
     // Apply the modification to the punishment's current state
     if (type === 'MANUAL_PARDON' || type === 'APPEAL_ACCEPT') {
       // Mark punishment as inactive
@@ -883,7 +891,7 @@ router.post('/:uuid/punishments/:punishmentId/modifications', async (req: Reques
       // Update the duration and recalculate expiry
       if (effectiveDuration !== undefined) {
         punishment.data.set('duration', effectiveDuration);
-        
+
         // For duration modifications, calculate expiry from the modification time (not original punishment time)
         const modificationTime = new Date(); // Use current time as modification time
         if (effectiveDuration === 0) {
@@ -903,7 +911,7 @@ router.post('/:uuid/punishments/:punishmentId/modifications', async (req: Reques
     } else if (type === 'SET_WIPING_FALSE') {
       punishment.data.set('wiping', false);
     }
-    
+
     await player.save({ validateBeforeSave: false });
     await createSystemLog(req.serverDbConnection, req.serverName, `Modification of type '${type}' added to punishment ${req.params.punishmentId} for player ${req.params.uuid} by ${issuerName}.`, 'moderation', 'player-api');
     res.json(player);
@@ -920,20 +928,20 @@ router.get('/:uuid/activePunishments', async (req: Request<{ uuid: string }>, re
     if (!player) {
       return res.status(404).json({ error: 'Player not found' });
     }
-      const activePunishments = player.punishments.filter((punishment: any) => {
+    const activePunishments = player.punishments.filter((punishment: any) => {
       if (punishment.data && punishment.data.get('active') === false) return false;
       if (!punishment.started) return false;
 
       const duration = punishment.data ? punishment.data.get('duration') : undefined;
-      if (duration === -1 || duration === undefined) return true; 
-      
+      if (duration === -1 || duration === undefined) return true;
+
       const startTime = new Date(punishment.started).getTime();
       const endTime = startTime + Number(duration);
-      
+
       return endTime > Date.now();
     }).map((punishment: any) => {
       const punishmentObj = punishment.toObject ? punishment.toObject() : punishment;
-      
+
       // If data is a Map, convert it to a plain object
       if (punishmentObj.data && punishmentObj.data instanceof Map) {
         const dataObj: { [key: string]: any } = {};
@@ -942,12 +950,12 @@ router.get('/:uuid/activePunishments', async (req: Request<{ uuid: string }>, re
         }
         punishmentObj.data = dataObj;
       }
-      
+
       // Extract common fields that might be in the data Map
       const expires = punishmentObj.data?.expires;
       const duration = punishmentObj.data?.duration;
       const active = punishmentObj.data?.active;
-      
+
       return {
         ...punishmentObj,
         expires: expires,
@@ -955,7 +963,7 @@ router.get('/:uuid/activePunishments', async (req: Request<{ uuid: string }>, re
         active: active !== false, // Default to true if not explicitly false
       };
     });
-    
+
     res.json(activePunishments);
   } catch (error) {
     console.error('Error fetching active punishments:', error);
@@ -968,47 +976,47 @@ router.get('/punishment/:punishmentId', async (req: Request<{ punishmentId: stri
   const Player = req.serverDbConnection!.model<IPlayer>('Player');
   try {
     const punishmentId = req.params.punishmentId;
-    
+
     // Search for the punishment across all players
     const player = await Player.findOne({ 'punishments.id': punishmentId });
-    
+
     if (!player) {
       return res.status(404).json({ error: 'Punishment not found' });
     }
-    
+
     // Find the specific punishment within the player's punishments
     const punishment = player.punishments.find((p: any) => p.id === punishmentId);
-    
+
     if (!punishment) {
       return res.status(404).json({ error: 'Punishment not found' });
     }
-      // Get the punishment type name from settings if available
+    // Get the punishment type name from settings if available
     let punishmentTypeName = 'Unknown';
     let punishmentTypeIsAppealable = true; // Default to appealable
-    
+
     // First try to get from settings
     try {
       const Settings = req.serverDbConnection!.model('Settings');
-      
+
       // Try both the punishmentTypes collection and settings.punishmentTypes
       let punishmentTypes = null;
-      
+
       // First try the dedicated punishmentTypes document
       const punishmentTypesDoc = await Settings.findOne({ type: 'punishmentTypes' });
       if (punishmentTypesDoc?.data) {
-        punishmentTypes = typeof punishmentTypesDoc.data === 'string' 
-          ? JSON.parse(punishmentTypesDoc.data) 
+        punishmentTypes = typeof punishmentTypesDoc.data === 'string'
+          ? JSON.parse(punishmentTypesDoc.data)
           : punishmentTypesDoc.data;
       } else {
         // Fallback to settings.punishmentTypes
         const settings = await Settings.findOne({});
         if (settings?.settings?.punishmentTypes) {
-          punishmentTypes = typeof settings.settings.punishmentTypes === 'string' 
-            ? JSON.parse(settings.settings.punishmentTypes) 
+          punishmentTypes = typeof settings.settings.punishmentTypes === 'string'
+            ? JSON.parse(settings.settings.punishmentTypes)
             : settings.settings.punishmentTypes;
         }
       }
-      
+
       if (punishmentTypes) {
         const punishmentType = punishmentTypes.find((pt: any) => pt.ordinal === punishment.type_ordinal);
         if (punishmentType) {
@@ -1019,12 +1027,12 @@ router.get('/punishment/:punishmentId', async (req: Request<{ punishmentId: stri
     } catch (settingsError) {
       console.warn('Could not fetch punishment type name from settings:', settingsError);
     }
-    
+
     // Fallback to core administrative types if still unknown
     if (punishmentTypeName === 'Unknown') {
       const coreTypes: { [key: number]: string } = {
         0: 'Kick',
-        1: 'Manual Mute', 
+        1: 'Manual Mute',
         2: 'Manual Ban',
         3: 'Security Ban',
         4: 'Linked Ban',
@@ -1034,7 +1042,7 @@ router.get('/punishment/:punishmentId', async (req: Request<{ punishmentId: stri
         punishmentTypeName = coreTypes[punishment.type_ordinal];
       }
     }
-      // Transform punishment data for the frontend
+    // Transform punishment data for the frontend
     const transformedPunishment = {
       id: punishment.id,
       type: punishmentTypeName,
@@ -1058,23 +1066,23 @@ router.get('/punishment/:punishmentId', async (req: Request<{ punishmentId: stri
       offenseLevel: punishment.data?.get('offenseLevel') || null,
       status: punishment.data?.get('status') || null
     };
-    
+
     // Check if punishment is active
     if (punishment.data && punishment.data.get('active') === false) {
       transformedPunishment.active = false;
     }
-    
+
     // Check expiry
     const duration = punishment.data?.get('duration');
     if (duration && duration > 0 && punishment.started) {
       const expiryDate = new Date(punishment.started.getTime() + duration);
       transformedPunishment.expires = expiryDate;
-      
+
       if (expiryDate < new Date()) {
         transformedPunishment.active = false;
       }
     }
-    
+
     res.json(transformedPunishment);
   } catch (error) {
     console.error('Error fetching punishment:', error);
@@ -1088,24 +1096,24 @@ router.get('/punishments/search', async (req: Request, res: Response): Promise<v
   try {
     const query = req.query.q as string;
     const activeOnly = req.query.activeOnly === 'true';
-    
+
     if (!query || query.trim().length < 2) {
       return res.json([]);
     }
-    
+
     const searchTerm = query.trim();
     const results: any[] = [];
-    
+
     // Search by punishment ID first (exact match)
     const playerByPunishmentId = await Player.findOne({ 'punishments.id': searchTerm });
     if (playerByPunishmentId) {
       const punishment = playerByPunishmentId.punishments.find((p: any) => p.id === searchTerm);
       if (punishment) {
         const isActive = punishment.data?.get ? punishment.data.get('active') !== false : punishment.data?.active !== false;
-        const playerName = playerByPunishmentId.usernames.length > 0 
-          ? playerByPunishmentId.usernames[playerByPunishmentId.usernames.length - 1].username 
+        const playerName = playerByPunishmentId.usernames.length > 0
+          ? playerByPunishmentId.usernames[playerByPunishmentId.usernames.length - 1].username
           : 'Unknown';
-        
+
         if (!activeOnly || isActive) {
           results.push({
             id: punishment.id,
@@ -1117,21 +1125,21 @@ router.get('/punishments/search', async (req: Request, res: Response): Promise<v
         }
       }
     }
-    
+
     // Search by player name (if not found by punishment ID or if we want more results)
     if (results.length < 10) {
       const playersByName = await Player.find({
         'usernames.username': { $regex: new RegExp(searchTerm, 'i') }
       }).limit(10);
-      
+
       for (const player of playersByName) {
-        const playerName = player.usernames.length > 0 
-          ? player.usernames[player.usernames.length - 1].username 
+        const playerName = player.usernames.length > 0
+          ? player.usernames[player.usernames.length - 1].username
           : 'Unknown';
-        
+
         for (const punishment of player.punishments) {
           const isActive = punishment.data?.get ? punishment.data.get('active') !== false : punishment.data?.active !== false;
-          
+
           if (!activeOnly || isActive) {
             // Avoid duplicates if we already found this punishment by ID
             if (!results.find(r => r.id === punishment.id)) {
@@ -1147,7 +1155,7 @@ router.get('/punishments/search', async (req: Request, res: Response): Promise<v
         }
       }
     }
-    
+
     // Sort by issued date (newest first) and limit results
     results.sort((a, b) => new Date(b.issued).getTime() - new Date(a.issued).getTime());
     res.json(results.slice(0, 20));
@@ -1170,28 +1178,28 @@ router.post('/:uuid/punishments/:punishmentId/notes', async (req: Request<{ uuid
       res.status(400).json({ error: 'Text and issuerName are required for notes' });
       return;
     }
-    
+
     const player = await Player.findOne({ minecraftUuid: req.params.uuid });
     if (!player) {
       res.status(404).json({ error: 'Player not found' });
       return;
     }
-    
+
     const punishment = player.punishments.find((p: any) => p.id === req.params.punishmentId);
     if (!punishment) {
       res.status(404).json({ error: 'Punishment not found' });
       return;
     }
-    
+
     // Add note to punishment as an object with the required schema fields
     const newNote = {
       text: text,
       issuerName: issuerName,
       date: new Date()
     };
-    
+
     punishment.notes.push(newNote);
-    
+
     await player.save({ validateBeforeSave: false });
     await createSystemLog(req.serverDbConnection, req.serverName, `Note added to punishment ${req.params.punishmentId} for player ${req.params.uuid} by ${issuerName}.`, 'moderation', 'player-api');
     res.json(player);
@@ -1205,7 +1213,7 @@ router.post('/:uuid/punishments/:punishmentId/notes', async (req: Request<{ uuid
 router.get('/:uuid/linked', async (req: Request<{ uuid: string }>, res: Response): Promise<void> => {
   const Player = req.serverDbConnection!.model<IPlayer>('Player');
   const minecraftUuid = req.params.uuid;
-  
+
   try {
     const player = await Player.findOne({ minecraftUuid }).lean<IPlayer>();
     if (!player) {
@@ -1219,7 +1227,7 @@ router.get('/:uuid/linked', async (req: Request<{ uuid: string }>, res: Response
     const storedLinkedAccounts = player.data?.linkedAccounts || [];
     if (storedLinkedAccounts && Array.isArray(storedLinkedAccounts)) {
       storedLinkedAccounts.forEach((uuid: string) => linkedAccountUuids.add(uuid));
-      
+
     }
 
     // Method 2: Get linked accounts by IP addresses (legacy/fallback system)
@@ -1229,13 +1237,13 @@ router.get('/:uuid/linked', async (req: Request<{ uuid: string }>, res: Response
         minecraftUuid: { $ne: minecraftUuid },
         'ipAddresses.ipAddress': { $in: playerIps }
       }).select('minecraftUuid').lean();
-      
+
       ipLinkedPlayers.forEach((p: any) => linkedAccountUuids.add(p.minecraftUuid));
-      
+
     }
 
     if (linkedAccountUuids.size === 0) {
-      
+
       res.status(200).json({ linkedAccounts: [] });
       return;
     }
@@ -1247,20 +1255,20 @@ router.get('/:uuid/linked', async (req: Request<{ uuid: string }>, res: Response
 
     const formattedLinkedAccounts = linkedPlayers.map((acc: IPlayer) => {
       // Count active punishments (simplified - just check for recent punishments)
-      const activeBans = acc.punishments ? acc.punishments.filter((p: any) => 
-        (p.type_ordinal === 2 || p.type_ordinal === 4) && 
-        p.started && 
+      const activeBans = acc.punishments ? acc.punishments.filter((p: any) =>
+        (p.type_ordinal === 2 || p.type_ordinal === 4) &&
+        p.started &&
         (!p.data?.expires || new Date(p.data.expires) > new Date())
       ).length : 0;
-      
-      const activeMutes = acc.punishments ? acc.punishments.filter((p: any) => 
-        p.type_ordinal === 1 && 
-        p.started && 
+
+      const activeMutes = acc.punishments ? acc.punishments.filter((p: any) =>
+        p.type_ordinal === 1 &&
+        p.started &&
         (!p.data?.expires || new Date(p.data.expires) > new Date())
       ).length : 0;
-      
+
       const lastLinkedUpdate = acc.data?.lastLinkedAccountUpdate;
-      
+
       return {
         minecraftUuid: acc.minecraftUuid,
         username: acc.usernames && acc.usernames.length > 0 ? acc.usernames[acc.usernames.length - 1].username : 'N/A',
@@ -1269,8 +1277,8 @@ router.get('/:uuid/linked', async (req: Request<{ uuid: string }>, res: Response
         lastLinkedUpdate: lastLinkedUpdate || null
       };
     });
-    
-    
+
+
     res.status(200).json({ linkedAccounts: formattedLinkedAccounts });
   } catch (error: any) {
     console.error('Error getting linked accounts:', error);
@@ -1285,7 +1293,7 @@ router.post('/:uuid/find-linked', async (req: Request<{ uuid: string }>, res: Re
   const Player = req.serverDbConnection!.model<IPlayer>('Player');
   const minecraftUuid = req.params.uuid;
   const serverName = req.serverName!;
-  
+
   try {
     const player = await Player.findOne({ minecraftUuid });
     if (!player) {
@@ -1295,9 +1303,9 @@ router.post('/:uuid/find-linked', async (req: Request<{ uuid: string }>, res: Re
 
     // Get player's IP addresses for linking
     const playerIPs = player.ipAddresses?.map((ip: any) => ip.ipAddress) || [];
-    
+
     if (playerIPs.length === 0) {
-      res.status(200).json({ 
+      res.status(200).json({
         success: true,
         message: 'No IP addresses found for player',
         linkedAccountsFound: 0
@@ -1305,7 +1313,7 @@ router.post('/:uuid/find-linked', async (req: Request<{ uuid: string }>, res: Re
       return;
     }
 
-    
+
 
     // Call the minecraft routes function (we need to import it)
     // For now, let's implement a simplified version here
@@ -1315,7 +1323,7 @@ router.post('/:uuid/find-linked', async (req: Request<{ uuid: string }>, res: Re
     const updatedPlayer = await Player.findOne({ minecraftUuid });
     const linkedAccounts = updatedPlayer?.data?.get ? updatedPlayer.data.get('linkedAccounts') : updatedPlayer?.data?.linkedAccounts || [];
 
-    res.status(200).json({ 
+    res.status(200).json({
       success: true,
       message: 'Account linking search completed',
       linkedAccountsFound: Array.isArray(linkedAccounts) ? linkedAccounts.length : 0
@@ -1328,7 +1336,7 @@ router.post('/:uuid/find-linked', async (req: Request<{ uuid: string }>, res: Re
       uuid: minecraftUuid,
       serverName: serverName
     });
-    res.status(500).json({ 
+    res.status(500).json({
       error: 'Failed to trigger linked account search',
       details: error instanceof Error ? error.message : 'Unknown error'
     });
@@ -1346,11 +1354,11 @@ async function findAndLinkAccountsForPanel(
 ): Promise<void> {
   try {
     const Player = dbConnection.model('Player');
-    
+
     if (!ipAddresses || ipAddresses.length === 0) {
       return;
     }
-    
+
     // Find all players that have used any of these IP addresses
     const potentialLinkedPlayers = await Player.find({
       minecraftUuid: { $ne: currentPlayerUuid }, // Exclude current player
@@ -1373,21 +1381,21 @@ async function findAndLinkAccountsForPanel(
       for (const ipAddress of ipAddresses) {
         const playerIpEntry = player.ipAddresses?.find((ip: any) => ip.ipAddress === ipAddress);
         const currentPlayerIpEntry = currentPlayer.ipAddresses?.find((ip: any) => ip.ipAddress === ipAddress);
-        
+
         if (playerIpEntry && currentPlayerIpEntry) {
           // Both players have used this IP
           const isProxy = playerIpEntry.proxy || currentPlayerIpEntry.proxy;
-          
+
           if (!isProxy) {
             // Non-proxy IP - always link
             shouldLink = true;
             matchingIPs.push(ipAddress);
           } else {
             // Proxy IP - only link if used within 6 hours of each other
-            const playerLastLogin = playerIpEntry.logins && playerIpEntry.logins.length > 0 
+            const playerLastLogin = playerIpEntry.logins && playerIpEntry.logins.length > 0
               ? new Date(Math.max(...playerIpEntry.logins.map((d: any) => new Date(d).getTime())))
               : playerIpEntry.firstLogin;
-            
+
             const currentPlayerLastLogin = currentPlayerIpEntry.logins && currentPlayerIpEntry.logins.length > 0
               ? new Date(Math.max(...currentPlayerIpEntry.logins.map((d: any) => new Date(d).getTime())))
               : currentPlayerIpEntry.firstLogin;
@@ -1395,7 +1403,7 @@ async function findAndLinkAccountsForPanel(
             if (playerLastLogin && currentPlayerLastLogin) {
               const timeDiff = Math.abs(playerLastLogin.getTime() - currentPlayerLastLogin.getTime());
               const sixHours = 6 * 60 * 60 * 1000;
-              
+
               if (timeDiff <= sixHours) {
                 shouldLink = true;
                 matchingIPs.push(`${ipAddress} (proxy, within 6h)`);
@@ -1407,13 +1415,13 @@ async function findAndLinkAccountsForPanel(
 
       if (shouldLink) {
         linkedAccounts.push(player.minecraftUuid);
-        
+
         // Update both players' linked accounts
         await updatePlayerLinkedAccountsForPanel(dbConnection, currentPlayer.minecraftUuid, player.minecraftUuid);
         await updatePlayerLinkedAccountsForPanel(dbConnection, player.minecraftUuid, currentPlayer.minecraftUuid);
-        
-        
-        
+
+
+
         // Create system log
         await createSystemLog(
           dbConnection,
@@ -1426,9 +1434,9 @@ async function findAndLinkAccountsForPanel(
     }
 
     if (linkedAccounts.length > 0) {
-      
+
     } else {
-      
+
     }
   } catch (error) {
     console.error(`[Panel Account Linking] Error finding linked accounts:`, error);
@@ -1453,7 +1461,7 @@ async function updatePlayerLinkedAccountsForPanel(
 ): Promise<void> {
   try {
     const Player = dbConnection.model('Player');
-    
+
     const player = await Player.findOne({ minecraftUuid: playerUuid });
     if (!player) {
       return;
@@ -1463,9 +1471,9 @@ async function updatePlayerLinkedAccountsForPanel(
     if (!player.data) {
       player.data = new Map<string, any>();
     }
-    
+
     const existingLinkedAccounts = player.data.get ? player.data.get('linkedAccounts') : player.data.linkedAccounts || [];
-    
+
     // Only add if not already linked
     if (!existingLinkedAccounts.includes(linkedUuid)) {
       const updatedLinkedAccounts = [...existingLinkedAccounts, linkedUuid];
@@ -1477,8 +1485,8 @@ async function updatePlayerLinkedAccountsForPanel(
         player.data.lastLinkedAccountUpdate = new Date();
       }
       await player.save({ validateBeforeSave: false });
-      
-      
+
+
     }
   } catch (error) {
     console.error(`[Panel Account Linking] Error updating player linked accounts:`, error);
@@ -1491,23 +1499,23 @@ router.post('/:uuid/punishments/:punishmentId/evidence', async (req: Request<{ u
   try {
     const { uuid, punishmentId } = req.params;
     const { text, issuerName, date, type, fileUrl, fileName, fileType, fileSize } = req.body;
-    
+
     if (!text?.trim()) {
       return res.status(400).json({ error: 'Evidence text is required' });
     }
-    
+
     // Find the player
     const player = await Player.findOne({ minecraftUuid: uuid });
     if (!player) {
       return res.status(404).json({ error: 'Player not found' });
     }
-    
+
     // Find the punishment
     const punishment = player.punishments.find((p: any) => p.id === punishmentId);
     if (!punishment) {
       return res.status(404).json({ error: 'Punishment not found' });
     }
-    
+
     // Determine evidence type
     let evidenceType = type || 'text';
     if (!type) {
@@ -1518,7 +1526,7 @@ router.post('/:uuid/punishments/:punishmentId/evidence', async (req: Request<{ u
         evidenceType = 'file';
       }
     }
-    
+
     // Add the evidence
     const evidenceItem: any = {
       text: text.trim(),
@@ -1526,7 +1534,7 @@ router.post('/:uuid/punishments/:punishmentId/evidence', async (req: Request<{ u
       date: date || new Date(),
       type: evidenceType
     };
-    
+
     // Add file-related fields if this is a file upload
     if (evidenceType === 'file' && fileUrl) {
       evidenceItem.fileUrl = fileUrl;
@@ -1534,16 +1542,16 @@ router.post('/:uuid/punishments/:punishmentId/evidence', async (req: Request<{ u
       evidenceItem.fileType = fileType || 'application/octet-stream';
       evidenceItem.fileSize = fileSize || 0;
     }
-    
+
     if (!punishment.evidence) {
       punishment.evidence = [];
     }
-    
+
     punishment.evidence.push(evidenceItem);
-    
+
     // Save the player
     await player.save({ validateBeforeSave: false });
-    
+
     res.json({ message: 'Evidence added successfully', evidence: evidenceItem });
   } catch (error) {
     console.error('Error adding evidence to punishment:', error);
@@ -1555,37 +1563,37 @@ router.post('/:uuid/punishments/:punishmentId/evidence', async (req: Request<{ u
 router.get('/punishment-lookup/:punishmentId', async (req: Request<{ punishmentId: string }>, res: Response): Promise<void> => {
   try {
     const punishmentId = req.params.punishmentId;
-    
+
     if (!req.serverDbConnection) {
       res.status(500).json({ error: 'Database connection not available' });
       return;
     }
-    
+
     const Player = req.serverDbConnection.model<IPlayer>('Player');
-    
+
     // Search for the punishment across all players
     const player = await Player.findOne({ 'punishments.id': punishmentId });
-    
+
     if (!player) {
       res.status(404).json({ error: 'Punishment not found' });
       return;
     }
-    
+
     // Find the specific punishment within the player's punishments
     const punishment = player.punishments?.find((p: any) => p.id === punishmentId);
-    
+
     if (!punishment) {
       res.status(404).json({ error: 'Punishment not found' });
       return;
     }
-    
+
     // Get the player's most recent username
     let playerUsername = player.username;
     if (!playerUsername && player.usernames && player.usernames.length > 0) {
       // If no direct username, get the most recent from usernames array
       playerUsername = player.usernames[player.usernames.length - 1].username;
     }
-    
+
     // Return simplified punishment data with player info
     res.json({
       playerUuid: player.minecraftUuid,
@@ -1612,32 +1620,32 @@ router.get('/avatar/:uuid', async (req: Request, res: Response) => {
   try {
     const { uuid } = req.params;
     const { size = '32', overlay = 'true' } = req.query;
-    
+
     // Validate UUID format (basic check)
     if (!uuid || !/^[a-f0-9\-]{32,36}$/i.test(uuid)) {
       return res.status(400).json({ error: 'Invalid UUID format' });
     }
-    
+
     // Construct Crafatar URL
     const crafatarUrl = `https://crafatar.com/avatars/${uuid}?size=${size}&default=MHF_Steve${overlay === 'true' ? '&overlay' : ''}`;
-    
+
     // Fetch the image from Crafatar
     const response = await fetch(crafatarUrl);
-    
+
     if (!response.ok) {
       return res.status(404).json({ error: 'Avatar not found' });
     }
-    
+
     // Get the image buffer
     const imageBuffer = await response.arrayBuffer();
-    
+
     // Set appropriate headers
     res.set({
       'Content-Type': 'image/png',
       'Cache-Control': 'public, max-age=3600', // Cache for 1 hour
       'Cross-Origin-Resource-Policy': 'cross-origin'
     });
-    
+
     // Send the image
     res.send(Buffer.from(imageBuffer));
   } catch (error) {
