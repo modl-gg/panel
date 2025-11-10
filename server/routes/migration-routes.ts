@@ -58,38 +58,6 @@ const upload = multer({
 });
 
 /**
- * Verify that uploaded file is actually valid JSON
- */
-async function verifyJsonContent(filePath: string): Promise<{ valid: boolean; error?: string }> {
-  try {
-    const fileContent = await fs.readFile(filePath, 'utf-8');
-    
-    if (fileContent.length === 0) {
-      return { valid: false, error: 'File is empty' };
-    }
-    
-    if (fileContent.length > 5 * 1024 * 1024 * 1024) {
-      return { valid: false, error: 'File content exceeds maximum size' };
-    }
-    
-    const firstChar = fileContent.trim()[0];
-    if (firstChar !== '{' && firstChar !== '[') {
-      return { valid: false, error: 'File does not appear to be valid JSON' };
-    }
-    
-    try {
-      JSON.parse(fileContent.substring(0, Math.min(1000, fileContent.length)));
-    } catch (parseError) {
-      return { valid: false, error: 'File content is not valid JSON format' };
-    }
-    
-    return { valid: true };
-  } catch (error: any) {
-    return { valid: false, error: `Failed to verify file content: ${error.message}` };
-  }
-}
-
-/**
  * Middleware to check Super Admin role
  */
 async function requireSuperAdmin(req: Request, res: Response, next: Function): Promise<void> {
@@ -236,27 +204,6 @@ export default function setupMigrationRoutes(app: Express) {
       
       if (!file) {
         res.status(400).json({ error: 'No file uploaded' });
-        return;
-      }
-
-      const jsonVerification = await verifyJsonContent(file.path);
-      if (!jsonVerification.valid) {
-        try {
-          await fs.unlink(file.path);
-        } catch (unlinkError) {
-          console.error('Error deleting invalid file:', unlinkError);
-        }
-        
-        await updateMigrationProgress('failed', {
-          message: 'Invalid file format',
-          recordsProcessed: 0,
-          recordsSkipped: 0
-        }, serverDbConnection, jsonVerification.error || 'File is not valid JSON');
-        
-        res.status(400).json({
-          error: 'Invalid file format',
-          message: jsonVerification.error || 'File is not valid JSON'
-        });
         return;
       }
       
