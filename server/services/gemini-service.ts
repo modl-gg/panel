@@ -73,8 +73,6 @@ ${reportedPlayer ? `REPORTED PLAYER: ${reportedPlayer}` : ''}
 
 Please analyze the chat transcript and respond with a JSON object following the exact format specified in the system prompt.`;
 
-      // console.log(fullPrompt);
-
       const result = await model.generateContent(fullPrompt);
       const response = await result.response;
       const text = response.text();

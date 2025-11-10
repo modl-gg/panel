@@ -245,7 +245,7 @@ export default function setupMigrationRoutes(app: Express) {
       }, serverDbConnection);
       
       // Process migration file asynchronously
-      processMigrationFile(file.path, serverDbConnection).catch(error => {
+      processMigrationFile(file.path, serverDbConnection, serverName).catch(error => {
         console.error('Error in background migration processing:', error);
       });
       

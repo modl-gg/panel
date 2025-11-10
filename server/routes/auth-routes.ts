@@ -157,8 +157,8 @@ router.post('/verify-email-code', authRateLimit, async (req: Request, res: Respo
           if (superAdmin && superAdmin.username) {
             username = superAdmin.username;
           }
-        } catch (error) {
-          console.log('Could not fetch Super Admin username from database, using email prefix');
+        } catch (ignored) {
+          
         }
         
         // @ts-ignore

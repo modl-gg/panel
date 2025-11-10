@@ -145,19 +145,19 @@ app.get('/api/csrf-token', (req, res) => {
     
     const globalDb = await connectToGlobalModlDb();
     startDomainStatusUpdater(globalDb, 10); // Check every 10 minutes
-    console.log('✅ Domain status updater started - monitoring custom domains');
+    console.log('Domain status updater started - monitoring custom domains');
   } catch (error) {
-    console.warn('⚠️  Failed to start domain status updater:', error);
+    console.warn('Failed to start domain status updater:', error);
   }
 
   // Initialize AI moderation system if Gemini API key is provided
   if (process.env.GEMINI_API_KEY) {
-    console.log('🤖 Initializing AI moderation system...');
+    console.log('Initializing AI moderation system...');
     // The AI moderation service will be initialized per server connection
     // as it needs access to each server's database
-    console.log('✅ AI moderation system ready - will initialize per server connection');
+    console.log('AI moderation system ready - will initialize per server connection');
   } else {
-    console.log('⚠️  GEMINI_API_KEY not found - AI moderation features will be disabled');
+    console.log('GEMINI_API_KEY not found - AI moderation features will be disabled');
   }
 
   app.use((err: any, _req: Request, res: Response, _next: NextFunction) => {

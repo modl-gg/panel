@@ -47,8 +47,6 @@ function generateUuid(): string {
 
 // Seed the database with initial data including 20 players and 15 tickets
 export async function seedEnhancedDatabase(dbConnection: Connection) {
-  console.log('Seeding database with enhanced mock data...');
-  
   if (!dbConnection) {
     throw new Error('Database connection is required for seeding');
   }
@@ -84,7 +82,6 @@ export async function seedEnhancedDatabase(dbConnection: Connection) {
     
     // Initialize default settings including punishment types
     await createDefaultSettings(dbConnection);
-    console.log('Initialized default settings with punishment types');
     
     // Get punishment types for realistic punishment generation
     const SettingsSchema = new mongoose.Schema({ 
@@ -547,10 +544,6 @@ export async function seedEnhancedDatabase(dbConnection: Connection) {
     }
     
     await Log.insertMany(logs);
-    
-    console.log('Enhanced database seed completed successfully!');
-    console.log(`Created ${players.length} players and ${tickets.length} tickets`);
-    console.log(`Added ${logs.length} log entries`);
     
   } catch (error) {
     console.error('Error seeding enhanced database:', error);

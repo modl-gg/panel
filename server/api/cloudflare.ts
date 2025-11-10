@@ -395,8 +395,6 @@ export async function updateDomainStatuses(serverDbConnection: any) {
       customDomain_status: { $in: ['pending', 'verifying', 'error'] }
     });
 
-    // console.log(`Checking status for ${serversWithDomains.length} domains...`);
-
     for (const server of serversWithDomains) {
       try {
         const cloudflareStatus = await getCustomHostname(server.customDomain_override);
@@ -413,7 +411,6 @@ export async function updateDomainStatuses(serverDbConnection: any) {
                 newStatus = 'active';
                 newError = null;
                 statusChanged = true;
-                console.log(`🎉 Custom domain activated: ${server.customDomain_override} -> ${server.customDomain}`);
               }
               break;
             case 'pending_validation':
@@ -450,13 +447,6 @@ export async function updateDomainStatuses(serverDbConnection: any) {
               customDomain_error: newError,
               customDomain_cloudflareId: cloudflareStatus.id
             });
-            
-            console.log(`Updated ${server.customDomain_override}: ${server.customDomain_status} -> ${newStatus}`);
-            
-            // Log when domain becomes active
-            if (newStatus === 'active' && server.customDomain_status !== 'active') {
-              console.log(`✅ Domain verification completed for ${server.customDomain_override}. Routing is now active.`);
-            }
           }
         }
       } catch (error: any) {
@@ -479,8 +469,6 @@ export async function updateDomainStatuses(serverDbConnection: any) {
 
 // Function to start periodic status updates
 export function startDomainStatusUpdater(serverDbConnection: any, intervalMinutes: number = 10) {
-  console.log(`Starting domain status updater with ${intervalMinutes} minute intervals`);
-  
   // Run immediately
   updateDomainStatuses(serverDbConnection);
   

@@ -1643,9 +1643,6 @@ export async function updateSettings(dbConnection: Connection, requestBody: any)
         : existingData.aiPunishmentConfigs || {}
     };
 
-    console.log('[Settings] Updating AI moderation settings, preserving existing aiPunishmentConfigs:',
-      Object.keys(existingData.aiPunishmentConfigs || {}));
-
     updates.push(
       models.Settings.findOneAndUpdate(
         { type: 'aiModerationSettings' },
@@ -1750,7 +1747,6 @@ export async function migrateAIPunishmentConfigKeys(dbConnection: Connection): P
             ...config,
             id: ordinalKey
           };
-          console.log(`[Settings] Migrating AI punishment config "${config.name}" from key "${key}" to "${ordinalKey}"`);
         } else {
           // Keep existing correctly-keyed config
           migratedConfigs[key] = config;
@@ -1774,7 +1770,6 @@ export async function migrateAIPunishmentConfigKeys(dbConnection: Connection): P
         },
         { upsert: true, new: true }
       );
-      console.log('[Settings] AI punishment config migration completed');
     }
   } catch (error) {
     console.error('[Settings] Error migrating AI punishment config keys:', error);

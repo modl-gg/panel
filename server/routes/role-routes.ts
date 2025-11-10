@@ -463,8 +463,6 @@ export async function fixCustomRoleOrdering(dbConnection: Connection): Promise<v
       // Clear role hierarchy cache to ensure changes are reflected immediately
       const { clearRoleHierarchyCache } = await import('../utils/role-hierarchy');
       clearRoleHierarchyCache();
-
-      console.log(`Fixed ordering for ${problematicCustomRoles.length} custom roles`);
     }
   } catch (error) {
     console.error('Error fixing custom role ordering:', error);

@@ -39,7 +39,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
     globalDbConnection = await connectToGlobalModlDb();
   } catch (error) {
     console.error('Failed to connect to MongoDB:', error);
-    console.log('Falling back to in-memory storage');
   }
 
   // Public API, verification, and auth routes
@@ -586,7 +585,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
           ]
         });
       } catch (loginError) {
-        console.log('Could not query login activity, estimating based on total players');
         // If login queries fail, estimate based on total players and recent activity
         uniqueLoginsToday = Math.floor(totalPlayers * 0.05); // 5% of total players
         uniqueLoginsYesterday = Math.floor(totalPlayers * 0.04); // Slightly less for yesterday
@@ -671,7 +669,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
           });
         }
       } catch (fieldError) {
-        console.log('No recent activity fields found, using estimated online players');
         // If no activity fields exist, estimate based on total players
         onlinePlayers = Math.floor(totalPlayers * 0.1); // 10% of total players estimated online
       }

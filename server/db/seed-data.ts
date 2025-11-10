@@ -27,8 +27,6 @@ async function hashPassword(password: string): Promise<string> {
 
 // Seed the database with initial data
 export async function seedDatabase() {
-  console.log('Seeding database with initial data...');
-  
   try {
     // Only seed if database is empty
     const playerCount = await PlayerSchema.countDocuments();
@@ -36,7 +34,6 @@ export async function seedDatabase() {
     const ticketCount = await TicketSchema.countDocuments();
     
     if (playerCount > 0 || staffCount > 0 || ticketCount > 0) {
-      console.log('Database already has data, skipping seed operation');
       return;
     }
     
@@ -320,8 +317,6 @@ export async function seedDatabase() {
     await TicketSchema.insertMany(tickets);
     await LogSchema.insertMany(logs);
     await SettingsSchema.insertMany(settings);
-    
-    console.log('Database seeded successfully!');
   } catch (error) {
     console.error('Error seeding database:', error);
   }
@@ -329,8 +324,6 @@ export async function seedDatabase() {
 
 // Seed default homepage cards for a new tenant
 export async function seedDefaultHomepageCards(dbConnection: mongoose.Connection) {
-  console.log('Seeding default homepage cards...');
-  
   try {
     // Register the HomepageCard model on this connection if not already registered
     if (!dbConnection.models.HomepageCard) {
@@ -349,7 +342,6 @@ export async function seedDefaultHomepageCards(dbConnection: mongoose.Connection
     // Check if any cards already exist
     const existingCards = await HomepageCard.countDocuments();
     if (existingCards > 0) {
-      console.log('Homepage cards already exist, skipping seed operation');
       return;
     }
     
@@ -380,8 +372,6 @@ export async function seedDefaultHomepageCards(dbConnection: mongoose.Connection
     const rulesCategory = createdCategories.find(cat => cat.slug === 'rules-policies');
     const guidesCategory = createdCategories.find(cat => cat.slug === 'guides-troubleshooting');
     const newsCategory = createdCategories.find(cat => cat.slug === 'news-updates');
-    
-    console.log('Created default knowledgebase categories');
     
     // Create default homepage cards
     const defaultCards = [
@@ -451,7 +441,6 @@ export async function seedDefaultHomepageCards(dbConnection: mongoose.Connection
     ];
     
     await HomepageCard.insertMany(defaultCards);
-    console.log('Default homepage cards seeded successfully!');
   } catch (error) {
     console.error('Error seeding homepage cards:', error);
   }

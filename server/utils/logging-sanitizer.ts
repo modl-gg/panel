@@ -121,14 +121,6 @@ function sanitizeObject(obj: any): any {
 }
 
 /**
- * Safe console.log that automatically sanitizes sensitive data
- */
-export function safeLog(message: string, ...args: any[]): void {
-  const sanitizedArgs = args.map(sanitizeValue);
-  //console.log(message, ...sanitizedArgs);
-}
-
-/**
  * Safe console.error that automatically sanitizes sensitive data
  */
 export function safeError(message: string, ...args: any[]): void {

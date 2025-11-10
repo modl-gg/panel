@@ -84,9 +84,6 @@ const tenantSchemas: Record<string, mongoose.Schema<any>> = {
 // Enhanced logging utility
 const log = {
   info: (message: string, meta?: any) => {
-    // if (IS_DEVELOPMENT || process.env.ENABLE_CONNECTION_LOGS === 'true') {
-    //   console.log(`[ConnectionManager] ${message}`, meta ? JSON.stringify(meta) : '');
-    // }
   },
   warn: (message: string, meta?: any) => {
     console.warn(`[ConnectionManager] ${message}`, meta ? JSON.stringify(meta) : '');
@@ -96,7 +93,6 @@ const log = {
   },
   metrics: (message: string, meta?: any) => {
     // Always log metrics for monitoring
-    //console.log(`[ConnectionManager:METRICS] ${message}`, meta ? JSON.stringify(meta) : '');
   }
 };
 

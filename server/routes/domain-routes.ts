@@ -301,14 +301,6 @@ router.post('/verify', async (req: Request, res: Response) => {
       updateOperation.$unset = { customDomain_error: "" };
     }
 
-    const updatedServer = await ServerModel.findByIdAndUpdate(server._id, updateOperation, { new: true });
-
-    // If the domain is now active, log the success
-    if (internalStatus === 'active' && server.customDomain_status !== 'active') {
-      console.log(`🎉 Custom domain activated: ${domain} -> ${server.customDomain}`);
-      console.log(`✅ Domain verification completed for ${domain}. Routing is now active.`);
-    }
-
     res.json({
       status: {
         domain,
@@ -321,7 +313,7 @@ router.post('/verify', async (req: Request, res: Response) => {
         validationErrors: verifyResult.validation_errors
       },
       message: internalStatus === 'active' 
-        ? `🎉 Custom domain ${domain} is now active and ready to use!`
+        ? `Custom domain ${domain} is now active and ready to use!`
         : internalStatus === 'verifying'
         ? 'Domain verification is in progress. This may take a few minutes.'
         : internalStatus === 'error'
