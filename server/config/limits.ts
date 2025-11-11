@@ -67,9 +67,9 @@ export const SYSTEM_LIMITS = {
     MAX_STAFF_MEMBERS: 15,
 
     /**
-     * Maximum number of staff invites that can be sent at once
+     * Maximum number of pending staff invitations at any time
      */
-    MAX_STAFF_INVITES_AT_ONCE: 5,
+    MAX_PENDING_STAFF_INVITES: 5,
 
     /**
      * Maximum number of appeal form fields per punishment type
@@ -143,9 +143,9 @@ export const SYSTEM_LIMITS = {
     MAX_STAFF_MEMBERS: 1_000_000,
 
     /**
-     * Maximum number of staff invites that can be sent at once
+     * Maximum number of pending staff invitations at any time
      */
-    MAX_STAFF_INVITES_AT_ONCE: 100,
+    MAX_PENDING_STAFF_INVITES: 100,
 
     /**
      * Maximum number of appeal form fields per punishment type

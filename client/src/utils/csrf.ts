@@ -52,7 +52,7 @@ export async function csrfFetch(url: string, options: RequestInit = {}): Promise
     if (response.status === 429) {
       const { handleRateLimitResponse, getCurrentPath } = await import('./rate-limit-handler');
       await handleRateLimitResponse(response, getCurrentPath());
-      throw new Error('Rate limit exceeded - redirecting to rate limit page');
+      throw new Error('Rate limit exceeded');
     }
     
     // Update cached token from response headers for successful requests
@@ -82,7 +82,7 @@ export async function csrfFetch(url: string, options: RequestInit = {}): Promise
         if (retryResponse.status === 429) {
           const { handleRateLimitResponse, getCurrentPath } = await import('./rate-limit-handler');
           await handleRateLimitResponse(retryResponse, getCurrentPath());
-          throw new Error('Rate limit exceeded - redirecting to rate limit page');
+          throw new Error('Rate limit exceeded');
         }
         
         // Update cached token from retry response headers

@@ -102,17 +102,22 @@ router.post('/invite', authRateLimit, async (req: Request, res: Response) => {
   // Support both single email and array of emails
   const emailsToInvite = emails ? (Array.isArray(emails) ? emails : [emails]) : [email];
   
-  // Check bulk invite limit based on plan
+  // Check pending invitations limit based on plan
   const planTier = getPlanTier(req.modlServer?.billingStatus);
   const limits = getLimitsForPlan(planTier);
   
-  if (emailsToInvite.length > limits.MAX_STAFF_INVITES_AT_ONCE) {
+  const InvitationModel = req.serverDbConnection!.model('Invitation');
+  const pendingInvitationsCount = await InvitationModel.countDocuments({ status: 'pending' });
+  
+  // Check if adding these invitations would exceed the limit
+  const totalAfterInvite = pendingInvitationsCount + emailsToInvite.length;
+  if (totalAfterInvite > limits.MAX_PENDING_STAFF_INVITES) {
     return res.status(400).json({ 
       message: createLimitExceededError(
-        'Staff invites at once',
-        emailsToInvite.length,
-        limits.MAX_STAFF_INVITES_AT_ONCE,
-        undefined,
+        'Pending staff invitations',
+        totalAfterInvite,
+        limits.MAX_PENDING_STAFF_INVITES,
+        `You currently have ${pendingInvitationsCount} pending invitation(s). Cannot send ${emailsToInvite.length} more.`,
         planTier
       )
     });
@@ -148,7 +153,6 @@ router.post('/invite', authRateLimit, async (req: Request, res: Response) => {
 
   try {
     const Staff = req.serverDbConnection!.model<IStaff>('Staff');
-    const InvitationModel = req.serverDbConnection!.model('Invitation');
     const appDomain = process.env.DOMAIN || "modl.gg";
     
     // Get server display name from settings

@@ -18,30 +18,33 @@ export function isRateLimitError(response: Response): boolean {
 }
 
 /**
- * Handle rate limit response by storing info and redirecting to rate limit page
+ * Handle rate limit response by showing a toast error
  */
 export async function handleRateLimitResponse(response: Response, currentPath?: string): Promise<void> {
   try {
     const rateLimitData: RateLimitResponse = await response.json();
     
-    // Store rate limit info in sessionStorage for the rate limit page
-    sessionStorage.setItem('rateLimitInfo', JSON.stringify(rateLimitData));
+    // Dynamically import toast to show error
+    const { toast } = await import('@/hooks/use-toast');
     
-    // Store current path to return to after rate limit expires
-    if (currentPath && currentPath !== '/rate-limit') {
-      sessionStorage.setItem('preRateLimitPath', currentPath);
-    }
+    // Build error message
+    const errorMessage = rateLimitData.error || 'Too many requests. Please try again later.';
+    const timeInfo = rateLimitData.timeRemaining ? ` Please wait ${rateLimitData.timeRemaining}.` : '';
     
-    // Redirect to rate limit page
-    window.location.href = '/rate-limit';
+    toast({
+      title: errorMessage + timeInfo,
+      description: rateLimitData.securityNote || rateLimitData.message,
+      variant: 'destructive',
+    });
   } catch (error) {
     console.error('Failed to parse rate limit response:', error);
-    // Fallback: still redirect to rate limit page with minimal info
-    sessionStorage.setItem('rateLimitInfo', JSON.stringify({
-      error: 'Rate limit exceeded',
-      message: 'Too many requests. Please wait before trying again.'
-    }));
-    window.location.href = '/rate-limit';
+    // Fallback: show basic toast
+    const { toast } = await import('@/hooks/use-toast');
+    toast({
+      title: 'Rate limit exceeded',
+      description: 'Too many requests. Please wait before trying again.',
+      variant: 'destructive',
+    });
   }
 }
 
@@ -57,7 +60,7 @@ export async function rateLimitAwareFetch(
   
   if (isRateLimitError(response)) {
     await handleRateLimitResponse(response, currentPath);
-    throw new Error('Rate limit exceeded - redirecting to rate limit page');
+    throw new Error('Rate limit exceeded');
   }
   
   return response;
@@ -76,7 +79,7 @@ export async function rateLimitAwareCSRFfetch(
   
   if (isRateLimitError(response)) {
     await handleRateLimitResponse(response, currentPath);
-    throw new Error('Rate limit exceeded - redirecting to rate limit page');
+    throw new Error('Rate limit exceeded');
   }
   
   return response;
