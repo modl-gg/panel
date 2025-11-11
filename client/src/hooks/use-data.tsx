@@ -2,20 +2,6 @@ import { useQuery, useMutation, useQueryClient, QueryClient, useQueries } from '
 import { queryClient } from '../lib/queryClient';
 import { useAuth } from './use-auth';
 
-// Player-related hooks
-export function usePlayers() {
-  return useQuery({
-    queryKey: ['/api/panel/players'],
-    queryFn: async () => {
-      const res = await fetch('/api/panel/players');
-      if (!res.ok) {
-        throw new Error('Failed to fetch players');
-      }
-      return res.json();
-    }
-  });
-}
-
 export function usePlayer(uuid: string) {
   return useQuery({
     queryKey: ['/api/panel/players', uuid],
@@ -670,8 +656,6 @@ export function useApplyPunishment() {
     onSuccess: (data, variables) => {
       // Invalidate player data to refresh it
       queryClient.invalidateQueries({ queryKey: ['/api/panel/players', variables.uuid] });
-      // Invalidate the entire player list to refresh it
-      queryClient.invalidateQueries({ queryKey: ['/api/panel/players'] });
     },
     onError: (error) => {
       console.error('Error applying punishment:', error);
@@ -1183,6 +1167,25 @@ export function useTicketCounts(options?: {
   const isError = queries.some(query => query.isError);
 
   return { counts, isLoading, isError };
+}
+
+// Player search hook
+export function usePlayerSearch(searchQuery: string) {
+  return useQuery({
+    queryKey: ['player-search', searchQuery],
+    queryFn: async () => {
+      if (!searchQuery || searchQuery.trim().length < 2) {
+        return [];
+      }
+      const res = await fetch(`/api/panel/players?search=${encodeURIComponent(searchQuery.trim())}`);
+      if (!res.ok) {
+        throw new Error('Failed to search players');
+      }
+      return res.json();
+    },
+    enabled: searchQuery.trim().length >= 2,
+    staleTime: 1000 * 60, // 1 minute
+  });
 }
 
 // Migration-related hooks

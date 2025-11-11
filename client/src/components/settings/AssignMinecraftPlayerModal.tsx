@@ -4,7 +4,7 @@ import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, D
 import { Input } from '@modl-gg/shared-web/components/ui/input';
 import { Badge } from '@modl-gg/shared-web/components/ui/badge';
 import { useToast } from '@modl-gg/shared-web/hooks/use-toast';
-import { usePlayers, useAssignMinecraftPlayer, useStaff } from '@/hooks/use-data';
+import { usePlayerSearch, useAssignMinecraftPlayer, useStaff } from '@/hooks/use-data';
 import { Loader2, User, X, Search } from 'lucide-react';
 
 interface StaffMember {
@@ -31,11 +31,11 @@ const AssignMinecraftPlayerModal: React.FC<AssignMinecraftPlayerModalProps> = ({
   const [searchQuery, setSearchQuery] = useState<string>('');
   const { toast } = useToast();
   
-  const { data: allPlayers, isLoading: playersLoading } = usePlayers();
   const { data: staff } = useStaff();
+  const { data: searchResults, isLoading: playersLoading } = usePlayerSearch(searchQuery);
   const assignPlayerMutation = useAssignMinecraftPlayer();
 
-  // Get assigned UUIDs from staff members
+  // Get assigned UUIDs from staff members to filter them out
   const assignedUuids = useMemo(() => {
     if (!staff) return [];
     return staff
@@ -43,23 +43,14 @@ const AssignMinecraftPlayerModal: React.FC<AssignMinecraftPlayerModalProps> = ({
       .map((member: any) => member.assignedMinecraftUuid);
   }, [staff]);
 
-  // Filter out already assigned players
+  // Filter out already assigned players from search results
   const availablePlayers = useMemo(() => {
-    if (!allPlayers) return [];
-    return allPlayers.filter((player: any) => !assignedUuids.includes(player.uuid));
-  }, [allPlayers, assignedUuids]);
-
-  // Filter players based on search query (matching sidebar pattern)
-  const filteredPlayers = useMemo(() => {
-    if (!searchQuery.trim()) {
-      return availablePlayers.slice(0, 10); // Show first 10 if no search
-    }
-    
-    return availablePlayers.filter((player: any) =>
-      player.username?.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      player.uuid?.toLowerCase().includes(searchQuery.toLowerCase())
-    );
-  }, [availablePlayers, searchQuery]);
+    if (!searchResults) return [];
+    return searchResults.filter((player: any) => {
+      const playerUuid = player.uuid || player.minecraftUuid;
+      return !assignedUuids.includes(playerUuid);
+    });
+  }, [searchResults, assignedUuids]);
 
   const handleAssign = async () => {
     if (!staffMember) return;
@@ -73,13 +64,16 @@ const AssignMinecraftPlayerModal: React.FC<AssignMinecraftPlayerModalProps> = ({
       return;
     }
 
-    const selectedPlayer = availablePlayers.find((p: any) => p.uuid === selectedPlayerUuid);
+    const selectedPlayer = availablePlayers.find((p: any) => {
+      const playerUuid = p.uuid || p.minecraftUuid;
+      return playerUuid === selectedPlayerUuid;
+    });
     if (!selectedPlayer) return;
 
     try {
       await assignPlayerMutation.mutateAsync({
         username: staffMember.username,
-        minecraftUuid: selectedPlayer.uuid,
+        minecraftUuid: selectedPlayer.uuid || selectedPlayer.minecraftUuid,
         minecraftUsername: selectedPlayer.username
       });
 
@@ -186,30 +180,39 @@ const AssignMinecraftPlayerModal: React.FC<AssignMinecraftPlayerModalProps> = ({
             </div>
 
             {/* Results */}
-            {playersLoading ? (
+            {!searchQuery || searchQuery.trim().length < 2 ? (
+              <div className="text-center py-12 text-sm text-muted-foreground">
+                <Search className="h-8 w-8 mx-auto mb-2 opacity-50" />
+                <p>Start typing to search for players</p>
+                <p className="text-xs mt-1">Search by username or UUID (minimum 2 characters)</p>
+              </div>
+            ) : playersLoading ? (
               <div className="flex items-center justify-center py-8">
                 <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
-                <span className="ml-2 text-sm text-muted-foreground">Loading available players...</span>
+                <span className="ml-2 text-sm text-muted-foreground">Searching players...</span>
               </div>
             ) : availablePlayers.length === 0 ? (
               <div className="text-center py-8 text-sm text-muted-foreground">
-                No available players found. All players may already be assigned to staff members.
+                {searchResults && searchResults.length > 0 ? (
+                  <>All matching players are already assigned to staff members.</>
+                ) : (
+                  <>No players found matching "{searchQuery}"</>
+                )}
               </div>
             ) : (
               <div className="border rounded-md max-h-[300px] overflow-y-auto">
-                {filteredPlayers.length > 0 ? (
-                  <div className="p-2">
-                    {!searchQuery && (
-                      <div className="px-2 py-1 text-xs text-muted-foreground mb-2">
-                        {availablePlayers.length > 10 ? `Showing first 10 of ${availablePlayers.length} players` : `${availablePlayers.length} available players`}
-                      </div>
-                    )}
-                    {filteredPlayers.map((player: any) => (
+                <div className="p-2">
+                  <div className="px-2 py-1 text-xs text-muted-foreground mb-2">
+                    Found {availablePlayers.length} available player{availablePlayers.length !== 1 ? 's' : ''}
+                  </div>
+                  {availablePlayers.map((player: any) => {
+                    const playerUuid = player.uuid || player.minecraftUuid;
+                    return (
                       <Button
-                        key={player.uuid}
-                        variant={selectedPlayerUuid === player.uuid ? "secondary" : "ghost"}
+                        key={playerUuid}
+                        variant={selectedPlayerUuid === playerUuid ? "secondary" : "ghost"}
                         className="w-full justify-start text-left h-auto py-3 px-3 mb-1"
-                        onClick={() => setSelectedPlayerUuid(player.uuid)}
+                        onClick={() => setSelectedPlayerUuid(playerUuid)}
                       >
                         <div className="flex items-center gap-3">
                           <div className="w-8 h-8 bg-gradient-to-br from-green-400 to-green-600 rounded-md flex items-center justify-center flex-shrink-0">
@@ -217,20 +220,16 @@ const AssignMinecraftPlayerModal: React.FC<AssignMinecraftPlayerModalProps> = ({
                           </div>
                           <div className="flex flex-col items-start min-w-0 flex-1">
                             <span className="font-medium text-sm truncate w-full">{player.username || 'Unknown'}</span>
-                            <span className="text-xs text-muted-foreground truncate w-full">{player.uuid}</span>
+                            <span className="text-xs text-muted-foreground truncate w-full">{playerUuid}</span>
                           </div>
-                          {selectedPlayerUuid === player.uuid && (
+                          {selectedPlayerUuid === playerUuid && (
                             <div className="w-2 h-2 bg-green-500 rounded-full flex-shrink-0" />
                           )}
                         </div>
                       </Button>
-                    ))}
-                  </div>
-                ) : (
-                  <div className="text-center py-8 text-sm text-muted-foreground">
-                    No players found matching "{searchQuery}"
-                  </div>
-                )}
+                    );
+                  })}
+                </div>
               </div>
             )}
           </div>
@@ -246,7 +245,7 @@ const AssignMinecraftPlayerModal: React.FC<AssignMinecraftPlayerModalProps> = ({
           </Button>
           <Button 
             onClick={handleAssign} 
-            disabled={!selectedPlayerUuid || assignPlayerMutation.isPending || availablePlayers.length === 0}
+            disabled={!selectedPlayerUuid || assignPlayerMutation.isPending}
           >
             {assignPlayerMutation.isPending ? (
               <>

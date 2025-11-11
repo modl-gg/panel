@@ -10,7 +10,7 @@ import { Badge } from '@modl-gg/shared-web/components/ui/badge';
 import { 
   Ban, Eye, Search, TriangleAlert, Loader2, RefreshCcw 
 } from 'lucide-react';
-import { usePlayers, usePlayer } from '@/hooks/use-data';
+import { usePlayer } from '@/hooks/use-data';
 import ResizableWindow from '@/components/layout/ResizableWindow';
 import { useToast } from '@/hooks/use-toast';
 
@@ -317,7 +317,6 @@ const Lookup = () => {
   
   const [isPlayerWindowOpen, setIsPlayerWindowOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
-  const { data: players, isLoading: isLoadingPlayers } = usePlayers();
   const [recentLookups, setRecentLookups] = useState<any[]>([]);
   const { toast } = useToast();
   

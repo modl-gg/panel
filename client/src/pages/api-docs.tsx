@@ -27,12 +27,6 @@ const ApiDocs = () => {
       routes: [
         {
           method: 'GET',
-          path: '/api/panel/players',
-          description: 'Retrieve a list of all players',
-          responseType: 'Array<Player>'
-        },
-        {
-          method: 'GET',
           path: '/api/panel/players/:uuid',
           description: 'Get detailed information about a specific player',
           responseType: 'Player'

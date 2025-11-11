@@ -18,7 +18,7 @@ import {
 } from "@modl-gg/shared-web/components/ui/tooltip";
 import { Button } from "@modl-gg/shared-web/components/ui/button";
 import { Input } from "@modl-gg/shared-web/components/ui/input";
-import { usePlayers, useBillingStatus } from "@/hooks/use-data";
+import { useBillingStatus } from "@/hooks/use-data";
 import { useDashboard } from "@/contexts/DashboardContext";
 import PlayerWindow from "../../components/windows/PlayerWindow";
 import serverLogo from "../../assets/server-logo.png";
@@ -26,6 +26,7 @@ import { usePublicSettings } from "@/hooks/use-public-settings";
 import { usePunishmentLookup } from "@/hooks/use-player-lookup";
 import { usePermissions, PERMISSIONS } from "@/hooks/use-permissions";
 import { useAuth } from "@/hooks/use-auth";
+import { usePlayerSearch } from "@/hooks/use-data";
 import { useQuery } from '@tanstack/react-query';
 
 const Sidebar = () => {
@@ -77,13 +78,15 @@ const Sidebar = () => {
   }, []);
 
   // Helper function to get player UUID (handling both uuid and minecraftUuid fields)
-  const getPlayerUuid = (player: Player) => {
-    return player.minecraftUuid || player.uuid;
+  const getPlayerUuid = (player: Player): string => {
+    return player.minecraftUuid || player.uuid || '';
   };
 
   // Function to handle player selection and update recent searches
   const handlePlayerSelect = (player: Player) => {
     const uuid = getPlayerUuid(player);
+    
+    if (!uuid) return; // Guard against empty UUID
     
     // Update recent searches
     const timestamp = Date.now();
@@ -271,26 +274,24 @@ const Sidebar = () => {
   // Calculate sidebar height dynamically (navItems * 56px + top/bottom padding of 32px)
   const sidebarHeight = Math.max(200, navItems.length * 56 + 16);
 
-  // Fetch players from API using React Query
-  const { data: players, isLoading } = usePlayers();
-
   // Define player type to avoid 'implicitly has an any type' errors
   interface Player {
-    uuid: string;
+    uuid?: string;
+    minecraftUuid?: string;
     username?: string;
-    status: string;
+    status?: string;
     lastOnline?: string;
+    isOnline?: boolean;
+    data?: any;
   }
 
-  // Filter lookup results
-  const filteredLookups =
-    searchQuery && players
-      ? players.filter(
-          (player: Player) =>
-            player.username?.toLowerCase().includes(searchQuery.toLowerCase()) ||
-            player.uuid?.toLowerCase().includes(searchQuery.toLowerCase()),
-        )
-      : players || [];
+  // Fetch players from API using search query (only when user types, and not for punishment lookups)
+  const { data: players, isLoading } = usePlayerSearch(
+    isPunishmentLookup ? '' : searchQuery
+  );
+
+  // Use search results directly (no need to filter since API does it)
+  const filteredLookups = players || [];
 
   return (
     <div className="fixed ml-4 top-1/4 left-4 z-40">
@@ -574,35 +575,12 @@ const Sidebar = () => {
                         </Button>
                       ))}
                     </>
-                  ) : players && players.length > 0 ? (
-                    <>
-                      <div className="py-1 px-2 mb-2 text-xs text-muted-foreground">
-                        Recent Players
-                      </div>
-                      {players
-                        .sort((a: Player, b: Player) => {
-                          // Sort by document creation order (most recent MongoDB documents first)
-                          // This assumes newer documents are at the end, so we reverse
-                          return players.indexOf(b) - players.indexOf(a);
-                        })
-                        .slice(0, 5)
-                        .map((player: Player, index: number) => (
-                        <Button
-                          key={index}
-                          variant="ghost"
-                          className="w-full justify-start text-xs py-2 px-3 h-auto mb-1"
-                          onClick={() => handlePlayerSelect(player)}
-                        >
-                          <div className="flex flex-col items-start">
-                            <span className="font-medium">{player.username || 'Unknown'}</span>
-                            <span className="text-muted-foreground text-[10px]">
-                              {player.status === 'Online' || (player.isOnline || player.data?.isOnline) ? 'Online' : 'Offline'}
-                            </span>
-                          </div>
-                        </Button>
-                      ))}
-                    </>
-                  ) : null}
+                  ) : (
+                    <div className="py-6 text-center text-xs text-muted-foreground">
+                      <p>Start typing to search for players</p>
+                      <p className="mt-2">Use # for punishment IDs</p>
+                    </div>
+                  )}
                 </div>
               )}
             </div>

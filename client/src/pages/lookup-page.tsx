@@ -3,7 +3,7 @@ import { useLocation } from 'wouter';
 import { Search, ChevronRight, X, Loader2 } from 'lucide-react';
 import { Input } from '@modl-gg/shared-web/components/ui/input';
 import { Button } from '@modl-gg/shared-web/components/ui/button';
-import { usePlayers } from '@/hooks/use-data';
+import { usePlayerSearch } from '@/hooks/use-data';
 
 interface Player {
   username?: string;
@@ -21,22 +21,12 @@ interface Player {
 const LookupPage = () => {
   const [location, navigate] = useLocation();
   const [searchQuery, setSearchQuery] = useState('');
-  const [searchHistory, setSearchHistory] = useState<Player[]>([]);
-  const [isSearching, setIsSearching] = useState(false);
-  
-  // Use Query for fetching players
-  const { data: players, isLoading, refetch } = usePlayers();
   
   // Get recent searches from localStorage sorted by timestamp
   const [recentSearches, setRecentSearches] = useState<Array<{player: Player, timestamp: number}>>([]);
 
-  // Fetch players on initial load
+  // Load recent searches from local storage on mount
   useEffect(() => {
-    if (!players && !isLoading) {
-      refetch();
-    }
-    
-    // Load recent searches from local storage
     const savedSearches = localStorage.getItem('recentPlayerSearches');
     if (savedSearches) {
       try {
@@ -48,14 +38,13 @@ const LookupPage = () => {
         console.error('Failed to parse recent searches:', e);
       }
     }
-  }, [players, isLoading, refetch]);
+  }, []);
 
-  // Filter players based on search query
-  const filteredPlayers = players 
-    ? players.filter((player: Player) => 
-        player.username?.toLowerCase().includes(searchQuery.toLowerCase())
-      )
-    : [];
+  // Fetch players from API using search query (only when user types)
+  const { data: players, isLoading } = usePlayerSearch(searchQuery);
+
+  // Use search results directly (API filters for us)
+  const filteredPlayers = players || [];
 
   // Get player UUID (handling both uuid and minecraftUuid fields)
   const getPlayerUuid = (player: Player) => {
