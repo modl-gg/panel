@@ -9,6 +9,7 @@ import { getModlServersModel } from '../db/connectionManager';
 import { strictRateLimit, authRateLimit } from '../middleware/rate-limiter';
 import { getSettingsValue } from './settings-routes';
 import EmailTemplateService from '../services/email-template-service';
+import { getLimitsForPlan, createLimitExceededError, getPlanTier } from '../config/limits';
 
 const router = express.Router();
 
@@ -95,8 +96,27 @@ router.post('/invite', authRateLimit, async (req: Request, res: Response) => {
     });
   }
 
-  const { email, role } = req.body;
+  const { email, emails, role } = req.body;
   const invitingUser = req.currentUser!;
+  
+  // Support both single email and array of emails
+  const emailsToInvite = emails ? (Array.isArray(emails) ? emails : [emails]) : [email];
+  
+  // Check bulk invite limit based on plan
+  const planTier = getPlanTier(req.modlServer?.billingStatus);
+  const limits = getLimitsForPlan(planTier);
+  
+  if (emailsToInvite.length > limits.MAX_STAFF_INVITES_AT_ONCE) {
+    return res.status(400).json({ 
+      message: createLimitExceededError(
+        'Staff invites at once',
+        emailsToInvite.length,
+        limits.MAX_STAFF_INVITES_AT_ONCE,
+        undefined,
+        planTier
+      )
+    });
+  }
 
   // Validate that the role exists (either as default or custom role)
   try {
@@ -126,54 +146,95 @@ router.post('/invite', authRateLimit, async (req: Request, res: Response) => {
     return res.status(500).json({ message: 'Permission check failed' });
   }
 
-  // Check if the email is the admin email
-  if (req.modlServer?.adminEmail && email.toLowerCase() === req.modlServer.adminEmail.toLowerCase()) {
-    return res.status(409).json({ message: 'Cannot send invitation to the admin email address.' });
-  }
-
   try {
     const Staff = req.serverDbConnection!.model<IStaff>('Staff');
-    const existingUser = await Staff.findOne({ email });
-    if (existingUser) {
-      return res.status(409).json({ message: 'Email is already associated with an existing user.' });
-    }
-
     const InvitationModel = req.serverDbConnection!.model('Invitation');
-    const existingInvitation = await InvitationModel.findOne({ email, status: 'pending' });
-    if (existingInvitation) {
-      return res.status(409).json({ message: 'An invitation for this email is already pending.' });
-    }
-
-    const token = crypto.randomBytes(32).toString('hex');
-    const expiresAt = new Date(Date.now() + 24 * 60 * 60 * 1000); // 24 hours
-
-    const newInvitation = new InvitationModel({
-      email,
-      role,
-      token,
-      expiresAt,
-    });
-
-    await newInvitation.save();
-
     const appDomain = process.env.DOMAIN || "modl.gg";
-    const invitationLink = `https://${req.modlServer?.customDomain}.${appDomain}/accept-invitation?token=${token}`;
     
     // Get server display name from settings
     const generalSettings = await getSettingsValue(req.serverDbConnection!, 'general');
     const serverDisplayName = generalSettings?.serverDisplayName || 'modl';
-    
     const emailService = new EmailTemplateService();
-    await emailService.sendStaffInviteEmail({
-      to: email,
-      subject: `You have been invited to join the ${serverDisplayName} team!`,
-      serverDisplayName: serverDisplayName,
-      serverName: req.serverName,
-      invitationLink: invitationLink,
-      role: role
-    });
+    
+    const results = {
+      success: [] as string[],
+      failed: [] as { email: string; reason: string }[]
+    };
 
-    res.status(201).json({ message: 'Invitation sent successfully.' });
+    // Process each email
+    for (const emailToInvite of emailsToInvite) {
+      try {
+        // Check if the email is the admin email
+        if (req.modlServer?.adminEmail && emailToInvite.toLowerCase() === req.modlServer.adminEmail.toLowerCase()) {
+          results.failed.push({ email: emailToInvite, reason: 'Cannot send invitation to the admin email address.' });
+          continue;
+        }
+
+        // Check if user already exists
+        const existingUser = await Staff.findOne({ email: emailToInvite });
+        if (existingUser) {
+          results.failed.push({ email: emailToInvite, reason: 'Email is already associated with an existing user.' });
+          continue;
+        }
+
+        // Check if invitation already pending
+        const existingInvitation = await InvitationModel.findOne({ email: emailToInvite, status: 'pending' });
+        if (existingInvitation) {
+          results.failed.push({ email: emailToInvite, reason: 'An invitation for this email is already pending.' });
+          continue;
+        }
+
+        // Create invitation
+        const token = crypto.randomBytes(32).toString('hex');
+        const expiresAt = new Date(Date.now() + 24 * 60 * 60 * 1000); // 24 hours
+
+        const newInvitation = new InvitationModel({
+          email: emailToInvite,
+          role,
+          token,
+          expiresAt,
+        });
+
+        await newInvitation.save();
+
+        const invitationLink = `https://${req.modlServer?.customDomain}.${appDomain}/accept-invitation?token=${token}`;
+        
+        // Send email
+        await emailService.sendStaffInviteEmail({
+          to: emailToInvite,
+          subject: `You have been invited to join the ${serverDisplayName} team!`,
+          serverDisplayName: serverDisplayName,
+          serverName: req.serverName,
+          invitationLink: invitationLink,
+          role: role
+        });
+
+        results.success.push(emailToInvite);
+      } catch (emailError) {
+        console.error(`Error processing invitation for ${emailToInvite}:`, emailError);
+        results.failed.push({ email: emailToInvite, reason: 'Internal server error processing this invitation.' });
+      }
+    }
+
+    // Return appropriate response
+    if (results.success.length === 0) {
+      return res.status(400).json({ 
+        message: 'No invitations were sent successfully.',
+        failed: results.failed
+      });
+    } else if (results.failed.length === 0) {
+      return res.status(201).json({ 
+        message: results.success.length === 1 
+          ? 'Invitation sent successfully.' 
+          : `${results.success.length} invitations sent successfully.`
+      });
+    } else {
+      return res.status(207).json({ 
+        message: `${results.success.length} invitation(s) sent successfully, ${results.failed.length} failed.`,
+        success: results.success,
+        failed: results.failed
+      });
+    }
   } catch (error) {
     console.error('Error inviting staff:', error);
     res.status(500).json({ error: 'Internal server error' });

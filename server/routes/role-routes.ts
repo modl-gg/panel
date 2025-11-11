@@ -3,6 +3,7 @@ import { Connection, Schema } from 'mongoose';
 import { isAuthenticated } from '../middleware/auth-middleware';
 // Note: Permission functions will be imported dynamically to avoid circular dependency issues
 import { strictRateLimit } from '../middleware/rate-limiter';
+import { getLimitsForPlan, createLimitExceededError, getPlanTier } from '../config/limits';
 
 const router = express.Router();
 
@@ -221,6 +222,23 @@ router.post('/', strictRateLimit, async (req: Request, res: Response) => {
     // Get StaffRole model with consistent schema
     const { getStaffRoleModel } = await import('../utils/schema-utils');
     const StaffRoles = getStaffRoleModel(db);
+    
+    // Check custom roles limit (excluding default roles) based on plan
+    const planTier = getPlanTier(req.modlServer?.billingStatus);
+    const limits = getLimitsForPlan(planTier);
+    
+    const customRolesCount = await StaffRoles.countDocuments({ isDefault: false });
+    if (customRolesCount >= limits.MAX_CUSTOM_ROLES) {
+      return res.status(400).json({ 
+        error: createLimitExceededError(
+          'Custom roles',
+          customRolesCount,
+          limits.MAX_CUSTOM_ROLES,
+          'Only custom roles are counted (excluding default roles).',
+          planTier
+        )
+      });
+    }
     
     // Generate unique ID
     const id = `custom-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;

@@ -1,4 +1,5 @@
 import { Connection } from 'mongoose';
+import { getLimitsForPlan, getPlanTier } from '../config/limits';
 
 interface DiscordEmbed {
   title: string;
@@ -53,6 +54,24 @@ export class DiscordWebhookService {
   private hexToDecimalColor(hex: string): number {
     const cleanHex = hex.replace('#', '');
     return parseInt(cleanHex, 16);
+  }
+
+  private async truncateFields(fields: EmbedField[]): Promise<EmbedField[]> {
+    // Get billing status to determine limits
+    const { getAllSettings } = await import('../routes/settings-routes');
+    const settings = await getAllSettings(this.dbConnection);
+    const billingStatus = settings.general?.billingStatus;
+    
+    const planTier = getPlanTier(billingStatus);
+    const limits = getLimitsForPlan(planTier);
+    
+    if (fields.length <= limits.MAX_WEBHOOK_EMBED_FIELDS) {
+      return fields;
+    }
+    
+    // Truncate to max limit and log warning
+    console.warn(`[Discord Webhook] Embed fields exceeded limit of ${limits.MAX_WEBHOOK_EMBED_FIELDS} for ${planTier} plan. Truncating from ${fields.length} to ${limits.MAX_WEBHOOK_EMBED_FIELDS} fields.`);
+    return fields.slice(0, limits.MAX_WEBHOOK_EMBED_FIELDS);
   }
 
   private async getWebhookSettings(): Promise<any> {
@@ -161,21 +180,23 @@ export class DiscordWebhookService {
       ticketId: punishment.ticketId
     };
 
+    const filteredFields = template.fields
+      .filter((field: EmbedField) => {
+        // Filter out fields with empty values unless they're required
+        const replacedValue = this.replaceTemplateVariables(field.value, variables);
+        return replacedValue !== 'Unknown' || ['id', 'playerName', 'type', 'reason', 'issuer'].some(key => field.value.includes(`{{${key}}}`));
+      })
+      .map((field: EmbedField) => ({
+        name: this.replaceTemplateVariables(field.name, variables),
+        value: this.replaceTemplateVariables(field.value, variables).substring(0, 1024),
+        inline: field.inline
+      }));
+
     const embed: DiscordEmbed = {
       title: this.replaceTemplateVariables(template.title, variables),
       description: this.replaceTemplateVariables(template.description, variables),
       color: this.hexToDecimalColor(template.color),
-      fields: template.fields
-        .filter((field: EmbedField) => {
-          // Filter out fields with empty values unless they're required
-          const replacedValue = this.replaceTemplateVariables(field.value, variables);
-          return replacedValue !== 'Unknown' || ['id', 'playerName', 'type', 'reason', 'issuer'].some(key => field.value.includes(`{{${key}}}`));
-        })
-        .map((field: EmbedField) => ({
-          name: this.replaceTemplateVariables(field.name, variables),
-          value: this.replaceTemplateVariables(field.value, variables).substring(0, 1024),
-          inline: field.inline
-        })),
+      fields: await this.truncateFields(filteredFields),
       timestamp: new Date().toISOString(),
     };
 
@@ -246,6 +267,9 @@ export class DiscordWebhookService {
       });
     }
 
+    // Apply field limit truncation
+    embed.fields = await this.truncateFields(embed.fields || []);
+
     await this.sendWebhook({ embeds: [embed] }, 'newTickets');
   }
 
@@ -272,22 +296,24 @@ export class DiscordWebhookService {
       submittedBy: ticket.submittedBy || 'Unknown user'
     };
 
+    const filteredTicketFields = template.fields
+      .filter((field: EmbedField) => {
+        // Filter out fields with empty values unless they're required
+        const replacedValue = this.replaceTemplateVariables(field.value, variables);
+        return replacedValue !== 'Unknown' && replacedValue !== 'No subject provided' && replacedValue !== 'Unknown user'
+          || ['id', 'type'].some(key => field.value.includes(`{{${key}}}`));
+      })
+      .map((field: EmbedField) => ({
+        name: this.replaceTemplateVariables(field.name, variables),
+        value: this.replaceTemplateVariables(field.value, variables).substring(0, 1024),
+        inline: field.inline
+      }));
+
     const embed: DiscordEmbed = {
       title: this.replaceTemplateVariables(template.title, variables),
       description: this.replaceTemplateVariables(template.description, variables),
       color: this.hexToDecimalColor(template.color),
-      fields: template.fields
-        .filter((field: EmbedField) => {
-          // Filter out fields with empty values unless they're required
-          const replacedValue = this.replaceTemplateVariables(field.value, variables);
-          return replacedValue !== 'Unknown' && replacedValue !== 'No subject provided' && replacedValue !== 'Unknown user'
-            || ['id', 'type'].some(key => field.value.includes(`{{${key}}}`));
-        })
-        .map((field: EmbedField) => ({
-          name: this.replaceTemplateVariables(field.name, variables),
-          value: this.replaceTemplateVariables(field.value, variables).substring(0, 1024),
-          inline: field.inline
-        })),
+      fields: await this.truncateFields(filteredTicketFields),
       timestamp: new Date().toISOString(),
     };
 
@@ -349,21 +375,23 @@ export class DiscordWebhookService {
       timestamp: auditLog.timestamp
     };
 
+    const filteredAuditFields = template.fields
+      .filter((field: EmbedField) => {
+        const replacedValue = this.replaceTemplateVariables(field.value, variables);
+        return replacedValue !== 'Unknown' && replacedValue !== 'N/A'
+          || ['id', 'action', 'performedBy'].some(key => field.value.includes(`{{${key}}}`));
+      })
+      .map((field: EmbedField) => ({
+        name: this.replaceTemplateVariables(field.name, variables),
+        value: this.replaceTemplateVariables(field.value, variables).substring(0, 1024),
+        inline: field.inline
+      }));
+
     const embed: DiscordEmbed = {
       title: this.replaceTemplateVariables(template.title, variables),
       description: this.replaceTemplateVariables(template.description, variables),
       color: this.hexToDecimalColor(template.color),
-      fields: template.fields
-        .filter((field: EmbedField) => {
-          const replacedValue = this.replaceTemplateVariables(field.value, variables);
-          return replacedValue !== 'Unknown' && replacedValue !== 'N/A'
-            || ['id', 'action', 'performedBy'].some(key => field.value.includes(`{{${key}}}`));
-        })
-        .map((field: EmbedField) => ({
-          name: this.replaceTemplateVariables(field.name, variables),
-          value: this.replaceTemplateVariables(field.value, variables).substring(0, 1024),
-          inline: field.inline
-        })),
+      fields: await this.truncateFields(filteredAuditFields),
       timestamp: new Date().toISOString(),
     };
 

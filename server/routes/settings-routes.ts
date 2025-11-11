@@ -10,6 +10,7 @@ import path from 'path';
 import fs from 'fs';
 import { promisify } from 'util';
 import { generateTicketApiKey } from '../middleware/ticket-api-auth';
+import { SYSTEM_LIMITS, createLimitExceededError, getLimitsForPlan, getPlanTier } from '../config/limits';
 // Removed unused imports - interfaces are defined locally below
 
 const writeFile = promisify(fs.writeFile);
@@ -1500,8 +1501,10 @@ export async function getAllSettings(dbConnection: Connection): Promise<any> {
 
 
 // Function to update separate documents based on request body
-export async function updateSettings(dbConnection: Connection, requestBody: any): Promise<void> {
+export async function updateSettings(dbConnection: Connection, requestBody: any, billingStatus?: any): Promise<void> {
   const models = getSettingsModels(dbConnection);
+  const planTier = getPlanTier(billingStatus);
+  const limits = getLimitsForPlan(planTier);
   
   const updates: Promise<any>[] = [];
   
@@ -1527,6 +1530,43 @@ export async function updateSettings(dbConnection: Connection, requestBody: any)
     
     // Sort by ordinal to maintain order
     mergedTypes.sort((a: IPunishmentType, b: IPunishmentType) => a.ordinal - b.ordinal);
+    
+    // Validate punishment types limit (excluding 6 core administrative types: ordinals 0-5)
+    const customizableTypes = mergedTypes.filter((type: IPunishmentType) => type.ordinal >= 6);
+    if (customizableTypes.length > limits.MAX_PUNISHMENT_TYPES) {
+      throw new Error(createLimitExceededError(
+        'Punishment types',
+        customizableTypes.length,
+        limits.MAX_PUNISHMENT_TYPES,
+        'Only customizable punishment types are counted (excluding core administrative types).',
+        planTier
+      ));
+    }
+    
+    // Validate appeal form limits for each punishment type
+    for (const punishmentType of mergedTypes) {
+      if (punishmentType.appealForm) {
+        if (punishmentType.appealForm.sections && punishmentType.appealForm.sections.length > limits.MAX_APPEAL_FORM_SECTIONS) {
+          throw new Error(createLimitExceededError(
+            `Appeal form sections for punishment type "${punishmentType.name}"`,
+            punishmentType.appealForm.sections.length,
+            limits.MAX_APPEAL_FORM_SECTIONS,
+            undefined,
+            planTier
+          ));
+        }
+        
+        if (punishmentType.appealForm.fields && punishmentType.appealForm.fields.length > limits.MAX_APPEAL_FORM_FIELDS) {
+          throw new Error(createLimitExceededError(
+            `Appeal form fields for punishment type "${punishmentType.name}"`,
+            punishmentType.appealForm.fields.length,
+            limits.MAX_APPEAL_FORM_FIELDS,
+            undefined,
+            planTier
+          ));
+        }
+      }
+    }
     
     updates.push(
       models.Settings.findOneAndUpdate(
@@ -1568,6 +1608,37 @@ export async function updateSettings(dbConnection: Connection, requestBody: any)
   }
   
   if (requestBody.ticketTags !== undefined) {
+    // Validate ticket tags limit
+    // Tags can be structured as object with types (bug, player, appeal) or as simple array
+    if (typeof requestBody.ticketTags === 'object' && !Array.isArray(requestBody.ticketTags)) {
+      // Structure: { bug: string[], player: string[], appeal: string[] }
+      const tagTypes = ['bug', 'player', 'appeal'];
+      for (const tagType of tagTypes) {
+        if (requestBody.ticketTags[tagType] && Array.isArray(requestBody.ticketTags[tagType])) {
+          if (requestBody.ticketTags[tagType].length > limits.MAX_TAGS_PER_TYPE) {
+            throw new Error(createLimitExceededError(
+              `${tagType.charAt(0).toUpperCase() + tagType.slice(1)} tags`,
+              requestBody.ticketTags[tagType].length,
+              limits.MAX_TAGS_PER_TYPE,
+              undefined,
+              planTier
+            ));
+          }
+        }
+      }
+    } else if (Array.isArray(requestBody.ticketTags)) {
+      // Legacy structure: simple array - validate total count
+      if (requestBody.ticketTags.length > limits.MAX_TAGS_PER_TYPE) {
+        throw new Error(createLimitExceededError(
+          'Ticket tags',
+          requestBody.ticketTags.length,
+          limits.MAX_TAGS_PER_TYPE,
+          undefined,
+          planTier
+        ));
+      }
+    }
+    
     updates.push(
       models.Settings.findOneAndUpdate(
         { type: 'ticketTags' },
@@ -1599,6 +1670,23 @@ export async function updateSettings(dbConnection: Connection, requestBody: any)
     const existingData = existingDoc?.data || {};
     const mergedData = { ...existingData, ...requestBody.quickResponses };
 
+    // Validate quick responses limit (actions per category)
+    if (mergedData.categories && Array.isArray(mergedData.categories)) {
+      for (const category of mergedData.categories) {
+        if (category.actions && Array.isArray(category.actions)) {
+          if (category.actions.length > limits.MAX_QUICK_RESPONSES_PER_CATEGORY) {
+            throw new Error(createLimitExceededError(
+              `Quick response actions in category "${category.name}"`,
+              category.actions.length,
+              limits.MAX_QUICK_RESPONSES_PER_CATEGORY,
+              undefined,
+              planTier
+            ));
+          }
+        }
+      }
+    }
+
     updates.push(
       models.Settings.findOneAndUpdate(
         { type: 'quickResponses' },
@@ -1613,6 +1701,44 @@ export async function updateSettings(dbConnection: Connection, requestBody: any)
     const existingDoc = await models.Settings.findOne({ type: 'ticketForms' });
     const existingData = existingDoc?.data || {};
     const mergedData = { ...existingData, ...requestBody.ticketForms };
+
+    // Validate ticket forms limits
+    const formTypes = ['bug', 'support', 'application'];
+    for (const formType of formTypes) {
+      if (mergedData[formType]) {
+        // Check sections limit
+        if (mergedData[formType].sections && Array.isArray(mergedData[formType].sections)) {
+          if (mergedData[formType].sections.length > limits.MAX_FORM_SECTIONS) {
+            throw new Error(createLimitExceededError(
+              `Form sections in ${formType} form`,
+              mergedData[formType].sections.length,
+              limits.MAX_FORM_SECTIONS,
+              undefined,
+              planTier
+            ));
+          }
+        }
+        
+        // Check fields per section limit
+        if (mergedData[formType].sections && mergedData[formType].fields) {
+          const sections = mergedData[formType].sections;
+          const fields = mergedData[formType].fields;
+          
+          for (const section of sections) {
+            const sectionFields = fields.filter((field: any) => field.sectionId === section.id);
+            if (sectionFields.length > limits.MAX_FORM_FIELDS_PER_SECTION) {
+              throw new Error(createLimitExceededError(
+                `Fields in section "${section.title}" of ${formType} form`,
+                sectionFields.length,
+                limits.MAX_FORM_FIELDS_PER_SECTION,
+                undefined,
+                planTier
+              ));
+            }
+          }
+        }
+      }
+    }
 
     updates.push(
       models.Settings.findOneAndUpdate(
@@ -1657,6 +1783,25 @@ export async function updateSettings(dbConnection: Connection, requestBody: any)
     const existingDoc = await models.Settings.findOne({ type: 'webhookSettings' });
     const existingData = existingDoc?.data || {};
     const mergedData = { ...existingData, ...requestBody.webhookSettings };
+
+    // Validate webhook embed fields limit
+    if (mergedData.embedTemplates) {
+      const templateTypes = ['newTickets', 'newPunishments', 'auditLogs'];
+      for (const templateType of templateTypes) {
+        if (mergedData.embedTemplates[templateType]?.fields && Array.isArray(mergedData.embedTemplates[templateType].fields)) {
+          const fieldsCount = mergedData.embedTemplates[templateType].fields.length;
+          if (fieldsCount > limits.MAX_WEBHOOK_EMBED_FIELDS) {
+            throw new Error(createLimitExceededError(
+              `Webhook embed fields in ${templateType} template`,
+              fieldsCount,
+              limits.MAX_WEBHOOK_EMBED_FIELDS,
+              undefined,
+              planTier
+            ));
+          }
+        }
+      }
+    }
 
     updates.push(
       models.Settings.findOneAndUpdate(
@@ -3055,7 +3200,7 @@ router.patch('/', async (req: Request, res: Response) => {
   if (!(await checkRoutePermission(req, res, 'admin.settings.modify'))) return;
   try {
     // Update settings documents
-    await updateSettings(req.serverDbConnection!, req.body);
+    await updateSettings(req.serverDbConnection!, req.body, req.modlServer?.billingStatus);
     
     // Clean up orphaned AI punishment configs if punishment types were updated
     if ('punishmentTypes' in req.body) {
@@ -3075,7 +3220,7 @@ router.post('/', async (req: Request, res: Response) => {
   if (!(await checkRoutePermission(req, res, 'admin.settings.modify'))) return;
   try {
     // Update settings documents
-    await updateSettings(req.serverDbConnection!, req.body);
+    await updateSettings(req.serverDbConnection!, req.body, req.modlServer?.billingStatus);
     
     // Clean up orphaned AI punishment configs if punishment types were updated
     if ('punishmentTypes' in req.body) {

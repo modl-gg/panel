@@ -11,6 +11,7 @@ import mongoose, { Model } from 'mongoose';
 import { isAuthenticated } from '../middleware/auth-middleware';
 // Note: Permission functions will be imported dynamically to avoid circular dependency issues
 import { check, validationResult } from 'express-validator';
+import { getLimitsForPlan, createLimitExceededError, getPlanTier } from '../config/limits';
 
 const router = express.Router();
 
@@ -141,6 +142,23 @@ router.post(
         background_color, 
         is_enabled 
       } = req.body;
+
+      // Check homepage cards limit based on plan
+      const planTier = getPlanTier(req.modlServer?.billingStatus);
+      const limits = getLimitsForPlan(planTier);
+      
+      const cardCount = await HomepageCard.countDocuments();
+      if (cardCount >= limits.MAX_HOMEPAGE_CARDS) {
+        return res.status(400).json({ 
+          message: createLimitExceededError(
+            'Homepage cards',
+            cardCount,
+            limits.MAX_HOMEPAGE_CARDS,
+            undefined,
+            planTier
+          )
+        });
+      }
 
       // Validate action-specific requirements
       if (action_type === 'url') {

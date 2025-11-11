@@ -9,6 +9,7 @@ import mongoose, { Model } from 'mongoose';
 import { isAuthenticated } from '../middleware/auth-middleware';
 // Note: Permission functions will be imported dynamically to avoid circular dependency issues
 import { check, validationResult } from 'express-validator'; // For validation
+import { getLimitsForPlan, createLimitExceededError, getPlanTier } from '../config/limits';
 
 const router = express.Router();
 
@@ -80,6 +81,23 @@ router.post(
     try {
       const KnowledgebaseCategory = getKnowledgebaseCategoryModel(req);
       const { name, description } = req.body; // display_order is now ordinal
+
+      // Check category limit based on plan
+      const planTier = getPlanTier(req.modlServer?.billingStatus);
+      const limits = getLimitsForPlan(planTier);
+      
+      const categoryCount = await KnowledgebaseCategory.countDocuments();
+      if (categoryCount >= limits.MAX_KNOWLEDGEBASE_CATEGORIES) {
+        return res.status(400).json({ 
+          message: createLimitExceededError(
+            'Knowledgebase categories',
+            categoryCount,
+            limits.MAX_KNOWLEDGEBASE_CATEGORIES,
+            undefined,
+            planTier
+          )
+        });
+      }
 
       // Check for existing category by name (case-insensitive)
       const existingCategory = await KnowledgebaseCategory.findOne({ name: { $regex: `^${name}$`, $options: 'i' } });
@@ -377,6 +395,23 @@ router.post(
       const category = await KnowledgebaseCategory.findById(categoryId);
       if (!category) {
         return res.status(404).json({ message: 'Knowledgebase category not found.' });
+      }
+
+      // Check articles per category limit based on plan
+      const planTier = getPlanTier(req.modlServer?.billingStatus);
+      const limits = getLimitsForPlan(planTier);
+      
+      const articleCount = await KnowledgebaseArticle.countDocuments({ category: category._id });
+      if (articleCount >= limits.MAX_ARTICLES_PER_CATEGORY) {
+        return res.status(400).json({ 
+          message: createLimitExceededError(
+            `Articles in category "${category.name}"`,
+            articleCount,
+            limits.MAX_ARTICLES_PER_CATEGORY,
+            undefined,
+            planTier
+          )
+        });
       }
 
       const highestOrdinalArticle = await KnowledgebaseArticle.findOne({ category: category._id }).sort({ ordinal: -1 });
