@@ -156,14 +156,33 @@ router.get('/', async (req: Request, res: Response): Promise<void> => {
     if (isUuid) {
       query = { minecraftUuid: searchTerm };
     } else {
-      // Search by username (case-insensitive, exact match for better accuracy)
+      // Search by username (case-insensitive, partial match)
       query = {
-        'usernames.username': { $regex: new RegExp(`^${searchTerm.replace(/[-\/\\^$*+?.()|[\]{}]/g, '\\$&')}$`, 'i') }
+        'usernames.username': { $regex: new RegExp(searchTerm.replace(/[-\/\\^$*+?.()|[\]{}]/g, '\\$&'), 'i') }
       };
     }
 
-    const players = await Player.find(query).limit(100);
+    const players = await Player.find(query);
+    
     const formattedPlayers = players.map(player => {
+      const currentUsername = player.usernames?.length > 0
+        ? player.usernames[player.usernames.length - 1].username
+        : 'Unknown';
+      
+      // Calculate match score for sorting (lower is better)
+      let matchScore = Infinity;
+      if (player.usernames && player.usernames.length > 0) {
+        const lowerCaseSearch = searchTerm.toLowerCase();
+        player.usernames.forEach((un: any) => {
+          const lowerUsername = un.username.toLowerCase();
+          const index = lowerUsername.indexOf(lowerCaseSearch);
+          if (index !== -1) {
+            // Prioritize matches at the start, then by position
+            matchScore = Math.min(matchScore, index);
+          }
+        });
+      }
+
       // Check if player is currently online
       const isOnline = player.data?.get('isOnline') === true;
 
@@ -180,13 +199,16 @@ router.get('/', async (req: Request, res: Response): Promise<void> => {
 
       return {
         uuid: player.minecraftUuid,
-        username: player.usernames?.length > 0
-          ? player.usernames[player.usernames.length - 1].username
-          : 'Unknown',
+        username: currentUsername,
         status: status,
-        lastOnline: player.data?.get('lastLogin') || null
+        lastOnline: player.data?.get('lastLogin') || null,
+        _matchScore: matchScore
       };
-    });
+    })
+      .sort((a, b) => a._matchScore - b._matchScore)
+      .slice(0, 10)
+      .map(({ _matchScore, ...player }) => player);
+    
     res.json(formattedPlayers);
   } catch (error) {
     console.error('Error fetching players:', error);
