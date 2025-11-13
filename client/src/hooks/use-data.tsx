@@ -1,3 +1,4 @@
+import React from 'react';
 import { useQuery, useMutation, useQueryClient, QueryClient, useQueries } from '@tanstack/react-query';
 import { queryClient } from '../lib/queryClient';
 import { useAuth } from './use-auth';
@@ -1169,21 +1170,31 @@ export function useTicketCounts(options?: {
   return { counts, isLoading, isError };
 }
 
-// Player search hook
-export function usePlayerSearch(searchQuery: string) {
+// Player search hook with debounce
+export function usePlayerSearch(searchQuery: string, debounceMs: number = 300) {
+  const [debouncedQuery, setDebouncedQuery] = React.useState(searchQuery);
+
+  React.useEffect(() => {
+    const timer = setTimeout(() => {
+      setDebouncedQuery(searchQuery);
+    }, debounceMs);
+
+    return () => clearTimeout(timer);
+  }, [searchQuery, debounceMs]);
+
   return useQuery({
-    queryKey: ['player-search', searchQuery],
+    queryKey: ['player-search', debouncedQuery],
     queryFn: async () => {
-      if (!searchQuery || searchQuery.trim().length < 2) {
+      if (!debouncedQuery || debouncedQuery.trim().length < 2) {
         return [];
       }
-      const res = await fetch(`/api/panel/players?search=${encodeURIComponent(searchQuery.trim())}`);
+      const res = await fetch(`/api/panel/players?search=${encodeURIComponent(debouncedQuery.trim())}`);
       if (!res.ok) {
         throw new Error('Failed to search players');
       }
       return res.json();
     },
-    enabled: searchQuery.trim().length >= 2,
+    enabled: debouncedQuery.trim().length >= 2,
     staleTime: 1000 * 60, // 1 minute
   });
 }

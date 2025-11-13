@@ -163,12 +163,12 @@ router.get('/', async (req: Request, res: Response): Promise<void> => {
     }
 
     const players = await Player.find(query);
-    
+
     const formattedPlayers = players.map(player => {
       const currentUsername = player.usernames?.length > 0
         ? player.usernames[player.usernames.length - 1].username
         : 'Unknown';
-      
+
       // Calculate match score for sorting (lower is better)
       let matchScore = Infinity;
       if (player.usernames && player.usernames.length > 0) {
@@ -208,7 +208,7 @@ router.get('/', async (req: Request, res: Response): Promise<void> => {
       .sort((a, b) => a._matchScore - b._matchScore)
       .slice(0, 10)
       .map(({ _matchScore, ...player }) => player);
-    
+
     res.json(formattedPlayers);
   } catch (error) {
     console.error('Error fetching players:', error);
@@ -490,7 +490,7 @@ router.post('/login', async (req: Request<{}, {}, PlayerLoginBody>, res: Respons
       await createSystemLog(req.serverDbConnection, req.serverName, `Player ${username} (${minecraftUuid}) logged in. IP: ${ipAddress}.`, 'info', 'player-api');
       return res.status(200).json(player);
     }
-    
+
     let ipInfo: IIPInfo = {};
     try {
       const response = await fetch(`http://ip-api.com/json/${ipAddress}?fields=status,message,countryCode,regionName,city,as,proxy,hosting`);
@@ -501,7 +501,7 @@ router.post('/login', async (req: Request<{}, {}, PlayerLoginBody>, res: Respons
     } catch (fetchError) {
       console.error(`Error fetching IP info for ${ipAddress}:`, fetchError);
     }
-    
+
     player = new Player({
       _id: uuidv4(),
       minecraftUuid,
