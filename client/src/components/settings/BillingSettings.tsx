@@ -73,7 +73,7 @@ const plans: Plan[] = [
   {
     id: 'premium',
     name: 'Premium',
-    price: 20,
+    price: 9.99,
     period: 'per month',
     description: 'For growing communities that need advanced features',
     features: [
@@ -442,7 +442,7 @@ const BillingSettings = () => {
                   <Crown className="h-5 w-5 text-yellow-600" />
                   Premium Subscription
                   <span className="text-muted-foreground mx-2">—</span>
-                  <span className="text-2xl font-bold text-primary">$20/month</span>
+                  <span className="text-2xl font-bold text-primary">$9.99/month</span>
                 </CardTitle>
                 <CardDescription className='mt-4'>
                   {subscription_status === 'canceled' && current_period_end
@@ -585,7 +585,7 @@ const BillingSettings = () => {
               <div className="space-y-4">
                 <div className="text-center">
                   <div className="text-4xl font-bold text-primary">
-                    $20
+                    $9.99
                   </div>
                   <div className="text-sm text-muted-foreground">per month</div>
                 </div>
