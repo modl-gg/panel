@@ -107,13 +107,13 @@ router.post('/tickets', verifyTicketApiKey, async (req: Request, res: Response) 
     
     // Generate ticket ID
     const ticketId = await generateTicketId(req.serverDbConnection, type);
-    
+
     // Create initial message content
     let contentString = '';
     if (description) {
       contentString += `Description: ${description}\n\n`;
     }
-    
+
     // Special handling for chat reports
     if (type === 'chat' && chatMessages && chatMessages.length > 0) {
       contentString += `**Chat Messages:**\n`;
@@ -135,7 +135,12 @@ router.post('/tickets', verifyTicketApiKey, async (req: Request, res: Response) 
       }
       contentString += `\n`;
     }
-    
+
+    // Initialize field label mapping (used for both message formatting and data storage)
+    let fieldLabels: Record<string, string> = {};
+    let fieldMap: Record<string, any> = {};
+    let orderedFields: any[] = [];
+
     if (formData && Object.keys(formData).length > 0) {
       // Get ticket form configuration to get field labels
       let ticketForms = null;
@@ -144,11 +149,6 @@ router.post('/tickets', verifyTicketApiKey, async (req: Request, res: Response) 
       } catch (error) {
         console.warn('Could not fetch ticket forms configuration');
       }
-      
-      // Create a map of field IDs to labels and field objects
-      const fieldLabels: Record<string, string> = {};
-      const fieldMap: Record<string, any> = {};
-      let orderedFields: any[] = [];
       
       if (ticketForms && ticketForms[type] && ticketForms[type].fields) {
         ticketForms[type].fields.forEach((field: any) => {
@@ -242,15 +242,26 @@ router.post('/tickets', verifyTicketApiKey, async (req: Request, res: Response) 
     if (creatorEmail) ticketData.data.set('creatorEmail', creatorEmail);
     if (creatorIdentifier) ticketData.data.set('creatorIdentifier', creatorIdentifier);
     
-    // Store formData in ticket.data Map
+    // Store formData in ticket.data Map with field labels as keys
     if (formData && Object.keys(formData).length > 0) {
+      const transformedFormData: Record<string, any> = {};
+
       Object.entries(formData).forEach(([key, value]) => {
-        ticketData.data.set(key, value);
+        // Get the field label for this ID, or use the key if no label found
+        const fieldLabel = fieldLabels[key] || key;
+
+        // Store with field label as key
+        ticketData.data.set(fieldLabel, value);
+        transformedFormData[fieldLabel] = value;
+
         // Map contact_email to creatorEmail for email notifications
         if (key === 'contact_email') {
           ticketData.data.set('creatorEmail', value);
         }
       });
+
+      // Store the transformed formData with labels as keys
+      ticketData.formData = transformedFormData;
     }
     
     // Add initial message if there's content
@@ -384,13 +395,13 @@ router.post('/tickets/unfinished', strictRateLimit, async (req: Request, res: Re
     
     // Generate ticket ID
     const ticketId = await generateTicketId(req.serverDbConnection, type);
-    
+
     // Create initial message content
     let contentString = '';
     if (description) {
       contentString += `Description: ${description}\n\n`;
     }
-    
+
     // Special handling for chat reports
     if (type === 'chat' && chatMessages && chatMessages.length > 0) {
       contentString += `**Chat Messages:**\n`;
@@ -412,7 +423,12 @@ router.post('/tickets/unfinished', strictRateLimit, async (req: Request, res: Re
       }
       contentString += `\n`;
     }
-    
+
+    // Initialize field label mapping (used for both message formatting and data storage)
+    let fieldLabels: Record<string, string> = {};
+    let fieldMap: Record<string, any> = {};
+    let orderedFields: any[] = [];
+
     if (formData && Object.keys(formData).length > 0) {
       // Get ticket form configuration to get field labels
       let ticketForms = null;
@@ -421,11 +437,6 @@ router.post('/tickets/unfinished', strictRateLimit, async (req: Request, res: Re
       } catch (error) {
         console.warn('Could not fetch ticket forms configuration');
       }
-
-      // Create a map of field IDs to labels and field objects
-      const fieldLabels: Record<string, string> = {};
-      const fieldMap: Record<string, any> = {};
-      let orderedFields: any[] = [];
 
       if (ticketForms && ticketForms[type] && ticketForms[type].fields) {
         ticketForms[type].fields.forEach((field: any) => {
@@ -524,15 +535,26 @@ router.post('/tickets/unfinished', strictRateLimit, async (req: Request, res: Re
       ticketData.data.set('originalDescription', description);
     }
 
-    // Store formData in ticket.data Map
+    // Store formData in ticket.data Map with field labels as keys
     if (formData && Object.keys(formData).length > 0) {
+      const transformedFormData: Record<string, any> = {};
+
       Object.entries(formData).forEach(([key, value]) => {
-        ticketData.data.set(key, value);
+        // Get the field label for this ID, or use the key if no label found
+        const fieldLabel = fieldLabels[key] || key;
+
+        // Store with field label as key
+        ticketData.data.set(fieldLabel, value);
+        transformedFormData[fieldLabel] = value;
+
         // Map contact_email to creatorEmail for email notifications
         if (key === 'contact_email') {
           ticketData.data.set('creatorEmail', value);
         }
       });
+
+      // Store the transformed formData with labels as keys
+      ticketData.formData = transformedFormData;
     }
     
     // Add initial message if there's content
@@ -904,30 +926,6 @@ router.post('/tickets/:id/submit', async (req: Request, res: Response) => {
       if (!ticket.data) {
         ticket.data = new Map();
       }
-      
-      // Store form data
-      Object.entries(formData).forEach(([key, value]) => {
-        ticket.data.set(key, value);
-        // Map contact_email or email to creatorEmail for email notifications
-        if (key === 'contact_email' || key === 'email') {
-          ticket.data.set('creatorEmail', value);
-        }
-      });
-      ticket.formData = formData;
-
-      // Store creator identifier for verification
-      if (creatorIdentifier) {
-        ticket.data.set('creatorIdentifier', creatorIdentifier);
-      }
-      
-      // Create initial message content from form data
-      let contentString = '';
-
-      // Include original description from command if it exists
-      const originalDescription = ticket.data?.get('originalDescription');
-      if (originalDescription) {
-        contentString += `**Original Description:**\n${originalDescription}\n\n`;
-      }
 
       // Get ticket form configuration to get field labels
       let ticketForms = null;
@@ -949,6 +947,41 @@ router.post('/tickets/:id/submit', async (req: Request, res: Response) => {
         });
         // Sort fields by order
         orderedFields = ticketForms[ticket.type].fields.sort((a: any, b: any) => (a.order || 0) - (b.order || 0));
+      }
+
+      // Create a transformed formData object with field labels as keys
+      const transformedFormData: Record<string, any> = {};
+
+      // Store form data with field labels as keys
+      Object.entries(formData).forEach(([key, value]) => {
+        // Get the field label for this ID, or use the key if no label found
+        const fieldLabel = fieldLabels[key] || key;
+
+        // Store with field label as key in both data Map and formData object
+        ticket.data.set(fieldLabel, value);
+        transformedFormData[fieldLabel] = value;
+
+        // Map contact_email or email to creatorEmail for email notifications
+        if (key === 'contact_email' || key === 'email') {
+          ticket.data.set('creatorEmail', value);
+        }
+      });
+
+      // Store the transformed formData with labels as keys
+      ticket.formData = transformedFormData;
+
+      // Store creator identifier for verification
+      if (creatorIdentifier) {
+        ticket.data.set('creatorIdentifier', creatorIdentifier);
+      }
+
+      // Create initial message content from form data
+      let contentString = '';
+
+      // Include original description from command if it exists
+      const originalDescription = ticket.data?.get('originalDescription');
+      if (originalDescription) {
+        contentString += `**Original Description:**\n${originalDescription}\n\n`;
       }
 
       // Process fields in order
