@@ -32,7 +32,11 @@ const KnowledgebasePage: React.FC = () => {
     const fetchCategories = async () => {
       setIsLoading(true);
       try {
-        const response = await fetch('/api/public/knowledgebase/categories');
+        const { getApiUrl, getCurrentDomain } = await import('@/lib/api');
+        const response = await fetch(getApiUrl('/v1/public/knowledgebase/categories'), {
+          credentials: 'include',
+          headers: { 'X-Server-Domain': getCurrentDomain() }
+        });
         if (!response.ok) {
           throw new Error(`HTTP error! status: ${response.status}`);
         }
@@ -58,7 +62,11 @@ const KnowledgebasePage: React.FC = () => {
 
     const handleSearch = async () => {
       try {
-        const response = await fetch(`/api/public/knowledgebase/search?q=${encodeURIComponent(searchTerm)}`);
+        const { getApiUrl, getCurrentDomain } = await import('@/lib/api');
+        const response = await fetch(getApiUrl(`/v1/public/knowledgebase/search?q=${encodeURIComponent(searchTerm)}`), {
+          credentials: 'include',
+          headers: { 'X-Server-Domain': getCurrentDomain() }
+        });
         if (!response.ok) {
           throw new Error(`HTTP error! status: ${response.status}`);
         }

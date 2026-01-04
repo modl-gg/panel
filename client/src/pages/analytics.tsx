@@ -26,9 +26,11 @@ interface AnalyticsResponse {
 }
 
 const fetchAnalyticsData = async (endpoint: string, period?: string) => {
-  const url = `/api/panel/analytics/${endpoint}${period ? `?period=${period}` : ''}`;
-  const response = await fetch(url, {
-    credentials: 'include'
+  const { getApiUrl, getCurrentDomain } = await import('@/lib/api');
+  const url = `/v1/panel/analytics/${endpoint}${period ? `?period=${period}` : ''}`;
+  const response = await fetch(getApiUrl(url), {
+    credentials: 'include',
+    headers: { 'X-Server-Domain': getCurrentDomain() }
   });
   if (!response.ok) {
     throw new Error(`Failed to fetch ${endpoint} analytics`);

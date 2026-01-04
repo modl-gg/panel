@@ -103,7 +103,7 @@ const BillingSettings = () => {
     setIsLoading(true);
     try {
       const { csrfFetch } = await import('@/utils/csrf');
-      const response = await csrfFetch('/api/panel/billing/create-checkout-session', {
+      const response = await csrfFetch('/v1/panel/billing/create-checkout-session', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -142,7 +142,7 @@ const BillingSettings = () => {
     setIsLoading(true);
     try {
       const { csrfFetch } = await import('@/utils/csrf');
-      const response = await csrfFetch('/api/panel/billing/create-portal-session', {
+      const response = await csrfFetch('/v1/panel/billing/create-portal-session', {
         method: 'POST',
       });
 
@@ -167,7 +167,7 @@ const BillingSettings = () => {
   const handleRefreshBillingStatus = async () => {
     setIsSpinning(true);
     try {
-      await queryClient.invalidateQueries({ queryKey: ['/api/panel/billing/status'] });
+      await queryClient.invalidateQueries({ queryKey: ['/v1/panel/billing/status'] });
 
       toast({
         title: 'Billing Status Refreshed',

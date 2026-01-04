@@ -1,5 +1,6 @@
 import { useEffect } from 'react';
 import { useLocation } from 'wouter';
+import { apiFetch } from '@/lib/api';
 
 interface ProvisioningStatusResponse {
   status: string;
@@ -30,9 +31,7 @@ export function useProvisioningStatusCheck() {
 
     const checkProvisioningStatus = async () => {
       try {
-        const response = await fetch('/api/panel/provisioning-status', {
-          credentials: 'include'
-        });
+        const response = await apiFetch('/v1/panel/server/provisioning-status');
 
         if (!response.ok) {
           // If we get a 401 or 403, it's likely an auth issue, not a provisioning issue

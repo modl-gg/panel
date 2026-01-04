@@ -18,7 +18,11 @@ import { KnowledgebaseCategory, KnowledgebaseArticle } from '@modl-gg/shared-web
 // TODO: Define these types based on your backend schema
 
 const fetchCategories = async (): Promise<KnowledgebaseCategory[]> => {
-  const response = await fetch('/api/panel/knowledgebase/categories');
+  const { getApiUrl, getCurrentDomain } = await import('@/lib/api');
+  const response = await fetch(getApiUrl('/v1/panel/knowledgebase/categories'), {
+    credentials: 'include',
+    headers: { 'X-Server-Domain': getCurrentDomain() }
+  });
   if (!response.ok) {
     throw new Error('Failed to fetch categories');
   }
@@ -229,7 +233,7 @@ const KnowledgebaseSettings: React.FC = () => {
   const createCategoryMutation = useMutation<KnowledgebaseCategory, Error, { name: string; description?: string }>({
     mutationFn: async (newCategory) => {
       const { csrfFetch } = await import('@/utils/csrf');
-      const response = await csrfFetch('/api/panel/knowledgebase/categories', {
+      const response = await csrfFetch('/v1/panel/knowledgebase/categories', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(newCategory),
@@ -254,7 +258,7 @@ const KnowledgebaseSettings: React.FC = () => {
   const updateCategoryMutation = useMutation<KnowledgebaseCategory, Error, { id: string; name: string; description?: string }>({
     mutationFn: async (updatedCategory) => {
       const { csrfFetch } = await import('@/utils/csrf');
-      const response = await csrfFetch(`/api/panel/knowledgebase/categories/${updatedCategory.id}`, {
+      const response = await csrfFetch(`/v1/panel/knowledgebase/categories/${updatedCategory.id}`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ name: updatedCategory.name, description: updatedCategory.description }),
@@ -278,7 +282,7 @@ const KnowledgebaseSettings: React.FC = () => {
   const deleteCategoryMutation = useMutation<void, Error, string>({
     mutationFn: async (categoryId) => {
       const { csrfFetch } = await import('@/utils/csrf');
-      const response = await csrfFetch(`/api/panel/knowledgebase/categories/${categoryId}`, {
+      const response = await csrfFetch(`/v1/panel/knowledgebase/categories/${categoryId}`, {
         method: 'DELETE',
       });
       if (!response.ok) {
@@ -298,7 +302,7 @@ const KnowledgebaseSettings: React.FC = () => {
   const reorderCategoriesMutation = useMutation<void, Error, { orderedCategoryIds: string[] }>({
     mutationFn: async (data) => {
       const { csrfFetch } = await import('@/utils/csrf');
-      const response = await csrfFetch('/api/panel/knowledgebase/categories/reorder', {
+      const response = await csrfFetch('/v1/panel/knowledgebase/categories/reorder', {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(data),
@@ -375,7 +379,7 @@ const KnowledgebaseSettings: React.FC = () => {
   const createArticleMutation = useMutation<KnowledgebaseArticle, Error, { categoryId: string; title: string; content: string; is_visible?: boolean }>({
     mutationFn: async (newArticle) => {
       const { csrfFetch } = await import('@/utils/csrf');
-      const response = await csrfFetch(`/api/panel/knowledgebase/categories/${newArticle.categoryId}/articles`, {
+      const response = await csrfFetch(`/v1/panel/knowledgebase/categories/${newArticle.categoryId}/articles`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ title: newArticle.title, content: newArticle.content, is_visible: newArticle.is_visible }),
@@ -400,7 +404,7 @@ const KnowledgebaseSettings: React.FC = () => {
   const updateArticleMutation = useMutation<KnowledgebaseArticle, Error, { categoryId: string; articleId: string; title: string; content: string; is_visible: boolean }>({
     mutationFn: async (updatedArticle) => {
       const { csrfFetch } = await import('@/utils/csrf');
-      const response = await csrfFetch(`/api/panel/knowledgebase/categories/${updatedArticle.categoryId}/articles/${updatedArticle.articleId}`, {
+      const response = await csrfFetch(`/v1/panel/knowledgebase/categories/${updatedArticle.categoryId}/articles/${updatedArticle.articleId}`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ title: updatedArticle.title, content: updatedArticle.content, is_visible: updatedArticle.is_visible }),
@@ -424,7 +428,7 @@ const KnowledgebaseSettings: React.FC = () => {
   const deleteArticleMutation = useMutation<void, Error, { categoryId: string; articleId: string }>({
     mutationFn: async ({ categoryId, articleId }) => {
       const { csrfFetch } = await import('@/utils/csrf');
-      const response = await csrfFetch(`/api/panel/knowledgebase/categories/${categoryId}/articles/${articleId}`, {
+      const response = await csrfFetch(`/v1/panel/knowledgebase/categories/${categoryId}/articles/${articleId}`, {
         method: 'DELETE',
       });
       if (!response.ok) {
@@ -444,7 +448,7 @@ const KnowledgebaseSettings: React.FC = () => {
   const reorderArticlesMutation = useMutation<void, Error, { categoryId: string; orderedArticleIds: string[] }>({
     mutationFn: async (data) => {
       const { csrfFetch } = await import('@/utils/csrf');
-      const response = await csrfFetch(`/api/panel/knowledgebase/categories/${data.categoryId}/articles/reorder`, {
+      const response = await csrfFetch(`/v1/panel/knowledgebase/categories/${data.categoryId}/articles/reorder`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ orderedArticleIds: data.orderedArticleIds }),
@@ -497,7 +501,7 @@ const KnowledgebaseSettings: React.FC = () => {
   const fetchArticleForEditing = async (categoryId: string, articleId: string) => {
     try {
       const { csrfFetch } = await import('@/utils/csrf');
-      const response = await csrfFetch(`/api/panel/knowledgebase/categories/${categoryId}/articles/${articleId}`);
+      const response = await csrfFetch(`/v1/panel/knowledgebase/categories/${categoryId}/articles/${articleId}`);
       if (!response.ok) {
         throw new Error('Failed to fetch article details');
       }

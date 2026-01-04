@@ -2,6 +2,19 @@ import { useMemo } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { useAuth } from './use-auth';
 import { buildRoleHierarchy, canModifyRole, canRemoveUser, canAssignMinecraftPlayer } from '@/utils/role-hierarchy';
+import { getApiUrl, getCurrentDomain } from '@/lib/api';
+
+async function apiFetch(url: string, options: RequestInit = {}): Promise<Response> {
+  const fullUrl = getApiUrl(url);
+  return fetch(fullUrl, {
+    ...options,
+    credentials: "include",
+    headers: {
+      ...options.headers,
+      "X-Server-Domain": getCurrentDomain(),
+    },
+  });
+}
 
 // Define permissions that match the backend permission system
 export const PERMISSIONS = {
@@ -41,7 +54,7 @@ export function usePermissions() {
     queryFn: async () => {
       if (!user?.role) return [];
       try {
-        const response = await fetch('/api/auth/permissions');
+        const response = await apiFetch('/v1/panel/auth/permissions');
         if (!response.ok) {
           // If server returns 401, user is not authenticated - return empty array
           if (response.status === 401) return [];
@@ -146,9 +159,9 @@ export function usePermissions() {
 
   // Role hierarchy helper functions integrated with existing permission system
   const { data: rolesData } = useQuery({
-    queryKey: ['roles'],
+    queryKey: ['/v1/panel/roles'],
     queryFn: async () => {
-      const response = await fetch('/api/panel/roles');
+      const response = await apiFetch('/v1/panel/roles');
       if (!response.ok) throw new Error('Failed to fetch roles');
       return response.json();
     },

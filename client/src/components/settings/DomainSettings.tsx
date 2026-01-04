@@ -49,7 +49,11 @@ const DomainSettings: React.FC = () => {
 
   const loadDomainConfig = async () => {
     try {
-      const response = await fetch('/api/panel/settings/domain');
+      const { getApiUrl, getCurrentDomain } = await import('@/lib/api');
+      const response = await fetch(getApiUrl('/v1/panel/settings/domain'), {
+        credentials: 'include',
+        headers: { 'X-Server-Domain': getCurrentDomain() }
+      });
       if (response.ok) {
         const data = await response.json();
         if (data.customDomain) {
@@ -91,7 +95,7 @@ const DomainSettings: React.FC = () => {
     setIsLoading(true);
     try {
       const { csrfFetch } = await import('@/utils/csrf');
-      const response = await csrfFetch('/api/panel/settings/domain', {
+      const response = await csrfFetch('/v1/panel/settings/domain', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -131,7 +135,7 @@ const DomainSettings: React.FC = () => {
     setIsVerifying(true);
     try {
       const { csrfFetch } = await import('@/utils/csrf');
-      const response = await csrfFetch('/api/panel/settings/domain/verify', {
+      const response = await csrfFetch('/v1/panel/settings/domain/verify', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -191,7 +195,7 @@ const DomainSettings: React.FC = () => {
     setIsLoading(true);
     try {
       const { csrfFetch } = await import('@/utils/csrf');
-      const response = await csrfFetch('/api/panel/settings/domain', {
+      const response = await csrfFetch('/v1/panel/settings/domain', {
         method: 'DELETE',
       });
 

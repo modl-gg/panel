@@ -1,8 +1,8 @@
 import { useState, useMemo, useCallback } from 'react';
-import { 
-  Filter, 
-  Search, 
-  Download, 
+import {
+  Filter,
+  Search,
+  Download,
   Calendar,
   ChevronDown,
   ChevronUp,
@@ -26,6 +26,7 @@ import {
   Database,
   Gavel
 } from 'lucide-react';
+import { getApiUrl, getCurrentDomain } from '@/lib/api';
 import { Button } from '@modl-gg/shared-web/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@modl-gg/shared-web/components/ui/card';
 import { Badge } from '@modl-gg/shared-web/components/ui/badge';
@@ -201,50 +202,74 @@ const formatDurationDetailed = (date: Date) => {
 
 // API functions
 const fetchAnalyticsOverview = async () => {
-  const response = await fetch(`/api/panel/analytics/overview`);
+  const response = await fetch(getApiUrl('/v1/panel/analytics/overview'), {
+    credentials: 'include',
+    headers: { 'X-Server-Domain': getCurrentDomain() }
+  });
   if (!response.ok) throw new Error('Failed to fetch analytics overview');
   return response.json();
 };
 
 const fetchStaffPerformance = async (period = '30d') => {
-  const response = await fetch(`/api/panel/analytics/staff-performance?period=${period}`);
+  const response = await fetch(getApiUrl(`/v1/panel/analytics/staff-performance?period=${period}`), {
+    credentials: 'include',
+    headers: { 'X-Server-Domain': getCurrentDomain() }
+  });
   if (!response.ok) throw new Error('Failed to fetch staff performance');
   const data = await response.json();
   return data.staffPerformance || [];
 };
 
 const fetchTicketAnalytics = async (period = '30d') => {
-  const response = await fetch(`/api/panel/analytics/tickets?period=${period}`);
+  const response = await fetch(getApiUrl(`/v1/panel/analytics/tickets?period=${period}`), {
+    credentials: 'include',
+    headers: { 'X-Server-Domain': getCurrentDomain() }
+  });
   if (!response.ok) throw new Error('Failed to fetch ticket analytics');
   return response.json();
 };
 
 const fetchPunishmentAnalytics = async (period = '30d') => {
-  const response = await fetch(`/api/panel/analytics/punishments?period=${period}`);
+  const response = await fetch(getApiUrl(`/v1/panel/analytics/punishments?period=${period}`), {
+    credentials: 'include',
+    headers: { 'X-Server-Domain': getCurrentDomain() }
+  });
   if (!response.ok) throw new Error('Failed to fetch punishment analytics');
   return response.json();
 };
 
 const fetchPlayerActivity = async (period = '30d') => {
-  const response = await fetch(`/api/panel/analytics/player-activity?period=${period}`);
+  const response = await fetch(getApiUrl(`/v1/panel/analytics/player-activity?period=${period}`), {
+    credentials: 'include',
+    headers: { 'X-Server-Domain': getCurrentDomain() }
+  });
   if (!response.ok) throw new Error('Failed to fetch player activity');
   return response.json();
 };
 
 const fetchAuditLogsAnalytics = async (period = '7d') => {
-  const response = await fetch(`/api/panel/analytics/audit-logs?period=${period}`);
+  const response = await fetch(getApiUrl(`/v1/panel/analytics/audit-logs?period=${period}`), {
+    credentials: 'include',
+    headers: { 'X-Server-Domain': getCurrentDomain() }
+  });
   if (!response.ok) throw new Error('Failed to fetch audit logs analytics');
   return response.json();
 };
 
 const fetchPunishments = async (limit = 50, canRollback = true): Promise<PunishmentAction[]> => {
-  const response = await fetch(`/api/panel/audit/punishments?limit=${limit}&canRollback=${canRollback}`);
+  const response = await fetch(getApiUrl(`/v1/panel/audit/punishments?limit=${limit}&canRollback=${canRollback}`), {
+    credentials: 'include',
+    headers: { 'X-Server-Domain': getCurrentDomain() }
+  });
   if (!response.ok) throw new Error('Failed to fetch punishments');
   return response.json();
 };
 
 const fetchDatabaseData = async (table: string, limit = 100, skip = 0) => {
-  const response = await fetch(`/api/panel/audit/database/${table}?limit=${limit}&skip=${skip}`);
+  const response = await fetch(getApiUrl(`/v1/panel/audit/database/${table}?limit=${limit}&skip=${skip}`), {
+    credentials: 'include',
+    headers: { 'X-Server-Domain': getCurrentDomain() }
+  });
   if (!response.ok) throw new Error('Failed to fetch database data');
   return response.json();
 };
@@ -275,7 +300,7 @@ const CustomTooltip = ({ active, payload, label, formatValue, formatName }: any)
 
 const rollbackPunishment = async (id: string, reason?: string) => {
   const { csrfFetch } = await import('@/utils/csrf');
-  const response = await csrfFetch(`/api/panel/audit/punishments/${id}/rollback`, {
+  const response = await csrfFetch(`/v1/panel/audit/punishments/${id}/rollback`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ reason })
@@ -577,7 +602,7 @@ const PunishmentRollbackModal = () => {
     
     try {
       const { csrfFetch } = await import('@/utils/csrf');
-      const response = await csrfFetch('/api/panel/audit/punishments/bulk-rollback', {
+      const response = await csrfFetch('/v1/panel/audit/punishments/bulk-rollback', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ 
@@ -754,7 +779,7 @@ const StaffDetailModal = ({ staff, isOpen, onClose }: {
 
     try {
       const { csrfFetch } = await import('@/utils/csrf');
-      const response = await csrfFetch(`/api/panel/audit/staff/${staff.username}/rollback-date-range`, {
+      const response = await csrfFetch(`/v1/panel/audit/staff/${staff.username}/rollback-date-range`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ 
@@ -1167,7 +1192,7 @@ const StaffDetailModal = ({ staff, isOpen, onClose }: {
                                       try {
                                                                           
                                         const { csrfFetch } = await import('@/utils/csrf');
-                                        const response = await csrfFetch(`/api/panel/audit/punishment/${punishment.id}/rollback`, {
+                                        const response = await csrfFetch(`/v1/panel/audit/punishment/${punishment.id}/rollback`, {
                                           method: 'POST',
                                           headers: { 'Content-Type': 'application/json' },
                                           body: JSON.stringify({ reason: 'Staff rollback from analytics panel' })
@@ -1318,7 +1343,10 @@ const StaffDetailRow = ({ staff }: { staff: StaffMember }) => {
 
 // API function to fetch detailed staff data
 const fetchStaffDetails = async (username: string, period: string) => {
-  const response = await fetch(`/api/panel/audit/staff/${username}/details?period=${period}`);
+  const response = await fetch(getApiUrl(`/v1/panel/audit/staff/${username}/details?period=${period}`), {
+    credentials: 'include',
+    headers: { 'X-Server-Domain': getCurrentDomain() }
+  });
   if (!response.ok) throw new Error('Failed to fetch staff details');
   return response.json();
 };

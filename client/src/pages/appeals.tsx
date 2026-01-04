@@ -5,6 +5,19 @@ import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { AlertTriangle, SearchIcon, ShieldCheck, ShieldX, Send, Paperclip, File, Image, Video, FileText, Eye, X } from 'lucide-react';
 import { formatDate } from '../utils/date-utils';
+import { getApiUrl, getCurrentDomain, getAvatarUrl } from '@/lib/api';
+
+async function apiFetch(url: string, options: RequestInit = {}): Promise<Response> {
+  const fullUrl = getApiUrl(url);
+  return fetch(fullUrl, {
+    ...options,
+    credentials: "include",
+    headers: {
+      ...options.headers,
+      "X-Server-Domain": getCurrentDomain(),
+    },
+  });
+}
 import { Label } from "@modl-gg/shared-web/components/ui/label";
 import { Button } from "@modl-gg/shared-web/components/ui/button";
 import { Input } from "@modl-gg/shared-web/components/ui/input";
@@ -301,7 +314,7 @@ const AppealsPage = () => {
 
     try {
       // Fetch punishment information from public API
-      const response = await fetch(`/api/public/punishment/${normalizedBanId}/appeal-info`);
+      const response = await apiFetch(`/v1/public/punishment/${normalizedBanId}/appeal-info`);
       
       if (!response.ok) {
         if (response.status === 400) {
@@ -589,7 +602,7 @@ const AppealsPage = () => {
   // Fetch full appeal details when an existing appeal is found
   const fetchAppealDetails = async (appealId: string) => {
     try {
-      const response = await fetch(`/api/public/appeals/${appealId}`);
+      const response = await apiFetch(`/v1/public/appeals/${appealId}`);
       if (!response.ok) {
         throw new Error('Failed to fetch appeal details');
       }
@@ -626,8 +639,7 @@ const AppealsPage = () => {
     if (!newReply.trim() || !appealInfo) return;
 
     try {
-      const { csrfFetch } = await import('@/utils/csrf');
-      const response = await csrfFetch(`/api/public/appeals/${appealInfo.id}/replies`, {
+      const response = await apiFetch(`/v1/public/appeals/${appealInfo.id}/replies`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -978,7 +990,7 @@ const AppealsPage = () => {
         return (
           <div className="relative h-8 w-8 bg-muted rounded-md flex items-center justify-center overflow-hidden flex-shrink-0">
             <img 
-              src={`/api/panel/players/avatar/${banInfo.playerUuid}?size=32&overlay=true`}
+              src={getAvatarUrl(banInfo.playerUuid, 32, true)}
               alt={`${message.senderName} Avatar`}
               className={`w-full h-full object-cover transition-opacity duration-200 ${avatarLoading ? 'opacity-0' : 'opacity-100'}`}
               onError={() => {

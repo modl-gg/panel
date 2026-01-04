@@ -191,9 +191,12 @@ const AppealsPage = () => {
     setShowAppealForm(false);
 
     try {
-      // Simulate fetching from a generic public endpoint
-      // In a real app, this would be /api/public/punishments/:id
-      const res = await fetch(`/api/public/punishments/${values.banId}`);
+      // Fetch from public punishment endpoint
+      const { getApiUrl, getCurrentDomain } = await import('@/lib/api');
+      const res = await fetch(getApiUrl(`/v1/public/punishments/${values.banId}`), {
+        credentials: 'include',
+        headers: { 'X-Server-Domain': getCurrentDomain() }
+      });
 
       if (!res.ok) {
         if (res.status === 404) {
@@ -330,7 +333,7 @@ const AppealsPage = () => {
 
     try {
       const { csrfFetch } = await import('@/utils/csrf');
-      const response = await csrfFetch(`/api/panel/appeals/${appealInfo.id}/replies`, {
+      const response = await csrfFetch(`/v1/panel/appeals/${appealInfo.id}/replies`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

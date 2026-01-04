@@ -1,10 +1,11 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useRoute, useLocation } from 'wouter';
-import { 
-  ArrowLeft, TriangleAlert, Ban, RefreshCcw, Search, LockOpen, History, 
+import {
+  ArrowLeft, TriangleAlert, Ban, RefreshCcw, Search, LockOpen, History,
   Link2, StickyNote, Ticket, UserRound, Shield, FileText, Upload, Loader2,
   ChevronDown, ChevronRight, Settings, Plus
 } from 'lucide-react';
+import { getAvatarUrl } from '@/lib/api';
 import { Button } from '@modl-gg/shared-web/components/ui/button';
 import { Badge } from '@modl-gg/shared-web/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@modl-gg/shared-web/components/ui/tabs';
@@ -949,7 +950,7 @@ const PlayerDetailPage = () => {
                 {playerId && !avatarError ? (
                   <>
                     <img 
-                      src={`/api/panel/players/avatar/${playerId}?size=64&overlay=true`}
+                      src={getAvatarUrl(playerId, 64, true)}
                       alt={`${playerInfo.username || 'Player'} Avatar`}
                       className={`w-full h-full object-cover transition-opacity duration-200 ${avatarLoading ? 'opacity-0' : 'opacity-100'}`}
                       onError={() => {
@@ -1631,7 +1632,7 @@ const PlayerDetailPage = () => {
                                     }
                                     
                                     const { csrfFetch } = await import('@/utils/csrf');
-                                    const response = await csrfFetch(`/api/panel/players/${playerId}/punishments/${warning.id}/evidence`, {
+                                    const response = await csrfFetch(`/v1/panel/players/${playerId}/punishments/${warning.id}/evidence`, {
                                       method: 'POST',
                                       headers: {
                                         'Content-Type': 'application/json',

@@ -4,6 +4,7 @@ import { Search, ChevronRight, X, Loader2 } from 'lucide-react';
 import { Input } from '@modl-gg/shared-web/components/ui/input';
 import { Button } from '@modl-gg/shared-web/components/ui/button';
 import { usePlayerSearch } from '@/hooks/use-data';
+import { getAvatarUrl } from '@/lib/api';
 
 interface Player {
   username?: string;
@@ -131,7 +132,7 @@ const LookupPage = () => {
                 <div className="flex items-center">
                   <div className="relative h-10 w-10 bg-muted rounded-lg flex items-center justify-center overflow-hidden mr-3">
                     <img 
-                      src={`/api/panel/players/avatar/${getPlayerUuid(player)}?size=40&overlay=true`}
+                      src={getAvatarUrl(getPlayerUuid(player), 40, true)}
                       alt={`${player.username || 'Player'} Avatar`}
                       className="w-full h-full object-cover"
                       onError={(e) => {
@@ -177,8 +178,8 @@ const LookupPage = () => {
                 >
                   <div className="flex items-center">
                     <div className="relative h-10 w-10 bg-muted rounded-lg flex items-center justify-center overflow-hidden mr-3">
-                      <img 
-                        src={`/api/panel/players/avatar/${getPlayerUuid(player)}?size=40&overlay=true`}
+                      <img
+                        src={getAvatarUrl(getPlayerUuid(player), 40, true)}
                         alt={`${player.username || 'Player'} Avatar`}
                         className="w-full h-full object-cover"
                         onError={(e) => {

@@ -383,7 +383,7 @@ export default function StaffRolesCard() {
       }));
       
       const { csrfFetch } = await import('@/utils/csrf');
-      const response = await csrfFetch('/api/panel/roles/reorder', {
+      const response = await csrfFetch('/v1/panel/roles/reorder', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

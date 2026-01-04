@@ -16,6 +16,7 @@ import { toast } from '@/hooks/use-toast';
 import PlayerPunishment, { PlayerPunishmentData } from '@/components/ui/player-punishment';
 import MediaUpload from '@/components/MediaUpload';
 import { formatDateWithTime } from '@/utils/date-utils';
+import { getAvatarUrl } from '@/lib/api';
 
 // Local type definitions
 interface WindowPosition {
@@ -1381,7 +1382,7 @@ const PlayerWindow = ({ playerId, isOpen, onClose, initialPosition }: PlayerWind
                 {playerId && !avatarError ? (
                   <>
                     <img 
-                      src={`/api/panel/players/avatar/${playerId}?size=64&overlay=true`}
+                      src={getAvatarUrl(playerId, 64, true)}
                       alt={`${playerInfo.username || 'Player'} Avatar`}
                       className={`w-full h-full object-cover transition-opacity duration-200 ${avatarLoading ? 'opacity-0' : 'opacity-100'}`}
                       onError={() => {
@@ -2280,7 +2281,7 @@ const PlayerWindow = ({ playerId, isOpen, onClose, initialPosition }: PlayerWind
                                     }
                                     
                                     const { csrfFetch } = await import('@/utils/csrf');
-                                    const response = await csrfFetch(`/api/panel/players/${playerId}/punishments/${warning.id}/evidence`, {
+                                    const response = await csrfFetch(`/v1/panel/players/${playerId}/punishments/${warning.id}/evidence`, {
                                       method: 'POST',
                                       headers: {
                                         'Content-Type': 'application/json',
@@ -2607,7 +2608,7 @@ const PlayerWindow = ({ playerId, isOpen, onClose, initialPosition }: PlayerWind
                           try {
                           // Send note to the server
                           const { csrfFetch } = await import('@/utils/csrf');
-                          const response = await csrfFetch(`/api/panel/players/${playerId}/notes`, {
+                          const response = await csrfFetch(`/v1/panel/players/${playerId}/notes`, {
                             method: 'POST',
                             headers: {
                               'Content-Type': 'application/json'

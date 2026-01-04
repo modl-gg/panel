@@ -76,7 +76,7 @@ const StaffManagementPanel = () => {
 
 
   const handleInviteSent = () => {
-    queryClient.invalidateQueries({ queryKey: ['/api/panel/staff'] });
+    queryClient.invalidateQueries({ queryKey: ['/v1/panel/staff'] });
   };
 
   const handleRefreshStaff = async () => {
@@ -125,7 +125,7 @@ const StaffManagementPanel = () => {
 
     try {
       const { csrfFetch } = await import('@/utils/csrf');
-      const response = await csrfFetch(`/api/panel/staff/${selectedStaffMember._id}`, {
+      const response = await csrfFetch(`/v1/panel/staff/${selectedStaffMember._id}`, {
         method: 'DELETE',
       });
 
@@ -139,7 +139,7 @@ const StaffManagementPanel = () => {
         return;
       }
 
-      queryClient.invalidateQueries({ queryKey: ['/api/panel/staff'] });
+      queryClient.invalidateQueries({ queryKey: ['/v1/panel/staff'] });
       
       toast({
         title: 'Success',
@@ -158,7 +158,7 @@ const StaffManagementPanel = () => {
   const handleResendInvitation = async (staffId: string) => {
     try {
       const { csrfFetch } = await import('@/utils/csrf');
-      const response = await csrfFetch(`/api/panel/staff/invitations/${staffId}/resend`, {
+      const response = await csrfFetch(`/v1/panel/staff/invitations/${staffId}/resend`, {
         method: 'POST',
       });
       if (!response.ok) {
@@ -169,7 +169,7 @@ const StaffManagementPanel = () => {
         title: 'Success',
         description: 'Invitation resent successfully.',
       });
-      queryClient.invalidateQueries({ queryKey: ['/api/panel/staff'] });
+      queryClient.invalidateQueries({ queryKey: ['/v1/panel/staff'] });
     } catch (error) {
       console.error(error);
       toast({

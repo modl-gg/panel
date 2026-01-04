@@ -31,7 +31,11 @@ const ArticleDetailPage: React.FC = () => {
       if (!articleSlug) return;
       setIsLoading(true);
       try {
-        const response = await fetch(`/api/public/knowledgebase/articles/${articleSlug}`);
+        const { getApiUrl, getCurrentDomain } = await import('@/lib/api');
+        const response = await fetch(getApiUrl(`/v1/public/knowledgebase/articles/${articleSlug}`), {
+          credentials: 'include',
+          headers: { 'X-Server-Domain': getCurrentDomain() }
+        });
         if (!response.ok) {
           if (response.status === 404) {
             throw new Error('Article not found.');

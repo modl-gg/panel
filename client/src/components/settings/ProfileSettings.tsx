@@ -23,7 +23,7 @@ const ProfileSettings = () => {
     setIsUpdating(true);
     try {
       const { csrfFetch } = await import('@/utils/csrf');
-      const response = await csrfFetch('/api/auth/profile', {
+      const response = await csrfFetch('/v1/panel/auth/profile', {
         method: 'PATCH',
         headers: {
           'Content-Type': 'application/json',

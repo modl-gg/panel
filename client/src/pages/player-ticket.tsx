@@ -27,6 +27,7 @@ import { useTicket, useAddTicketReply, useSubmitTicketForm, useSettings } from '
 import TicketAttachments from '@/components/TicketAttachments';
 import MediaUpload from '@/components/MediaUpload';
 import { apiRequest } from '@/lib/queryClient';
+import { getAvatarUrl } from '@/lib/api';
 import { queryClient } from '@/lib/queryClient';
 import { toast } from '@/hooks/use-toast';
 import MarkdownRenderer from '@/components/ui/markdown-renderer';
@@ -107,7 +108,7 @@ const MessageAvatar = ({ message, creatorUuid }: { message: TicketMessage, creat
       return (
         <div className="relative h-8 w-8 bg-muted rounded-md flex items-center justify-center overflow-hidden flex-shrink-0">
           <img 
-            src={`/api/public/players/avatar/${creatorUuid}?size=32&overlay=true`}
+            src={getAvatarUrl(creatorUuid, 32, true)}
             alt={`${message.sender} Avatar`}
             className={`w-full h-full object-cover transition-opacity duration-200 ${avatarLoading ? 'opacity-0' : 'opacity-100'}`}
             onError={() => {
@@ -143,7 +144,7 @@ const MessageAvatar = ({ message, creatorUuid }: { message: TicketMessage, creat
       return (
         <div className="relative h-8 w-8 bg-muted rounded-md flex items-center justify-center overflow-hidden flex-shrink-0">
           <img 
-            src={`/api/public/players/avatar/${staffMinecraftUuid}?size=32&overlay=true`}
+            src={getAvatarUrl(staffMinecraftUuid, 32, true)}
             alt={`${message.sender} Avatar`}
             className={`w-full h-full object-cover transition-opacity duration-200 ${avatarLoading ? 'opacity-0' : 'opacity-100'}`}
             onError={() => {
@@ -341,7 +342,7 @@ const PlayerTicket = () => {
       
       // Small delay to ensure backend has saved the data, then invalidate cache
       setTimeout(() => {
-        queryClient.invalidateQueries({ queryKey: ['/api/public/tickets', ticketDetails.id] });
+        queryClient.invalidateQueries({ queryKey: ['/v1/public/tickets', ticketDetails.id] });
       }, 1500); // Increased delay to give backend more time
     } catch (error) {
       console.error('Error sending reply:', error);
@@ -530,7 +531,7 @@ const PlayerTicket = () => {
       });
       
       // Fetch the updated ticket data
-      queryClient.invalidateQueries({ queryKey: ['/api/public/tickets', ticketDetails.id] });
+      queryClient.invalidateQueries({ queryKey: ['/v1/public/tickets', ticketDetails.id] });
       
       toast({
         title: "Ticket Submitted Successfully",

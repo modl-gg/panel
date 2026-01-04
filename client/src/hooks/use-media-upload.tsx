@@ -1,4 +1,17 @@
 import { useQuery } from '@tanstack/react-query';
+import { getApiUrl, getCurrentDomain } from '@/lib/api';
+
+async function apiFetch(url: string, options: RequestInit = {}): Promise<Response> {
+  const fullUrl = getApiUrl(url);
+  return fetch(fullUrl, {
+    ...options,
+    credentials: "include",
+    headers: {
+      ...options.headers,
+      "X-Server-Domain": getCurrentDomain(),
+    },
+  });
+}
 
 export interface MediaUploadConfig {
   backblazeConfigured: boolean;
@@ -20,12 +33,12 @@ export interface MediaUploadConfig {
 
 export function useMediaUploadConfig() {
   return useQuery<MediaUploadConfig>({
-    queryKey: ['/api/media/config'],
+    queryKey: ['/v1/media/config'],
     queryFn: async () => {
       // Check if we're on a public page (player ticket, appeals, etc.)
       const currentPath = window.location.pathname;
-      const isPublicPage = currentPath.startsWith('/ticket/') || 
-                          currentPath.startsWith('/appeal') || 
+      const isPublicPage = currentPath.startsWith('/ticket/') ||
+                          currentPath.startsWith('/appeal') ||
                           currentPath === '/' ||
                           currentPath.startsWith('/knowledgebase') ||
                           currentPath.startsWith('/article/');
@@ -33,19 +46,19 @@ export function useMediaUploadConfig() {
       try {
         // If on public page, try public endpoint first to avoid 401 in network tab
         if (isPublicPage) {
-          const publicResponse = await fetch('/api/public/media/config');
+          const publicResponse = await apiFetch('/v1/public/media/config');
           if (publicResponse.ok) {
             return publicResponse.json();
           }
         } else {
           // For panel pages, try authenticated endpoint first
-          const response = await fetch('/api/panel/media/config');
+          const response = await apiFetch('/v1/panel/media/config');
           if (response.ok) {
             return response.json();
           }
           // If 401 (unauthorized), try public endpoint
           if (response.status === 401) {
-            const publicResponse = await fetch('/api/public/media/config');
+            const publicResponse = await apiFetch('/v1/public/media/config');
             if (publicResponse.ok) {
               return publicResponse.json();
             }
@@ -55,8 +68,8 @@ export function useMediaUploadConfig() {
       } catch (error) {
         // Last resort: try the other endpoint if one failed
         try {
-          const fallbackUrl = isPublicPage ? '/api/panel/media/config' : '/api/public/media/config';
-          const fallbackResponse = await fetch(fallbackUrl);
+          const fallbackUrl = isPublicPage ? '/v1/panel/media/config' : '/v1/public/media/config';
+          const fallbackResponse = await apiFetch(fallbackUrl);
           if (fallbackResponse.ok) {
             return fallbackResponse.json();
           }
@@ -119,7 +132,7 @@ export function useMediaUpload() {
 
     // Use public endpoint for ticket uploads on public pages
     if (isPublicPage && uploadType === 'ticket') {
-      const response = await fetch('/api/public/media/upload/ticket', {
+      const response = await apiFetch('/v1/public/media/upload/ticket', {
         method: 'POST',
         body: formData,
       });
@@ -133,8 +146,7 @@ export function useMediaUpload() {
       return { url: result.url, key: result.key };
     } else {
       // Use authenticated endpoint for panel pages or non-ticket uploads
-      const { csrfFetch } = await import('@/utils/csrf');
-      const response = await csrfFetch(`/api/panel/media/upload/${uploadType}`, {
+      const response = await apiFetch(`/v1/panel/media/upload/${uploadType}`, {
         method: 'POST',
         body: formData,
       });
@@ -150,8 +162,7 @@ export function useMediaUpload() {
   };
 
   const deleteMedia = async (key: string): Promise<void> => {
-    const { csrfFetch } = await import('@/utils/csrf');
-    const response = await csrfFetch(`/api/panel/media/${encodeURIComponent(key)}`, {
+    const response = await apiFetch(`/v1/panel/media/${encodeURIComponent(key)}`, {
       method: 'DELETE',
     });
 

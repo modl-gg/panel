@@ -1,4 +1,17 @@
 import { useQuery } from '@tanstack/react-query';
+import { getApiUrl, getCurrentDomain } from '@/lib/api';
+
+async function apiFetch(url: string, options: RequestInit = {}): Promise<Response> {
+  const fullUrl = getApiUrl(url);
+  return fetch(fullUrl, {
+    ...options,
+    credentials: "include",
+    headers: {
+      ...options.headers,
+      "X-Server-Domain": getCurrentDomain(),
+    },
+  });
+}
 
 /**
  * Hook to fetch basic server settings from the public API
@@ -6,11 +19,11 @@ import { useQuery } from '@tanstack/react-query';
  */
 export function usePublicSettings() {
   return useQuery({
-    queryKey: ['/api/public/settings'],
+    queryKey: ['/v1/public/settings'],
     queryFn: async () => {
       try {
         // Fetching public settings
-        const res = await fetch('/api/public/settings');
+        const res = await apiFetch('/v1/public/settings');
         
         // Response received
         

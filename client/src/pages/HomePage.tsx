@@ -10,6 +10,19 @@ import serverLogo from '@/assets/server-logo.png';
 import * as LucideIcons from 'lucide-react';
 import { usePublicSettings } from '@/hooks/use-public-settings';
 import { useAuth } from '@/hooks/use-auth';
+import { getApiUrl, getCurrentDomain } from '@/lib/api';
+
+async function apiFetch(url: string, options: RequestInit = {}): Promise<Response> {
+  const fullUrl = getApiUrl(url);
+  return fetch(fullUrl, {
+    ...options,
+    credentials: "include",
+    headers: {
+      ...options.headers,
+      "X-Server-Domain": getCurrentDomain(),
+    },
+  });
+}
 
 // Types for knowledgebase data
 interface ArticleStub {
@@ -65,7 +78,7 @@ const HomePage: React.FC = () => {
   useEffect(() => {
     const fetchCategories = async () => {
       try {
-        const response = await fetch('/api/public/knowledgebase/categories');
+        const response = await apiFetch('/v1/public/knowledgebase/categories');
         if (!response.ok) {
           throw new Error(`HTTP error! status: ${response.status}`);
         }
@@ -85,7 +98,7 @@ const HomePage: React.FC = () => {
     const fetchHomepageCards = async () => {
       setIsLoading(true);
       try {
-        const response = await fetch('/api/public/homepage-cards');
+        const response = await apiFetch('/v1/public/homepage-cards');
         if (!response.ok) {
           throw new Error(`HTTP error! status: ${response.status}`);
         }
@@ -113,7 +126,7 @@ const HomePage: React.FC = () => {
     const handleSearch = async () => {
       setIsSearching(true);
       try {
-        const response = await fetch(`/api/public/knowledgebase/search?q=${encodeURIComponent(searchTerm)}`);
+        const response = await apiFetch(`/v1/public/knowledgebase/search?q=${encodeURIComponent(searchTerm)}`);
         if (!response.ok) {
           throw new Error(`HTTP error! status: ${response.status}`);
         }

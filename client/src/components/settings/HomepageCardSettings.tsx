@@ -79,7 +79,11 @@ interface KnowledgebaseCategory {
 }
 
 const fetchHomepageCards = async (): Promise<HomepageCard[]> => {
-  const response = await fetch('/api/panel/homepage-cards');
+  const { getApiUrl, getCurrentDomain } = await import('@/lib/api');
+  const response = await fetch(getApiUrl('/v1/panel/homepage-cards'), {
+    credentials: 'include',
+    headers: { 'X-Server-Domain': getCurrentDomain() }
+  });
   if (!response.ok) {
     throw new Error('Failed to fetch homepage cards');
   }
@@ -87,7 +91,11 @@ const fetchHomepageCards = async (): Promise<HomepageCard[]> => {
 };
 
 const fetchCategories = async (): Promise<KnowledgebaseCategory[]> => {
-  const response = await fetch('/api/panel/knowledgebase/categories');
+  const { getApiUrl, getCurrentDomain } = await import('@/lib/api');
+  const response = await fetch(getApiUrl('/v1/panel/knowledgebase/categories'), {
+    credentials: 'include',
+    headers: { 'X-Server-Domain': getCurrentDomain() }
+  });
   if (!response.ok) {
     throw new Error('Failed to fetch categories');
   }
@@ -130,7 +138,7 @@ const HomepageCardSettings: React.FC = () => {
   const createCardMutation = useMutation<HomepageCard, Error, Partial<HomepageCard>>({
     mutationFn: async (newCard) => {
       const { csrfFetch } = await import('@/utils/csrf');
-      const response = await csrfFetch('/api/panel/homepage-cards', {
+      const response = await csrfFetch('/v1/panel/homepage-cards', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(newCard),
@@ -156,7 +164,7 @@ const HomepageCardSettings: React.FC = () => {
     mutationFn: async (updatedCard) => {
       const { id, ...updateData } = updatedCard;
       const { csrfFetch } = await import('@/utils/csrf');
-      const response = await csrfFetch(`/api/panel/homepage-cards/${id}`, {
+      const response = await csrfFetch(`/v1/panel/homepage-cards/${id}`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(updateData),
@@ -181,7 +189,7 @@ const HomepageCardSettings: React.FC = () => {
   const deleteCardMutation = useMutation<void, Error, string>({
     mutationFn: async (cardId) => {
       const { csrfFetch } = await import('@/utils/csrf');
-      const response = await csrfFetch(`/api/panel/homepage-cards/${cardId}`, {
+      const response = await csrfFetch(`/v1/panel/homepage-cards/${cardId}`, {
         method: 'DELETE',
       });
       if (!response.ok) {

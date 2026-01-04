@@ -112,7 +112,7 @@ const GeneralSettings = ({
         description: 'Your subscription has been activated.',
         variant: 'default',
       });
-      queryClient.invalidateQueries({ queryKey: ['/api/panel/billing/status'] });
+      queryClient.invalidateQueries({ queryKey: ['/v1/panel/billing/status'] });
       
       // Clean up the URL by removing the session_id query parameter
       urlParams.delete('session_id');

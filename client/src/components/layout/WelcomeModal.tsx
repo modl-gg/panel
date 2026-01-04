@@ -7,12 +7,13 @@ import {
     DialogFooter,
   } from "@modl-gg/shared-web/components/ui/dialog";
   import { Button } from "@modl-gg/shared-web/components/ui/button";
-  
+  import { MODL } from "@modl-gg/shared-web";
+
   interface WelcomeModalProps {
     isOpen: boolean;
     onClose: () => void;
   }
-  
+
   export function WelcomeModal({ isOpen, onClose }: WelcomeModalProps) {
     return (
       <Dialog open={isOpen} onOpenChange={onClose}>
@@ -28,7 +29,7 @@ import {
             <br />
             <p>👨‍👨‍👦‍👦 You can invite team members, customize your experience, and setup 2FA in the settings page.</p>
             <br />
-            <p>🐛 We are still beta testing so please report all bugs to us at discord.modl.gg or support@modl.gg</p>
+            <p>🐛 We are still beta testing so please report all bugs to us at {MODL.Discord.SHORT_URL} or {MODL.Email.SUPPORT}</p>
           </div>
           <DialogFooter>
             <Button onClick={onClose}>Got it!</Button>

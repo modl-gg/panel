@@ -45,9 +45,13 @@ const ChangeRoleModal: React.FC<ChangeRoleModalProps> = ({ isOpen, onClose, staf
   
   // Fetch available roles from the API
   const { data: rolesData } = useQuery({
-    queryKey: ['/api/panel/roles'],
+    queryKey: ['/v1/panel/roles'],
     queryFn: async () => {
-      const response = await fetch('/api/panel/roles');
+      const { getApiUrl, getCurrentDomain } = await import('@/lib/api');
+      const response = await fetch(getApiUrl('/v1/panel/roles'), {
+        credentials: 'include',
+        headers: { 'X-Server-Domain': getCurrentDomain() }
+      });
       if (!response.ok) throw new Error('Failed to fetch roles');
       return response.json();
     },
@@ -79,7 +83,7 @@ const ChangeRoleModal: React.FC<ChangeRoleModalProps> = ({ isOpen, onClose, staf
 
     try {
       const { csrfFetch } = await import('@/utils/csrf');
-      const response = await csrfFetch(`/api/panel/staff/${staffMember._id}/role`, {
+      const response = await csrfFetch(`/v1/panel/staff/${staffMember._id}/role`, {
         method: 'PATCH',
         headers: {
           'Content-Type': 'application/json',
@@ -98,7 +102,7 @@ const ChangeRoleModal: React.FC<ChangeRoleModalProps> = ({ isOpen, onClose, staf
       });
 
       // Refresh the staff list
-      queryClient.invalidateQueries({ queryKey: ['/api/panel/staff'] });
+      queryClient.invalidateQueries({ queryKey: ['/v1/panel/staff'] });
       onClose();
     } catch (error: any) {
       toast({

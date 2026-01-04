@@ -51,8 +51,11 @@ function getTwoDayPeriodStart(date: Date): Date {
 
 // Helper function to aggregate data by period
 function aggregateData(data: DashboardMetricsData[], period: string): DashboardMetricsData[] {
+  if (!Array.isArray(data) || data.length === 0) {
+    return [];
+  }
+
   if (period === '7d') {
-    // No aggregation needed for daily data
     return data;
   }
 

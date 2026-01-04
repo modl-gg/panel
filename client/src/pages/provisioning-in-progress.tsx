@@ -22,11 +22,15 @@ const ProvisioningInProgressPage: React.FC = () => {
       return;
     }
     try {
-      let apiUrl = `/api/provisioning/status/${serverName}`;
+      const { getApiUrl, getCurrentDomain } = await import('@/lib/api');
+      let apiUrl = `/v1/provisioning/status/${serverName}`;
       if (signInToken) {
         apiUrl += `?signInToken=${signInToken}`; // Append signInToken if present
       }
-      const response = await fetch(apiUrl);
+      const response = await fetch(getApiUrl(apiUrl), {
+        credentials: 'include',
+        headers: { 'X-Server-Domain': getCurrentDomain() }
+      });
       
       if (!response.ok) {
         let errorData;

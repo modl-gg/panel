@@ -1,14 +1,27 @@
 import { useQuery } from '@tanstack/react-query';
 import { usePermissions, PERMISSIONS } from './use-permissions';
+import { getApiUrl, getCurrentDomain } from '@/lib/api';
+
+async function apiFetch(url: string, options: RequestInit = {}): Promise<Response> {
+  const fullUrl = getApiUrl(url);
+  return fetch(fullUrl, {
+    ...options,
+    credentials: "include",
+    headers: {
+      ...options.headers,
+      "X-Server-Domain": getCurrentDomain(),
+    },
+  });
+}
 
 // Permission-aware version of useBillingStatus
 export function useBillingStatusWithPermissions() {
   const { hasPermission } = usePermissions();
   
   return useQuery({
-    queryKey: ['/api/panel/billing/status'],
+    queryKey: ['/v1/panel/billing/status'],
     queryFn: async () => {
-      const res = await fetch('/api/panel/billing/status');
+      const res = await apiFetch('/v1/panel/billing/status');
       if (!res.ok) {
         throw new Error('Failed to fetch billing status');
       }
@@ -24,9 +37,9 @@ export function useUsageDataWithPermissions() {
   const { hasPermission } = usePermissions();
   
   return useQuery({
-    queryKey: ['/api/panel/billing/usage'],
+    queryKey: ['/v1/panel/billing/usage'],
     queryFn: async () => {
-      const res = await fetch('/api/panel/billing/usage');
+      const res = await apiFetch('/v1/panel/billing/usage');
       if (!res.ok) {
         throw new Error('Failed to fetch usage data');
       }
@@ -42,9 +55,9 @@ export function useStaffDataWithPermissions() {
   const { hasPermission } = usePermissions();
   
   return useQuery({
-    queryKey: ['/api/panel/staff'],
+    queryKey: ['/v1/panel/staff'],
     queryFn: async () => {
-      const res = await fetch('/api/panel/staff');
+      const res = await apiFetch('/v1/panel/staff');
       if (!res.ok) {
         throw new Error('Failed to fetch staff data');
       }
@@ -60,9 +73,9 @@ export function usePunishmentSettingsWithPermissions() {
   const { hasPermission } = usePermissions();
   
   return useQuery({
-    queryKey: ['/api/panel/settings/punishments'],
+    queryKey: ['/v1/panel/settings/punishment-types'],
     queryFn: async () => {
-      const res = await fetch('/api/panel/settings/punishments');
+      const res = await apiFetch('/v1/panel/settings/punishment-types');
       if (!res.ok) {
         throw new Error('Failed to fetch punishment settings');
       }
@@ -78,9 +91,9 @@ export function useAnalyticsDataWithPermissions() {
   const { hasPermission } = usePermissions();
   
   return useQuery({
-    queryKey: ['/api/panel/analytics'],
+    queryKey: ['/v1/panel/analytics'],
     queryFn: async () => {
-      const res = await fetch('/api/panel/analytics');
+      const res = await apiFetch('/v1/panel/analytics');
       if (!res.ok) {
         throw new Error('Failed to fetch analytics data');
       }

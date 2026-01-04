@@ -2,6 +2,7 @@ import { useState, useEffect, memo, useMemo } from 'react';
 import { useLocation, Link } from 'wouter';
 import { Popover, PopoverContent, PopoverTrigger } from '@modl-gg/shared-web/components/ui/popover';
 import { queryClient } from '@/lib/queryClient';
+import { getAvatarUrl } from '@/lib/api';
 import { useAuth } from '@/hooks/use-auth';
 import { formatDate, formatDateWithRelative } from '../utils/date-utils';
 import {
@@ -216,7 +217,7 @@ const MessageAvatar = memo(({ message, ticketData, staffData }: {
       return (
         <div className="relative h-8 w-8 bg-muted rounded-md flex items-center justify-center overflow-hidden flex-shrink-0">
           <img 
-            src={`/api/panel/players/avatar/${creatorUuid}?size=32&overlay=true`}
+            src={getAvatarUrl(creatorUuid, 32, true)}
             alt={`${message.sender} Avatar`}
             className={`w-full h-full object-cover transition-opacity duration-200 ${avatarLoading ? 'opacity-0' : 'opacity-100'}`}
             onError={() => {
@@ -253,7 +254,7 @@ const MessageAvatar = memo(({ message, ticketData, staffData }: {
       return (
         <div className="relative h-8 w-8 bg-muted rounded-md flex items-center justify-center overflow-hidden flex-shrink-0">
           <img 
-            src={`/api/panel/players/avatar/${minecraftUuid}?size=32&overlay=true`}
+            src={getAvatarUrl(minecraftUuid, 32, true)}
             alt={`${message.sender} Avatar`}
             className={`w-full h-full object-cover transition-opacity duration-200 ${avatarLoading ? 'opacity-0' : 'opacity-100'}`}
             onError={() => {
@@ -919,7 +920,7 @@ const TicketDetail = () => {
 
     try {
       const { csrfFetch } = await import('@/utils/csrf');
-      const response = await csrfFetch(`/api/panel/settings/ai-apply-punishment/${ticketDetails.id}`, {
+      const response = await csrfFetch(`/v1/panel/settings/ai-apply-punishment/${ticketDetails.id}`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -994,7 +995,7 @@ const TicketDetail = () => {
 
     try {
       const { csrfFetch } = await import('@/utils/csrf');
-      const response = await csrfFetch(`/api/panel/settings/ai-dismiss-suggestion/${ticketDetails.id}`, {
+      const response = await csrfFetch(`/v1/panel/settings/ai-dismiss-suggestion/${ticketDetails.id}`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -1418,7 +1419,7 @@ const TicketDetail = () => {
           id: ticketDetails.id,
           data: updateData
         });
-        queryClient.invalidateQueries({ queryKey: ['/api/panel/tickets', ticketId] });
+        queryClient.invalidateQueries({ queryKey: ['/v1/panel/tickets', ticketId] });
       } catch (error) {
         console.error('Error sending reply:', error);
         toast({
@@ -2410,7 +2411,7 @@ const TicketDetail = () => {
                               }, {
                                 onSuccess: () => {
                                   // Force refresh of the ticket list
-                                  queryClient.invalidateQueries({ queryKey: ['/api/panel/tickets'] });
+                                  queryClient.invalidateQueries({ queryKey: ['/v1/panel/tickets'] });
                                 }
                               });
                             }}
@@ -2540,7 +2541,11 @@ const PunishmentDetailsCard = ({ punishmentId }: { punishmentId: string }) => {
         setError(null);
         
         // Fetch punishment details from the player API
-        const response = await fetch(`/api/panel/players/punishment/${punishmentId}`);
+        const { getApiUrl, getCurrentDomain } = await import('@/lib/api');
+        const response = await fetch(getApiUrl(`/v1/panel/players/punishment/${punishmentId}`), {
+          credentials: 'include',
+          headers: { 'X-Server-Domain': getCurrentDomain() }
+        });
         
         if (!response.ok) {
           throw new Error('Failed to fetch punishment details');
@@ -3053,7 +3058,7 @@ const PunishmentDetailsCard = ({ punishmentId }: { punishmentId: string }) => {
                         }
                         
                         const { csrfFetch } = await import('@/utils/csrf');
-                        const response = await csrfFetch(`/api/panel/players/${punishmentData.playerUuid}/punishments/${punishmentId}/evidence`, {
+                        const response = await csrfFetch(`/v1/panel/players/${punishmentData.playerUuid}/punishments/${punishmentId}/evidence`, {
                           method: 'POST',
                           headers: {
                             'Content-Type': 'application/json',
@@ -3071,7 +3076,11 @@ const PunishmentDetailsCard = ({ punishmentId }: { punishmentId: string }) => {
                         });
                         
                         // Refresh punishment data
-                        const refreshResponse = await fetch(`/api/panel/players/punishment/${punishmentId}`);
+                        const { getApiUrl, getCurrentDomain } = await import('@/lib/api');
+                        const refreshResponse = await fetch(getApiUrl(`/v1/panel/players/punishment/${punishmentId}`), {
+                          credentials: 'include',
+                          headers: { 'X-Server-Domain': getCurrentDomain() }
+                        });
                         if (refreshResponse.ok) {
                           const refreshedData = await refreshResponse.json();
                           setPunishmentData(refreshedData);

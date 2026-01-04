@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { Scale, Shield, Globe, Tag, Plus, X, Fingerprint, KeyRound, Lock, QrCode, Copy, Check, Mail, Trash2, GamepadIcon, MessageCircle, Save, CheckCircle, User as UserIcon, LogOut, CreditCard, BookOpen, Settings as SettingsIcon, Upload, Key, Eye, EyeOff, RefreshCw, ChevronDown, ChevronRight, Layers, GripVertical, Edit3 } from 'lucide-react';
+import { getApiUrl, getCurrentDomain } from '@/lib/api';
 import { Button } from '@modl-gg/shared-web/components/ui/button';
 import { Card, CardContent, CardHeader } from '@modl-gg/shared-web/components/ui/card';
 import { useSidebar } from '@/hooks/use-sidebar';
@@ -1113,10 +1114,10 @@ const Settings = () => {
     setSavingWebhookSettings(true);
     try {
       const { csrfFetch } = await import('@/utils/csrf');
-      const response = await csrfFetch('/api/panel/settings', {
-        method: 'PATCH',
+      const response = await csrfFetch('/v1/panel/settings/webhooks', {
+        method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ webhookSettings }),
+        body: JSON.stringify(webhookSettings),
         credentials: 'include'
       });
 
@@ -1124,7 +1125,7 @@ const Settings = () => {
         throw new Error('Failed to save webhook settings');
       }
 
-      queryClient.invalidateQueries({ queryKey: ['/api/panel/settings'] });
+      queryClient.invalidateQueries({ queryKey: ['/v1/panel/settings/general'] });
     } catch (error) {
       console.error('Error saving webhook settings:', error);
       throw error;
@@ -1191,7 +1192,7 @@ const Settings = () => {
       formData.append('icon', file);
 
       const { csrfFetch } = await import('@/utils/csrf');
-      const response = await csrfFetch(`/api/panel/settings/upload-icon?iconType=${iconType}`, {
+      const response = await csrfFetch(`/v1/panel/settings/upload-icon?iconType=${iconType}`, {
         method: 'POST',
         body: formData,
       });
@@ -1234,8 +1235,8 @@ const Settings = () => {
       setPanelIconUrl(uploadedUrl);
       
       // Refresh webhook settings to get updated avatar URL
-      queryClient.invalidateQueries({ queryKey: ['/api/panel/settings'] });
-      
+      queryClient.invalidateQueries({ queryKey: ['/v1/panel/settings/general'] });
+
       toast({
         title: "Panel Icon Uploaded",
         description: "Your panel icon has been successfully uploaded. Webhook avatar URL updated automatically.",
@@ -1246,16 +1247,17 @@ const Settings = () => {
   // Unified API Key management functions
   const loadApiKey = async () => {
     try {
-      const response = await fetch('/api/panel/settings/api-key');
-      // API Key loaded successfully
+      const response = await fetch(getApiUrl('/v1/panel/settings/api-keys/panel/exists'), {
+        credentials: 'include',
+        headers: { 'X-Server-Domain': getCurrentDomain() }
+      });
       if (response.ok) {
         const data = await response.json();
-        // API Key data received
-        if (data.hasApiKey && data.maskedKey) {
-          setApiKey(data.maskedKey);
-          setFullApiKey(''); // Clear full key since we only have masked version
+        if (data.exists) {
+          setApiKey('•••••••••••••••••••••••••');
+          setFullApiKey('');
         } else {
-          setApiKey(''); // No API key exists
+          setApiKey('');
           setFullApiKey('');
         }
       } else {
@@ -1275,7 +1277,7 @@ const Settings = () => {
     setIsGeneratingApiKey(true);
     try {
       const { csrfFetch } = await import('@/utils/csrf');
-      const response = await csrfFetch('/api/panel/settings/api-key/generate', {
+      const response = await csrfFetch('/v1/panel/settings/api-keys/panel/generate', {
         method: 'POST',
       });
       if (response.ok) {
@@ -1310,7 +1312,7 @@ const Settings = () => {
     setIsRevokingApiKey(true);
     try {
       const { csrfFetch } = await import('@/utils/csrf');
-      const response = await csrfFetch('/api/panel/settings/api-key', {
+      const response = await csrfFetch('/v1/panel/settings/api-keys/panel', {
         method: 'DELETE',
       });
       if (response.ok) {
@@ -1346,7 +1348,10 @@ const Settings = () => {
     // Show the key - fetch full key if we don't have it
     if (!fullApiKey) {
       try {
-        const response = await fetch('/api/panel/settings/api-key/reveal');
+        const response = await fetch(getApiUrl('/v1/panel/settings/api-keys/panel/reveal'), {
+          credentials: 'include',
+          headers: { 'X-Server-Domain': getCurrentDomain() }
+        });
         if (response.ok) {
           const data = await response.json();
           setFullApiKey(data.apiKey);
@@ -1399,7 +1404,10 @@ const Settings = () => {
   const loadAiModerationSettings = async () => {
     setIsLoadingAiSettings(true);
     try {
-      const response = await fetch('/api/panel/settings/ai-moderation-settings');
+      const response = await fetch(getApiUrl('/v1/panel/settings/ai-moderation'), {
+        credentials: 'include',
+        headers: { 'X-Server-Domain': getCurrentDomain() }
+      });
       if (response.ok) {
         const data = await response.json();
         setAiModerationSettings(data.data);
@@ -1422,7 +1430,7 @@ const Settings = () => {
       };
       
       const { csrfFetch } = await import('@/utils/csrf');
-      const response = await csrfFetch('/api/panel/settings/ai-moderation-settings', {
+      const response = await csrfFetch('/v1/panel/settings/ai-moderation', {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',
@@ -1446,7 +1454,10 @@ const Settings = () => {
   // Load AI punishment types (enabled ones)
   const loadAiPunishmentTypes = async () => {
     try {
-      const response = await fetch('/api/panel/settings/ai-punishment-types');
+      const response = await fetch(getApiUrl('/v1/panel/settings/ai-punishment-types'), {
+        credentials: 'include',
+        headers: { 'X-Server-Domain': getCurrentDomain() }
+      });
       
       if (response.ok) {
         const data = await response.json();
@@ -1473,7 +1484,10 @@ const Settings = () => {
   // Load available punishment types for selection
   const loadAvailablePunishmentTypes = async () => {
     try {
-      const response = await fetch('/api/panel/settings/available-punishment-types');
+      const response = await fetch(getApiUrl('/v1/panel/settings/available-punishment-types'), {
+        credentials: 'include',
+        headers: { 'X-Server-Domain': getCurrentDomain() }
+      });
       if (response.ok) {
         const data = await response.json();
         setAvailablePunishmentTypes(data.data);
@@ -1489,7 +1503,7 @@ const Settings = () => {
   const addAiPunishmentType = async (punishmentTypeId: number, aiDescription: string) => {
     try {
       const { csrfFetch } = await import('@/utils/csrf');
-      const response = await csrfFetch('/api/panel/settings/ai-punishment-types', {
+      const response = await csrfFetch('/v1/panel/settings/ai-punishment-types', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -1525,7 +1539,7 @@ const Settings = () => {
   const updateAiPunishmentType = async (id: number, updates: { enabled?: boolean; aiDescription?: string }) => {
     try {
       const { csrfFetch } = await import('@/utils/csrf');
-      const response = await csrfFetch(`/api/panel/settings/ai-punishment-types/${id}`, {
+      const response = await csrfFetch(`/v1/panel/settings/ai-punishment-types/${id}`, {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',
@@ -1558,7 +1572,7 @@ const Settings = () => {
   const removeAiPunishmentType = async (id: number) => {
     try {
       const { csrfFetch } = await import('@/utils/csrf');
-      const response = await csrfFetch(`/api/panel/settings/ai-punishment-types/${id}`, {
+      const response = await csrfFetch(`/v1/panel/settings/ai-punishment-types/${id}`, {
         method: 'DELETE',
       });
       
@@ -1767,17 +1781,17 @@ const Settings = () => {
       };
 
       const { csrfFetch } = await import('@/utils/csrf');
-      const response = await csrfFetch('/api/panel/settings', {
-        method: 'PATCH',
+      const response = await csrfFetch('/v1/panel/settings/general', {
+        method: 'PUT',
         headers: {
           'Content-Type': 'application/json'
         },
-        body: JSON.stringify(settingsToSave)
+        body: JSON.stringify(settingsToSave.settings)
       });
 
       if (response.ok) {
         // Don't invalidate the query here - it causes a loop
-        // await queryClient.invalidateQueries({ queryKey: ['/api/settings'] });
+        // await queryClient.invalidateQueries({ queryKey: ['/v1/panel/settings/general'] });
         setLastSaved(new Date());
         // Don't show a toast on every auto-save to avoid spam
       } else {
@@ -1886,7 +1900,7 @@ const Settings = () => {
 
       try {
         const { csrfFetch } = await import('@/utils/csrf');
-        const response = await csrfFetch('/api/panel/settings/test-database', {
+        const response = await csrfFetch('/v1/panel/settings/test-database', {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json'
@@ -1987,7 +2001,7 @@ const Settings = () => {
   const saveProfileSettings = useCallback(async () => {
     try {
       const { csrfFetch } = await import('@/utils/csrf');
-      const response = await csrfFetch('/api/auth/profile', {
+      const response = await csrfFetch('/v1/panel/auth/profile', {
         method: 'PATCH',
         headers: {
           'Content-Type': 'application/json',
@@ -2057,7 +2071,7 @@ const Settings = () => {
       
       try {
         const { csrfFetch } = await import('@/utils/csrf');
-        const response = await csrfFetch('/api/auth/profile', {
+        const response = await csrfFetch('/v1/panel/auth/profile', {
           method: 'PATCH',
           headers: {
             'Content-Type': 'application/json',

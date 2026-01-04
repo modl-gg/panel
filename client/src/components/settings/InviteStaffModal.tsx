@@ -53,9 +53,13 @@ const InviteStaffModal: React.FC<InviteStaffModalProps> = ({ isOpen, onClose, on
   
   // Fetch available roles from the API
   const { data: rolesData } = useQuery({
-    queryKey: ['/api/panel/roles'],
+    queryKey: ['/v1/panel/roles'],
     queryFn: async () => {
-      const response = await fetch('/api/panel/roles');
+      const { getApiUrl, getCurrentDomain } = await import('@/lib/api');
+      const response = await fetch(getApiUrl('/v1/panel/roles'), {
+        credentials: 'include',
+        headers: { 'X-Server-Domain': getCurrentDomain() }
+      });
       if (!response.ok) throw new Error('Failed to fetch roles');
       return response.json();
     },
@@ -84,7 +88,7 @@ const InviteStaffModal: React.FC<InviteStaffModalProps> = ({ isOpen, onClose, on
     setIsLoading(true);
     try {
       const { csrfFetch } = await import('@/utils/csrf');
-      const response = await csrfFetch('/api/panel/staff/invite', {
+      const response = await csrfFetch('/v1/panel/staff/invite', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

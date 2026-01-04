@@ -1,4 +1,17 @@
 import { useQuery } from '@tanstack/react-query';
+import { getApiUrl, getCurrentDomain } from '@/lib/api';
+
+async function apiFetch(url: string, options: RequestInit = {}): Promise<Response> {
+  const fullUrl = getApiUrl(url);
+  return fetch(fullUrl, {
+    ...options,
+    credentials: "include",
+    headers: {
+      ...options.headers,
+      "X-Server-Domain": getCurrentDomain(),
+    },
+  });
+}
 
 // Helper function to extract UUID from username or return UUID if already a UUID
 export function extractPlayerIdentifier(playerText: string): string {
@@ -31,7 +44,7 @@ export function usePlayerLookup(identifier: string) {
       }
       
       // Search by username
-      const res = await fetch(`/api/panel/players?search=${encodeURIComponent(identifier)}`);
+      const res = await apiFetch(`/v1/panel/players?search=${encodeURIComponent(identifier)}`);
       if (!res.ok) {
         throw new Error('Player not found');
       }
@@ -76,7 +89,7 @@ export function usePunishmentLookup(punishmentId: string) {
     queryFn: async (): Promise<PunishmentLookupResult> => {
       if (!punishmentId) throw new Error('No punishment ID provided');
       
-      const res = await fetch(`/api/panel/players/punishment-lookup/${punishmentId}`);
+      const res = await apiFetch(`/v1/panel/players/punishment-lookup/${punishmentId}`);
       if (!res.ok) {
         if (res.status === 404) {
           throw new Error('Punishment not found');

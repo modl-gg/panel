@@ -3,16 +3,17 @@ import { useLocation } from 'wouter';
 import { Card, CardContent, CardHeader, CardTitle } from '@modl-gg/shared-web/components/ui/card';
 import { Input } from '@modl-gg/shared-web/components/ui/input';
 import { Button } from '@modl-gg/shared-web/components/ui/button';
-import { 
-  Table, TableBody, TableCell, TableHead, TableHeader, TableRow 
+import {
+  Table, TableBody, TableCell, TableHead, TableHeader, TableRow
 } from '@modl-gg/shared-web/components/ui/table';
 import { Badge } from '@modl-gg/shared-web/components/ui/badge';
-import { 
-  Ban, Eye, Search, TriangleAlert, Loader2, RefreshCcw 
+import {
+  Ban, Eye, Search, TriangleAlert, Loader2, RefreshCcw
 } from 'lucide-react';
 import { usePlayer } from '@/hooks/use-data';
 import ResizableWindow from '@/components/layout/ResizableWindow';
 import { useToast } from '@/hooks/use-toast';
+import { getApiUrl } from '@/lib/api';
 
 interface Warning {
   type: string;
@@ -370,7 +371,10 @@ const Lookup = () => {
       try {
         // Fetch the player data to get their UUID
         // Searching for player
-        const response = await fetch(`/api/player/${searchQuery}`);
+        const response = await fetch(getApiUrl(`/v1/panel/players/${searchQuery}`), {
+          credentials: 'include',
+          headers: { 'X-Server-Domain': window.location.hostname }
+        });
         if (response.ok) {
           const playerData = await response.json();
           // Search response received

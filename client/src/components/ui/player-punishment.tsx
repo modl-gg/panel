@@ -276,7 +276,11 @@ const PlayerPunishment: React.FC<PlayerPunishmentProps> = ({
     }
 
     try {
-      const response = await fetch(`/api/panel/punishments/search?q=${encodeURIComponent(query)}&activeOnly=true`);
+      const { getApiUrl, getCurrentDomain } = await import('@/lib/api');
+      const response = await fetch(getApiUrl(`/v1/panel/punishments/search?q=${encodeURIComponent(query)}&activeOnly=true`), {
+        credentials: 'include',
+        headers: { 'X-Server-Domain': getCurrentDomain() }
+      });
       const results = response.ok ? await response.json() : [];
       setLinkedBanSearchResults(results);
     } catch (error) {

@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { HardDrive, Search, Filter, Trash2, Download, FolderOpen, Calendar, AlertCircle, Settings, CreditCard, TrendingUp, Brain, Zap } from 'lucide-react';
+import { getApiUrl, getCurrentDomain } from '@/lib/api';
 import { Button } from '@modl-gg/shared-web/components/ui/button';
 import { Input } from '@modl-gg/shared-web/components/ui/input';
 import { Label } from '@modl-gg/shared-web/components/ui/label';
@@ -116,24 +117,33 @@ const UsageSettings = () => {
   const fetchStorageData = async () => {
     try {
       setLoading(true);
-      
-      // Fetch storage usage using quota-with-ai endpoint
-      const usageResponse = await fetch('/api/panel/storage/quota-with-ai');
+
+      // Fetch storage usage using quota endpoint
+      const usageResponse = await fetch(getApiUrl('/v1/panel/storage/quota'), {
+        credentials: 'include',
+        headers: { 'X-Server-Domain': getCurrentDomain() }
+      });
       const usageData = await usageResponse.json();
       
       // Transform the data to match expected format
       const usage = {
-        totalUsed: usageData.quota?.totalUsed || 0,
-        totalQuota: usageData.quota?.totalLimit || 0,
+        totalUsed: usageData.usedBytes || 0,
+        totalQuota: usageData.maxBytes || 0,
+        usedPercentage: usageData.usedPercentage || 0,
+        usedFormatted: usageData.usedFormatted || '0 B',
+        maxFormatted: usageData.maxFormatted || '0 B',
         byType: {
-          ticket: usageData.breakdown?.tickets || 0,
-          evidence: usageData.breakdown?.evidence || 0,
-          logs: usageData.breakdown?.logs || 0,
-          backup: usageData.breakdown?.backup || 0,
-          other: (usageData.breakdown?.articles || 0) + (usageData.breakdown?.appeals || 0) + (usageData.breakdown?.['server-icons'] || 0) + (usageData.breakdown?.other || 0)
+          ticket: 0,
+          evidence: 0,
+          logs: 0,
+          backup: 0,
+          other: usageData.usedBytes || 0
         },
-        quota: usageData.quota,
-        aiQuota: usageData.aiQuota,
+        quota: {
+          totalUsed: usageData.usedBytes || 0,
+          totalLimit: usageData.maxBytes || 0
+        },
+        aiQuota: null,
         pricing: {
           storage: {
             overagePricePerGB: 0.05,
@@ -151,7 +161,10 @@ const UsageSettings = () => {
       setStorageUsage(usage);
 
       // Fetch files
-      const filesResponse = await fetch('/api/panel/storage/files');
+      const filesResponse = await fetch(getApiUrl('/v1/panel/storage/files'), {
+        credentials: 'include',
+        headers: { 'X-Server-Domain': getCurrentDomain() }
+      });
       const filesData = await filesResponse.json();
       
       // Transform the file data to match the expected structure
@@ -195,7 +208,10 @@ const UsageSettings = () => {
   const fetchStorageSettings = async () => {
     try {
       // Use quota endpoint to get current settings
-      const response = await fetch('/api/panel/storage/quota');
+      const response = await fetch(getApiUrl('/v1/panel/storage/quota'), {
+        credentials: 'include',
+        headers: { 'X-Server-Domain': getCurrentDomain() }
+      });
       const data = await response.json();
       
       // Transform to expected settings format
@@ -320,9 +336,12 @@ const UsageSettings = () => {
     try {
       const { csrfFetch } = await import('@/utils/csrf');
       if (deleteTarget === 'single') {
-        // The delete endpoint expects the file key, not an id
         const fileToDeleteKey = files.find(f => f.id === fileToDelete)?.path || fileToDelete;
-        await csrfFetch(`/api/panel/storage/file/${encodeURIComponent(fileToDeleteKey)}`, { method: 'DELETE' });
+        await csrfFetch('/v1/panel/storage/bulk-delete', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ keys: [fileToDeleteKey] }),
+        });
         toast({
           title: "Success",
           description: "File deleted successfully.",
@@ -334,7 +353,7 @@ const UsageSettings = () => {
           .map(f => f.path)
           .filter(key => key); // Remove any undefined keys
           
-        await csrfFetch('/api/panel/storage/bulk-delete', {
+        await csrfFetch('/v1/panel/storage/bulk-delete', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ keys: fileKeys }),
