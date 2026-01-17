@@ -304,6 +304,21 @@ export function useLogs() {
   });
 }
 
+export function usePunishmentTypes() {
+  return useQuery({
+    queryKey: ['/v1/panel/settings/punishment-types'],
+    queryFn: async () => {
+      const res = await apiFetch('/v1/panel/settings/punishment-types');
+      if (!res.ok) {
+        throw new Error('Failed to fetch punishment types');
+      }
+      return res.json();
+    },
+    staleTime: 1000 * 60 * 5,
+    refetchOnWindowFocus: false
+  });
+}
+
 export function useSettings() {
   return useQuery({
     queryKey: ['/v1/settings'],

@@ -135,7 +135,7 @@ export function AuditLogs({ data, loading, period, onPeriodChange }: AuditLogsPr
                     dataKey="count"
                   >
                     {data.byLevel.map((entry, index) => (
-                      <Cell key={`cell-${index}`} fill={levelColorMap[entry.level] || COLORS[index % COLORS.length]} />
+                      <Cell key={entry.level} fill={levelColorMap[entry.level] || COLORS[index % COLORS.length]} />
                     ))}
                   </Pie>
                   <Tooltip />
@@ -154,7 +154,7 @@ export function AuditLogs({ data, loading, period, onPeriodChange }: AuditLogsPr
                   <Tooltip />
                   <Bar dataKey="count" fill="#3b82f6">
                     {data.bySource.map((entry, index) => (
-                      <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+                      <Cell key={entry.source} fill={COLORS[index % COLORS.length]} />
                     ))}
                   </Bar>
                 </BarChart>

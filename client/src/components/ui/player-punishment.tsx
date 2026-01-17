@@ -62,12 +62,12 @@ const DURATION_UNITS = [
 
 const DEFAULT_PUNISHMENT_TYPES = {
   Administrative: [
-    { id: 0, name: 'Kick', category: 'Administrative', isCustomizable: false, ordinal: 0 },
-    { id: 1, name: 'Manual Mute', category: 'Administrative', isCustomizable: false, ordinal: 1 },
-    { id: 2, name: 'Manual Ban', category: 'Administrative', isCustomizable: false, ordinal: 2 },
-    { id: 3, name: 'Security Ban', category: 'Administrative', isCustomizable: false, ordinal: 3 },
-    { id: 4, name: 'Linked Ban', category: 'Administrative', isCustomizable: false, ordinal: 4 },
-    { id: 5, name: 'Blacklist', category: 'Administrative', isCustomizable: false, ordinal: 5 }
+    { id: 0, name: 'Kick', category: 'Administrative', customizable: false, ordinal: 0 },
+    { id: 1, name: 'Manual Mute', category: 'Administrative', customizable: false, ordinal: 1 },
+    { id: 2, name: 'Manual Ban', category: 'Administrative', customizable: false, ordinal: 2 },
+    { id: 3, name: 'Security Ban', category: 'Administrative', customizable: false, ordinal: 3 },
+    { id: 4, name: 'Linked Ban', category: 'Administrative', customizable: false, ordinal: 4 },
+    { id: 5, name: 'Blacklist', category: 'Administrative', customizable: false, ordinal: 5 }
   ],
   Social: [],
   Gameplay: []

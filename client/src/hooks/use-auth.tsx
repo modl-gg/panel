@@ -37,7 +37,32 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [, navigate] = useLocation();
   const { toast } = useToast();
   const [user, setUser] = useState<User | null>(null);
-  const [isLoading, setIsLoading] = useState<boolean>(false);
+  const [isLoading, setIsLoading] = useState<boolean>(true);
+
+  // Check for existing session on mount
+  useEffect(() => {
+    const checkSession = async () => {
+      try {
+        const response = await authFetch('/v1/panel/auth/me');
+        if (response.ok) {
+          const userData = await response.json();
+          setUser({
+            _id: userData.id || '',
+            email: userData.email,
+            username: userData.username,
+            role: userData.role
+          });
+        }
+      } catch (error) {
+        // Session check failed, user is not authenticated
+        console.error('Session check failed:', error);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    checkSession();
+  }, []);
 
   const requestEmailVerification = async (email: string): Promise<string | undefined> => {
     try {

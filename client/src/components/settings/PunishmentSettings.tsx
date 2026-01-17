@@ -11,7 +11,7 @@ interface PunishmentType {
   id: number;
   name: string;
   category: 'Gameplay' | 'Social' | 'Administrative';
-  isCustomizable: boolean;
+  customizable: boolean;
   ordinal: number;
 }
 
@@ -254,7 +254,7 @@ const PunishmentSettings = ({
                       <span>{type.name}</span>
                     </div>
                     <div className="flex items-center gap-2">
-                      {type.isCustomizable && (
+                      {type.customizable && (
                         <Button
                           variant="ghost"
                           size="sm"
@@ -264,7 +264,7 @@ const PunishmentSettings = ({
                           Configure
                         </Button>
                       )}
-                      {type.isCustomizable && (
+                      {type.customizable && (
                         <Button
                           variant="ghost"
                           size="icon"
@@ -299,7 +299,7 @@ const PunishmentSettings = ({
                       <span>{type.name}</span>
                     </div>
                     <div className="flex items-center gap-2">
-                      {type.isCustomizable && (
+                      {type.customizable && (
                         <Button
                           variant="ghost"
                           size="sm"
@@ -309,7 +309,7 @@ const PunishmentSettings = ({
                           Configure
                         </Button>
                       )}
-                      {type.isCustomizable && (
+                      {type.customizable && (
                         <Button
                           variant="ghost"
                           size="icon"

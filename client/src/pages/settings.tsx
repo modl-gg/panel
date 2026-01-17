@@ -112,7 +112,7 @@ interface PunishmentType {
   id: number;
   name: string;
   category: 'Gameplay' | 'Social' | 'Administrative';
-  isCustomizable: boolean;
+  customizable: boolean;
   ordinal: number;
   durations?: {
     low: {
@@ -1410,7 +1410,12 @@ const Settings = () => {
       });
       if (response.ok) {
         const data = await response.json();
-        setAiModerationSettings(data.data);
+        // Merge with defaults to ensure all properties exist
+        setAiModerationSettings(prev => ({
+          ...prev,
+          ...data,
+          aiPunishmentConfigs: data.aiPunishmentConfigs || prev.aiPunishmentConfigs || {}
+        }));
       } else {
         console.error('Failed to load AI moderation settings:', response.status);
       }
@@ -1484,13 +1489,13 @@ const Settings = () => {
   // Load available punishment types for selection
   const loadAvailablePunishmentTypes = async () => {
     try {
-      const response = await fetch(getApiUrl('/v1/panel/settings/available-punishment-types'), {
+      const response = await fetch(getApiUrl('/v1/panel/settings/punishment-types'), {
         credentials: 'include',
         headers: { 'X-Server-Domain': getCurrentDomain() }
       });
       if (response.ok) {
         const data = await response.json();
-        setAvailablePunishmentTypes(data.data);
+        setAvailablePunishmentTypes(data);
       } else {
         console.error('Failed to load available punishment types:', response.status);
       }
@@ -1615,13 +1620,13 @@ const Settings = () => {
 
   // Auto-save AI punishment configs when they change
   useEffect(() => {
-    if (!isLoadingAiSettings && initialLoadCompletedRef.current && canAccessSettingsTab('tags') && aiModerationSettings.aiPunishmentConfigs) {
+    if (!isLoadingAiSettings && initialLoadCompletedRef.current && canAccessSettingsTab('tags') && aiModerationSettings?.aiPunishmentConfigs) {
       const saveTimeout = setTimeout(() => {
         saveAiModerationSettings(aiModerationSettings);
       }, 1000);
       return () => clearTimeout(saveTimeout);
     }
-  }, [aiModerationSettings.aiPunishmentConfigs, aiModerationSettings, isLoadingAiSettings]); // Don't include canAccessSettingsTab in dependencies
+  }, [aiModerationSettings?.aiPunishmentConfigs, aiModerationSettings, isLoadingAiSettings]); // Don't include canAccessSettingsTab in dependencies
 
   // Define captureInitialSettings first, before it's used anywhere else
   const captureInitialSettings = useCallback(() => {
@@ -1786,7 +1791,7 @@ const Settings = () => {
         headers: {
           'Content-Type': 'application/json'
         },
-        body: JSON.stringify(settingsToSave.settings)
+        body: JSON.stringify(settingsToSave.general)
       });
 
       if (response.ok) {

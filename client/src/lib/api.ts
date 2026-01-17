@@ -31,8 +31,11 @@ function createHeaders(options?: RequestOptions): Headers {
   const headers = new Headers(options?.headers);
   headers.set('X-Server-Domain', getCurrentDomain());
 
-  if (options?.body && typeof options.body === 'object') {
-    headers.set('Content-Type', 'application/json');
+  // Set Content-Type for JSON bodies (object or already-stringified JSON)
+  if (options?.body && (typeof options.body === 'object' || typeof options.body === 'string')) {
+    if (!headers.has('Content-Type')) {
+      headers.set('Content-Type', 'application/json');
+    }
   }
 
   return headers;
@@ -54,12 +57,18 @@ export async function apiFetch(
   const fullUrl = getApiUrl(path);
   const headers = createHeaders(options);
 
+  // Handle body - if it's already a string, use as-is; otherwise stringify
+  let processedBody: string | undefined;
+  if (body !== undefined && body !== null) {
+    processedBody = typeof body === 'string' ? body : JSON.stringify(body);
+  }
+
   const response = await fetch(fullUrl, {
     ...rest,
     method,
     headers,
     credentials: 'include',
-    body: body ? JSON.stringify(body) : undefined,
+    body: processedBody,
   });
 
   await handleRateLimitIfNeeded(response);

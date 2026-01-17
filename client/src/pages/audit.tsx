@@ -23,7 +23,6 @@ import {
   Users,
   Clock,
   Undo2,
-  Database,
   Gavel
 } from 'lucide-react';
 import { getApiUrl, getCurrentDomain } from '@/lib/api';
@@ -211,7 +210,7 @@ const fetchAnalyticsOverview = async () => {
 };
 
 const fetchStaffPerformance = async (period = '30d') => {
-  const response = await fetch(getApiUrl(`/v1/panel/analytics/staff-performance?period=${period}`), {
+  const response = await fetch(getApiUrl(`/v1/panel/audit/staff-performance?period=${period}`), {
     credentials: 'include',
     headers: { 'X-Server-Domain': getCurrentDomain() }
   });
@@ -265,15 +264,6 @@ const fetchPunishments = async (limit = 50, canRollback = true): Promise<Punishm
   return response.json();
 };
 
-const fetchDatabaseData = async (table: string, limit = 100, skip = 0) => {
-  const response = await fetch(getApiUrl(`/v1/panel/audit/database/${table}?limit=${limit}&skip=${skip}`), {
-    credentials: 'include',
-    headers: { 'X-Server-Domain': getCurrentDomain() }
-  });
-  if (!response.ok) throw new Error('Failed to fetch database data');
-  return response.json();
-};
-
 // Custom themed tooltip component for charts
 const CustomTooltip = ({ active, payload, label, formatValue, formatName }: any) => {
   if (active && payload && payload.length) {
@@ -307,115 +297,6 @@ const rollbackPunishment = async (id: string, reason?: string) => {
   });
   if (!response.ok) throw new Error('Failed to rollback punishment');
   return response.json();
-};
-
-// Database exploration modal component
-const DatabaseExplorerModal = () => {
-  const [selectedTable, setSelectedTable] = useState('players');
-  const [page, setPage] = useState(1);
-  const limit = 20;
-  
-  const { data: databaseData, isLoading } = useQuery({
-    queryKey: ['database', selectedTable, page],
-    queryFn: () => fetchDatabaseData(selectedTable, limit, (page - 1) * limit),
-    staleTime: 5 * 60 * 1000
-  });
-
-  const tables = ['players', 'tickets', 'staff', 'punishments', 'logs', 'settings'];
-
-  return (
-    <Dialog>
-      <DialogTrigger asChild>
-        <Button variant="outline" size="sm">
-          <Database className="h-4 w-4 mr-2" />
-          Database Explorer
-        </Button>
-      </DialogTrigger>
-      <DialogContent className="max-w-6xl max-h-[80vh] overflow-hidden">
-        <DialogHeader>
-          <DialogTitle>Database Explorer</DialogTitle>
-        </DialogHeader>
-        <div className="flex gap-4 h-[60vh]">
-          <div className="w-48 border-r pr-4">
-            <div className="space-y-1">
-              {tables.map((table) => (
-                <Button
-                  key={table}
-                  variant={selectedTable === table ? "default" : "ghost"}
-                  size="sm"
-                  className="w-full justify-start"
-                  onClick={() => {
-                    setSelectedTable(table);
-                    setPage(1);
-                  }}
-                >
-                  {table}
-                </Button>
-              ))}
-            </div>
-          </div>
-          <div className="flex-1 overflow-auto">
-            <div className="bg-muted p-4 rounded-md">
-              <div className="flex items-center justify-between mb-3">
-                <h4 className="font-medium capitalize">{selectedTable} Table</h4>
-                {databaseData?.total && (
-                  <span className="text-sm text-muted-foreground">
-                    {databaseData.total} total records
-                  </span>
-                )}
-              </div>
-              
-              {isLoading ? (
-                <div className="flex items-center justify-center py-8">
-                  <RefreshCw className="h-6 w-6 animate-spin" />
-                </div>
-              ) : (
-                <>
-                  <div className="space-y-2 max-h-96 overflow-y-auto">
-                    {databaseData?.data?.map((row: any, index: number) => (
-                      <div key={index} className="bg-background p-3 rounded border">
-                        <pre className="text-xs overflow-x-auto">
-                          {JSON.stringify(row, null, 2)}
-                        </pre>
-                      </div>
-                    )) || (
-                      <div className="text-center py-4 text-muted-foreground">
-                        No data available
-                      </div>
-                    )}
-                  </div>
-                  
-                  {databaseData?.hasMore && (
-                    <div className="flex justify-between items-center mt-4 pt-2 border-t">
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() => setPage(Math.max(1, page - 1))}
-                        disabled={page === 1}
-                      >
-                        Previous
-                      </Button>
-                      <span className="text-sm text-muted-foreground">
-                        Page {page}
-                      </span>
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() => setPage(page + 1)}
-                        disabled={!databaseData?.hasMore}
-                      >
-                        Next
-                      </Button>
-                    </div>
-                  )}
-                </>
-              )}
-            </div>
-          </div>
-        </div>
-      </DialogContent>
-    </Dialog>
-  );
 };
 
 // Staff performance modal
@@ -1942,7 +1823,7 @@ const AuditLog = () => {
                 <SelectItem value="90d">90 days</SelectItem>
               </SelectContent>
             </Select>
-            <DatabaseExplorerModal />
+
             <Button
               variant="outline"
               size="sm"
@@ -2093,7 +1974,7 @@ const AuditLog = () => {
                           label={({ type, percent }) => `${type} ${((percent || 0) * 100).toFixed(0)}%`}
                         >
                           {punishmentAnalytics.byType.map((entry: any, index: number) => (
-                            <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+                            <Cell key={entry.type || `cell-${index}`} fill={COLORS[index % COLORS.length]} />
                           ))}
                         </Pie>
                       </PieChart>
@@ -2279,7 +2160,7 @@ const AuditLog = () => {
                 ) : (
                   <div className="space-y-2">
                     {punishmentAnalytics.topPunishers.map((staff: any, index: number) => (
-                      <div key={index} className="flex items-center justify-between p-2 border rounded">
+                      <div key={staff.staffId || staff.staffName || `punisher-${index}`} className="flex items-center justify-between p-2 border rounded">
                         <div className="flex items-center gap-2">
                           <Shield className="h-4 w-4 text-blue-600" />
                           <span className="font-medium">{staff.staffName}</span>
