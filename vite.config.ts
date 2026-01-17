@@ -11,14 +11,24 @@ export default defineConfig({
     },
     preserveSymlinks: true,
   },
+  optimizeDeps: {
+    include: ["@modl-gg/shared-web"],
+  },
+  ssr: {
+    noExternal: ["@modl-gg/shared-web"],
+  },
   root: path.resolve(import.meta.dirname, "client"),
   envDir: path.resolve(import.meta.dirname),
   build: {
     outDir: path.resolve(import.meta.dirname, "dist"),
     emptyOutDir: true,
+    commonjsOptions: {
+      include: [/node_modules/, /@modl-gg\/shared-web/],
+      transformMixedEsModules: true,
+    },
+    chunkSizeWarningLimit: 1000,
     rollupOptions: {
       output: {
-        chunkSizeWarningLimit: 1000,
         manualChunks: {
           "react-vendor": ["react", "react-dom"],
           "ui-vendor": ["lucide-react", "wouter", "@tanstack/react-query"],
