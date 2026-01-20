@@ -1,8 +1,29 @@
 import { MODL } from '@modl-gg/shared-web';
 
-const API_BASE_URL = import.meta.env.DEV
-  ? ''
-  : (import.meta.env.VITE_API_BASE_URL || MODL.Domain.HTTPS_API);
+function resolveApiBaseUrl(): string {
+  if (import.meta.env.DEV) {
+    return '';
+  }
+
+  if (import.meta.env.VITE_API_BASE_URL) {
+    return import.meta.env.VITE_API_BASE_URL;
+  }
+
+  if (typeof window !== 'undefined') {
+    const hostname = window.location.hostname;
+    if (!hostname.endsWith('.pages.dev') && !hostname.includes('localhost')) {
+      const parts = hostname.split('.');
+      if (parts.length >= 2) {
+        const baseDomain = parts.slice(-2).join('.');
+        return `https://api.${baseDomain}`;
+      }
+    }
+  }
+
+  return MODL.Domain.HTTPS_API;
+}
+
+const API_BASE_URL = resolveApiBaseUrl();
 
 export function getApiUrl(path: string): string {
   const normalizedPath = path.startsWith("/") ? path : `/${path}`;
