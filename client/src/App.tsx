@@ -61,7 +61,7 @@ function Router() {
   const isAcceptInvitationPage = location.startsWith('/accept-invitation');
   const isVerifyEmailPage = location.startsWith('/verify-email');
 
-  if (!isAdminPanelRoute && !isAuthPage && !isAppealsPage && !isPlayerTicketPage && !isProvisioningPage && !isAcceptInvitationPage) {
+  if (!isAdminPanelRoute && !isAuthPage && !isAppealsPage && !isPlayerTicketPage && !isProvisioningPage && !isAcceptInvitationPage && !isVerifyEmailPage) {
     return (
       <main className="h-full bg-background"> {/* Basic wrapper for public pages */}
         <Suspense fallback={<PageLoader />}>
