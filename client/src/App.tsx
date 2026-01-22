@@ -33,6 +33,7 @@ const ProvisioningInProgressPage = lazy(() => import("@/pages/provisioning-in-pr
 const AcceptInvitationPage = lazy(() => import("@/pages/AcceptInvitationPage"));
 const MaintenancePage = lazy(() => import("./pages/MaintenancePage"));
 const RateLimitPage = lazy(() => import("@/pages/RateLimitPage"));
+const VerifyEmailPage = lazy(() => import("@/pages/VerifyEmailPage"));
 
 // Knowledgebase Pages
 const KnowledgebasePage = lazy(() => import("@/pages/KnowledgebasePage"));
@@ -58,6 +59,7 @@ function Router() {
   const isPlayerTicketPage = location.startsWith('/ticket/'); // Assuming player-ticket is not under /panel
   const isProvisioningPage = location === '/provisioning-in-progress';
   const isAcceptInvitationPage = location.startsWith('/accept-invitation');
+  const isVerifyEmailPage = location.startsWith('/verify-email');
 
   if (!isAdminPanelRoute && !isAuthPage && !isAppealsPage && !isPlayerTicketPage && !isProvisioningPage && !isAcceptInvitationPage) {
     return (
@@ -77,7 +79,7 @@ function Router() {
   
   // Don't show navigation on auth page, appeals page, player ticket page, or provisioning page
   // Note: isAuthPage now covers /auth and /panel/auth
-  if (isAuthPage || isAppealsPage || isPlayerTicketPage || isProvisioningPage || isAcceptInvitationPage) {
+  if (isAuthPage || isAppealsPage || isPlayerTicketPage || isProvisioningPage || isAcceptInvitationPage || isVerifyEmailPage) {
     return (
       <main className="h-full bg-background">
         <Suspense fallback={<PageLoader />}>
@@ -88,6 +90,7 @@ function Router() {
             <Route path="/ticket/:id" component={PlayerTicket} />
             <Route path="/provisioning-in-progress" component={ProvisioningInProgressPage} />
             <Route path="/accept-invitation" component={AcceptInvitationPage} />
+            <Route path="/verify-email" component={VerifyEmailPage} />
           </Switch>
         </Suspense>
       </main>
@@ -116,6 +119,7 @@ function Router() {
               <Route path="/ticket/:id" component={PlayerTicket} />
               <Route path="/provisioning-in-progress" component={ProvisioningInProgressPage} />
               <Route path="/accept-invitation" component={AcceptInvitationPage} />
+              <Route path="/verify-email" component={VerifyEmailPage} />
               <Route path="/rate-limit" component={RateLimitPage} />
               {/* Public KB routes for mobile, if accessed directly and not caught by earlier block */}
               <Route path="/knowledgebase" component={KnowledgebasePage} />
@@ -152,6 +156,7 @@ function Router() {
             <Route path="/ticket/:id" component={PlayerTicket} />
             <Route path="/provisioning-in-progress" component={ProvisioningInProgressPage} />
             <Route path="/accept-invitation" component={AcceptInvitationPage} />
+            <Route path="/verify-email" component={VerifyEmailPage} />
             <Route path="/rate-limit" component={RateLimitPage} />
             {/* Public KB routes for desktop, if accessed directly and not caught by earlier block */}
             <Route path="/knowledgebase" component={KnowledgebasePage} />
