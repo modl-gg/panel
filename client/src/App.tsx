@@ -33,7 +33,7 @@ const ProvisioningInProgressPage = lazy(() => import("@/pages/provisioning-in-pr
 const AcceptInvitationPage = lazy(() => import("@/pages/AcceptInvitationPage"));
 const MaintenancePage = lazy(() => import("./pages/MaintenancePage"));
 const RateLimitPage = lazy(() => import("@/pages/RateLimitPage"));
-const VerifyEmailPage = lazy(() => import("@/pages/VerifyEmailPage"));
+const SetupPage = lazy(() => import("@/pages/SetupPage"));
 
 // Knowledgebase Pages
 const KnowledgebasePage = lazy(() => import("@/pages/KnowledgebasePage"));
@@ -90,7 +90,7 @@ function Router() {
             <Route path="/ticket/:id" component={PlayerTicket} />
             <Route path="/provisioning-in-progress" component={ProvisioningInProgressPage} />
             <Route path="/accept-invitation" component={AcceptInvitationPage} />
-            <Route path="/verify-email" component={VerifyEmailPage} />
+            <Route path="/verify-email" component={SetupPage} />
           </Switch>
         </Suspense>
       </main>
@@ -119,7 +119,7 @@ function Router() {
               <Route path="/ticket/:id" component={PlayerTicket} />
               <Route path="/provisioning-in-progress" component={ProvisioningInProgressPage} />
               <Route path="/accept-invitation" component={AcceptInvitationPage} />
-              <Route path="/verify-email" component={VerifyEmailPage} />
+              <Route path="/verify-email" component={SetupPage} />
               <Route path="/rate-limit" component={RateLimitPage} />
               {/* Public KB routes for mobile, if accessed directly and not caught by earlier block */}
               <Route path="/knowledgebase" component={KnowledgebasePage} />
@@ -156,7 +156,7 @@ function Router() {
             <Route path="/ticket/:id" component={PlayerTicket} />
             <Route path="/provisioning-in-progress" component={ProvisioningInProgressPage} />
             <Route path="/accept-invitation" component={AcceptInvitationPage} />
-            <Route path="/verify-email" component={VerifyEmailPage} />
+            <Route path="/verify-email" component={SetupPage} />
             <Route path="/rate-limit" component={RateLimitPage} />
             {/* Public KB routes for desktop, if accessed directly and not caught by earlier block */}
             <Route path="/knowledgebase" component={KnowledgebasePage} />

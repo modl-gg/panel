@@ -43,12 +43,13 @@ export function useProvisioningStatusCheck() {
 
         const data: ProvisioningStatusResponse = await response.json();
 
-        // If the server is not completed, redirect to provisioning page
-        if (data.status !== 'completed' && process.env.ENVIRONMENT !== 'development') {
-          const serverName = data.serverName;
-          
-          // Redirect to provisioning page with server name
-          setLocation(`/provisioning-in-progress?server=${serverName}&message=provisioning_incomplete&toastType=info`);
+        // If email not verified or server not completed, redirect to setup page
+        if (process.env.ENVIRONMENT !== 'development') {
+          if (!data.emailVerified) {
+            setLocation('/verify-email?status=check&reason=email_not_verified');
+          } else if (data.status !== 'completed') {
+            setLocation('/verify-email?status=check&reason=provisioning_incomplete');
+          }
         }
       } catch (error) {
         console.error('Error checking provisioning status:', error);
