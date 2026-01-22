@@ -12,6 +12,7 @@ import { ProtectedRoute, AuthRoute } from "@/lib/protected-route";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { useDocumentTitle } from "@/hooks/use-document-title";
 import { useProvisioningStatusCheck } from "@/hooks/use-provisioning-status";
+import { usePublicSettings } from "@/hooks/use-public-settings";
 import { PlayerWindowProvider } from "@/contexts/PlayerWindowContext";
 import { WelcomeModal } from "@/components/layout/WelcomeModal";
 import { Loader2 } from "lucide-react";
@@ -34,6 +35,7 @@ const AcceptInvitationPage = lazy(() => import("@/pages/AcceptInvitationPage"));
 const MaintenancePage = lazy(() => import("./pages/MaintenancePage"));
 const RateLimitPage = lazy(() => import("@/pages/RateLimitPage"));
 const SetupPage = lazy(() => import("@/pages/SetupPage"));
+const ServerNotFoundPage = lazy(() => import("@/pages/ServerNotFoundPage"));
 
 // Knowledgebase Pages
 const KnowledgebasePage = lazy(() => import("@/pages/KnowledgebasePage"));
@@ -172,32 +174,33 @@ function Router() {
 
 function AppContent() {
   const { user, isLoading, maintenanceMode, maintenanceMessage } = useAuth();
+  const { data: publicSettings, isLoading: isLoadingSettings } = usePublicSettings();
   const [location] = useLocation();
   const [isWelcomeModalOpen, setWelcomeModalOpen] = useState(false);
 
   useDocumentTitle();
   useProvisioningStatusCheck();
-  
+
   // Must call hooks before any conditional returns to maintain hook order
   const { hasPermission } = usePermissions();
   // Safe permission check - returns false if user is not loaded yet
   const isAdmin = user ? hasPermission('admin.settings.view') : false;
-  
+
   useEffect(() => {
     const hasSeenModal = localStorage.getItem("hasSeenWelcomeModal");
     const isOnPanelHomePage = location === '/panel';
     const isFromProvisioning = new URLSearchParams(window.location.search).get('fromProvisioning') === 'true';
-    
+
     const excludedPages = ['/auth', '/panel/auth', '/appeal', '/provisioning-in-progress'];
     const isOnExcludedPage = excludedPages.some(page => location.startsWith(page));
     const isOnPlayerTicketPage = location.startsWith('/ticket/');
     const isOnAcceptInvitationPage = location.startsWith('/accept-invitation');
-    
+
     if (!isOnPanelHomePage) {
       setWelcomeModalOpen(false);
       return;
     }
-    
+
     if (!hasSeenModal && isOnPanelHomePage && !isFromProvisioning && !isOnExcludedPage && !isOnPlayerTicketPage && !isOnAcceptInvitationPage) {
       setWelcomeModalOpen(true);
     }
@@ -208,11 +211,21 @@ function AppContent() {
     setWelcomeModalOpen(false);
   };
 
-  if (isLoading) {
+  if (isLoading || isLoadingSettings) {
     return (
       <div className="flex items-center justify-center min-h-screen">
         <Loader2 className="h-8 w-8 animate-spin text-primary" />
       </div>
+    );
+  }
+
+  // Show server not found page if server doesn't exist
+  // Skip this check for verify-email page (needed for email verification flow)
+  if (publicSettings?.serverExists === false && !location.startsWith('/verify-email')) {
+    return (
+      <Suspense fallback={<div className="flex items-center justify-center min-h-screen"><Loader2 className="h-8 w-8 animate-spin text-primary" /></div>}>
+        <ServerNotFoundPage />
+      </Suspense>
     );
   }
 

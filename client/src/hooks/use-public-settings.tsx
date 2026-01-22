@@ -13,44 +13,50 @@ async function apiFetch(url: string, options: RequestInit = {}): Promise<Respons
   });
 }
 
+export interface PublicSettingsData {
+  serverExists: boolean;
+  serverDisplayName: string | null;
+  panelIconUrl: string | null;
+  homepageIconUrl: string | null;
+  ticketForms?: Record<string, unknown>;
+}
+
 /**
  * Hook to fetch basic server settings from the public API
  * This is used for unprotected pages like homepage and auth page
  */
 export function usePublicSettings() {
-  return useQuery({
+  return useQuery<PublicSettingsData>({
     queryKey: ['/v1/public/settings'],
     queryFn: async () => {
       try {
-        // Fetching public settings
         const res = await apiFetch('/v1/public/settings');
-        
-        // Response received
-        
+
         if (!res.ok) {
-          const errorText = await res.text();
-          console.error('[usePublicSettings] Request failed:', res.status, errorText);
-          throw new Error(`Failed to fetch public settings. Status: ${res.status}`);
+          console.error('[usePublicSettings] Request failed:', res.status);
+          return {
+            serverExists: false,
+            serverDisplayName: null,
+            panelIconUrl: null,
+            homepageIconUrl: null,
+          };
         }
-        
+
         const data = await res.json();
-        // Data received
-        return data;
+        return data as PublicSettingsData;
       } catch (error) {
         console.error('[usePublicSettings] Error occurred:', error);
-        // Return fallback values if the API fails
-        const fallback = {
-          serverDisplayName: 'modl',
+        return {
+          serverExists: false,
+          serverDisplayName: null,
           panelIconUrl: null,
-          homepageIconUrl: null
+          homepageIconUrl: null,
         };
-        // Using fallback values
-        return fallback;
       }
     },
-    staleTime: 1000 * 60 * 5, // Cache for 5 minutes
-    gcTime: 1000 * 60 * 10, // Keep in cache for 10 minutes
-    refetchOnWindowFocus: false, // Don't refetch on window focus
-    retry: 1, // Only retry once if it fails
+    staleTime: 1000 * 60 * 5,
+    gcTime: 1000 * 60 * 10,
+    refetchOnWindowFocus: false,
+    retry: 1,
   });
 }
