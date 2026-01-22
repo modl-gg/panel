@@ -127,7 +127,8 @@ export default function SetupPage() {
           setState('complete');
           setMessage('Welcome! Redirecting to your panel...');
           setTimeout(() => {
-            navigate(loginResult.redirectUrl || '/panel');
+            // Use full page reload to ensure auth context refreshes with new session
+            window.location.href = loginResult.redirectUrl || '/panel';
           }, 1500);
         } else {
           setMessage(loginResult.message || 'Auto-login failed. Please sign in manually.');
