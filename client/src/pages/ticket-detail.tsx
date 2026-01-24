@@ -680,7 +680,7 @@ const TicketDetail = () => {
       // Prepare punishment data in the format expected by the server
       const punishmentApiData: { [key: string]: any } = {
         issuerName: user?.username || 'Admin', // Use actual staff member name
-        type_ordinal: typeOrdinal,
+        typeOrdinal: typeOrdinal,
         notes: notes,
         evidence: evidence,
         attachedTicketIds: attachedTicketIds,

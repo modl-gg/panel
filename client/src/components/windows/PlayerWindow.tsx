@@ -722,7 +722,7 @@ const PlayerWindow = ({ playerId, isOpen, onClose, initialPosition }: PlayerWind
       if (!isActive) continue;
 
       // Find punishment type
-      const punishmentType = punishmentTypes.find(pt => pt.ordinal === punishment.type_ordinal);
+      const punishmentType = punishmentTypes.find(pt => pt.ordinal === punishment.typeOrdinal);
       if (!punishmentType) continue;
 
       // Get points based on severity or single severity
@@ -814,7 +814,7 @@ const PlayerWindow = ({ playerId, isOpen, onClose, initialPosition }: PlayerWind
         // Determine player status (exclude kicks from status calculation)
         // Kicks (ordinal 0) should never affect the "Currently Punished" badge
         const activePunishments = player.punishments ? player.punishments.filter((p: any) => 
-          p.active && p.type_ordinal !== 0 // Exclude kicks (ordinal 0) completely
+          p.active && p.typeOrdinal !== 0 // Exclude kicks (ordinal 0) completely
         ) : [];
         
         const status = activePunishments.some((p: any) => !p.expires) 
@@ -848,7 +848,7 @@ const PlayerWindow = ({ playerId, isOpen, onClose, initialPosition }: PlayerWind
               return `Unknown Punishment ${ordinal}`;
             };
             
-            const punishmentType = getPunishmentTypeName(punishment.type_ordinal);
+            const punishmentType = getPunishmentTypeName(punishment.typeOrdinal);
             
             // Use staff notes as the main reason text
             let displayReason = '';
@@ -869,14 +869,14 @@ const PlayerWindow = ({ playerId, isOpen, onClose, initialPosition }: PlayerWind
               // Additional punishment details
               id: punishment.id || punishment._id,
               severity: (() => {
-                // For linked bans (type_ordinal 4), severity should always be null
-                if (punishment.type_ordinal === 4) return null;
+                // For linked bans (typeOrdinal 4), severity should always be null
+                if (punishment.typeOrdinal === 4) return null;
                 const severity = punishment.data?.severity || (punishment.data?.get ? punishment.data.get('severity') : punishment.severity);
                 return severity === 0 || severity === '0' || severity === null || severity === undefined ? null : severity;
               })(),
               status: (() => {
-                // For linked bans (type_ordinal 4), status should always be null
-                if (punishment.type_ordinal === 4) return null;
+                // For linked bans (typeOrdinal 4), status should always be null
+                if (punishment.typeOrdinal === 4) return null;
                 const status = punishment.data?.status || (punishment.data?.get ? punishment.data.get('status') : punishment.status);
                 return status === 0 || status === '0' || status === null || status === undefined ? null : status;
               })(),
@@ -893,7 +893,7 @@ const PlayerWindow = ({ playerId, isOpen, onClose, initialPosition }: PlayerWind
               data: (() => {
                 const data = punishment.data || {};
                 // For linked bans, filter out fields that might contain 0 values that shouldn't be displayed
-                if (punishment.type_ordinal === 4) {
+                if (punishment.typeOrdinal === 4) {
                   const filteredData = { ...data };
                   // Remove any fields that are 0 or null for linked bans
                   Object.keys(filteredData).forEach(key => {
