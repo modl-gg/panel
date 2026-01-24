@@ -114,7 +114,7 @@ const UsageSettings = () => {
     fetchStorageSettings();
   }, []);
 
-  const fetchStorageData = async () => {
+const fetchStorageData = async () => {
     try {
       setLoading(true);
 
@@ -125,33 +125,65 @@ const UsageSettings = () => {
       });
       const usageData = await usageResponse.json();
       
+      // Handle both old format (usedBytes/maxBytes) and new format (cdn/ai)
+      const cdnUsed = usageData.cdn?.used ?? usageData.usedBytes ?? 0;
+      const cdnLimit = usageData.cdn?.limit ?? usageData.maxBytes ?? 0;
+      const cdnPercentage = usageData.cdn?.percentage ?? (cdnLimit > 0 ? (cdnUsed / cdnLimit) * 100 : 0);
+      
+      // Convert GB to bytes for display (API returns values in GB)
+      const cdnUsedBytes = cdnUsed * 1024 * 1024 * 1024;
+      const cdnLimitBytes = cdnLimit * 1024 * 1024 * 1024;
+      
       // Transform the data to match expected format
-      const usage = {
-        totalUsed: usageData.usedBytes || 0,
-        totalQuota: usageData.maxBytes || 0,
-        usedPercentage: usageData.usedPercentage || 0,
-        usedFormatted: usageData.usedFormatted || '0 B',
-        maxFormatted: usageData.maxFormatted || '0 B',
+      const usage: StorageUsage = {
+        totalUsed: cdnUsedBytes,
+        totalQuota: cdnLimitBytes,
         byType: {
           ticket: 0,
           evidence: 0,
           logs: 0,
           backup: 0,
-          other: usageData.usedBytes || 0
+          other: cdnUsedBytes
         },
         quota: {
-          totalUsed: usageData.usedBytes || 0,
-          totalLimit: usageData.maxBytes || 0
+          totalUsed: cdnUsedBytes,
+          totalUsedFormatted: formatFileSize(cdnUsedBytes),
+          baseLimit: cdnLimitBytes,
+          baseLimitFormatted: formatFileSize(cdnLimitBytes),
+          overageLimit: (usageData.cdn?.overage ?? 0) * 1024 * 1024 * 1024,
+          overageLimitFormatted: formatFileSize((usageData.cdn?.overage ?? 0) * 1024 * 1024 * 1024),
+          totalLimit: cdnLimitBytes,
+          totalLimitFormatted: formatFileSize(cdnLimitBytes),
+          overageUsed: (usageData.cdn?.overage ?? 0) * 1024 * 1024 * 1024,
+          overageUsedFormatted: formatFileSize((usageData.cdn?.overage ?? 0) * 1024 * 1024 * 1024),
+          overageCost: usageData.cdn?.overageCost ?? 0,
+          isPaid: usageData.usageBillingEnabled ?? false,
+          canUpload: cdnPercentage < 100,
+          usagePercentage: Math.round(cdnPercentage * 100) / 100,
+          baseUsagePercentage: Math.round(cdnPercentage * 100) / 100
         },
-        aiQuota: null,
+        aiQuota: usageData.ai ? {
+          totalUsed: usageData.ai.used ?? 0,
+          baseLimit: usageData.ai.limit ?? 0,
+          overageUsed: usageData.ai.overage ?? 0,
+          overageCost: usageData.ai.overageCost ?? 0,
+          canUseAI: (usageData.ai.percentage ?? 0) < 100,
+          usagePercentage: Math.round((usageData.ai.percentage ?? 0) * 100) / 100,
+          byService: {
+            moderation: 0,
+            ticket_analysis: 0,
+            appeal_analysis: 0,
+            other: usageData.ai.used ?? 0
+          }
+        } : undefined,
         pricing: {
           storage: {
-            overagePricePerGB: 0.05,
+            overagePricePerGB: usageData.cdn?.overageRate ?? 0.05,
             currency: 'USD',
             period: 'month'
           },
           ai: {
-            overagePricePerRequest: 0.01,
+            overagePricePerRequest: usageData.ai?.overageRate ?? 0.01,
             currency: 'USD',
             period: 'month'
           }
@@ -858,7 +890,7 @@ const UsageSettings = () => {
           <AlertDialogHeader>
             <AlertDialogTitle>Storage Settings</AlertDialogTitle>
             <AlertDialogDescription>
-              Configure your storage overage limits. You'll be charged ${storageUsage?.pricing?.overagePricePerGB}/GB/month for storage above your base limit.
+              Configure your storage overage limits. You'll be charged ${storageUsage?.pricing?.storage?.overagePricePerGB}/GB/month for storage above your base limit.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <div className="space-y-4">

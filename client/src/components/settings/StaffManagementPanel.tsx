@@ -17,6 +17,17 @@ import { useToast } from '@modl-gg/shared-web/hooks/use-toast';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@modl-gg/shared-web/components/ui/alert-dialog';
 
 
+interface StaffMember {
+  id: string;
+  email: string;
+  username: string;
+  role: string;
+  createdAt: string;
+  status: string;
+  assignedMinecraftUuid?: string;
+  assignedMinecraftUsername?: string;
+}
+
 // Role interface to match the one from StaffRolesCard
 interface Role {
   id: string;
