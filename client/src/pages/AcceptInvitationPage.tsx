@@ -35,7 +35,7 @@ const AcceptInvitationPage = () => {
     const verifyToken = async () => {
       try {
         const { getApiUrl, getCurrentDomain } = await import('@/lib/api');
-        const response = await fetch(getApiUrl(`/v1/panel/staff/invitations/accept?token=${token}`), {
+        const response = await fetch(getApiUrl(`/v1/public/staff/invitations/accept?token=${token}`), {
           method: 'GET',
           credentials: 'include',
           headers: { 'X-Server-Domain': getCurrentDomain() }
