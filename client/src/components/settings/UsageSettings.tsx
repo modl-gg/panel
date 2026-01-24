@@ -125,14 +125,28 @@ const fetchStorageData = async () => {
       });
       const usageData = await usageResponse.json();
       
-      // Handle both old format (usedBytes/maxBytes) and new format (cdn/ai)
-      const cdnUsed = usageData.cdn?.used ?? usageData.usedBytes ?? 0;
-      const cdnLimit = usageData.cdn?.limit ?? usageData.maxBytes ?? 0;
-      const cdnPercentage = usageData.cdn?.percentage ?? (cdnLimit > 0 ? (cdnUsed / cdnLimit) * 100 : 0);
+      // Detect response format: 
+      // - Old format: { usedBytes, maxBytes, usedPercentage, usedFormatted, maxFormatted } (values in bytes)
+      // - New format: { cdn: { used, limit... }, ai: { used, limit... } } (values in GB)
+      const isNewFormat = usageData.cdn !== undefined;
       
-      // Convert GB to bytes for display (API returns values in GB)
-      const cdnUsedBytes = cdnUsed * 1024 * 1024 * 1024;
-      const cdnLimitBytes = cdnLimit * 1024 * 1024 * 1024;
+      let cdnUsedBytes: number;
+      let cdnLimitBytes: number;
+      let cdnPercentage: number;
+      
+      if (isNewFormat) {
+        // New format: values are in GB, convert to bytes
+        const cdnUsed = usageData.cdn?.used ?? 0;
+        const cdnLimit = usageData.cdn?.limit ?? 0;
+        cdnUsedBytes = cdnUsed * 1024 * 1024 * 1024;
+        cdnLimitBytes = cdnLimit * 1024 * 1024 * 1024;
+        cdnPercentage = usageData.cdn?.percentage ?? (cdnLimit > 0 ? (cdnUsed / cdnLimit) * 100 : 0);
+      } else {
+        // Old format: values are already in bytes
+        cdnUsedBytes = usageData.usedBytes ?? 0;
+        cdnLimitBytes = usageData.maxBytes ?? 0;
+        cdnPercentage = usageData.usedPercentage ?? (cdnLimitBytes > 0 ? (cdnUsedBytes / cdnLimitBytes) * 100 : 0);
+      }
       
       // Transform the data to match expected format
       const usage: StorageUsage = {
@@ -147,15 +161,15 @@ const fetchStorageData = async () => {
         },
         quota: {
           totalUsed: cdnUsedBytes,
-          totalUsedFormatted: formatFileSize(cdnUsedBytes),
+          totalUsedFormatted: usageData.usedFormatted ?? formatFileSize(cdnUsedBytes),
           baseLimit: cdnLimitBytes,
-          baseLimitFormatted: formatFileSize(cdnLimitBytes),
-          overageLimit: (usageData.cdn?.overage ?? 0) * 1024 * 1024 * 1024,
-          overageLimitFormatted: formatFileSize((usageData.cdn?.overage ?? 0) * 1024 * 1024 * 1024),
+          baseLimitFormatted: usageData.maxFormatted ?? formatFileSize(cdnLimitBytes),
+          overageLimit: 0,
+          overageLimitFormatted: '0 Bytes',
           totalLimit: cdnLimitBytes,
-          totalLimitFormatted: formatFileSize(cdnLimitBytes),
-          overageUsed: (usageData.cdn?.overage ?? 0) * 1024 * 1024 * 1024,
-          overageUsedFormatted: formatFileSize((usageData.cdn?.overage ?? 0) * 1024 * 1024 * 1024),
+          totalLimitFormatted: usageData.maxFormatted ?? formatFileSize(cdnLimitBytes),
+          overageUsed: 0,
+          overageUsedFormatted: '0 Bytes',
           overageCost: usageData.cdn?.overageCost ?? 0,
           isPaid: usageData.usageBillingEnabled ?? false,
           canUpload: cdnPercentage < 100,
@@ -587,8 +601,11 @@ const fetchStorageData = async () => {
                   <div className="space-y-2">
                     <div className="flex justify-between text-sm">
                       <span>Status:</span>
-                      <span className="text-muted-foreground">Loading...</span>
+                      <span className="text-muted-foreground">Not available</span>
                     </div>
+                    <p className="text-xs text-muted-foreground">
+                      AI usage tracking is not enabled for this server.
+                    </p>
                   </div>
                 )}
               </div>
