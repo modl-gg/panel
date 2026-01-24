@@ -31,8 +31,15 @@ import { Progress } from '@modl-gg/shared-web/components/ui/progress';
 import { Switch } from '@modl-gg/shared-web/components/ui/switch';
 import { Label } from '@modl-gg/shared-web/components/ui/label';
 
-// Initialize Stripe with the publishable key
-const stripePromise = loadStripe(import.meta.env.VITE_STRIPE_PUBLISHABLE_KEY);
+// Initialize Stripe lazily - only when a valid key is present
+let stripePromise: ReturnType<typeof loadStripe> | null = null;
+const getStripe = () => {
+  const key = import.meta.env.VITE_STRIPE_PUBLISHABLE_KEY;
+  if (!stripePromise && key) {
+    stripePromise = loadStripe(key);
+  }
+  return stripePromise;
+};
 
 interface PlanFeature {
   text: string;
@@ -115,7 +122,7 @@ const BillingSettings = () => {
       }
 
       const { sessionId } = await response.json();
-      const stripe = await stripePromise;
+      const stripe = await getStripe();
       if (stripe) {
         const { error } = await stripe.redirectToCheckout({ sessionId });
         if (error) {
