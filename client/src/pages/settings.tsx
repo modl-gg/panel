@@ -16,7 +16,7 @@ import { Badge } from '@modl-gg/shared-web/components/ui/badge';
 import { Checkbox } from '@modl-gg/shared-web/components/ui/checkbox';
 import { useToast } from '@modl-gg/shared-web/hooks/use-toast';
 import { Select, SelectContent, SelectGroup, SelectItem, SelectLabel, SelectTrigger, SelectValue } from '@modl-gg/shared-web/components/ui/select';
-import { useSettings, useBillingStatus, useUsageData } from '@/hooks/use-data';
+import { useSettings, useBillingStatus, useUsageData, usePunishmentTypes } from '@/hooks/use-data';
 import PageContainer from '@/components/layout/PageContainer'
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@modl-gg/shared-web/components/ui/dialog";
 import { queryClient } from '@/lib/queryClient';
@@ -1001,6 +1001,7 @@ const Settings = () => {
   
   const { toast } = useToast();
   const { data: settingsData, isLoading: isLoadingSettings, isFetching: isFetchingSettings } = useSettings();
+  const { data: punishmentTypesData, isLoading: isLoadingPunishmentTypes } = usePunishmentTypes();
   const { data: billingStatus } = useBillingStatus();
   const { data: usageData } = useUsageData();
   const [currentEmail, setCurrentEmail] = useState('');
@@ -1858,6 +1859,22 @@ const Settings = () => {
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [settingsData, isLoadingSettings, isFetchingSettings]);
+
+  // Effect: Load punishment types from the dedicated endpoint
+  useEffect(() => {
+    if (isLoadingPunishmentTypes || !punishmentTypesData) {
+      return;
+    }
+
+    // Normalize API data: map 'customizable' to 'isCustomizable' and ensure correct structure
+    const normalizedTypes = (punishmentTypesData as any[]).map((pt: any) => ({
+      ...pt,
+      isCustomizable: pt.isCustomizable ?? pt.customizable ?? false,
+      category: pt.category || (pt.administrative ? 'Administrative' : pt.social ? 'Social' : pt.gameplay ? 'Gameplay' : 'Administrative')
+    }));
+
+    setPunishmentTypesState(normalizedTypes);
+  }, [punishmentTypesData, isLoadingPunishmentTypes]);
 
   // Debounced auto-save effect - only trigger when settings change after initial load
   useEffect(() => {

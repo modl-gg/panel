@@ -10,7 +10,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 interface PunishmentType {
   id: number;
   name: string;
-  category: 'Gameplay' | 'Social' | 'Administrative';
+  category: string;
   isCustomizable: boolean;
   ordinal: number;
 }
