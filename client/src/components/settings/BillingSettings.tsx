@@ -64,7 +64,7 @@ const plans: Plan[] = [
       { text: 'Up to 5 staff members', included: true, icon: <Users className="h-4 w-4" /> },
       { text: '100k API requests per month', included: true, icon: <Zap className="h-4 w-4" /> },
       { text: 'Community support', included: true, icon: <Headphones className="h-4 w-4" /> },
-      { text: 'CDN storage', included: false, icon: <HardDrive className="h-4 w-4" /> },
+      { text: '2GB CDN storage', included: true, icon: <HardDrive className="h-4 w-4" /> },
       { text: 'AI moderation', included: false, icon: <Brain className="h-4 w-4" /> }
     ],
     buttonText: 'Current Plan',
@@ -81,7 +81,7 @@ const plans: Plan[] = [
       { text: 'Advanced ticket system', included: true, icon: <Shield className="h-4 w-4" /> },
       { text: 'Unlimited staff members', included: true, icon: <Users className="h-4 w-4" /> },
       { text: '500k API requests per month', included: true, icon: <Zap className="h-4 w-4" /> },
-      { text: 'CDN storage', included: true, icon: <HardDrive className="h-4 w-4" /> },
+      { text: '200GB CDN storage', included: true, icon: <HardDrive className="h-4 w-4" /> },
       { text: 'AI moderation', included: true, icon: <Brain className="h-4 w-4" /> },
       { text: 'Priority support', included: true, icon: <Crown className="h-4 w-4" /> }
     ],
@@ -103,7 +103,7 @@ const BillingSettings = () => {
     setIsLoading(true);
     try {
       const { csrfFetch } = await import('@/utils/csrf');
-      const response = await csrfFetch('/v1/panel/billing/create-checkout-session', {
+      const response = await csrfFetch('/v1/panel/billing/checkout-session', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -142,7 +142,7 @@ const BillingSettings = () => {
     setIsLoading(true);
     try {
       const { csrfFetch } = await import('@/utils/csrf');
-      const response = await csrfFetch('/v1/panel/billing/create-portal-session', {
+      const response = await csrfFetch('/v1/panel/billing/portal-session', {
         method: 'POST',
       });
 
