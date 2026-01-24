@@ -500,8 +500,8 @@ const PlayerWindow = ({ playerId, isOpen, onClose, initialPosition }: PlayerWind
       }
       // Prepare punishment data in the format expected by the server
       const punishmentData: { [key: string]: any } = {
-        issuerName: user?.username || 'Admin', // Use actual staff member name
-        type_ordinal: typeOrdinal,
+        issuerName: user?.username || 'Admin',
+        typeOrdinal: typeOrdinal,
         notes: notes,
         evidence: evidence,
         attachedTicketIds: attachedTicketIds,
