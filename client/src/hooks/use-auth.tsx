@@ -1,6 +1,6 @@
 import { createContext, ReactNode, useContext, useState, useEffect } from "react";
 import { useLocation } from "wouter";
-import { useToast } from "./use-toast";
+import { useToast } from "@modl-gg/shared-web/hooks/use-toast";
 import { getApiUrl, getCurrentDomain } from "@/lib/api";
 
 interface User {

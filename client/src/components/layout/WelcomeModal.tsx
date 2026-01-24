@@ -19,13 +19,13 @@ import {
       <Dialog open={isOpen} onOpenChange={onClose}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>Welcome to modl!</DialogTitle>
+            <DialogTitle>Welcome to modl.gg!</DialogTitle>
             <DialogDescription>
               It looks like this is your first time here. Here are some tips to get you started.
             </DialogDescription>
           </DialogHeader>
           <div>
-            <p>🖥️ Start by installing the modl plugin for your platform with the API-Key found on the settings page.</p>
+            <p>🖥️ Start by installing the modl.gg plugin for your platform. Configure the API-Key found on the settings page.</p>
             <br />
             <p>👨‍👨‍👦‍👦 You can invite team members, customize your experience, and setup 2FA in the settings page.</p>
             <br />
