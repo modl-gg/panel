@@ -112,7 +112,7 @@ interface PunishmentType {
   id: number;
   name: string;
   category: 'Gameplay' | 'Social' | 'Administrative';
-  customizable: boolean;
+  isCustomizable: boolean;
   ordinal: number;
   durations?: {
     low: {
