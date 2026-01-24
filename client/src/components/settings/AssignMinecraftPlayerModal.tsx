@@ -8,7 +8,7 @@ import { usePlayerSearch, useAssignMinecraftPlayer, useStaff } from '@/hooks/use
 import { Loader2, User, X, Search } from 'lucide-react';
 
 interface StaffMember {
-  _id: string;
+  id: string;
   email: string;
   username: string;
   role: string;

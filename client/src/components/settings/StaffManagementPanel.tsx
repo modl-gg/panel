@@ -17,23 +17,6 @@ import { useToast } from '@modl-gg/shared-web/hooks/use-toast';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@modl-gg/shared-web/components/ui/alert-dialog';
 
 
-interface StaffMember {
-  _id: string;
-  email: string;
-  username: string;
-  role: string;
-  createdAt: string;
-  status: string;
-  assignedMinecraftUuid?: string;
-  assignedMinecraftUsername?: string;
-}
-
-interface User {
-  _id: string;
-  email: string;
-  role: string;
-}
-
 // Role interface to match the one from StaffRolesCard
 interface Role {
   id: string;
@@ -57,7 +40,7 @@ const StaffManagementPanel = () => {
     }
     
     // For active staff members, check if any management actions are available
-    const canAssign = hasPermission('admin.staff.manage') && canAssignStaffMinecraftPlayer(member.role, member._id);
+    const canAssign = hasPermission('admin.staff.manage') && canAssignStaffMinecraftPlayer(member.role, member.id);
     // Super Admin role cannot be changed
     const canChangeRole = hasPermission('admin.staff.manage') && canModifyUserRole(member.role) && member.role !== 'Super Admin';
     const canRemove = hasPermission('admin.staff.manage') && canRemoveStaffUser(member.role);
@@ -125,7 +108,7 @@ const StaffManagementPanel = () => {
 
     try {
       const { csrfFetch } = await import('@/utils/csrf');
-      const response = await csrfFetch(`/v1/panel/staff/${selectedStaffMember._id}`, {
+      const response = await csrfFetch(`/v1/panel/staff/${selectedStaffMember.id}`, {
         method: 'DELETE',
       });
 
@@ -221,8 +204,8 @@ const StaffManagementPanel = () => {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {staff.map((member: StaffMember) => (
-                  <TableRow key={member._id}>
+{staff.map((member: StaffMember) => (
+                  <TableRow key={member.id}>
                     <TableCell>{member.email}</TableCell>
                     <TableCell>{member.role}</TableCell>
                     <TableCell>{member.status}</TableCell>
@@ -252,7 +235,7 @@ const StaffManagementPanel = () => {
                         <DropdownMenuContent align="end">
                           {member.status === 'Pending Invitation' ? (
                             <>
-                              <DropdownMenuItem onSelect={() => handleResendInvitation(member._id)}>
+                              <DropdownMenuItem onSelect={() => handleResendInvitation(member.id)}>
                                 Resend Invitation
                               </DropdownMenuItem>
                               <DropdownMenuItem onSelect={() => openConfirmationDialog(member)}>
@@ -261,7 +244,7 @@ const StaffManagementPanel = () => {
                             </>
                           ) : (
                             <>
-                              {hasPermission('admin.staff.manage') && canAssignStaffMinecraftPlayer(member.role, member._id) && (
+                              {hasPermission('admin.staff.manage') && canAssignStaffMinecraftPlayer(member.role, member.id) && (
                                 <DropdownMenuItem onSelect={() => openAssignPlayerModal(member)}>
                                   {member.assignedMinecraftUsername ? 'Change' : 'Assign'} Minecraft Player
                                 </DropdownMenuItem>
