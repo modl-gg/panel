@@ -243,7 +243,7 @@ const PunishmentSettings = ({
             </h4>
             <div className="space-y-2">
               {punishmentTypes
-                .filter(pt => pt.category === 'Gameplay' && pt.ordinal > 5)
+                .filter(pt => pt.category?.toLowerCase().trim() === 'gameplay' && pt.ordinal > 5)
                 .sort((a, b) => a.ordinal - b.ordinal)
                 .map(type => (
                   <div key={type.id} className="flex items-center justify-between p-2 border rounded-md bg-card hover:bg-accent/50">
@@ -288,7 +288,7 @@ const PunishmentSettings = ({
             </h4>
             <div className="space-y-2">
               {punishmentTypes
-                .filter(pt => pt.category === 'Social' && pt.ordinal > 5)
+                .filter(pt => pt.category?.toLowerCase().trim() === 'social' && pt.ordinal > 5)
                 .sort((a, b) => a.ordinal - b.ordinal)
                 .map(type => (
                   <div key={type.id} className="flex items-center justify-between p-2 border rounded-md bg-card hover:bg-accent/50">

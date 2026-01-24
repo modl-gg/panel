@@ -249,7 +249,7 @@ const PlayerDetailPage = () => {
           ];
           
           // Group punishment types by category
-          const adminFromSettings = typesData.filter(pt => pt.category === 'Administrative');
+          const adminFromSettings = typesData.filter(pt => pt.category?.toLowerCase().trim() === 'administrative');
           
           // Merge default admin types with any additional admin types from settings
           // Default types take precedence (to ensure they're always available)
@@ -262,8 +262,8 @@ const PlayerDetailPage = () => {
           
           const categorized = {
             Administrative: mergedAdminTypes.sort((a, b) => a.ordinal - b.ordinal),
-            Social: typesData.filter(pt => pt.category === 'Social').sort((a, b) => a.ordinal - b.ordinal),
-            Gameplay: typesData.filter(pt => pt.category === 'Gameplay').sort((a, b) => a.ordinal - b.ordinal)
+            Social: typesData.filter(pt => pt.category?.toLowerCase().trim() === 'social').sort((a, b) => a.ordinal - b.ordinal),
+            Gameplay: typesData.filter(pt => pt.category?.toLowerCase().trim() === 'gameplay').sort((a, b) => a.ordinal - b.ordinal)
           };
           
           // Update the state with the loaded punishment types
