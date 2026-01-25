@@ -1152,9 +1152,10 @@ const PlayerDetailPage = () => {
                               {warning.severity}
                             </Badge>
                           )}
-                          {isValidBadgeValue(warning.status) && (
+                          {isValidBadgeValue(warning.status) &&
+                           !['active', 'inactive', 'unstarted'].includes(warning.status?.toLowerCase?.() || '') && (
                             <Badge variant="outline" className={`text-xs ${
-                              (warning.status && warning.status.toLowerCase() === 'low') || (warning.status && warning.status.toLowerCase() === 'first') ? 
+                              (warning.status && warning.status.toLowerCase() === 'low') || (warning.status && warning.status.toLowerCase() === 'first') ?
                                 'bg-green-100 text-green-800 border-green-300' :
                               warning.status && warning.status.toLowerCase() === 'medium' ?
                                 'bg-orange-100 text-orange-800 border-orange-300' :
