@@ -629,7 +629,7 @@ const BillingSettings = () => {
               </div>
               
               {/* Premium Features */}
-              <div className="lg:col-span-2 flex flex-col justify-center ml-8 mt-[-80px]">
+              <div className="lg:col-span-2 flex flex-col justify-center ml-0 lg:ml-8 mt-0 lg:mt-[-80px]">
                 <h4 className="font-medium text-sm text-muted-foreground mb-4">Premium Features</h4>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                   {premiumPlan.features.map((feature, index) => (

@@ -223,8 +223,8 @@ const EmbedTemplateEditor: React.FC<EmbedTemplateEditorProps> = ({
     const borderColor = rgb ? `rgb(${rgb.r}, ${rgb.g}, ${rgb.b})` : '#3498db';
 
     return (
-      <div className="bg-[#2f3136] p-4 rounded-lg max-w-md mx-auto">
-        <div className="bg-[#36393f] rounded-lg p-4 border-l-4 max-w-[432px]" style={{ borderLeftColor: borderColor }}>
+      <div className="bg-[#2f3136] p-4 rounded-lg w-full max-w-md mx-auto">
+        <div className="bg-[#36393f] rounded-lg p-4 border-l-4 w-full max-w-[432px]" style={{ borderLeftColor: borderColor }}>
           {template.title && (
             <div className="text-white font-semibold text-sm mb-1">
               {replaceVariablesForPreview(template.title)}

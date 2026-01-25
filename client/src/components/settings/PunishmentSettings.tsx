@@ -62,7 +62,7 @@ const PunishmentSettings = ({
           Configure the point thresholds for determining a player's offender status. Higher thresholds make it harder to reach medium and habitual status.
         </p>
 
-        <div className="grid grid-cols-2 gap-6 mb-6">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
           <div className="space-y-4 border rounded-md p-4">
             <h5 className="font-medium flex items-center">
               <GamepadIcon className="h-4 w-4 mr-2 text-amber-500" />
@@ -235,8 +235,8 @@ const PunishmentSettings = ({
           )}
         </div>
 
-        <div className="flex gap-4 mb-8">
-          <div className="w-1/2">
+        <div className="flex flex-col md:flex-row gap-4 mb-8">
+          <div className="w-full md:w-1/2">
             <h4 className="text-base font-medium mb-3 flex items-center">
               <GamepadIcon className="h-4 w-4 mr-2 text-amber-500" />
               Customizable Gameplay Related
@@ -281,7 +281,7 @@ const PunishmentSettings = ({
             </div>
           </div>
 
-          <div className="w-1/2">
+          <div className="w-full md:w-1/2">
             <h4 className="text-base font-medium mb-3 flex items-center">
               <MessageCircle className="h-4 w-4 mr-2 text-blue-500" />
               Customizable Social Related

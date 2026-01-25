@@ -706,7 +706,7 @@ const fetchStorageData = async () => {
           <CardTitle>File Management</CardTitle>
         </CardHeader>
         <CardContent>
-          <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
             <div>
               <Label htmlFor="search">Search Files</Label>
               <div className="relative">

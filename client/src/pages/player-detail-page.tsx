@@ -12,7 +12,9 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@modl-gg/shared-web/co
 import { usePlayer, useApplyPunishment, useSettings, usePlayerTickets, usePlayerAllTickets, useModifyPunishment, useAddPunishmentNote, useLinkedAccounts, useFindLinkedAccounts } from '@/hooks/use-data';
 import { ClickablePlayer } from '@/components/ui/clickable-player';
 import { useAuth } from '@/hooks/use-auth';
+import { useIsMobile } from '@/hooks/use-mobile';
 import { toast } from '@/hooks/use-toast';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@modl-gg/shared-web/components/ui/select';
 import PlayerPunishment, { PlayerPunishmentData } from '@/components/ui/player-punishment';
 import MediaUpload from '@/components/MediaUpload';
 import { formatDateWithTime } from '@/utils/date-utils';
@@ -143,7 +145,8 @@ const PlayerDetailPage = () => {
   const [_, params] = useRoute('/panel/player/:uuid');
   const [location, navigate] = useLocation();
   const playerId = params?.uuid || '';
-  
+  const isMobile = useIsMobile();
+
   const [activeTab, setActiveTab] = useState('history');
   const [banSearchResults, setBanSearchResults] = useState<{id: string; player: string}[]>([]);
   const [showBanSearchResults, setShowBanSearchResults] = useState(false);
@@ -1046,33 +1049,49 @@ const PlayerDetailPage = () => {
           </div>
         </div>
         
-        <Tabs defaultValue="history" className="w-full" onValueChange={setActiveTab}>
-          <TabsList className="grid grid-cols-6 gap-1 px-1">
-            <TabsTrigger value="history" className="text-xs py-2">
-              <History className="h-3.5 w-3.5 mr-1.5 hidden md:block" />
-              History
-            </TabsTrigger>
-            <TabsTrigger value="linked" className="text-xs py-2">
-              <Link2 className="h-3.5 w-3.5 mr-1.5 flex-shrink-0 hidden md:block" />
-              Connected
-            </TabsTrigger>
-            <TabsTrigger value="notes" className="text-xs py-2">
-              <StickyNote className="h-3.5 w-3.5 mr-1.5 hidden md:block" />
-              Notes
-            </TabsTrigger>
-            <TabsTrigger value="tickets" className="text-xs py-2">
-              <Ticket className="h-3.5 w-3.5 mr-1.5 hidden md:block" />
-              Tickets
-            </TabsTrigger>
-            <TabsTrigger value="names" className="text-xs py-2">
-              <UserRound className="h-3.5 w-3.5 mr-1.5 hidden md:block" />
-              Names
-            </TabsTrigger>
-            <TabsTrigger value="punishment" className="text-xs py-2">
-              <Shield className="h-3.5 w-3.5 mr-1.5 hidden md:block" />
-              Punish
-            </TabsTrigger>
-          </TabsList>
+        <Tabs value={activeTab} className="w-full" onValueChange={setActiveTab}>
+          {isMobile ? (
+            <Select value={activeTab} onValueChange={setActiveTab}>
+              <SelectTrigger className="w-full mb-3">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="history">History</SelectItem>
+                <SelectItem value="linked">Connected Accounts</SelectItem>
+                <SelectItem value="notes">Notes</SelectItem>
+                <SelectItem value="tickets">Tickets</SelectItem>
+                <SelectItem value="names">Previous Names</SelectItem>
+                <SelectItem value="punishment">Punish</SelectItem>
+              </SelectContent>
+            </Select>
+          ) : (
+            <TabsList className="grid grid-cols-6 gap-1 px-1">
+              <TabsTrigger value="history" className="text-xs py-2">
+                <History className="h-3.5 w-3.5 mr-1.5" />
+                History
+              </TabsTrigger>
+              <TabsTrigger value="linked" className="text-xs py-2">
+                <Link2 className="h-3.5 w-3.5 mr-1.5 flex-shrink-0" />
+                Connected
+              </TabsTrigger>
+              <TabsTrigger value="notes" className="text-xs py-2">
+                <StickyNote className="h-3.5 w-3.5 mr-1.5" />
+                Notes
+              </TabsTrigger>
+              <TabsTrigger value="tickets" className="text-xs py-2">
+                <Ticket className="h-3.5 w-3.5 mr-1.5" />
+                Tickets
+              </TabsTrigger>
+              <TabsTrigger value="names" className="text-xs py-2">
+                <UserRound className="h-3.5 w-3.5 mr-1.5" />
+                Names
+              </TabsTrigger>
+              <TabsTrigger value="punishment" className="text-xs py-2">
+                <Shield className="h-3.5 w-3.5 mr-1.5" />
+                Punish
+              </TabsTrigger>
+            </TabsList>
+          )}
           
           <TabsContent value="history" className="space-y-2 mx-1 mt-3">
             <h4 className="font-medium">Player History</h4>

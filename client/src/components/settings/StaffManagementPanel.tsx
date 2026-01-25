@@ -203,24 +203,26 @@ const StaffManagementPanel = () => {
           ) : error ? (
             <div className="text-center text-red-500">Failed to load staff members.</div>
           ) : staff && staff.length > 0 ? (
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Email</TableHead>
-                  <TableHead>Role</TableHead>
-                  <TableHead>Status</TableHead>
-                  <TableHead>Minecraft Player</TableHead>
-                  <TableHead>Date Added</TableHead>
-                  <TableHead className="text-right">Actions</TableHead>
-                </TableRow>
-              </TableHeader>
+            <div className="overflow-x-auto -mx-4 md:mx-0">
+              <div className="min-w-[600px] md:min-w-0 px-4 md:px-0">
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Email</TableHead>
+                      <TableHead>Role</TableHead>
+                      <TableHead className="hidden md:table-cell">Status</TableHead>
+                      <TableHead className="hidden lg:table-cell">Minecraft Player</TableHead>
+                      <TableHead className="hidden md:table-cell">Date Added</TableHead>
+                      <TableHead className="text-right">Actions</TableHead>
+                    </TableRow>
+                  </TableHeader>
               <TableBody>
 {staff.map((member: StaffMember) => (
                   <TableRow key={member.id}>
-                    <TableCell>{member.email}</TableCell>
+                    <TableCell className="max-w-[150px] truncate">{member.email}</TableCell>
                     <TableCell>{member.role}</TableCell>
-                    <TableCell>{member.status}</TableCell>
-                    <TableCell>
+                    <TableCell className="hidden md:table-cell">{member.status}</TableCell>
+                    <TableCell className="hidden lg:table-cell">
                       {member.assignedMinecraftUsername ? (
                         <Badge variant="secondary" className="flex items-center gap-1 w-fit">
                           <User className="h-3 w-3" />
@@ -230,7 +232,7 @@ const StaffManagementPanel = () => {
                         <span className="text-muted-foreground text-sm">Not assigned</span>
                       )}
                     </TableCell>
-                    <TableCell>{member.createdAt ? new Date(member.createdAt).toLocaleDateString() : 'N/A'}</TableCell>
+                    <TableCell className="hidden md:table-cell">{member.createdAt ? new Date(member.createdAt).toLocaleDateString() : 'N/A'}</TableCell>
                     <TableCell className="text-right">
                       <DropdownMenu>
                         <DropdownMenuTrigger asChild>
@@ -278,7 +280,9 @@ const StaffManagementPanel = () => {
                   </TableRow>
                 ))}
               </TableBody>
-            </Table>
+                </Table>
+              </div>
+            </div>
           ) : (
             <div className="text-center text-gray-500">No staff members found.</div>
           )}

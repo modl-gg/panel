@@ -557,7 +557,7 @@ const KnowledgebaseSettings: React.FC = () => {
           </CardHeader>
           <CardContent className="space-y-4">
             <div className="space-y-2">
-              <div className="flex space-x-2">
+              <div className="flex flex-col md:flex-row gap-2">
                 <Input
                   type="text"
                   placeholder="New category name"
@@ -565,7 +565,7 @@ const KnowledgebaseSettings: React.FC = () => {
                   onChange={(e) => setNewCategoryName(e.target.value)}
                   className="flex-grow"
                 />
-                <Button onClick={handleCreateCategory} disabled={createCategoryMutation.isPending}>
+                <Button onClick={handleCreateCategory} disabled={createCategoryMutation.isPending} className="w-full md:w-auto">
                   <Plus className="mr-2 h-4 w-4" /> Add Category
                 </Button>
               </div>
