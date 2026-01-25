@@ -86,6 +86,46 @@
 @layer base {
   * {
     @apply border-border;
+    scrollbar-width: thin;
+    scrollbar-color: hsl(var(--muted-foreground) / 0.3) transparent;
+  }
+
+  *:hover {
+    scrollbar-color: hsl(var(--muted-foreground) / 0.5) transparent;
+  }
+
+  /* Webkit scrollbar styles (Chrome, Safari, Edge) */
+  *::-webkit-scrollbar {
+    width: 8px;
+    height: 8px;
+  }
+
+  *::-webkit-scrollbar-track {
+    background: transparent;
+    border-radius: 4px;
+  }
+
+  *::-webkit-scrollbar-thumb {
+    background: hsl(var(--muted-foreground) / 0.3);
+    border-radius: 4px;
+    border: 2px solid transparent;
+    background-clip: content-box;
+  }
+
+  *::-webkit-scrollbar-thumb:hover {
+    background: hsl(var(--muted-foreground) / 0.5);
+    border: 2px solid transparent;
+    background-clip: content-box;
+  }
+
+  *::-webkit-scrollbar-thumb:active {
+    background: hsl(var(--muted-foreground) / 0.7);
+    border: 2px solid transparent;
+    background-clip: content-box;
+  }
+
+  *::-webkit-scrollbar-corner {
+    background: transparent;
   }
 
   body {
@@ -95,22 +135,25 @@
 }
 
 @layer components {
-  .scrollbar::-webkit-scrollbar {
-    @apply w-1.5;
+  /* Thin scrollbar variant for compact areas */
+  .scrollbar-thin::-webkit-scrollbar {
+    width: 6px;
+    height: 6px;
   }
-  
-  .scrollbar::-webkit-scrollbar-track {
-    @apply bg-muted;
+
+  .scrollbar-thin::-webkit-scrollbar-thumb {
+    border-width: 1px;
   }
-  
-  .scrollbar::-webkit-scrollbar-thumb {
-    @apply bg-muted-foreground/40 rounded-full;
+
+  /* Hidden scrollbar that still allows scrolling */
+  .scrollbar-hidden {
+    scrollbar-width: none;
   }
-  
-  .scrollbar::-webkit-scrollbar-thumb:hover {
-    @apply bg-muted-foreground/60;
+
+  .scrollbar-hidden::-webkit-scrollbar {
+    display: none;
   }
-  
+
   @keyframes slideRight {
     from {
       width: 0;
