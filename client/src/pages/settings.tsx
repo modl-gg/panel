@@ -2041,8 +2041,8 @@ const Settings = () => {
         // Profile save successful
         setLastSaved(new Date());
         // Update the user context without refreshing
-        if (user) {
-          user.username = data.user.username;
+        if (user && data.username) {
+          user.username = data.username;
         }
         
         // Don't show a toast on every auto-save to avoid spam
@@ -2111,8 +2111,8 @@ const Settings = () => {
           setLastSaved(new Date());
           
           // Update the user context without refreshing
-          if (user) {
-            user.username = data.user.username;
+          if (user && data.username) {
+            user.username = data.username;
           }
           
           // Don't show a toast on every auto-save to avoid spam

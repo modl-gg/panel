@@ -1165,7 +1165,7 @@ export function useMigrationStatus() {
         currentMigration.status !== 'completed' &&
         currentMigration.status !== 'failed';
 
-      return (isActive) ? 1000 : 30 * 1000;
+      return isActive ? 5000 : 30000;
     },
     refetchOnMount: true,
     refetchOnWindowFocus: true
