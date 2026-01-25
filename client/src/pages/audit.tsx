@@ -42,6 +42,7 @@ import { format, subDays, startOfDay, endOfDay } from 'date-fns';
 import { useLogs } from '@/hooks/use-data';
 import { useQuery } from '@tanstack/react-query';
 import PageContainer from '@/components/layout/PageContainer';
+import { useIsMobile } from '@/hooks/use-mobile';
 import { useToast } from '@modl-gg/shared-web/hooks/use-toast';
 import { PermissionWrapper } from '@/components/PermissionWrapper';
 import { PERMISSIONS } from '@/hooks/use-permissions';
@@ -1557,6 +1558,8 @@ const TicketAnalyticsSection = ({ analyticsPeriod }: { analyticsPeriod: string }
 
 const AuditLog = () => {
   const { toast } = useToast();
+  const isMobile = useIsMobile();
+  const [activeTab, setActiveTab] = useState("overview");
   const [searchQuery, setSearchQuery] = useState("");
   const [actionFilter, setActionFilter] = useState("all");
   const [severityFilter, setSeverityFilter] = useState("all");
@@ -1807,8 +1810,11 @@ const AuditLog = () => {
         {/* Header */}
         <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
           <div>
-            <h2 className="text-2xl font-semibold">Analytics & Audit Dashboard</h2>
-            <p className="text-sm text-muted-foreground mt-1">
+            <h2 className="text-2xl font-semibold">
+              <span className="md:hidden">Audit</span>
+              <span className="hidden md:inline">Analytics & Audit Dashboard</span>
+            </h2>
+            <p className="text-sm text-muted-foreground mt-1 hidden md:block">
               Comprehensive system monitoring, analytics, staff performance, and audit controls
             </p>
           </div>
@@ -1837,15 +1843,31 @@ const AuditLog = () => {
         </div>
         
         {/* Tabbed Interface */}
-        <Tabs defaultValue="overview" className="w-full">
-          <TabsList className="grid w-full grid-cols-6">
-            <TabsTrigger value="overview">Overview</TabsTrigger>
-            <TabsTrigger value="staff">Staff</TabsTrigger>
-            <TabsTrigger value="tickets">Tickets</TabsTrigger>
-            <TabsTrigger value="punishments">Punishments</TabsTrigger>
-            <TabsTrigger value="players">Players</TabsTrigger>
-            <TabsTrigger value="audit">Audit Logs</TabsTrigger>
-          </TabsList>
+        <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
+          {isMobile ? (
+            <Select value={activeTab} onValueChange={setActiveTab}>
+              <SelectTrigger className="w-full mb-4">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="overview">Overview</SelectItem>
+                <SelectItem value="staff">Staff</SelectItem>
+                <SelectItem value="tickets">Tickets</SelectItem>
+                <SelectItem value="punishments">Punishments</SelectItem>
+                <SelectItem value="players">Players</SelectItem>
+                <SelectItem value="audit">Audit Logs</SelectItem>
+              </SelectContent>
+            </Select>
+          ) : (
+            <TabsList className="grid w-full grid-cols-6">
+              <TabsTrigger value="overview">Overview</TabsTrigger>
+              <TabsTrigger value="staff">Staff</TabsTrigger>
+              <TabsTrigger value="tickets">Tickets</TabsTrigger>
+              <TabsTrigger value="punishments">Punishments</TabsTrigger>
+              <TabsTrigger value="players">Players</TabsTrigger>
+              <TabsTrigger value="audit">Audit Logs</TabsTrigger>
+            </TabsList>
+          )}
           
           <TabsContent value="overview" className="space-y-6">
             {/* Overview Statistics */}

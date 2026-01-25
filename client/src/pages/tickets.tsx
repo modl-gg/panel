@@ -315,11 +315,11 @@ const Tickets = () => {
   
   // Render pagination controls
   const renderPagination = () => (
-    <div className="flex justify-between items-center pt-4">
-      <div className="text-sm text-muted-foreground">
+    <div className="flex flex-col space-y-2 md:flex-row md:space-y-0 md:justify-between md:items-center pt-4">
+      <div className="text-sm text-muted-foreground text-center md:text-left">
         Showing {((pagination.current - 1) * 10) + 1}-{Math.min(pagination.current * 10, pagination.totalTickets)} of {pagination.totalTickets} entries
       </div>
-      <div className="flex space-x-1">
+      <div className="flex justify-center space-x-1">
         <Button 
           variant="outline" 
           size="sm" 
@@ -363,20 +363,20 @@ const Tickets = () => {
   return (
     <PageContainer>
       <div className="flex flex-col space-y-6">
-        <div className="flex justify-between items-center">
+        <div className="flex flex-col space-y-4 md:flex-row md:justify-between md:items-center">
           <h2 className="text-xl font-semibold">Tickets</h2>
-          <div className="flex space-x-2 items-center">
+          <div className="flex flex-col space-y-2 md:flex-row md:space-y-0 md:space-x-2 md:items-center">
             <div className="relative">
               <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
               <Input
-                placeholder="Search tickets, players, staff, or content..."
+                placeholder="Search tickets..."
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                className="pl-10 w-80"
+                className="pl-10 w-full md:w-80"
               />
             </div>
             <Select value={statusFilter} onValueChange={setStatusFilter}>
-              <SelectTrigger className="w-[180px] bg-background border border-border text-sm">
+              <SelectTrigger className="w-full md:w-[180px] bg-background border border-border text-sm">
                 <SelectValue placeholder="All Statuses" />
               </SelectTrigger>
               <SelectContent>
@@ -390,60 +390,77 @@ const Tickets = () => {
         
         <Card>
           <CardHeader className="p-0">
-            <Tabs defaultValue="support" className="w-full" onValueChange={setActiveTab}>
-              <div className="overflow-x-auto pb-1 border-b border-border">
-                <TabsList className="w-max flex rounded-none bg-transparent">
-                  <TabsTrigger 
-                    value="support" 
-                    className="data-[state=active]:border-b-2 data-[state=active]:border-primary data-[state=active]:text-primary rounded-none px-3 py-0.5 flex-shrink-0 text-sm"
-                  >
-                    <MessageSquare className="h-4 w-4 mr-2" />
-                    Support
-                    <Badge variant="outline" className="ml-2 bg-muted/30 text-foreground border-none text-xs font-medium">{ticketCounts.support || 0}</Badge>
-                  </TabsTrigger>
-                <TabsTrigger 
-                  value="bug" 
-                  className="data-[state=active]:border-b-2 data-[state=active]:border-primary data-[state=active]:text-primary rounded-none px-2 py-0.5 flex-shrink-0 text-sm"
-                >
-                  <Bug className="h-4 w-4 mr-2" />
-                  Bug Reports
-                  <Badge variant="outline" className="ml-2 bg-muted/30 text-foreground border-none text-xs font-medium">{ticketCounts.bug || 0}</Badge>
-                </TabsTrigger>
-                <TabsTrigger 
-                  value="player" 
-                  className="data-[state=active]:border-b-2 data-[state=active]:border-primary data-[state=active]:text-primary rounded-none px-3 py-0.5 flex-shrink-0 text-sm"
-                >
-                  <Users className="h-4 w-4 mr-2" />
-                  Player Reports
-                  <Badge variant="outline" className="ml-2 bg-muted/30 text-foreground border-none text-xs font-medium">{ticketCounts.player || 0}</Badge>
-                </TabsTrigger>
-                <TabsTrigger 
-                  value="chat" 
-                  className="data-[state=active]:border-b-2 data-[state=active]:border-primary data-[state=active]:text-primary rounded-none px-3 py-0.5 flex-shrink-0 text-sm"
-                >
-                  <MessageSquare className="h-4 w-4 mr-2" />
-                  Chat Reports
-                  <Badge variant="outline" className="ml-2 bg-muted/30 text-foreground border-none text-xs font-medium">{ticketCounts.chat || 0}</Badge>
-                </TabsTrigger>
-                <TabsTrigger 
-                  value="appeal" 
-                  className="data-[state=active]:border-b-2 data-[state=active]:border-primary data-[state=active]:text-primary rounded-none px-3 py-0.5 flex-shrink-0 text-sm"
-                >
-                  <LockKeyhole className="h-4 w-4 mr-2" />
-                  Ban Appeals
-                  <Badge variant="outline" className="ml-2 bg-muted/30 text-foreground border-none text-xs font-medium">{ticketCounts.appeal || 0}</Badge>
-                </TabsTrigger>
-                <TabsTrigger 
-                  value="staff" 
-                  className="data-[state=active]:border-b-2 data-[state=active]:border-primary data-[state=active]:text-primary rounded-none px-3 py-0.5 flex-shrink-0 text-sm"
-                >
-                  <MessageSquare className="h-4 w-4 mr-2" />
-                  Staff Applications
-                  <Badge variant="outline" className="ml-2 bg-muted/30 text-foreground border-none text-xs font-medium">{ticketCounts.staff || 0}</Badge>
-                </TabsTrigger>
-              
-              </TabsList>
-              </div>
+            <Tabs value={activeTab} className="w-full" onValueChange={setActiveTab}>
+              {isMobile ? (
+                <div className="p-4 border-b border-border">
+                  <Select value={activeTab} onValueChange={setActiveTab}>
+                    <SelectTrigger className="w-full">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="support">Support ({ticketCounts.support || 0})</SelectItem>
+                      <SelectItem value="bug">Bug Reports ({ticketCounts.bug || 0})</SelectItem>
+                      <SelectItem value="player">Player Reports ({ticketCounts.player || 0})</SelectItem>
+                      <SelectItem value="chat">Chat Reports ({ticketCounts.chat || 0})</SelectItem>
+                      <SelectItem value="appeal">Ban Appeals ({ticketCounts.appeal || 0})</SelectItem>
+                      <SelectItem value="staff">Staff Applications ({ticketCounts.staff || 0})</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+              ) : (
+                <div className="overflow-x-auto pb-1 border-b border-border">
+                  <TabsList className="w-max flex rounded-none bg-transparent">
+                    <TabsTrigger
+                      value="support"
+                      className="data-[state=active]:border-b-2 data-[state=active]:border-primary data-[state=active]:text-primary rounded-none px-3 py-0.5 flex-shrink-0 text-sm"
+                    >
+                      <MessageSquare className="h-4 w-4 mr-2" />
+                      Support
+                      <Badge variant="outline" className="ml-2 bg-muted/30 text-foreground border-none text-xs font-medium">{ticketCounts.support || 0}</Badge>
+                    </TabsTrigger>
+                    <TabsTrigger
+                      value="bug"
+                      className="data-[state=active]:border-b-2 data-[state=active]:border-primary data-[state=active]:text-primary rounded-none px-2 py-0.5 flex-shrink-0 text-sm"
+                    >
+                      <Bug className="h-4 w-4 mr-2" />
+                      Bug Reports
+                      <Badge variant="outline" className="ml-2 bg-muted/30 text-foreground border-none text-xs font-medium">{ticketCounts.bug || 0}</Badge>
+                    </TabsTrigger>
+                    <TabsTrigger
+                      value="player"
+                      className="data-[state=active]:border-b-2 data-[state=active]:border-primary data-[state=active]:text-primary rounded-none px-3 py-0.5 flex-shrink-0 text-sm"
+                    >
+                      <Users className="h-4 w-4 mr-2" />
+                      Player Reports
+                      <Badge variant="outline" className="ml-2 bg-muted/30 text-foreground border-none text-xs font-medium">{ticketCounts.player || 0}</Badge>
+                    </TabsTrigger>
+                    <TabsTrigger
+                      value="chat"
+                      className="data-[state=active]:border-b-2 data-[state=active]:border-primary data-[state=active]:text-primary rounded-none px-3 py-0.5 flex-shrink-0 text-sm"
+                    >
+                      <MessageSquare className="h-4 w-4 mr-2" />
+                      Chat Reports
+                      <Badge variant="outline" className="ml-2 bg-muted/30 text-foreground border-none text-xs font-medium">{ticketCounts.chat || 0}</Badge>
+                    </TabsTrigger>
+                    <TabsTrigger
+                      value="appeal"
+                      className="data-[state=active]:border-b-2 data-[state=active]:border-primary data-[state=active]:text-primary rounded-none px-3 py-0.5 flex-shrink-0 text-sm"
+                    >
+                      <LockKeyhole className="h-4 w-4 mr-2" />
+                      Ban Appeals
+                      <Badge variant="outline" className="ml-2 bg-muted/30 text-foreground border-none text-xs font-medium">{ticketCounts.appeal || 0}</Badge>
+                    </TabsTrigger>
+                    <TabsTrigger
+                      value="staff"
+                      className="data-[state=active]:border-b-2 data-[state=active]:border-primary data-[state=active]:text-primary rounded-none px-3 py-0.5 flex-shrink-0 text-sm"
+                    >
+                      <MessageSquare className="h-4 w-4 mr-2" />
+                      Staff Applications
+                      <Badge variant="outline" className="ml-2 bg-muted/30 text-foreground border-none text-xs font-medium">{ticketCounts.staff || 0}</Badge>
+                    </TabsTrigger>
+                  </TabsList>
+                </div>
+              )}
 
               <TabsContent value="support" className="p-0 mt-0">
                 <CardContent className="p-4">

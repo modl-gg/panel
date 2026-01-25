@@ -24,6 +24,7 @@ import { useBeforeUnload } from 'react-router-dom';
 import { useLocation } from "wouter"; // For wouter navigation
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@modl-gg/shared-web/components/ui/tooltip";
 import { useAuth } from '@/hooks/use-auth';
+import { useIsMobile } from '@/hooks/use-mobile';
 import { usePermissions } from '@/hooks/use-permissions';
 import StaffManagementPanel from '@/components/settings/StaffManagementPanel';
 import StaffRolesCard from '@/components/settings/StaffRolesCard';
@@ -749,6 +750,7 @@ const Settings = () => {
   const [location, navigateWouter] = useLocation();
   const { user, logout } = useAuth();
   const { canAccessSettingsTab, getAccessibleSettingsTabs } = usePermissions();
+  const isMobile = useIsMobile();
   const mainContentClass = "ml-[32px] pl-8";
   const [activeTab, setActiveTab] = useState('account');
   const [activeSection, setActiveSection] = useState<string>('');
@@ -2835,71 +2837,90 @@ const Settings = () => {
         <Card>
           <CardHeader className="p-0">
             <Tabs value={activeTab} onValueChange={handleTabChange}>
-              <div className="overflow-x-auto pb-1 border-b border-border">
-                <TabsList className="w-max flex rounded-none bg-transparent">
-                  <TabsTrigger
-                    value="account"
-                    className="data-[state=active]:border-b-2 data-[state=active]:border-primary data-[state=active]:text-primary rounded-none px-6 py-2 flex-shrink-0 text-sm"
-                  >
-                    <UserIcon className="h-4 w-4 mr-2" />
-                    Account
-                  </TabsTrigger>
-                {canAccessSettingsTab('general') && (
-                  <TabsTrigger
-                    value="general"
-                    className="data-[state=active]:border-b-2 data-[state=active]:border-primary data-[state=active]:text-primary rounded-none px-6 py-2 flex-shrink-0 text-sm"
-                  >
-                    <SettingsIcon className="h-4 w-4 mr-2" />
-                    Server & Billing
-                  </TabsTrigger>
-                )}
-                {canAccessSettingsTab('punishment') && (
-                  <TabsTrigger
-                    value="punishment"
-                    className="data-[state=active]:border-b-2 data-[state=active]:border-primary data-[state=active]:text-primary rounded-none px-6 py-2 flex-shrink-0 text-sm"
-                  >
-                    <Scale className="h-4 w-4 mr-2" />
-                    Punishment Types
-                  </TabsTrigger>
-                )}
-                {canAccessSettingsTab('tags') && (
-                  <TabsTrigger
-                    value="tags"
-                    className="data-[state=active]:border-b-2 data-[state=active]:border-primary data-[state=active]:text-primary rounded-none px-6 py-2 flex-shrink-0 text-sm"
-                  >
-                    <Tag className="h-4 w-4 mr-2" />
-                    Tickets
-                  </TabsTrigger>
-                )}
-                {canAccessSettingsTab('staff') && (
-                  <TabsTrigger
-                    value="staff"
-                    className="data-[state=active]:border-b-2 data-[state=active]:border-primary data-[state=active]:text-primary rounded-none px-6 py-2 flex-shrink-0 text-sm"
-                  >
-                    <Shield className="h-4 w-4 mr-2" />
-                    Staff Management
-                  </TabsTrigger>
-                )}
-                {canAccessSettingsTab('knowledgebase') && (
-                  <TabsTrigger
-                    value="knowledgebase"
-                    className="data-[state=active]:border-b-2 data-[state=active]:border-primary data-[state=active]:text-primary rounded-none px-6 py-2 flex-shrink-0 text-sm"
-                  >
-                    <BookOpen className="h-4 w-4 mr-2" />
-                    Knowledgebase
-                  </TabsTrigger>
-                )}
-                {canAccessSettingsTab('homepage') && (
-                  <TabsTrigger
-                    value="homepage"
-                    className="data-[state=active]:border-b-2 data-[state=active]:border-primary data-[state=active]:text-primary rounded-none px-6 py-2 flex-shrink-0 text-sm"
-                  >
-                    <Globe className="h-4 w-4 mr-2" />
-                    Homepage Cards
-                  </TabsTrigger>
-                )}
-              </TabsList>
-              </div>
+              {isMobile ? (
+                <div className="p-4 border-b border-border">
+                  <Select value={activeTab} onValueChange={handleTabChange}>
+                    <SelectTrigger className="w-full">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="account">Account</SelectItem>
+                      {canAccessSettingsTab('general') && <SelectItem value="general">Server & Billing</SelectItem>}
+                      {canAccessSettingsTab('punishment') && <SelectItem value="punishment">Punishment Types</SelectItem>}
+                      {canAccessSettingsTab('tags') && <SelectItem value="tags">Tickets</SelectItem>}
+                      {canAccessSettingsTab('staff') && <SelectItem value="staff">Staff Management</SelectItem>}
+                      {canAccessSettingsTab('knowledgebase') && <SelectItem value="knowledgebase">Knowledgebase</SelectItem>}
+                      {canAccessSettingsTab('homepage') && <SelectItem value="homepage">Homepage Cards</SelectItem>}
+                    </SelectContent>
+                  </Select>
+                </div>
+              ) : (
+                <div className="overflow-x-auto pb-1 border-b border-border">
+                  <TabsList className="w-max flex rounded-none bg-transparent">
+                    <TabsTrigger
+                      value="account"
+                      className="data-[state=active]:border-b-2 data-[state=active]:border-primary data-[state=active]:text-primary rounded-none px-6 py-2 flex-shrink-0 text-sm"
+                    >
+                      <UserIcon className="h-4 w-4 mr-2" />
+                      Account
+                    </TabsTrigger>
+                    {canAccessSettingsTab('general') && (
+                      <TabsTrigger
+                        value="general"
+                        className="data-[state=active]:border-b-2 data-[state=active]:border-primary data-[state=active]:text-primary rounded-none px-6 py-2 flex-shrink-0 text-sm"
+                      >
+                        <SettingsIcon className="h-4 w-4 mr-2" />
+                        Server & Billing
+                      </TabsTrigger>
+                    )}
+                    {canAccessSettingsTab('punishment') && (
+                      <TabsTrigger
+                        value="punishment"
+                        className="data-[state=active]:border-b-2 data-[state=active]:border-primary data-[state=active]:text-primary rounded-none px-6 py-2 flex-shrink-0 text-sm"
+                      >
+                        <Scale className="h-4 w-4 mr-2" />
+                        Punishment Types
+                      </TabsTrigger>
+                    )}
+                    {canAccessSettingsTab('tags') && (
+                      <TabsTrigger
+                        value="tags"
+                        className="data-[state=active]:border-b-2 data-[state=active]:border-primary data-[state=active]:text-primary rounded-none px-6 py-2 flex-shrink-0 text-sm"
+                      >
+                        <Tag className="h-4 w-4 mr-2" />
+                        Tickets
+                      </TabsTrigger>
+                    )}
+                    {canAccessSettingsTab('staff') && (
+                      <TabsTrigger
+                        value="staff"
+                        className="data-[state=active]:border-b-2 data-[state=active]:border-primary data-[state=active]:text-primary rounded-none px-6 py-2 flex-shrink-0 text-sm"
+                      >
+                        <Shield className="h-4 w-4 mr-2" />
+                        Staff Management
+                      </TabsTrigger>
+                    )}
+                    {canAccessSettingsTab('knowledgebase') && (
+                      <TabsTrigger
+                        value="knowledgebase"
+                        className="data-[state=active]:border-b-2 data-[state=active]:border-primary data-[state=active]:text-primary rounded-none px-6 py-2 flex-shrink-0 text-sm"
+                      >
+                        <BookOpen className="h-4 w-4 mr-2" />
+                        Knowledgebase
+                      </TabsTrigger>
+                    )}
+                    {canAccessSettingsTab('homepage') && (
+                      <TabsTrigger
+                        value="homepage"
+                        className="data-[state=active]:border-b-2 data-[state=active]:border-primary data-[state=active]:text-primary rounded-none px-6 py-2 flex-shrink-0 text-sm"
+                      >
+                        <Globe className="h-4 w-4 mr-2" />
+                        Homepage Cards
+                      </TabsTrigger>
+                    )}
+                  </TabsList>
+                </div>
+              )}
               
               <TabsContent value="account">
                 <AccountSettings

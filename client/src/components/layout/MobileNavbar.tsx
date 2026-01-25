@@ -55,7 +55,7 @@ const MobileNavbar = () => {
   ];
 
   return (
-    <div className="fixed bottom-0 left-0 right-0 bg-background border-t border-border z-50 shadow-md">
+    <div className="fixed bottom-0 left-0 right-0 bg-background border-t border-border z-50 shadow-md pb-safe">
       <div className="grid grid-cols-5 h-16">
         {navItems.map((item, index) => (
           <NavItem 

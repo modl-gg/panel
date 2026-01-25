@@ -154,6 +154,11 @@
     display: none;
   }
 
+  /* Safe area padding for notched phones */
+  .pb-safe {
+    padding-bottom: env(safe-area-inset-bottom, 0px);
+  }
+
   @keyframes slideRight {
     from {
       width: 0;

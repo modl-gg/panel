@@ -159,13 +159,13 @@ export function DashboardMetricsChart({ data, loading, period, onPeriodChange }:
   return (
     <Card className="col-span-full">
       <CardHeader>
-        <div className="flex justify-between items-center">
+        <div className="flex flex-col space-y-3 md:flex-row md:space-y-0 md:justify-between md:items-center">
           <div>
             <CardTitle>Dashboard Metrics</CardTitle>
-            <CardDescription>Key performance indicators over time</CardDescription>
+            <CardDescription className="hidden md:block">Key performance indicators over time</CardDescription>
           </div>
           <Select value={period} onValueChange={onPeriodChange}>
-            <SelectTrigger className="w-[180px]">
+            <SelectTrigger className="w-full md:w-[180px]">
               <SelectValue placeholder="Select period" />
             </SelectTrigger>
             <SelectContent>
@@ -178,27 +178,34 @@ export function DashboardMetricsChart({ data, loading, period, onPeriodChange }:
         </div>
       </CardHeader>
       <CardContent>
-        <div className="h-80">
+        <div className="h-64 md:h-80">
           <ResponsiveContainer width="100%" height="100%">
             <LineChart data={formattedData}>
               <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
-              <XAxis 
-                dataKey="displayDate" 
+              <XAxis
+                dataKey="displayDate"
                 stroke="hsl(var(--muted-foreground))"
-                fontSize={12}
+                fontSize={10}
+                tick={{ fontSize: 10 }}
               />
-              <YAxis 
+              <YAxis
                 stroke="hsl(var(--muted-foreground))"
-                fontSize={12}
+                fontSize={10}
+                tick={{ fontSize: 10 }}
+                width={35}
               />
-              <Tooltip 
+              <Tooltip
                 contentStyle={{
                   backgroundColor: 'hsl(var(--card))',
                   border: '1px solid hsl(var(--border))',
-                  borderRadius: '6px'
+                  borderRadius: '6px',
+                  fontSize: '12px'
                 }}
               />
-              <Legend />
+              <Legend
+                wrapperStyle={{ fontSize: '10px', paddingTop: '8px' }}
+                iconSize={8}
+              />
               <Line
                 type="monotone"
                 dataKey="openTickets"
