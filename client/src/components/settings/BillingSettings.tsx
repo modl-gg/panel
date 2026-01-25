@@ -121,10 +121,26 @@ const BillingSettings = () => {
         throw new Error('Failed to create checkout session');
       }
 
-      const { sessionId } = await response.json();
-      const stripe = await getStripe();
-      if (stripe) {
-        const { error } = await stripe.redirectToCheckout({ sessionId });
+      const data = await response.json();
+
+      // Prefer using the URL directly (modern approach)
+      if (data.url) {
+        window.location.href = data.url;
+        return;
+      }
+
+      // Fallback to redirectToCheckout if no URL provided
+      if (data.sessionId) {
+        const stripe = await getStripe();
+        if (!stripe) {
+          toast({
+            title: 'Configuration Error',
+            description: 'Stripe is not configured. Please contact support.',
+            variant: 'destructive',
+          });
+          return;
+        }
+        const { error } = await stripe.redirectToCheckout({ sessionId: data.sessionId });
         if (error) {
           toast({
             title: 'Error',
@@ -132,6 +148,8 @@ const BillingSettings = () => {
             variant: 'destructive',
           });
         }
+      } else {
+        throw new Error('No checkout URL or session ID returned from server');
       }
     } catch (error) {
       console.error(error);
@@ -157,8 +175,11 @@ const BillingSettings = () => {
         throw new Error('Failed to create portal session');
       }
 
-      const { url } = await response.json();
-      window.location.href = url;
+      const data = await response.json();
+      if (!data.url) {
+        throw new Error('No portal URL returned from server');
+      }
+      window.location.href = data.url;
     } catch (error) {
       console.error(error);
       toast({
