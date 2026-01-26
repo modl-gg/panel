@@ -203,8 +203,8 @@ export function DashboardMetricsChart({ data, loading, period, onPeriodChange }:
                 }}
               />
               <Legend
-                wrapperStyle={{ fontSize: '10px', paddingTop: '8px' }}
-                iconSize={8}
+                wrapperStyle={{ fontSize: '12px', paddingTop: '8px' }}
+                iconSize={10}
               />
               <Line
                 type="monotone"

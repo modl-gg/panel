@@ -9,12 +9,12 @@ import { formatTimeAgo } from '@/utils/date-utils';
 export interface RecentTicket {
   id: string;
   title: string;
-  initialMessage: string;
-  status: 'open' | 'closed' | 'under_review' | 'pending_player_response';
-  priority: 'low' | 'medium' | 'high' | 'urgent';
+  initialMessage?: string | null;
+  status?: string;
+  priority?: string;
   createdAt: string | Date;
-  playerName: string;
-  type: string;
+  playerName?: string;
+  type?: string;
 }
 
 interface RecentTicketsSectionProps {
@@ -22,15 +22,17 @@ interface RecentTicketsSectionProps {
   loading: boolean;
 }
 
-const statusColors = {
+const statusColors: Record<string, string> = {
   open: 'bg-blue-500/20 text-blue-500',
   closed: 'bg-green-500/20 text-green-500',
   under_review: 'bg-yellow-500/20 text-yellow-500',
-  pending_player_response: 'bg-purple-500/20 text-purple-500'
+  pending_player_response: 'bg-purple-500/20 text-purple-500',
+  draft: 'bg-gray-500/20 text-gray-500'
 };
 
-const priorityColors = {
+const priorityColors: Record<string, string> = {
   low: 'bg-gray-500/20 text-gray-500',
+  normal: 'bg-blue-500/20 text-blue-500',
   medium: 'bg-blue-500/20 text-blue-500',
   high: 'bg-orange-500/20 text-orange-500',
   urgent: 'bg-red-500/20 text-red-500'
@@ -122,16 +124,18 @@ export function RecentTicketsSection({ tickets, loading }: RecentTicketsSectionP
                   <div className="flex items-center gap-4">
                     <div className="flex items-center gap-1">
                       <User className="h-3 w-3" />
-                      <span>{ticket.playerName}</span>
+                      <span>{ticket.playerName || 'Unknown'}</span>
                     </div>
                     <div className="flex items-center gap-1">
                       <Clock className="h-3 w-3" />
                       <span>{formatTimeAgo(ticket.createdAt)}</span>
                     </div>
                   </div>
-                  <Badge variant="outline" className="text-xs">
-                    {ticket.type}
-                  </Badge>
+                  {ticket.type && (
+                    <Badge variant="outline" className="text-xs">
+                      {ticket.type}
+                    </Badge>
+                  )}
                 </div>
               </div>
             ))
