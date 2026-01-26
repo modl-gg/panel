@@ -1099,9 +1099,9 @@ const TicketDetail = () => {
         category,
         relatedPlayer: ticketData.relatedPlayer?.username || ticketData.relatedPlayerName || ticketData.reportedPlayer,
         relatedPlayerId: ticketData.relatedPlayer?.uuid || ticketData.relatedPlayerId || ticketData.reportedPlayerUuid,
-        messages: (ticketData.messages || (ticketData.replies && ticketData.replies.map((reply: any, index: number) => ({
+        messages: ((ticketData.messages || ticketData.replies || []).map((reply: any, index: number) => ({
           id: reply._id || reply.id || `msg-${Date.now()}-${Math.random().toString(36).substring(2, 7)}`,
-          sender: reply.name || (reply.staff ? 'Staff' : (index === 0 ? (ticketData.creator || ticketData.reportedBy || 'Player') : 'Player')),
+          sender: reply.name || reply.sender || (reply.staff ? 'Staff' : (index === 0 ? (ticketData.creator || ticketData.reportedBy || 'Player') : 'Player')),
           senderType: reply.type === 'staff' ? 'staff' :
                      reply.type === 'system' ? 'system' : 'user',
           content: reply.content,
@@ -1109,8 +1109,8 @@ const TicketDetail = () => {
           staff: reply.staff,
           avatar: reply.avatar,
           closedAs: (reply.action === "Comment" || reply.action === "Reopen") ? undefined : reply.action,
-          creatorIdentifier: reply.creatorIdentifier // Include creator identifier for verification
-        }))) || []),
+          creatorIdentifier: reply.creatorIdentifier
+        }))),
         notes: ticketData.notes || [],
         tags,
         locked: ticketData.locked === true,
