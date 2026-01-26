@@ -2177,7 +2177,7 @@ const PlayerDetailPage = () => {
                       </div>
                       <div className="ml-2">
                         <Badge variant="outline" className="text-xs">
-                          #{ticket._id.slice(-6)}
+                          #{ticket._id?.slice(-6) || 'N/A'}
                         </Badge>
                       </div>
                     </div>
@@ -2195,7 +2195,7 @@ const PlayerDetailPage = () => {
             <h4 className="font-medium">Previous Names</h4>
             <div className="bg-muted/30 p-3 rounded-lg">
               <ul className="space-y-2">
-                {playerInfo.previousNames.length > 0 ? (
+                {playerInfo.previousNames && playerInfo.previousNames.length > 0 ? (
                   playerInfo.previousNames.map((name, idx) => (
                     <li key={idx} className="text-sm flex items-center">
                       <UserRound className="h-3.5 w-3.5 mr-2 text-muted-foreground" />
