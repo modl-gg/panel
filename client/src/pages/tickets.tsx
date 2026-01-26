@@ -32,10 +32,12 @@ interface Ticket {
   type: 'bug' | 'player' | 'chat' | 'appeal' | 'staff' | 'support';
   subject: string;
   reportedBy: string;
+  reportedByName?: string;
   date: string;
   status: 'Unfinished' | 'Open' | 'Closed';
   locked?: boolean;
   description?: string;
+  lastReply?: string;
   messages?: Array<{
     id: string;
     sender: string;
@@ -180,7 +182,7 @@ const Tickets = () => {
             </Badge>
           </div>
         </TableCell>
-        <TableCell>{ticket.reportedBy}</TableCell>
+        <TableCell>{ticket.reportedByName || ticket.reportedBy}</TableCell>
         <TableCell>{formatDate(ticket.date)}</TableCell>
         <TableCell>{formatTimeAgo(lastReplyTimestamp)}</TableCell>
         <TableCell>
@@ -287,7 +289,7 @@ const Tickets = () => {
                 <div className="flex justify-between items-start mb-2">
                   <div className="flex-1 min-w-0">
                     <h4 className="font-medium text-sm truncate">{ticket.subject}</h4>
-                    <p className="text-xs text-muted-foreground">#{ticket.id} • {ticket.reportedBy}</p>
+                    <p className="text-xs text-muted-foreground">#{ticket.id} • {ticket.reportedByName || ticket.reportedBy}</p>
                   </div>
                   <Badge
                     variant="outline"
