@@ -9,7 +9,7 @@ import { getAvatarUrl } from '@/lib/api';
 import { Button } from '@modl-gg/shared-web/components/ui/button';
 import { Badge } from '@modl-gg/shared-web/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@modl-gg/shared-web/components/ui/tabs';
-import { usePlayer, useApplyPunishment, useSettings, usePlayerTickets, usePlayerAllTickets, useModifyPunishment, useAddPunishmentNote, useLinkedAccounts, useFindLinkedAccounts } from '@/hooks/use-data';
+import { usePlayer, useApplyPunishment, useSettings, usePunishmentTypes, usePlayerTickets, usePlayerAllTickets, useModifyPunishment, useAddPunishmentNote, useLinkedAccounts, useFindLinkedAccounts } from '@/hooks/use-data';
 import { ClickablePlayer } from '@/components/ui/clickable-player';
 import { useAuth } from '@/hooks/use-auth';
 import { useIsMobile } from '@/hooks/use-mobile';
@@ -169,6 +169,7 @@ const PlayerDetailPage = () => {
   const { data: linkedAccountsData, isLoading: isLoadingLinkedAccounts, refetch: refetchLinkedAccounts } = useLinkedAccounts(playerId);
   const findLinkedAccountsMutation = useFindLinkedAccounts();
   const { data: settingsData, isLoading: isLoadingSettings } = useSettings();
+  const { data: punishmentTypesData, isLoading: isLoadingPunishmentTypes } = usePunishmentTypes();
 
   // State to track if we've already triggered linked account search
   const [hasTriggeredLinkedSearch, setHasTriggeredLinkedSearch] = useState(false);
@@ -230,53 +231,45 @@ const PlayerDetailPage = () => {
     setAvatarLoading(true);
   }, [playerId]);
 
-  // Process settings data to extract punishment types by category
+  // Process punishment types data from dedicated endpoint
   useEffect(() => {
-    const punishmentTypesData = settingsData?.settings?.punishmentTypes;
-    if (punishmentTypesData) {
+    if (punishmentTypesData && Array.isArray(punishmentTypesData)) {
       try {
-        // Parse punishment types if they're stored as a string
-        const typesData = typeof punishmentTypesData === 'string' 
-          ? JSON.parse(punishmentTypesData) 
-          : punishmentTypesData;
-          
-        if (Array.isArray(typesData)) {
-          // Always ensure administrative punishment types are available
-          const defaultAdminTypes: PunishmentType[] = [
-            { id: 0, name: 'Kick', category: 'Administrative' as const, isCustomizable: false, ordinal: 0 },
-            { id: 1, name: 'Manual Mute', category: 'Administrative' as const, isCustomizable: false, ordinal: 1 },
-            { id: 2, name: 'Manual Ban', category: 'Administrative' as const, isCustomizable: false, ordinal: 2 },
-            { id: 3, name: 'Security Ban', category: 'Administrative' as const, isCustomizable: false, ordinal: 3 },
-            { id: 4, name: 'Linked Ban', category: 'Administrative' as const, isCustomizable: false, ordinal: 4 },
-            { id: 5, name: 'Blacklist', category: 'Administrative' as const, isCustomizable: false, ordinal: 5 }
-          ];
-          
-          // Group punishment types by category
-          const adminFromSettings = typesData.filter(pt => pt.category?.toLowerCase().trim() === 'administrative');
-          
-          // Merge default admin types with any additional admin types from settings
-          // Default types take precedence (to ensure they're always available)
-          const mergedAdminTypes = [...defaultAdminTypes];
-          adminFromSettings.forEach(settingsType => {
-            if (!mergedAdminTypes.find(defaultType => defaultType.name === settingsType.name)) {
-              mergedAdminTypes.push(settingsType);
-            }
-          });
-          
-          const categorized = {
-            Administrative: mergedAdminTypes.sort((a, b) => a.ordinal - b.ordinal),
-            Social: typesData.filter(pt => pt.category?.toLowerCase().trim() === 'social').sort((a, b) => a.ordinal - b.ordinal),
-            Gameplay: typesData.filter(pt => pt.category?.toLowerCase().trim() === 'gameplay').sort((a, b) => a.ordinal - b.ordinal)
-          };
-          
-          // Update the state with the loaded punishment types
-          setPunishmentTypesByCategory(categorized);
-        }
+        // Always ensure administrative punishment types are available
+        const defaultAdminTypes: PunishmentType[] = [
+          { id: 0, name: 'Kick', category: 'Administrative' as const, isCustomizable: false, ordinal: 0 },
+          { id: 1, name: 'Manual Mute', category: 'Administrative' as const, isCustomizable: false, ordinal: 1 },
+          { id: 2, name: 'Manual Ban', category: 'Administrative' as const, isCustomizable: false, ordinal: 2 },
+          { id: 3, name: 'Security Ban', category: 'Administrative' as const, isCustomizable: false, ordinal: 3 },
+          { id: 4, name: 'Linked Ban', category: 'Administrative' as const, isCustomizable: false, ordinal: 4 },
+          { id: 5, name: 'Blacklist', category: 'Administrative' as const, isCustomizable: false, ordinal: 5 }
+        ];
+
+        // Group punishment types by category
+        const adminFromSettings = punishmentTypesData.filter((pt: PunishmentType) => pt.category?.toLowerCase().trim() === 'administrative');
+
+        // Merge default admin types with any additional admin types from settings
+        // Default types take precedence (to ensure they're always available)
+        const mergedAdminTypes = [...defaultAdminTypes];
+        adminFromSettings.forEach((settingsType: PunishmentType) => {
+          if (!mergedAdminTypes.find(defaultType => defaultType.name === settingsType.name)) {
+            mergedAdminTypes.push(settingsType);
+          }
+        });
+
+        const categorized = {
+          Administrative: mergedAdminTypes.sort((a, b) => a.ordinal - b.ordinal),
+          Social: punishmentTypesData.filter((pt: PunishmentType) => pt.category?.toLowerCase().trim() === 'social').sort((a: PunishmentType, b: PunishmentType) => a.ordinal - b.ordinal),
+          Gameplay: punishmentTypesData.filter((pt: PunishmentType) => pt.category?.toLowerCase().trim() === 'gameplay').sort((a: PunishmentType, b: PunishmentType) => a.ordinal - b.ordinal)
+        };
+
+        // Update the state with the loaded punishment types
+        setPunishmentTypesByCategory(categorized);
       } catch (error) {
-        console.error("Error parsing punishment types:", error);
+        console.error("Error processing punishment types:", error);
       }
     }
-  }, [settingsData]);
+  }, [punishmentTypesData]);
 
   // Calculate player status based on punishments and settings
   const calculatePlayerStatus = (punishments: any[], punishmentTypes: PunishmentType[], statusThresholds: any) => {
@@ -2257,7 +2250,7 @@ const PlayerDetailPage = () => {
                 await handleApplyPunishment();
               }}
               punishmentTypesByCategory={punishmentTypesByCategory}
-              isLoading={isApplyingPunishment}
+              isLoading={isApplyingPunishment || isLoadingSettings || isLoadingPunishmentTypes}
               compact={false}
             />
           </TabsContent>
