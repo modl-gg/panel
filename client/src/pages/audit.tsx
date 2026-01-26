@@ -1808,19 +1808,11 @@ const AuditLog = () => {
     <PageContainer>
       <div className="flex flex-col space-y-6">
         {/* Header */}
-        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
-          <div>
-            <h2 className="text-2xl font-semibold">
-              <span className="md:hidden">Audit</span>
-              <span className="hidden md:inline">Analytics & Audit Dashboard</span>
-            </h2>
-            <p className="text-sm text-muted-foreground mt-1 hidden md:block">
-              Comprehensive system monitoring, analytics, staff performance, and audit controls
-            </p>
-          </div>
-          <div className="flex items-center gap-2 flex-wrap">
+        <div className="flex flex-col space-y-4 md:flex-row md:justify-between md:items-center">
+          <h2 className="text-xl font-semibold">Analytics & Audit</h2>
+          <div className="flex flex-col space-y-2 md:flex-row md:space-y-0 md:space-x-2 md:items-center">
             <Select value={analyticsPeriod} onValueChange={setAnalyticsPeriod}>
-              <SelectTrigger className="w-32">
+              <SelectTrigger className="w-full md:w-32">
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
@@ -1841,37 +1833,80 @@ const AuditLog = () => {
             </Button>
           </div>
         </div>
-        
+
         {/* Tabbed Interface */}
-        <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-          {isMobile ? (
-            <Select value={activeTab} onValueChange={setActiveTab}>
-              <SelectTrigger className="w-full mb-4">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="overview">Overview</SelectItem>
-                <SelectItem value="staff">Staff</SelectItem>
-                <SelectItem value="tickets">Tickets</SelectItem>
-                <SelectItem value="punishments">Punishments</SelectItem>
-                <SelectItem value="players">Players</SelectItem>
-                <SelectItem value="audit">Audit Logs</SelectItem>
-              </SelectContent>
-            </Select>
-          ) : (
-            <TabsList className="grid w-full grid-cols-6">
-              <TabsTrigger value="overview">Overview</TabsTrigger>
-              <TabsTrigger value="staff">Staff</TabsTrigger>
-              <TabsTrigger value="tickets">Tickets</TabsTrigger>
-              <TabsTrigger value="punishments">Punishments</TabsTrigger>
-              <TabsTrigger value="players">Players</TabsTrigger>
-              <TabsTrigger value="audit">Audit Logs</TabsTrigger>
-            </TabsList>
-          )}
-          
-          <TabsContent value="overview" className="space-y-6">
-            {/* Overview Statistics */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mt-6">
+        <Card>
+          <CardHeader className="p-0">
+            <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
+              {isMobile ? (
+                <div className="p-4 border-b border-border">
+                  <Select value={activeTab} onValueChange={setActiveTab}>
+                    <SelectTrigger className="w-full">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="overview">Overview</SelectItem>
+                      <SelectItem value="staff">Staff</SelectItem>
+                      <SelectItem value="tickets">Tickets</SelectItem>
+                      <SelectItem value="punishments">Punishments</SelectItem>
+                      <SelectItem value="players">Players</SelectItem>
+                      <SelectItem value="audit">Audit Logs</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+              ) : (
+                <div className="overflow-x-auto pb-1 border-b border-border">
+                  <TabsList className="w-max flex rounded-none bg-transparent">
+                    <TabsTrigger
+                      value="overview"
+                      className="data-[state=active]:border-b-2 data-[state=active]:border-primary data-[state=active]:text-primary rounded-none px-6 py-2 flex-shrink-0 text-sm"
+                    >
+                      <BarChart3 className="h-4 w-4 mr-2" />
+                      Overview
+                    </TabsTrigger>
+                    <TabsTrigger
+                      value="staff"
+                      className="data-[state=active]:border-b-2 data-[state=active]:border-primary data-[state=active]:text-primary rounded-none px-6 py-2 flex-shrink-0 text-sm"
+                    >
+                      <Users className="h-4 w-4 mr-2" />
+                      Staff
+                    </TabsTrigger>
+                    <TabsTrigger
+                      value="tickets"
+                      className="data-[state=active]:border-b-2 data-[state=active]:border-primary data-[state=active]:text-primary rounded-none px-6 py-2 flex-shrink-0 text-sm"
+                    >
+                      <FileText className="h-4 w-4 mr-2" />
+                      Tickets
+                    </TabsTrigger>
+                    <TabsTrigger
+                      value="punishments"
+                      className="data-[state=active]:border-b-2 data-[state=active]:border-primary data-[state=active]:text-primary rounded-none px-6 py-2 flex-shrink-0 text-sm"
+                    >
+                      <Gavel className="h-4 w-4 mr-2" />
+                      Punishments
+                    </TabsTrigger>
+                    <TabsTrigger
+                      value="players"
+                      className="data-[state=active]:border-b-2 data-[state=active]:border-primary data-[state=active]:text-primary rounded-none px-6 py-2 flex-shrink-0 text-sm"
+                    >
+                      <User className="h-4 w-4 mr-2" />
+                      Players
+                    </TabsTrigger>
+                    <TabsTrigger
+                      value="audit"
+                      className="data-[state=active]:border-b-2 data-[state=active]:border-primary data-[state=active]:text-primary rounded-none px-6 py-2 flex-shrink-0 text-sm"
+                    >
+                      <Activity className="h-4 w-4 mr-2" />
+                      Audit Logs
+                    </TabsTrigger>
+                  </TabsList>
+                </div>
+              )}
+
+              <TabsContent value="overview" className="p-0 mt-0">
+                <CardContent className="p-4 space-y-6">
+                  {/* Overview Statistics */}
+                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
               <Card>
                 <CardContent className="p-4">
                   <div className="flex items-center justify-between">
@@ -2005,9 +2040,11 @@ const AuditLog = () => {
                 </CardContent>
               </Card>
             </div>
+          </CardContent>
           </TabsContent>
-          
-          <TabsContent value="staff" className="space-y-6">
+
+          <TabsContent value="staff" className="p-0 mt-0">
+            <CardContent className="p-4 space-y-6">
             <div className="flex items-center justify-between">
               <h3 className="text-lg font-medium">Staff Performance Analytics</h3>
               <div className="text-sm text-muted-foreground">
@@ -2104,14 +2141,18 @@ const AuditLog = () => {
                 )}
               </CardContent>
             </Card>
+          </CardContent>
           </TabsContent>
-          
-          <TabsContent value="tickets" className="space-y-6">
-            <TicketAnalyticsSection analyticsPeriod={analyticsPeriod} />
+
+          <TabsContent value="tickets" className="p-0 mt-0">
+            <CardContent className="p-4">
+              <TicketAnalyticsSection analyticsPeriod={analyticsPeriod} />
+            </CardContent>
           </TabsContent>
-          
-          <TabsContent value="punishments" className="space-y-6">
-            <h3 className="text-lg font-medium">Punishment Analytics</h3>
+
+          <TabsContent value="punishments" className="p-0 mt-0">
+            <CardContent className="p-4 space-y-6">
+              <h3 className="text-lg font-medium">Punishment Analytics</h3>
             
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               <Card>
@@ -2195,9 +2236,11 @@ const AuditLog = () => {
                 )}
               </CardContent>
             </Card>
+            </CardContent>
           </TabsContent>
-          
-          <TabsContent value="players" className="space-y-6">
+
+          <TabsContent value="players" className="p-0 mt-0">
+            <CardContent className="p-4 space-y-6">
             <h3 className="text-lg font-medium">Player Activity Analytics</h3>
             
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -2293,9 +2336,11 @@ const AuditLog = () => {
                 </div>
               </CardContent>
             </Card>
+            </CardContent>
           </TabsContent>
-          
-          <TabsContent value="audit" className="space-y-6">
+
+          <TabsContent value="audit" className="p-0 mt-0">
+            <CardContent className="p-4 space-y-6">
             <h3 className="text-lg font-medium">System Audit Logs</h3>
             
             {/* Audit Statistics */}
@@ -2742,8 +2787,11 @@ const AuditLog = () => {
                 )}
               </CardContent>
             </Card>
+            </CardContent>
           </TabsContent>
         </Tabs>
+          </CardHeader>
+        </Card>
       </div>
     </PageContainer>
   );

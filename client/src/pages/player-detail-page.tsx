@@ -822,8 +822,79 @@ const PlayerDetailPage = () => {
         });
       }
       
-      // Prepare evidence array
-      const evidence = playerInfo.evidenceList?.filter(e => e.trim()).map(e => e.trim()) || [];
+      // Prepare evidence array - handle both string and object formats like PlayerWindow
+      const evidence = playerInfo.evidenceList?.filter((e: string) => e.trim()).map((e: string) => {
+        const trimmedEvidence = e.trim();
+
+        // Helper function to determine file type from URL
+        const getFileTypeFromUrl = (url: string): string => {
+          const extension = url.split('.').pop()?.toLowerCase();
+          if (!extension) return 'application/octet-stream';
+          const mimeTypes: Record<string, string> = {
+            'jpg': 'image/jpeg',
+            'jpeg': 'image/jpeg',
+            'png': 'image/png',
+            'gif': 'image/gif',
+            'webp': 'image/webp',
+            'pdf': 'application/pdf',
+            'mp4': 'video/mp4',
+            'webm': 'video/webm',
+            'mp3': 'audio/mpeg',
+            'txt': 'text/plain'
+          };
+          return mimeTypes[extension] || 'application/octet-stream';
+        };
+
+        // If it's a JSON object (uploaded file with metadata), parse and convert
+        if (trimmedEvidence.startsWith('{')) {
+          try {
+            const fileData = JSON.parse(trimmedEvidence);
+            return {
+              text: fileData.fileName,
+              issuerName: user?.username || 'Admin',
+              date: new Date().toISOString(),
+              type: 'file',
+              fileUrl: fileData.url,
+              fileName: fileData.fileName,
+              fileType: fileData.fileType,
+              fileSize: fileData.fileSize
+            };
+          } catch (error) {
+            console.warn('Failed to parse evidence JSON:', error);
+            // Fallback to text evidence
+            return {
+              text: trimmedEvidence,
+              issuerName: user?.username || 'Admin',
+              date: new Date().toISOString(),
+              type: 'text'
+            };
+          }
+        }
+        // If it's a URL (legacy uploaded file), convert to object format
+        else if (trimmedEvidence.startsWith('http')) {
+          // Extract filename from URL for better display
+          const fileName = trimmedEvidence.split('/').pop() || 'Unknown file';
+
+          return {
+            text: fileName,
+            issuerName: user?.username || 'Admin',
+            date: new Date().toISOString(),
+            type: 'file',
+            fileUrl: trimmedEvidence,
+            fileName: fileName,
+            fileType: getFileTypeFromUrl(trimmedEvidence),
+            fileSize: 0 // We don't have size info from URL
+          };
+        } else {
+          // Text evidence - convert to object format
+          return {
+            text: trimmedEvidence,
+            issuerName: user?.username || 'Admin',
+            date: new Date().toISOString(),
+            type: 'text'
+          };
+        }
+      }) || [];
       
       // Prepare punishment data in the format expected by the server
       const punishmentData: { [key: string]: any } = {
@@ -1986,22 +2057,61 @@ const PlayerDetailPage = () => {
                     >
                       Cancel
                     </Button>
-                    <Button 
+                    <Button
                       size="sm"
                       disabled={!playerInfo.newNote?.trim()}
-                      onClick={() => {
+                      onClick={async () => {
                         if (!playerInfo.newNote?.trim()) return;
-                        // Add the note
-                        setPlayerInfo(prev => ({
-                          ...prev,
-                          notes: [...prev.notes, `${prev.newNote} (Added by ${user?.username || 'Staff'} on ${formatDateWithTime(new Date())})`],
-                          isAddingNote: false,
-                          newNote: ''
-                        }));
-                        toast({
-                          title: "Note added",
-                          description: "Staff note has been added successfully"
-                        });
+
+                        const currentDate = new Date();
+                        const formattedDate = formatDateWithTime(currentDate);
+                        const actualUsername = user?.username || 'Admin';
+                        const newNoteWithMetadata = `${playerInfo.newNote} (Added by ${actualUsername} on ${formattedDate})`;
+
+                        // Create the note in the format expected by the API
+                        const noteObject = {
+                          text: playerInfo.newNote.trim(),
+                          issuerName: actualUsername,
+                          date: new Date().toISOString()
+                        };
+
+                        try {
+                          // Send note to the server
+                          const { csrfFetch } = await import('@/utils/csrf');
+                          const response = await csrfFetch(`/v1/panel/players/${playerId}/notes`, {
+                            method: 'POST',
+                            headers: {
+                              'Content-Type': 'application/json'
+                            },
+                            body: JSON.stringify(noteObject)
+                          });
+
+                          if (!response.ok) {
+                            throw new Error('Failed to add note to player');
+                          }
+
+                          // Update local state
+                          setPlayerInfo(prev => ({
+                            ...prev,
+                            notes: [...prev.notes, newNoteWithMetadata],
+                            isAddingNote: false,
+                            newNote: ''
+                          }));
+
+                          // Force a refetch to get the latest data
+                          refetch();
+
+                          toast({
+                            title: "Note added",
+                            description: "Staff note has been added successfully"
+                          });
+                        } catch (error) {
+                          toast({
+                            title: "Error",
+                            description: "Failed to add note. Please try again.",
+                            variant: "destructive",
+                          });
+                        }
                       }}
                     >
                       Add Note
