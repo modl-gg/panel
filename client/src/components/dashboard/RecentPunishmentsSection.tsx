@@ -138,12 +138,14 @@ export function RecentPunishmentsSection({ punishments, loading }: RecentPunishm
                       <div className="flex items-center gap-2">
                         <div>
                           <div className="flex items-center gap-2">
-                            <Badge 
-                              variant="secondary" 
-                              className={`text-xs ${punishmentColors[punishment.type]}`}
-                            >
-                              {punishment.type.toUpperCase()}
-                            </Badge>
+                            {punishment.type && (
+                              <Badge
+                                variant="secondary"
+                                className={`text-xs ${punishmentColors[punishment.type] || ''}`}
+                              >
+                                {punishment.type.toUpperCase()}
+                              </Badge>
+                            )}
                             {!punishment.active && (
                               <Badge variant="outline" className="text-xs">
                                 EXPIRED
@@ -176,7 +178,7 @@ export function RecentPunishmentsSection({ punishments, loading }: RecentPunishm
                         {punishment.playerName}
                       </Button>
                       <span className="text-sm text-muted-foreground">
-                        {punishment.type} by {punishment.issuedBy}
+                        {punishment.type || 'Punishment'} by {punishment.issuedBy || 'Unknown'}
                       </span>
                     </div>
                   </div>

@@ -101,12 +101,16 @@ export function RecentTicketsSection({ tickets, loading }: RecentTicketsSectionP
                 <div className="flex justify-between items-start mb-2">
                   <h4 className="font-medium text-sm line-clamp-1">{ticket.title}</h4>
                   <div className="flex items-center gap-2 ml-2 flex-shrink-0">
-                    <Badge variant="secondary" className={`text-xs ${priorityColors[ticket.priority]}`}>
-                      {ticket.priority.toUpperCase()}
-                    </Badge>
-                    <Badge variant="secondary" className={`text-xs ${statusColors[ticket.status]}`}>
-                      {ticket.status.replace('_', ' ').toUpperCase()}
-                    </Badge>
+                    {ticket.priority && (
+                      <Badge variant="secondary" className={`text-xs ${priorityColors[ticket.priority] || ''}`}>
+                        {ticket.priority.toUpperCase()}
+                      </Badge>
+                    )}
+                    {ticket.status && (
+                      <Badge variant="secondary" className={`text-xs ${statusColors[ticket.status] || ''}`}>
+                        {ticket.status.replace('_', ' ').toUpperCase()}
+                      </Badge>
+                    )}
                   </div>
                 </div>
                 
