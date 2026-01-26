@@ -664,10 +664,6 @@ const PlayerWindow = ({ playerId, isOpen, onClose, initialPosition }: PlayerWind
   // Process punishment types data from dedicated endpoint
   useEffect(() => {
     if (punishmentTypesData && Array.isArray(punishmentTypesData)) {
-      console.log('[PlayerWindow] Raw punishmentTypesData:', JSON.stringify(punishmentTypesData.slice(0, 3), null, 2));
-      console.log('[PlayerWindow] Total punishment types count:', punishmentTypesData.length);
-      console.log('[PlayerWindow] Sample categories:', punishmentTypesData.slice(0, 10).map((pt: PunishmentType) => ({ name: pt.name, category: pt.category })));
-      
       try {
         // Always ensure administrative punishment types are available
         const defaultAdminTypes: PunishmentType[] = [
@@ -696,12 +692,6 @@ const PlayerWindow = ({ playerId, isOpen, onClose, initialPosition }: PlayerWind
           Social: punishmentTypesData.filter((pt: PunishmentType) => pt.category?.toLowerCase().trim() === 'social').sort((a: PunishmentType, b: PunishmentType) => a.ordinal - b.ordinal),
           Gameplay: punishmentTypesData.filter((pt: PunishmentType) => pt.category?.toLowerCase().trim() === 'gameplay').sort((a: PunishmentType, b: PunishmentType) => a.ordinal - b.ordinal)
         };
-        
-        console.log('[PlayerWindow] Categorized counts:', { 
-          Administrative: categorized.Administrative.length, 
-          Social: categorized.Social.length, 
-          Gameplay: categorized.Gameplay.length 
-        });
         
         // Update the state with the loaded punishment types
         setPunishmentTypesByCategory(categorized);
@@ -2673,16 +2663,16 @@ const PlayerWindow = ({ playerId, isOpen, onClose, initialPosition }: PlayerWind
                   const isReported = ticket.reportedPlayerUuid === playerId;
                   
                   return (
-                    <div 
-                      key={ticket._id} 
+                    <div
+                      key={ticket.id || ticket._id}
                       className="bg-muted/30 p-3 rounded-lg hover:bg-muted/50 cursor-pointer transition-colors duration-200"
-                      onClick={() => handleTicketClick(ticket._id)}
+                      onClick={() => handleTicketClick(ticket.id || ticket._id)}
                     >
                       <div className="flex items-start justify-between">
                         <div className="flex-1 min-w-0">
                           <div className="flex items-center gap-2 mb-1 flex-wrap">
                             <Ticket className="h-3.5 w-3.5 text-muted-foreground" />
-                            <span className="font-medium text-sm">{ticket._id}</span>
+                            <span className="font-medium text-sm">{ticket.id || ticket._id}</span>
                             <Badge variant={ticket.status === 'Open' ? 'destructive' : ticket.status === 'Closed' ? 'secondary' : 'default'} className="text-xs">
                               {ticket.status}
                             </Badge>

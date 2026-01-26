@@ -112,6 +112,7 @@ export interface TicketMessage {
   timestamp: string;
   staff?: boolean; // Indicates if the sender is a staff member
   attachments?: string[];
+  avatar?: string; // Avatar URL for the message sender
   closedAs?: string; // Optional field to track if this message closed the ticket
   creatorIdentifier?: string; // Browser identifier for creator verification
 }
@@ -245,16 +246,17 @@ const MessageAvatar = memo(({ message, ticketData, staffData }: {
     );
   }
 
-  // For staff messages, check if they have an assigned Minecraft account
+  // For staff messages, check if they have an assigned Minecraft account or message avatar
   if (message.senderType === 'staff' || message.staff) {
     const staffMember = staffData?.find((staff: any) => staff.username === message.sender);
     const minecraftUuid = staffMember?.assignedMinecraftUuid;
-    
-    if (minecraftUuid && !avatarError) {
+    const avatarUrl = message.avatar || (minecraftUuid ? getAvatarUrl(minecraftUuid, 32, true) : null);
+
+    if (avatarUrl && !avatarError) {
       return (
         <div className="relative h-8 w-8 bg-muted rounded-md flex items-center justify-center overflow-hidden flex-shrink-0">
-          <img 
-            src={getAvatarUrl(minecraftUuid, 32, true)}
+          <img
+            src={avatarUrl}
             alt={`${message.sender} Avatar`}
             className={`w-full h-full object-cover transition-opacity duration-200 ${avatarLoading ? 'opacity-0' : 'opacity-100'}`}
             onError={() => {
@@ -274,7 +276,7 @@ const MessageAvatar = memo(({ message, ticketData, staffData }: {
         </div>
       );
     }
-    
+
     // Fallback for staff without assigned Minecraft account
     return (
       <div className="h-8 w-8 bg-green-100 rounded-md flex items-center justify-center flex-shrink-0">
@@ -1097,14 +1099,15 @@ const TicketDetail = () => {
         category,
         relatedPlayer: ticketData.relatedPlayer?.username || ticketData.relatedPlayerName || ticketData.reportedPlayer,
         relatedPlayerId: ticketData.relatedPlayer?.uuid || ticketData.relatedPlayerId || ticketData.reportedPlayerUuid,
-        messages: (ticketData.messages || (ticketData.replies && ticketData.replies.map((reply: any) => ({
+        messages: (ticketData.messages || (ticketData.replies && ticketData.replies.map((reply: any, index: number) => ({
           id: reply._id || reply.id || `msg-${Date.now()}-${Math.random().toString(36).substring(2, 7)}`,
-          sender: reply.name,
+          sender: reply.name || (reply.staff ? 'Staff' : (index === 0 ? (ticketData.creator || ticketData.reportedBy || 'Player') : 'Player')),
           senderType: reply.type === 'staff' ? 'staff' :
                      reply.type === 'system' ? 'system' : 'user',
           content: reply.content,
           timestamp: reply.created ? (new Date(reply.created).toISOString() || new Date().toISOString()) : new Date().toISOString(),
           staff: reply.staff,
+          avatar: reply.avatar,
           closedAs: (reply.action === "Comment" || reply.action === "Reopen") ? undefined : reply.action,
           creatorIdentifier: reply.creatorIdentifier // Include creator identifier for verification
         }))) || []),
@@ -1267,10 +1270,15 @@ const TicketDetail = () => {
     
     if (messageContent) {
       const isClosing = status === 'Closed';
-      
+
+      // Get current staff member's avatar from staffData
+      const currentStaff = staffData?.find((staff: any) => staff.username === user?.username || staff.email === user?.email);
+      const staffAvatar = currentStaff?.avatar || currentStaff?.minecraftAvatar;
+
       const newMessage = {
         id: `msg-${Date.now()}`,
         name: user?.username || "Admin",
+        avatar: staffAvatar,
         type: "staff",
         content: messageContent,
         created: new Date(),
