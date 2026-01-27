@@ -1064,13 +1064,20 @@ const TicketDetail = () => {
           ticketData.type = 'support'; // default fallback
         }
       }
-      
-      const category = (ticketData.type === 'bug' ? 'Bug Report' : 
-                      ticketData.type === 'chat' ? 'Chat Report' :
-                      ticketData.type === 'player' ? 'Player Report' : 
-                      ticketData.type === 'appeal' ? 'Punishment Appeal' :
-                      ticketData.type === 'support' ? 'Support' :
-                      ticketData.type === 'application' ? 'Application' : 'Support') as TicketCategory;
+
+      // Normalize ticket type to lowercase for consistent comparisons
+      // Use category if it's a more specific type (category stores original type like 'player', 'chat')
+      const specificTypes = ['player', 'chat', 'bug', 'support', 'staff', 'application', 'appeal'];
+      const ticketType = ((ticketData.category && specificTypes.includes(ticketData.category.toLowerCase()))
+        ? ticketData.category
+        : ticketData.type || 'support').toLowerCase();
+
+      const category = (ticketType === 'bug' ? 'Bug Report' :
+                      ticketType === 'chat' ? 'Chat Report' :
+                      ticketType === 'player' ? 'Player Report' :
+                      ticketType === 'appeal' ? 'Punishment Appeal' :
+                      ticketType === 'support' ? 'Support' :
+                      ticketType === 'application' || ticketType === 'staff' ? 'Application' : 'Support') as TicketCategory;
         // Get default tags for this category if no tags are provided
       const tags = ticketData.tags || getDefaultTagsForCategory(category);
       

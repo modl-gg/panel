@@ -268,7 +268,10 @@ const PlayerTicket = () => {
         reportedBy: ticketData.creator || ticketData.reportedBy || 'Unknown',
         date: validDate,
         category: ticketData.category || 'Support',
-        type: ticketData.type || 'bug',
+        // Use category if it's a more specific type, otherwise use type. Normalize to lowercase.
+        type: ((ticketData.category && ['player', 'chat', 'bug', 'support', 'staff', 'application', 'appeal'].includes(ticketData.category.toLowerCase()))
+          ? ticketData.category
+          : ticketData.type || 'bug').toLowerCase(),
         messages: processedMessages,
         locked: ticketData.locked === true
       });
@@ -409,15 +412,19 @@ const PlayerTicket = () => {
     
     // Get form configuration from settings - REQUIRED
     let formConfig = null;
-    
+
     try {
       if (settingsData?.settings) {
         const ticketForms = settingsData.settings.ticketForms;
-        
-        // Try the ticket type first, then try 'application' for 'staff' tickets (legacy support)
-        if (ticketForms && ticketForms[ticketDetails.type]) {
+        const ticketTypeLower = ticketDetails.type.toLowerCase();
+
+        // Try the ticket type first (case-insensitive), then try 'application' for 'staff' tickets (legacy support)
+        if (ticketForms && ticketForms[ticketTypeLower]) {
+          formConfig = ticketForms[ticketTypeLower];
+        } else if (ticketForms && ticketForms[ticketDetails.type]) {
+          // Fallback to exact match for backwards compatibility
           formConfig = ticketForms[ticketDetails.type];
-        } else if (ticketDetails.type === 'staff' && ticketForms && ticketForms['application']) {
+        } else if ((ticketTypeLower === 'staff' || ticketTypeLower === 'application') && ticketForms && ticketForms['application']) {
           formConfig = ticketForms['application'];
         }
       }
@@ -582,15 +589,19 @@ const PlayerTicket = () => {
     
     // Get form configuration from settings - REQUIRED
     let formConfig = null;
-    
+
     try {
       if (settingsData?.settings) {
         const ticketForms = settingsData.settings.ticketForms;
-        
-        // Try the ticket type first, then try 'application' for 'staff' tickets (legacy support)
-        if (ticketForms && ticketForms[ticketDetails.type]) {
+        const ticketTypeLower = ticketDetails.type.toLowerCase();
+
+        // Try the ticket type first (case-insensitive), then try 'application' for 'staff' tickets (legacy support)
+        if (ticketForms && ticketForms[ticketTypeLower]) {
+          formConfig = ticketForms[ticketTypeLower];
+        } else if (ticketForms && ticketForms[ticketDetails.type]) {
+          // Fallback to exact match for backwards compatibility
           formConfig = ticketForms[ticketDetails.type];
-        } else if (ticketDetails.type === 'staff' && ticketForms && ticketForms['application']) {
+        } else if ((ticketTypeLower === 'staff' || ticketTypeLower === 'application') && ticketForms && ticketForms['application']) {
           formConfig = ticketForms['application'];
         }
       }
