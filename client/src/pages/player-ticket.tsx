@@ -175,8 +175,8 @@ const MessageAvatar = ({ message, creatorUuid }: { message: TicketMessage, creat
 
   // System messages
   return (
-    <div className="h-8 w-8 bg-gray-100 rounded-md flex items-center justify-center flex-shrink-0">
-      <span className="text-xs font-bold text-gray-600">SY</span>
+    <div className="h-8 w-8 bg-gray-100 dark:bg-gray-800 rounded-md flex items-center justify-center flex-shrink-0">
+      <span className="text-xs font-bold text-gray-600 dark:text-gray-300">SY</span>
     </div>
   );
 };
@@ -211,9 +211,9 @@ const PlayerTicket = () => {
   });
 
   const statusColors = {
-    'Unfinished': 'bg-gray-50 text-gray-700 border-gray-200',
-    'Open': 'bg-green-50 text-green-700 border-green-200', 
-    'Closed': 'bg-gray-50 text-gray-700 border-gray-200'
+    'Unfinished': 'bg-gray-50 dark:bg-gray-800 text-gray-700 dark:text-gray-300 border-gray-200 dark:border-gray-700',
+    'Open': 'bg-green-50 dark:bg-green-900 text-green-700 dark:text-green-300 border-green-200 dark:border-green-700',
+    'Closed': 'bg-gray-50 dark:bg-gray-800 text-gray-700 dark:text-gray-300 border-gray-200 dark:border-gray-700'
   };
 
   // Update ticket details when data is fetched
@@ -223,10 +223,12 @@ const PlayerTicket = () => {
         // Map API data to our TicketDetails interface
       const status = ticketData.status || 'Unfinished';
       // Map the status to one of our three statuses: Unfinished, Open, or Closed
-      const mappedStatus = status === 'Unfinished' 
-        ? 'Unfinished' 
-        : (status === 'Open' || status === 'In Progress') 
-          ? 'Open' 
+      // Handle case-insensitive comparison for backend compatibility
+      const statusLower = status.toLowerCase();
+      const mappedStatus = statusLower === 'unfinished' || statusLower === 'draft'
+        ? 'Unfinished'
+        : (statusLower === 'open' || statusLower === 'in progress')
+          ? 'Open'
           : 'Closed';      // Ensure we have a valid date
       let validDate = new Date().toISOString(); // fallback to current time
       if (ticketData.created) {
@@ -599,17 +601,17 @@ const PlayerTicket = () => {
     // If no form config found, show error - no fallback
     if (!formConfig || !formConfig.fields) {
       return (
-        <div className="text-center py-8 border-2 border-dashed border-red-200 bg-red-50 rounded-lg">
-          <div className="text-red-600 mb-4">
+        <div className="text-center py-8 border-2 border-dashed border-red-200 dark:border-red-800 bg-red-50 dark:bg-red-950 rounded-lg">
+          <div className="text-red-600 dark:text-red-400 mb-4">
             <svg className="h-12 w-12 mx-auto" fill="none" viewBox="0 0 24 24" stroke="currentColor">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L4.082 15.5c-.77.833.192 2.5 1.732 2.5z" />
             </svg>
           </div>
-          <h3 className="text-lg font-medium text-red-800 mb-2">Form Not Configured</h3>
-          <p className="text-red-700 mb-4">
+          <h3 className="text-lg font-medium text-red-800 dark:text-red-300 mb-2">Form Not Configured</h3>
+          <p className="text-red-700 dark:text-red-400 mb-4">
             No form configuration found for {ticketDetails.type} tickets.
           </p>
-          <p className="text-sm text-red-600">
+          <p className="text-sm text-red-600 dark:text-red-500">
             Please contact server administration to configure this ticket form.
           </p>
         </div>
@@ -644,17 +646,17 @@ const PlayerTicket = () => {
     // Ensure we have fields to render
     if (fields.length === 0) {
       return (
-        <div className="text-center py-8 border-2 border-dashed border-yellow-200 bg-yellow-50 rounded-lg">
-          <div className="text-yellow-600 mb-4">
+        <div className="text-center py-8 border-2 border-dashed border-yellow-200 dark:border-yellow-800 bg-yellow-50 dark:bg-yellow-950 rounded-lg">
+          <div className="text-yellow-600 dark:text-yellow-400 mb-4">
             <svg className="h-12 w-12 mx-auto" fill="none" viewBox="0 0 24 24" stroke="currentColor">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L4.082 15.5c-.77.833.192 2.5 1.732 2.5z" />
             </svg>
           </div>
-          <h3 className="text-lg font-medium text-yellow-800 mb-2">Empty Form Configuration</h3>
-          <p className="text-yellow-700 mb-4">
+          <h3 className="text-lg font-medium text-yellow-800 dark:text-yellow-300 mb-2">Empty Form Configuration</h3>
+          <p className="text-yellow-700 dark:text-yellow-400 mb-4">
             The {ticketDetails.type} ticket form has no fields configured.
           </p>
-          <p className="text-sm text-yellow-600">
+          <p className="text-sm text-yellow-600 dark:text-yellow-500">
             Please contact server administration to add fields to this ticket form.
           </p>
         </div>
@@ -982,16 +984,16 @@ const PlayerTicket = () => {
       <div className="min-h-screen bg-background p-6">
         <div className="max-w-5xl mx-auto">
         {/* Security Disclaimer */}
-        <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4 mb-6">
+        <div className="bg-yellow-50 dark:bg-yellow-950 border border-yellow-200 dark:border-yellow-800 rounded-lg p-4 mb-6">
           <div className="flex items-start gap-3">
-            <div className="text-yellow-600 mt-0.5">
+            <div className="text-yellow-600 dark:text-yellow-400 mt-0.5">
               <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
                 <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clipRule="evenodd" />
               </svg>
             </div>
             <div>
-              <h3 className="font-medium text-yellow-800">Security Notice</h3>
-              <p className="text-sm text-yellow-700 mt-1">
+              <h3 className="font-medium text-yellow-800 dark:text-yellow-300">Security Notice</h3>
+              <p className="text-sm text-yellow-700 dark:text-yellow-400 mt-1">
                 Do not share sensitive information, personal data, or passwords over tickets. The six digit ticket ID is the only authentication on this page; anyone with this ticket ID can view and reply to this ticket as you.
               </p>
             </div>

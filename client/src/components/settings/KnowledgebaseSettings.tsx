@@ -169,7 +169,7 @@ const CategoryItem: React.FC<CategoryItemProps> = ({
               </div>
             )}
           </div>
-          <div className="space-x-2">
+          <div className={`space-x-2 ${editingCategory?.id === category.id ? 'ml-4' : ''}`}>
             {editingCategory?.id === category.id ? (
               <>
                 <Button size="sm" onClick={handleUpdateCategory} disabled={updateCategoryMutation.isPending}>Save</Button>
@@ -507,6 +507,18 @@ const KnowledgebaseSettings: React.FC = () => {
       }
       const articleData = await response.json();
       setEditingArticle(articleData);
+
+      // Scroll to the article editing section with smooth animation
+      setTimeout(() => {
+        const articleFormElement = document.querySelector('[data-article-edit-form="true"]');
+        if (articleFormElement) {
+          articleFormElement.scrollIntoView({
+            behavior: 'smooth',
+            block: 'start',
+            inline: 'nearest'
+          });
+        }
+      }, 100);
     } catch (error) {
       console.error('Error fetching article for editing:', error);
       toast({ title: "Error", description: "Failed to load article for editing.", variant: "destructive" });
@@ -613,7 +625,7 @@ const KnowledgebaseSettings: React.FC = () => {
         {/* Modals for editing/creating articles with Markdown editor */}
         {/* Edit Article Modal */}
         {editingArticle && !newArticleForModal && ( // Ensure only one modal is trying to render if states overlap by mistake
-            <Card className="mt-6">
+            <Card className="mt-6" data-article-edit-form="true">
                 <CardHeader>
                     <CardTitle>Edit Article: {editingArticle.title}</CardTitle>
                 </CardHeader>

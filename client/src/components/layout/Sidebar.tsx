@@ -569,7 +569,7 @@ const Sidebar = () => {
                           <div className="flex flex-col items-start">
                             <span className="font-medium">{player.username || 'Unknown'}</span>
                             <span className="text-muted-foreground text-[10px]">
-                              {player.status === 'Online' || (player.isOnline || player.data?.isOnline) ? 'Online' : 'Offline'}
+                              {player.status || 'Offline'}
                             </span>
                           </div>
                         </Button>

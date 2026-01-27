@@ -2010,7 +2010,7 @@ const PlayerWindow = ({ playerId, isOpen, onClose, initialPosition }: PlayerWind
                               {effectiveState.modifications.map((mod: any, idx: number) => (
                                 <div key={idx} className="bg-muted/20 p-2 rounded text-xs border-l-2 border-blue-500">
                                   <div className="flex justify-between items-start mb-1">
-                                    <Badge variant="outline" className="text-xs bg-blue-500/10 text-blue-700 border-blue-500/30">
+                                    <Badge variant="outline" className="text-xs bg-blue-500/10 dark:bg-blue-500/20 text-blue-700 dark:text-blue-300 border-blue-500/30 dark:border-blue-500/40">
                                       {mod.type.replace(/_/g, ' ').toLowerCase().replace(/\b\w/g, (l: string) => l.toUpperCase())}
                                     </Badge>
                                     <span className="text-muted-foreground text-xs">
@@ -2678,12 +2678,12 @@ const PlayerWindow = ({ playerId, isOpen, onClose, initialPosition }: PlayerWind
                             </Badge>
                             {/* Show badge indicating player's role in the ticket */}
                             {isCreator && (
-                              <Badge variant="outline" className="text-xs bg-blue-50 text-blue-700 border-blue-200">
+                              <Badge variant="outline" className="text-xs bg-blue-50 dark:bg-blue-900 text-blue-700 dark:text-blue-300 border-blue-200 dark:border-blue-700">
                                 Created
                               </Badge>
                             )}
                             {isReported && (
-                              <Badge variant="outline" className="text-xs bg-orange-50 text-orange-700 border-orange-200">
+                              <Badge variant="outline" className="text-xs bg-orange-50 dark:bg-orange-900 text-orange-700 dark:text-orange-300 border-orange-200 dark:border-orange-700">
                                 Reported
                               </Badge>
                             )}

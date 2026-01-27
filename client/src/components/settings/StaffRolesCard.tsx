@@ -253,14 +253,16 @@ const DraggableRoleCard: React.FC<DraggableRoleCardProps> = ({
         <div className="flex flex-wrap gap-1">
           {Object.entries(PERMISSION_CATEGORIES).map(([category, label]) => {
             const categoryPermissions = getPermissionsByCategory(category);
-            const granted = categoryPermissions.filter(p => hasPermission(role, p.id)).length;
             const total = categoryPermissions.length;
-            
+            // Super Admin always has all permissions
+            const isSuperAdmin = role.name === 'Super Admin' || role.id === 'super-admin';
+            const granted = isSuperAdmin ? total : categoryPermissions.filter(p => hasPermission(role, p.id)).length;
+
             if (total === 0) return null;
-            
+
             return (
-              <Badge 
-                key={category} 
+              <Badge
+                key={category}
                 variant={granted === total ? "default" : granted > 0 ? "secondary" : "outline"}
                 className="text-xs"
               >
