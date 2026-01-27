@@ -426,6 +426,24 @@ export function useSettings() {
   });
 }
 
+export function useTicketFormSettings() {
+  return useQuery({
+    queryKey: ['/v1/panel/settings/ticket-forms'],
+    queryFn: async () => {
+      const res = await apiFetch('/v1/panel/settings/ticket-forms');
+      if (!res.ok) {
+        if (res.status === 401 || res.status === 403) {
+          return null;
+        }
+        throw new Error('Failed to fetch ticket form settings');
+      }
+      return res.json();
+    },
+    staleTime: 1000 * 60 * 5,
+    refetchOnWindowFocus: false
+  });
+}
+
 export function useStats() {
   return useQuery({
     queryKey: ['/v1/panel/stats'],

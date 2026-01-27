@@ -140,6 +140,7 @@ const AppealsPage = () => {
   const [appealInfo, setAppealInfo] = useState<AppealInfo | null>(null);
   const [showAppealForm, setShowAppealForm] = useState(false);
   const [isLoadingPunishment, setIsLoadingPunishment] = useState(false);
+  const [punishmentError, setPunishmentError] = useState<string | null>(null);
   const [newReply, setNewReply] = useState("");
   const [attachments, setAttachments] = useState<Array<{id: string, url: string, key: string, fileName: string, fileType: string, fileSize: number, uploadedAt: string, uploadedBy: string}>>([]);
   const [replyAttachments, setReplyAttachments] = useState<Array<{id: string, url: string, key: string, fileName: string, fileType: string, fileSize: number, uploadedAt: string, uploadedBy: string}>>([]);
@@ -311,16 +312,18 @@ const AppealsPage = () => {
   const onSearchSubmit = async (values: SearchFormValues) => {
     const normalizedBanId = values.banId.toUpperCase().replace(/\s/g, '');
     setIsLoadingPunishment(true);
+    setPunishmentError(null);
 
     try {
       // Fetch punishment information from public API
       const response = await apiFetch(`/v1/public/punishment/${normalizedBanId}/appeal-info`);
-      
+
       if (!response.ok) {
         if (response.status === 400) {
           // Check if it's an unstarted punishment error
           const errorData = await response.json();
           if (errorData.error?.includes('not been started yet')) {
+            setPunishmentError("This punishment has not been started yet and cannot be appealed.");
             toast({
               title: "Cannot Appeal Unstarted Punishment",
               description: "This punishment has not been started yet and cannot be appealed at this time.",
@@ -434,6 +437,7 @@ const AppealsPage = () => {
       setBanInfo(null);
       setAppealInfo(null);
       setShowAppealForm(false);
+      setPunishmentError(`No punishment found with ID: ${normalizedBanId}`);
       toast({
         title: "Punishment not found",
         description: `No punishment found with ID: ${normalizedBanId}`,
@@ -1012,8 +1016,8 @@ const AppealsPage = () => {
       }
       // Fallback for player without UUID
       return (
-        <div className="h-8 w-8 bg-blue-100 rounded-md flex items-center justify-center flex-shrink-0">
-          <span className="text-xs font-bold text-blue-600">{message.senderName?.substring(0, 2) || 'P'}</span>
+        <div className="h-8 w-8 bg-blue-100 dark:bg-blue-900 rounded-md flex items-center justify-center flex-shrink-0">
+          <span className="text-xs font-bold text-blue-600 dark:text-blue-300">{message.senderName?.substring(0, 2) || 'P'}</span>
         </div>
       );
     }
@@ -1021,16 +1025,16 @@ const AppealsPage = () => {
     // For staff messages
     if (message.sender === 'staff') {
       return (
-        <div className="h-8 w-8 bg-green-100 rounded-md flex items-center justify-center flex-shrink-0">
-          <span className="text-xs font-bold text-green-600">{message.senderName?.substring(0, 2) || 'S'}</span>
+        <div className="h-8 w-8 bg-green-100 dark:bg-green-900 rounded-md flex items-center justify-center flex-shrink-0">
+          <span className="text-xs font-bold text-green-600 dark:text-green-300">{message.senderName?.substring(0, 2) || 'S'}</span>
         </div>
       );
     }
 
     // System messages
     return (
-      <div className="h-8 w-8 bg-gray-100 rounded-md flex items-center justify-center flex-shrink-0">
-        <span className="text-xs font-bold text-gray-600">SY</span>
+      <div className="h-8 w-8 bg-gray-100 dark:bg-gray-800 rounded-md flex items-center justify-center flex-shrink-0">
+        <span className="text-xs font-bold text-gray-600 dark:text-gray-300">SY</span>
       </div>
     );
   };
@@ -1062,8 +1066,12 @@ const AppealsPage = () => {
                           <Input
                             {...field}
                             placeholder="e.g. BAN123456"
-                            className="pl-10"
+                            className={`pl-10 ${punishmentError ? 'border-destructive focus-visible:ring-destructive' : ''}`}
                             disabled={isLoadingPunishment}
+                            onChange={(e) => {
+                              field.onChange(e);
+                              if (punishmentError) setPunishmentError(null);
+                            }}
                           />
                         </div>
                       </FormControl>
@@ -1071,6 +1079,9 @@ const AppealsPage = () => {
                         Enter the Punishment ID you received with your ban/mute
                       </FormDescription>
                       <FormMessage />
+                      {punishmentError && (
+                        <p className="text-sm font-medium text-destructive">{punishmentError}</p>
+                      )}
                     </FormItem>
                   )}
                 />

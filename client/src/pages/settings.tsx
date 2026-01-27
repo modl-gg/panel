@@ -16,7 +16,7 @@ import { Badge } from '@modl-gg/shared-web/components/ui/badge';
 import { Checkbox } from '@modl-gg/shared-web/components/ui/checkbox';
 import { useToast } from '@modl-gg/shared-web/hooks/use-toast';
 import { Select, SelectContent, SelectGroup, SelectItem, SelectLabel, SelectTrigger, SelectValue } from '@modl-gg/shared-web/components/ui/select';
-import { useSettings, useBillingStatus, useUsageData, usePunishmentTypes } from '@/hooks/use-data';
+import { useSettings, useBillingStatus, useUsageData, usePunishmentTypes, useTicketFormSettings } from '@/hooks/use-data';
 import PageContainer from '@/components/layout/PageContainer'
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@modl-gg/shared-web/components/ui/dialog";
 import { queryClient } from '@/lib/queryClient';
@@ -1003,6 +1003,7 @@ const Settings = () => {
   
   const { toast } = useToast();
   const { data: settingsData, isLoading: isLoadingSettings, isFetching: isFetchingSettings } = useSettings();
+  const { data: ticketFormSettingsData, isLoading: isLoadingTicketForms } = useTicketFormSettings();
   const { data: punishmentTypesData, isLoading: isLoadingPunishmentTypes } = usePunishmentTypes();
   const { data: billingStatus } = useBillingStatus();
   const { data: usageData } = useUsageData();
@@ -1877,6 +1878,30 @@ const Settings = () => {
 
     setPunishmentTypesState(normalizedTypes);
   }, [punishmentTypesData, isLoadingPunishmentTypes]);
+
+  // Effect: Load ticket forms from the dedicated endpoint
+  useEffect(() => {
+    if (isLoadingTicketForms || !ticketFormSettingsData) {
+      return;
+    }
+
+    // Check if the ticket forms data has meaningful content
+    const hasData = ticketFormSettingsData && typeof ticketFormSettingsData === 'object' &&
+      Object.values(ticketFormSettingsData).some((form: any) =>
+        form && (
+          (Array.isArray(form.fields) && form.fields.length > 0) ||
+          (Array.isArray(form.sections) && form.sections.length > 0)
+        )
+      );
+
+    if (hasData) {
+      justLoadedFromServerRef.current = true;
+      setTicketFormsState(ticketFormSettingsData as TicketFormsConfiguration);
+      setTimeout(() => {
+        justLoadedFromServerRef.current = false;
+      }, 100);
+    }
+  }, [ticketFormSettingsData, isLoadingTicketForms]);
 
   // Debounced auto-save effect - only trigger when settings change after initial load
   useEffect(() => {

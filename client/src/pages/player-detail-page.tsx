@@ -1191,7 +1191,7 @@ const PlayerDetailPage = () => {
                             // Check if punishment is unstarted (started field is null/undefined)
                             if (!warning.started) {
                               return (
-                                <Badge variant="outline" className="text-xs bg-yellow-100 text-yellow-800 border-yellow-300">
+                                <Badge variant="outline" className="text-xs bg-yellow-100 dark:bg-yellow-900 text-yellow-800 dark:text-yellow-200 border-yellow-300 dark:border-yellow-700">
                                   Unstarted
                                 </Badge>
                               );
@@ -1203,7 +1203,7 @@ const PlayerDetailPage = () => {
                             
                             if (isInactive) {
                               return (
-                                <Badge variant="outline" className="text-xs bg-gray-100 text-gray-800 border-gray-300">
+                                <Badge variant="outline" className="text-xs bg-gray-100 dark:bg-gray-800 text-gray-800 dark:text-gray-200 border-gray-300 dark:border-gray-600">
                                   Inactive
                                 </Badge>
                               );
@@ -1211,26 +1211,26 @@ const PlayerDetailPage = () => {
                             
                             // Punishment is active
                             return (
-                              <Badge variant="outline" className="text-xs bg-green-100 text-green-800 border-green-300">
+                              <Badge variant="outline" className="text-xs bg-green-100 dark:bg-green-900 text-green-800 dark:text-green-200 border-green-300 dark:border-green-700">
                                 Active
                               </Badge>
                             );
                           })()}
-                          <Badge variant="outline" className="bg-gray-50 text-gray-900 border-gray-300">
+                          <Badge variant="outline" className="bg-gray-50 dark:bg-gray-800 text-gray-900 dark:text-gray-100 border-gray-300 dark:border-gray-600">
                             {warning.type}
                           </Badge>
                           {warning.altBlocking && (
-                            <Badge variant="outline" className="text-xs bg-orange-100 text-orange-800 border-orange-200">
+                            <Badge variant="outline" className="text-xs bg-orange-100 dark:bg-orange-900 text-orange-800 dark:text-orange-200 border-orange-200 dark:border-orange-700">
                               Alt-blocking
                             </Badge>
                           )}
                           {isValidBadgeValue(warning.severity) && (
                             <Badge variant="outline" className={`text-xs ${
-                              (warning.severity && warning.severity.toLowerCase() === 'low') || (warning.severity && warning.severity.toLowerCase() === 'lenient') ? 
-                                'bg-green-100 text-green-800 border-green-300' :
+                              (warning.severity && warning.severity.toLowerCase() === 'low') || (warning.severity && warning.severity.toLowerCase() === 'lenient') ?
+                                'bg-green-100 dark:bg-green-900 text-green-800 dark:text-green-200 border-green-300 dark:border-green-700' :
                               (warning.severity && warning.severity.toLowerCase() === 'regular') || (warning.severity && warning.severity.toLowerCase() === 'medium') ?
-                                'bg-orange-100 text-orange-800 border-orange-300' :
-                                'bg-red-100 text-red-800 border-red-300'
+                                'bg-orange-100 dark:bg-orange-900 text-orange-800 dark:text-orange-200 border-orange-300 dark:border-orange-700' :
+                                'bg-red-100 dark:bg-red-900 text-red-800 dark:text-red-200 border-red-300 dark:border-red-700'
                             }`}>
                               {warning.severity}
                             </Badge>
@@ -1239,10 +1239,10 @@ const PlayerDetailPage = () => {
                            !['active', 'inactive', 'unstarted'].includes(warning.status?.toLowerCase?.() || '') && (
                             <Badge variant="outline" className={`text-xs ${
                               (warning.status && warning.status.toLowerCase() === 'low') || (warning.status && warning.status.toLowerCase() === 'first') ?
-                                'bg-green-100 text-green-800 border-green-300' :
+                                'bg-green-100 dark:bg-green-900 text-green-800 dark:text-green-200 border-green-300 dark:border-green-700' :
                               warning.status && warning.status.toLowerCase() === 'medium' ?
-                                'bg-orange-100 text-orange-800 border-orange-300' :
-                                'bg-red-100 text-red-800 border-red-300'
+                                'bg-orange-100 dark:bg-orange-900 text-orange-800 dark:text-orange-200 border-orange-300 dark:border-orange-700' :
+                                'bg-red-100 dark:bg-red-900 text-red-800 dark:text-red-200 border-red-300 dark:border-red-700'
                             }`}>
                               {warning.status}
                             </Badge>
@@ -2146,14 +2146,14 @@ const PlayerDetailPage = () => {
                       <div className="flex-1">
                         <div className="flex items-center gap-2 mb-1">
                           <Badge variant="outline" className={`text-xs ${
-                            ticket.status === 'open' ? 'bg-green-100 text-green-800 border-green-300' :
-                            ticket.status === 'in_progress' ? 'bg-blue-100 text-blue-800 border-blue-300' :
-                            ticket.status === 'resolved' ? 'bg-gray-100 text-gray-800 border-gray-300' :
-                            'bg-red-100 text-red-800 border-red-300'
+                            ticket.status === 'open' ? 'bg-green-100 dark:bg-green-900 text-green-800 dark:text-green-200 border-green-300 dark:border-green-700' :
+                            ticket.status === 'in_progress' ? 'bg-blue-100 dark:bg-blue-900 text-blue-800 dark:text-blue-200 border-blue-300 dark:border-blue-700' :
+                            ticket.status === 'resolved' ? 'bg-gray-100 dark:bg-gray-800 text-gray-800 dark:text-gray-200 border-gray-300 dark:border-gray-600' :
+                            'bg-red-100 dark:bg-red-900 text-red-800 dark:text-red-200 border-red-300 dark:border-red-700'
                           }`}>
                             {ticket.status?.replace('_', ' ').toUpperCase() || 'UNKNOWN'}
                           </Badge>
-                          <Badge variant="outline" className="text-xs bg-blue-50 text-blue-900 border-blue-200">
+                          <Badge variant="outline" className="text-xs bg-blue-50 dark:bg-blue-900 text-blue-900 dark:text-blue-100 border-blue-200 dark:border-blue-700">
                             {ticket.category || 'General'}
                           </Badge>
                         </div>

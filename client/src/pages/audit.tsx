@@ -569,10 +569,10 @@ const PunishmentRollbackModal = () => {
                   <div className="flex items-center gap-4">
                     <div className={cn(
                       "w-10 h-10 rounded-full flex items-center justify-center",
-                      punishment.type === 'ban' && "bg-red-100 text-red-600",
-                      punishment.type === 'mute' && "bg-orange-100 text-orange-600",
-                      punishment.type === 'kick' && "bg-yellow-100 text-yellow-600",
-                      punishment.type === 'warn' && "bg-blue-100 text-blue-600"
+                      punishment.type === 'ban' && "bg-red-100 dark:bg-red-900 text-red-600 dark:text-red-300",
+                      punishment.type === 'mute' && "bg-orange-100 dark:bg-orange-900 text-orange-600 dark:text-orange-300",
+                      punishment.type === 'kick' && "bg-yellow-100 dark:bg-yellow-900 text-yellow-600 dark:text-yellow-300",
+                      punishment.type === 'warn' && "bg-blue-100 dark:bg-blue-900 text-blue-600 dark:text-blue-300"
                     )}>
                       <Gavel className="h-5 w-5" />
                     </div>

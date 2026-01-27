@@ -130,8 +130,8 @@ const MessageAvatar = ({ message, creatorUuid }: { message: TicketMessage, creat
     }
     // Fallback for player without UUID
     return (
-      <div className="h-8 w-8 bg-blue-100 rounded-md flex items-center justify-center flex-shrink-0">
-        <span className="text-xs font-bold text-blue-600">{message.sender?.substring(0, 2) || 'U'}</span>
+      <div className="h-8 w-8 bg-blue-100 dark:bg-blue-900 rounded-md flex items-center justify-center flex-shrink-0">
+        <span className="text-xs font-bold text-blue-600 dark:text-blue-300">{message.sender?.substring(0, 2) || 'U'}</span>
       </div>
     );
   }
@@ -139,11 +139,11 @@ const MessageAvatar = ({ message, creatorUuid }: { message: TicketMessage, creat
   // For staff messages - use staff Minecraft UUID if available
   if (message.senderType === 'staff' || message.staff) {
     const staffMinecraftUuid = message.staffMinecraftUuid;
-    
+
     if (staffMinecraftUuid && !avatarError) {
       return (
         <div className="relative h-8 w-8 bg-muted rounded-md flex items-center justify-center overflow-hidden flex-shrink-0">
-          <img 
+          <img
             src={getAvatarUrl(staffMinecraftUuid, 32, true)}
             alt={`${message.sender} Avatar`}
             className={`w-full h-full object-cover transition-opacity duration-200 ${avatarLoading ? 'opacity-0' : 'opacity-100'}`}
@@ -164,11 +164,11 @@ const MessageAvatar = ({ message, creatorUuid }: { message: TicketMessage, creat
         </div>
       );
     }
-    
+
     // Fallback for staff without assigned Minecraft UUID
     return (
-      <div className="h-8 w-8 bg-green-100 rounded-md flex items-center justify-center flex-shrink-0">
-        <span className="text-xs font-bold text-green-600">{message.sender?.substring(0, 2) || 'S'}</span>
+      <div className="h-8 w-8 bg-green-100 dark:bg-green-900 rounded-md flex items-center justify-center flex-shrink-0">
+        <span className="text-xs font-bold text-green-600 dark:text-green-300">{message.sender?.substring(0, 2) || 'S'}</span>
       </div>
     );
   }

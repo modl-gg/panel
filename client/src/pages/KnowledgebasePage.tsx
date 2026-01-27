@@ -106,8 +106,8 @@ const KnowledgebasePage: React.FC = () => {
           <div className="mb-8">
             <h2 className="text-2xl font-semibold mb-4">Search Results</h2>
             {searchResults.map(article => (
-              <div key={article.id} className="mb-2 p-3 border rounded hover:bg-gray-50">
-                <Link href={`/article/${article.slug}`} className="text-blue-600 hover:underline">
+              <div key={article.id} className="mb-2 p-3 border rounded hover:bg-muted/50">
+                <Link href={`/article/${article.slug}`} className="text-primary hover:underline">
                   {article.title}
                 </Link>
                 {/* Optionally show category: {article.category?.name} */}
@@ -122,7 +122,7 @@ const KnowledgebasePage: React.FC = () => {
 
 
         {!searchTerm && categories.length === 0 && (
-          <p className="text-center text-gray-500">No categories available at the moment.</p>
+          <p className="text-center text-muted-foreground">No categories available at the moment.</p>
         )}
 
         {!searchTerm && categories.map(category => (
