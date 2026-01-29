@@ -812,34 +812,35 @@ const TicketDetail = () => {
     const quickResponses: QuickResponsesConfiguration =
       (quickResponsesData?.categories ? quickResponsesData : null) || defaultQuickResponsesConfig;
 
-    // Find the category for this ticket type
-    let ticketType = '';
+    // Map display category to possible ticketType values
+    // Support both formats: 'chat_report' (TicketSettings format) and 'chat' (MongoDB format)
+    let ticketTypes: string[] = [];
     switch(category) {
       case 'Player Report':
-        ticketType = 'player_report';
+        ticketTypes = ['player_report', 'player'];
         break;
       case 'Chat Report':
-        ticketType = 'chat_report';
+        ticketTypes = ['chat_report', 'chat'];
         break;
       case 'Bug Report':
-        ticketType = 'bug_report';
+        ticketTypes = ['bug', 'bug_report'];
         break;
       case 'Punishment Appeal':
-        ticketType = 'appeal';
+        ticketTypes = ['appeal', 'punishment_appeal'];
         break;
       case 'Support':
-        ticketType = 'support';
+        ticketTypes = ['support'];
         break;
       case 'Application':
-        ticketType = 'application';
+        ticketTypes = ['application', 'staff'];
         break;
       default:
-        ticketType = 'support';
+        ticketTypes = ['support'];
     }
 
-    // Find the category that handles this ticket type
+    // Find the category that handles any of these ticket types
     const responseCategory = quickResponses.categories?.find(cat =>
-      cat.ticketTypes?.includes(ticketType)
+      cat.ticketTypes?.some(type => ticketTypes.includes(type.toLowerCase()))
     );
 
     return responseCategory?.actions || [];

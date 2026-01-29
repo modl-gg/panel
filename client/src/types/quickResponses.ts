@@ -15,7 +15,7 @@ export interface QuickResponseAction {
 export interface QuickResponseCategory {
   id: string;
   name: string;
-  ticketTypes: string[]; // ['player_report', 'chat_report', 'bug_report', 'appeal', 'support', 'application']
+  ticketTypes: string[]; // ['player_report', 'chat_report', 'bug', 'appeal', 'support', 'application']
   actions: QuickResponseAction[];
   order: number;
 }
