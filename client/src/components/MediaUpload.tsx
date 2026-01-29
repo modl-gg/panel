@@ -94,10 +94,15 @@ export function MediaUpload({
     return null;
   };
 
-  const uploadFile = async (file: File): Promise<{ url: string; key: string } | null> => {
+  const uploadFile = async (file: File, fileId: string): Promise<{ url: string; key: string } | null> => {
     try {
-      // Use the hook's uploadMedia function which handles public/authenticated endpoints
-      const result = await uploadMedia(file, uploadType, metadata);
+      const result = await uploadMedia(file, uploadType, metadata, (progress) => {
+        setUploadedFiles(prev => prev.map(f =>
+          f.id === fileId
+            ? { ...f, progress: progress.percentage }
+            : f
+        ));
+      });
       return result;
     } catch (error) {
       console.error('Upload error:', error);
@@ -145,8 +150,7 @@ export function MediaUpload({
       onUploadStart?.();
 
       try {
-        // Start upload
-        const result = await uploadFile(file);
+        const result = await uploadFile(file, fileId);
         
         if (result) {
           // Update file status to success

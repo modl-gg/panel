@@ -15,6 +15,7 @@ async function apiFetch(url: string, options: RequestInit = {}): Promise<Respons
 
 export interface MediaUploadConfig {
   backblazeConfigured: boolean;
+  cdnDomain: string | null;
   supportedTypes: {
     evidence: string[];
     tickets: string[];
@@ -31,11 +32,32 @@ export interface MediaUploadConfig {
   };
 }
 
+interface PresignResponse {
+  presignedUrl: string;
+  key: string;
+  expiresAt: string;
+  method: string;
+  requiredHeaders: Record<string, string>;
+}
+
+interface ConfirmResponse {
+  key: string;
+  url: string;
+  fileName: string;
+  size: number;
+  contentType: string;
+}
+
+export interface UploadProgress {
+  loaded: number;
+  total: number;
+  percentage: number;
+}
+
 export function useMediaUploadConfig() {
   return useQuery<MediaUploadConfig>({
     queryKey: ['/v1/media/config'],
     queryFn: async () => {
-      // Check if we're on a public page (player ticket, appeals, etc.)
       const currentPath = window.location.pathname;
       const isPublicPage = currentPath.startsWith('/ticket/') ||
                           currentPath.startsWith('/appeal') ||
@@ -44,19 +66,16 @@ export function useMediaUploadConfig() {
                           currentPath.startsWith('/article/');
 
       try {
-        // If on public page, try public endpoint first to avoid 401 in network tab
         if (isPublicPage) {
           const publicResponse = await apiFetch('/v1/public/media/config');
           if (publicResponse.ok) {
             return publicResponse.json();
           }
         } else {
-          // For panel pages, try authenticated endpoint first
           const response = await apiFetch('/v1/panel/media/config');
           if (response.ok) {
             return response.json();
           }
-          // If 401 (unauthorized), try public endpoint
           if (response.status === 401) {
             const publicResponse = await apiFetch('/v1/public/media/config');
             if (publicResponse.ok) {
@@ -66,17 +85,16 @@ export function useMediaUploadConfig() {
         }
         throw new Error('Failed to fetch media upload configuration from all available endpoints');
       } catch (error) {
-        // Last resort: try the other endpoint if one failed
         try {
           const fallbackUrl = isPublicPage ? '/v1/panel/media/config' : '/v1/public/media/config';
           const fallbackResponse = await apiFetch(fallbackUrl);
           if (fallbackResponse.ok) {
             return fallbackResponse.json();
           }
-        } catch (fallbackError) {
-          // If even fallback fails, use default values
+        } catch {
           return {
             backblazeConfigured: false,
+            cdnDomain: null,
             supportedTypes: {
               evidence: [],
               tickets: [],
@@ -96,9 +114,113 @@ export function useMediaUploadConfig() {
         throw error;
       }
     },
-    staleTime: 5 * 60 * 1000, // 5 minutes
+    staleTime: 5 * 60 * 1000,
     refetchOnWindowFocus: false,
   });
+}
+
+function isPublicPage(): boolean {
+  const currentPath = window.location.pathname;
+  return currentPath.startsWith('/ticket/') ||
+         currentPath.startsWith('/appeal') ||
+         currentPath === '/' ||
+         currentPath.startsWith('/knowledgebase') ||
+         currentPath.startsWith('/article/');
+}
+
+function getEndpointPrefix(): string {
+  return isPublicPage() ? '/v1/public/media' : '/v1/panel/media';
+}
+
+async function getPresignedUrl(
+  file: File,
+  uploadType: string
+): Promise<PresignResponse> {
+  const endpoint = `${getEndpointPrefix()}/presign`;
+  
+  const response = await apiFetch(endpoint, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({
+      uploadType,
+      fileName: file.name,
+      fileSize: file.size,
+      contentType: file.type,
+    }),
+  });
+
+  if (!response.ok) {
+    const errorData = await response.json();
+    throw new Error(errorData.error || 'Failed to get upload URL');
+  }
+
+  return response.json();
+}
+
+async function uploadToS3(
+  presignedUrl: string,
+  file: File,
+  requiredHeaders: Record<string, string>,
+  onProgress?: (progress: UploadProgress) => void
+): Promise<void> {
+  return new Promise((resolve, reject) => {
+    const xhr = new XMLHttpRequest();
+    
+    xhr.upload.addEventListener('progress', (event) => {
+      if (event.lengthComputable && onProgress) {
+        onProgress({
+          loaded: event.loaded,
+          total: event.total,
+          percentage: Math.round((event.loaded / event.total) * 100),
+        });
+      }
+    });
+
+    xhr.addEventListener('load', () => {
+      if (xhr.status >= 200 && xhr.status < 300) {
+        resolve();
+      } else {
+        reject(new Error(`Upload failed with status ${xhr.status}: ${xhr.statusText}`));
+      }
+    });
+
+    xhr.addEventListener('error', () => {
+      reject(new Error('Upload failed due to network error'));
+    });
+
+    xhr.addEventListener('abort', () => {
+      reject(new Error('Upload was aborted'));
+    });
+
+    xhr.open('PUT', presignedUrl, true);
+
+    Object.entries(requiredHeaders).forEach(([key, value]) => {
+      xhr.setRequestHeader(key, value);
+    });
+
+    xhr.send(file);
+  });
+}
+
+async function confirmUpload(key: string): Promise<ConfirmResponse> {
+  const endpoint = `${getEndpointPrefix()}/confirm`;
+  
+  const response = await apiFetch(endpoint, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({ key }),
+  });
+
+  if (!response.ok) {
+    const errorData = await response.json();
+    throw new Error(errorData.error || errorData.message || 'Failed to confirm upload');
+  }
+
+  return response.json();
 }
 
 export function useMediaUpload() {
@@ -107,58 +229,20 @@ export function useMediaUpload() {
   const uploadMedia = async (
     file: File,
     uploadType: 'evidence' | 'ticket' | 'appeal' | 'article' | 'server-icon',
-    metadata: Record<string, any> = {}
+    _metadata: Record<string, unknown> = {},
+    onProgress?: (progress: UploadProgress) => void
   ): Promise<{ url: string; key: string }> => {
-    // Evidence uploads support local storage fallback, others require Backblaze
-    if (!config.data?.backblazeConfigured && uploadType !== 'evidence') {
+    if (!config.data?.backblazeConfigured) {
       throw new Error('Media storage is not configured');
     }
 
-    const formData = new FormData();
-    formData.append('file', file);
-    
-    // Add metadata
-    Object.entries(metadata).forEach(([key, value]) => {
-      formData.append(key, value.toString());
-    });
+    const presign = await getPresignedUrl(file, uploadType);
 
-    // Check if we're on a public page (player ticket, appeals, etc.)
-    const currentPath = window.location.pathname;
-    const isPublicPage = currentPath.startsWith('/ticket/') || 
-                        currentPath.startsWith('/appeal') || 
-                        currentPath === '/' ||
-                        currentPath.startsWith('/knowledgebase') ||
-                        currentPath.startsWith('/article/');
+    await uploadToS3(presign.presignedUrl, file, presign.requiredHeaders, onProgress);
 
-    // Use public endpoint for ticket uploads on public pages
-    if (isPublicPage && uploadType === 'ticket') {
-      const response = await apiFetch('/v1/public/media/upload/ticket', {
-        method: 'POST',
-        body: formData,
-      });
+    const confirmed = await confirmUpload(presign.key);
 
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.error || 'Upload failed');
-      }
-
-      const result = await response.json();
-      return { url: result.url, key: result.key };
-    } else {
-      // Use authenticated endpoint for panel pages or non-ticket uploads
-      const response = await apiFetch(`/v1/panel/media/upload/${uploadType}`, {
-        method: 'POST',
-        body: formData,
-      });
-
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.error || 'Upload failed');
-      }
-
-      const result = await response.json();
-      return { url: result.url, key: result.key };
-    }
+    return { url: confirmed.url, key: confirmed.key };
   };
 
   const deleteMedia = async (key: string): Promise<void> => {
