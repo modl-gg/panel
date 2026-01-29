@@ -71,6 +71,7 @@ export function MediaUpload({
   const { toast } = useToast();
   const { uploadMedia } = useMediaUpload();
 
+  const isUploading = uploadedFiles.some(f => f.status === 'uploading');
   const allowedTypes = acceptedTypes || DEFAULT_ACCEPTED_TYPES[uploadType];
   const sizeLimit = maxSizeBytes || DEFAULT_SIZE_LIMITS[uploadType];
 
@@ -112,6 +113,7 @@ export function MediaUpload({
 
   const handleFileSelect = useCallback(async (files: FileList | null) => {
     if (!files || files.length === 0) return;
+    if (isUploading) return; // Prevent new uploads while one is in progress
 
     const newFiles = Array.from(files).slice(0, maxFiles - uploadedFiles.length);
     
@@ -186,11 +188,13 @@ export function MediaUpload({
         });
       }
     }
-  }, [uploadedFiles, maxFiles, onUploadComplete, onUploadStart, onUploadError, toast, uploadType, metadata]);
+  }, [uploadedFiles, maxFiles, onUploadComplete, onUploadStart, onUploadError, toast, uploadType, metadata, isUploading]);
 
   const handleDragOver = (e: React.DragEvent) => {
     e.preventDefault();
-    setIsDragging(true);
+    if (!isUploading && !disabled) {
+      setIsDragging(true);
+    }
   };
 
   const handleDragLeave = (e: React.DragEvent) => {
@@ -202,7 +206,7 @@ export function MediaUpload({
     e.preventDefault();
     setIsDragging(false);
     
-    if (disabled) return;
+    if (disabled || isUploading) return;
     
     const files = e.dataTransfer.files;
     handleFileSelect(files);
@@ -210,9 +214,13 @@ export function MediaUpload({
 
   const handleFileInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     handleFileSelect(e.target.files);
+    // Reset value so the same file can be selected again if needed (though we usually prevent duplicates via state)
+    e.target.value = '';
   };
 
   const handleRemoveFile = (fileId: string) => {
+    // Prevent removing files while uploading (optional, but safer to avoid state inconsistencies during upload)
+    if (isUploading) return;
     setUploadedFiles(prev => prev.filter(f => f.id !== fileId));
   };
 
@@ -221,7 +229,7 @@ export function MediaUpload({
       e.preventDefault();
       e.stopPropagation();
     }
-    if (!disabled) {
+    if (!disabled && !isUploading) {
       fileInputRef.current?.click();
     }
   };
@@ -232,13 +240,17 @@ export function MediaUpload({
         <Button 
           type="button"
           onClick={(e) => openFileDialog(e)}
-          disabled={disabled || uploadedFiles.length >= maxFiles}
+          disabled={disabled || uploadedFiles.length >= maxFiles || isUploading}
           className={className}
           size="sm"
           variant="outline"
         >
-          <Upload className="h-4 w-4 mr-1.5" />
-          Attach Files
+          {isUploading ? (
+            <Loader2 className="h-4 w-4 mr-1.5 animate-spin" />
+          ) : (
+            <Upload className="h-4 w-4 mr-1.5" />
+          )}
+          {isUploading ? 'Uploading...' : 'Attach Files'}
         </Button>
         <input
           ref={fileInputRef}
@@ -247,6 +259,7 @@ export function MediaUpload({
           accept={allowedTypes.join(',')}
           onChange={handleFileInputChange}
           className="hidden"
+          disabled={isUploading}
         />
       </>
     );
@@ -261,25 +274,30 @@ export function MediaUpload({
         accept={allowedTypes.join(',')}
         onChange={handleFileInputChange}
         className="hidden"
+        disabled={isUploading}
       />
       
       {variant === 'compact' ? (
         <Button 
           type="button"
           onClick={(e) => openFileDialog(e)}
-          disabled={disabled || uploadedFiles.length >= maxFiles}
+          disabled={disabled || uploadedFiles.length >= maxFiles || isUploading}
           variant="outline"
           className="w-full"
         >
-          <Upload className="h-4 w-4 mr-2" />
-          Upload Files
+          {isUploading ? (
+            <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+          ) : (
+            <Upload className="h-4 w-4 mr-2" />
+          )}
+          {isUploading ? 'Uploading...' : 'Upload Files'}
         </Button>
       ) : (
         <Card 
           className={cn(
-            "border-2 border-dashed transition-colors cursor-pointer",
+            "border-2 border-dashed transition-colors",
             isDragging ? "border-primary bg-primary/5" : "border-muted-foreground/25",
-            disabled && "opacity-50 cursor-not-allowed"
+            (disabled || isUploading) ? "opacity-50 cursor-not-allowed" : "cursor-pointer"
           )}
           onDragOver={handleDragOver}
           onDragLeave={handleDragLeave}
@@ -287,13 +305,23 @@ export function MediaUpload({
           onClick={(e) => openFileDialog(e)}
         >
           <CardContent className="p-6 text-center">
-            <Upload className="h-12 w-12 mx-auto mb-4 text-muted-foreground" />
-            <p className="text-sm text-muted-foreground mb-2">
-              Drag and drop files here, or click to select files
-            </p>
-            <p className="text-xs text-muted-foreground">
-              Maximum {maxFiles} files, up to {formatFileSize(sizeLimit)} each
-            </p>
+            {isUploading ? (
+              <div className="flex flex-col items-center justify-center py-2">
+                <Loader2 className="h-10 w-10 text-primary animate-spin mb-3" />
+                <p className="text-sm font-medium">Uploading files...</p>
+                <p className="text-xs text-muted-foreground mt-1">Please wait while we process your files</p>
+              </div>
+            ) : (
+              <>
+                <Upload className="h-12 w-12 mx-auto mb-4 text-muted-foreground" />
+                <p className="text-sm text-muted-foreground mb-2">
+                  Drag and drop files here, or click to select files
+                </p>
+                <p className="text-xs text-muted-foreground">
+                  Maximum {maxFiles} files, up to {formatFileSize(sizeLimit)} each
+                </p>
+              </>
+            )}
           </CardContent>
         </Card>
       )}
