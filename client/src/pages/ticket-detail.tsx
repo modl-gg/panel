@@ -1,4 +1,4 @@
-import { useState, useEffect, memo, useMemo } from 'react';
+import { useState, useEffect, memo, useMemo, useRef } from 'react';
 import { useLocation, Link } from 'wouter';
 import { Popover, PopoverContent, PopoverTrigger } from '@modl-gg/shared-web/components/ui/popover';
 import { queryClient } from '@/lib/queryClient';
@@ -303,6 +303,7 @@ const TicketDetail = () => {
   const { user } = useAuth();
   const { toast } = useToast();
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const messageListRef = useRef<HTMLDivElement>(null);
   
   // Add punishment-related hooks
   const applyPunishment = useApplyPunishment();
@@ -911,6 +912,13 @@ const TicketDetail = () => {
   useEffect(() => {
     // Ticket data received
   }, [ticketData]);
+
+  // Auto-scroll to bottom of message list when messages change
+  useEffect(() => {
+    if (messageListRef.current) {
+      messageListRef.current.scrollTop = messageListRef.current.scrollHeight;
+    }
+  }, [ticketDetails.messages]);
   
   // Mutation hook for updating tickets
   const updateTicketMutation = useUpdateTicket();
@@ -2023,7 +2031,10 @@ const TicketDetail = () => {
               
               {activeTab === 'conversation' && (
                 <div className="space-y-4">
-                  <div className="max-h-[480px] overflow-y-auto divide-y">
+                  <div 
+                    ref={messageListRef}
+                    className="max-h-[480px] overflow-y-auto divide-y"
+                  >
                     {ticketDetails.messages.map((message, index) => (
                       <div key={message.id} className="p-4">
                         <div className="flex items-start gap-3">
