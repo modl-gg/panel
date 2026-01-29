@@ -58,7 +58,19 @@ interface PlayerInfo {
     id?: string;
     severity?: string;
     status?: string;
-    evidence?: (string | {text: string; issuerName: string; date: string})[];
+    evidence?: (string | {
+      text?: string;
+      url?: string;
+      fileUrl?: string; // Legacy field name
+      type?: string;
+      uploadedBy?: string;
+      uploadedAt?: string;
+      issuerName?: string; // Legacy field name
+      date?: string; // Legacy field name
+      fileName?: string;
+      fileType?: string;
+      fileSize?: number;
+    })[];
     notes?: Array<{text: string; issuerName: string; date: string}>;
     attachedTicketIds?: string[];
     active?: boolean;
@@ -428,10 +440,11 @@ const PlayerWindow = ({ playerId, isOpen, onClose, initialPosition }: PlayerWind
         });
       }
       
-      // Prepare evidence array - handle both string and object formats like PlayerWindow history
+      // Prepare evidence array - handle both string and object formats
+      // CreateEvidenceRequest expects: text, issuerName, type, fileUrl, fileName, fileType, fileSize
       const evidence = playerInfo.evidenceList?.filter((e: string) => e.trim()).map((e: string) => {
         const trimmedEvidence = e.trim();
-        
+
         // If it's a JSON object (uploaded file with metadata), parse and convert
         if (trimmedEvidence.startsWith('{')) {
           try {
@@ -439,9 +452,8 @@ const PlayerWindow = ({ playerId, isOpen, onClose, initialPosition }: PlayerWind
             return {
               text: fileData.fileName,
               issuerName: user?.username || 'Admin',
-              date: new Date().toISOString(),
               type: 'file',
-              fileUrl: fileData.url,
+              fileUrl: fileData.url, // CreateEvidenceRequest expects 'fileUrl'
               fileName: fileData.fileName,
               fileType: fileData.fileType,
               fileSize: fileData.fileSize
@@ -452,22 +464,20 @@ const PlayerWindow = ({ playerId, isOpen, onClose, initialPosition }: PlayerWind
             return {
               text: trimmedEvidence,
               issuerName: user?.username || 'Admin',
-              date: new Date().toISOString(),
               type: 'text'
             };
           }
         }
-        // If it's a URL (legacy uploaded file), convert to object format
+        // If it's a URL (legacy uploaded file or direct URL), convert to object format
         else if (trimmedEvidence.startsWith('http')) {
           // Extract filename from URL for better display
           const fileName = trimmedEvidence.split('/').pop() || 'Unknown file';
-          
+
           return {
             text: fileName,
             issuerName: user?.username || 'Admin',
-            date: new Date().toISOString(),
             type: 'file',
-            fileUrl: trimmedEvidence,
+            fileUrl: trimmedEvidence, // CreateEvidenceRequest expects 'fileUrl'
             fileName: fileName,
             fileType: getFileTypeFromUrl(trimmedEvidence),
             fileSize: 0 // We don't have size info from URL
@@ -477,7 +487,6 @@ const PlayerWindow = ({ playerId, isOpen, onClose, initialPosition }: PlayerWind
           return {
             text: trimmedEvidence,
             issuerName: user?.username || 'Admin',
-            date: new Date().toISOString(),
             type: 'text'
           };
         }
@@ -1830,22 +1839,30 @@ const PlayerWindow = ({ playerId, isOpen, onClose, initialPosition }: PlayerWind
                                 let fileUrl = '';
                                 let fileName = '';
                                 let fileType = '';
-                                
+
                                 if (typeof evidenceItem === 'string') {
                                   // Legacy string format
                                   evidenceText = evidenceItem;
                                   issuerInfo = 'By: System on Unknown';
                                   evidenceType = evidenceItem.match(/^https?:\/\//) ? 'url' : 'text';
-                                } else if (typeof evidenceItem === 'object' && evidenceItem.text) {
-                                  // New object format
-                                  evidenceText = evidenceItem.text;
-                                  const issuer = evidenceItem.issuerName || 'System';
-                                  const date = evidenceItem.date ? formatDateWithTime(evidenceItem.date) : 'Unknown';
+                                } else if (typeof evidenceItem === 'object') {
+                                  // New object format - backend uses: text, url, type, uploadedBy, uploadedAt, fileName, fileType, fileSize
+                                  evidenceText = evidenceItem.text || '';
+                                  // Support both old field names (issuerName/date) and new field names (uploadedBy/uploadedAt)
+                                  const issuer = evidenceItem.uploadedBy || evidenceItem.issuerName || 'System';
+                                  const dateValue = evidenceItem.uploadedAt || evidenceItem.date;
+                                  const date = dateValue ? formatDateWithTime(dateValue) : 'Unknown';
                                   issuerInfo = `By: ${issuer} on ${date}`;
                                   evidenceType = evidenceItem.type || 'text';
-                                  fileUrl = evidenceItem.fileUrl || '';
+                                  // Support both old field name (fileUrl) and new field name (url)
+                                  fileUrl = evidenceItem.url || evidenceItem.fileUrl || '';
                                   fileName = evidenceItem.fileName || '';
                                   fileType = evidenceItem.fileType || '';
+
+                                  // If no text but has url, use url as display text for URL type evidence
+                                  if (!evidenceText && fileUrl && evidenceType === 'url') {
+                                    evidenceText = fileUrl;
+                                  }
                                 }
                                 
                                 // Helper function to detect media type from URL
@@ -2250,23 +2267,25 @@ const PlayerWindow = ({ playerId, isOpen, onClose, initialPosition }: PlayerWind
                                     let evidenceData: any;
                                     
                                     if (playerInfo.uploadedEvidenceFile) {
-                                      // File evidence
+                                      // File evidence - use 'url' field to match backend AddEvidenceRequest
                                       evidenceData = {
                                         text: playerInfo.uploadedEvidenceFile.fileName,
                                         issuerName: user?.username || 'Admin',
-                                        date: new Date().toISOString(),
                                         type: 'file',
-                                        fileUrl: playerInfo.uploadedEvidenceFile.url,
+                                        url: playerInfo.uploadedEvidenceFile.url,
                                         fileName: playerInfo.uploadedEvidenceFile.fileName,
                                         fileType: playerInfo.uploadedEvidenceFile.fileType,
                                         fileSize: playerInfo.uploadedEvidenceFile.fileSize
                                       };
                                     } else {
-                                      // Text evidence
+                                      // Text evidence - check if it's a URL
+                                      const trimmedEvidence = playerInfo.newPunishmentEvidence.trim();
+                                      const isUrl = trimmedEvidence.match(/^https?:\/\//);
                                       evidenceData = {
-                                        text: playerInfo.newPunishmentEvidence.trim(),
+                                        text: trimmedEvidence,
                                         issuerName: user?.username || 'Admin',
-                                        date: new Date().toISOString()
+                                        type: isUrl ? 'url' : 'text',
+                                        url: isUrl ? trimmedEvidence : null
                                       };
                                     }
                                     
