@@ -1069,11 +1069,32 @@ const TicketDetail = () => {
       }
 
       // Normalize ticket type to lowercase for consistent comparisons
-      // Use category if it's a more specific type (category stores original type like 'player', 'chat')
+      // MongoDB stores type: "REPORT" for reports, with the specific kind in the category field (e.g., "chat", "player")
+      // For other ticket types, type contains the actual type (e.g., "bug", "support", "appeal")
       const specificTypes = ['player', 'chat', 'bug', 'support', 'staff', 'application', 'appeal'];
-      const ticketType = ((ticketData.category && specificTypes.includes(ticketData.category.toLowerCase()))
-        ? ticketData.category
-        : ticketData.type || 'support').toLowerCase();
+
+      // Determine the actual ticket type
+      let ticketType = 'support'; // default fallback
+
+      // First priority: check if category field contains a specific type
+      if (ticketData.category && specificTypes.includes(ticketData.category.toLowerCase())) {
+        ticketType = ticketData.category.toLowerCase();
+      }
+      // Second priority: check if type is "REPORT" - in this case, category should have the specific type
+      // If category wasn't valid but type is REPORT, check data.category or reportType as fallbacks
+      else if (ticketData.type?.toLowerCase() === 'report') {
+        const reportCategory = ticketData.data?.category || ticketData.reportType || ticketData.reportCategory;
+        if (reportCategory && specificTypes.includes(reportCategory.toLowerCase())) {
+          ticketType = reportCategory.toLowerCase();
+        } else {
+          // Default REPORT types to player report if no category specified
+          ticketType = 'player';
+        }
+      }
+      // Third priority: use the type field directly if it's a specific type
+      else if (ticketData.type && specificTypes.includes(ticketData.type.toLowerCase())) {
+        ticketType = ticketData.type.toLowerCase();
+      }
 
       const category = (ticketType === 'bug' ? 'Bug Report' :
                       ticketType === 'chat' ? 'Chat Report' :
