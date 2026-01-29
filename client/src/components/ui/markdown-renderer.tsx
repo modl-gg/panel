@@ -11,6 +11,9 @@ interface MarkdownRendererProps {
 
 // Function to process chat message lines and make usernames clickable
 const processMarkdownContent = (content: string, disableClickablePlayers = false): string => {
+  // Guard against undefined/null content
+  if (!content) return '';
+
   // First, check if content contains JSON-formatted chat messages
   if (content.includes('**Chat Messages:**')) {
     const chatHeaderIndex = content.indexOf('**Chat Messages:**');
@@ -76,8 +79,13 @@ const processMarkdownContent = (content: string, disableClickablePlayers = false
 };
 
 const MarkdownRenderer = ({ content, className, allowHtml = false, disableClickablePlayers = false }: MarkdownRendererProps) => {
+  // Guard against undefined/null content
+  if (!content) {
+    return null;
+  }
+
   const processedContent = processMarkdownContent(content, disableClickablePlayers);
-  
+
   // Check if content contains structured form data (bullet points, bold labels)
   const hasStructuredContent = /\*\*[^*]+\*\*:\s*\n(•[^\n]*\n?)+/.test(content);
   
