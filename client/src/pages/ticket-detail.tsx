@@ -1757,13 +1757,17 @@ const TicketDetail = () => {
                   <div>
                     <span className="text-muted-foreground">Opened by:</span>
                     <span className="ml-1">
-                      <ClickablePlayer
-                        playerText={ticketDetails.reportedBy}
-                        showIcon={true}
-                        className="text-sm"
-                      >
-                        {ticketDetails.reportedBy}
-                      </ClickablePlayer>
+                      {ticketDetails.reportedBy?.includes('(Web User)') ? (
+                        <span className="text-sm">{ticketDetails.reportedBy}</span>
+                      ) : (
+                        <ClickablePlayer
+                          playerText={ticketDetails.reportedBy}
+                          showIcon={true}
+                          className="text-sm"
+                        >
+                          {ticketDetails.reportedBy}
+                        </ClickablePlayer>
+                      )}
                     </span>
                   </div>
                   <div>

@@ -87,6 +87,7 @@ const SubmitTicketPage = () => {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [formSubject, setFormSubject] = useState('');
   const [formData, setFormData] = useState<Record<string, string>>({});
+  const [displayName, setDisplayName] = useState('');
 
   // Fetch settings to get form templates
   const { data: settingsData, isLoading: isLoadingSettings } = useSettings();
@@ -112,7 +113,7 @@ const SubmitTicketPage = () => {
 
     // For staff/application forms, auto-generate the subject
     const finalSubject = (effectiveType === 'staff' || effectiveType === 'application')
-      ? `${formData['email'] || 'User'}'s Staff Application`
+      ? `${displayName.trim() || 'User'}'s Staff Application`
       : formSubject.trim();
 
     // Check if subject is required for non-application tickets
@@ -208,6 +209,16 @@ const SubmitTicketPage = () => {
 
     const fieldsToValidate = [emailField, ...(formConfig.fields || [])];
 
+    // Check display name
+    if (!displayName.trim()) {
+      toast({
+        title: "Name Required",
+        description: "Please enter your name or username.",
+        variant: "destructive"
+      });
+      return;
+    }
+
     // Check required fields
     for (const field of fieldsToValidate) {
       if (field.sectionId && !visibleSections.has(field.sectionId)) {
@@ -248,13 +259,16 @@ const SubmitTicketPage = () => {
       const tempTicketId = `temp-${Date.now()}`;
       const creatorIdentifier = getCreatorIdentifier(tempTicketId);
 
+      // Format the creator name as "{name} (Web User)" for unverified submissions
+      const webCreatorName = `${displayName.trim()} (Web User)`;
+
       // Create the ticket with all data
       const response = await apiFetch('/v1/public/tickets', {
         method: 'POST',
         body: JSON.stringify({
           type: typeConfig?.apiType || effectiveType,
           subject: finalSubject,
-          creatorName: 'Web User',
+          creatorName: webCreatorName,
           creatorEmail: formData['email'],
           formData: labeledFormData,
           creatorIdentifier: creatorIdentifier,
@@ -347,14 +361,14 @@ const SubmitTicketPage = () => {
       label: 'Email Address',
       description: 'Your email address for response notifications',
       required: true,
-      order: 1,
+      order: 2,
       sectionId: undefined,
       options: undefined
     };
 
     const adjustedFields = fields.map((field: FormField) => ({
       ...field,
-      order: field.order >= 1 ? field.order + 1 : field.order
+      order: field.order >= 1 ? field.order + 2 : field.order
     }));
 
     fields = [emailField, ...adjustedFields].sort((a: FormField, b: FormField) => a.order - b.order);
@@ -610,6 +624,25 @@ const SubmitTicketPage = () => {
     return (
       <form onSubmit={handleFormSubmit} className="space-y-6">
         <div className="space-y-4">
+          {/* Name field - always first */}
+          <div>
+            <Label htmlFor="displayName" className="font-medium">
+              Your Name
+              <span className="text-destructive ml-1">*</span>
+            </Label>
+            <p className="text-sm text-muted-foreground mb-1">
+              Your name or Minecraft username (will show as "{displayName || 'Name'} (Web User)" until verified)
+            </p>
+            <Input
+              id="displayName"
+              type="text"
+              placeholder="Enter your name or username"
+              value={displayName}
+              onChange={(e) => setDisplayName(e.target.value)}
+              required
+            />
+          </div>
+
           {effectiveType !== 'staff' && effectiveType !== 'application' && (
             <div>
               <Label htmlFor="subject" className="font-medium">Ticket Subject</Label>
