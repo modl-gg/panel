@@ -29,6 +29,7 @@ const Audit = lazy(() => import("@/pages/audit"));
 const Settings = lazy(() => import("@/pages/settings"));
 const AuthPage = lazy(() => import("@/pages/auth-page"));
 const AppealsPage = lazy(() => import("@/pages/appeals"));
+const SubmitTicketPage = lazy(() => import("@/pages/submit-ticket"));
 const ApiDocs = lazy(() => import("@/pages/api-docs"));
 const ProvisioningInProgressPage = lazy(() => import("@/pages/provisioning-in-progress"));
 const AcceptInvitationPage = lazy(() => import("@/pages/AcceptInvitationPage"));
@@ -59,11 +60,12 @@ function Router() {
   const isAuthPage = location === '/auth' || location === '/panel/auth';
   const isAppealsPage = location === '/appeal'; // Assuming appeals is not under /panel
   const isPlayerTicketPage = location.startsWith('/ticket/'); // Assuming player-ticket is not under /panel
+  const isSubmitTicketPage = location.startsWith('/submit-ticket'); // Public ticket submission page
   const isProvisioningPage = location === '/provisioning-in-progress';
   const isAcceptInvitationPage = location.startsWith('/accept-invitation');
   const isVerifyEmailPage = location.startsWith('/verify-email');
 
-  if (!isAdminPanelRoute && !isAuthPage && !isAppealsPage && !isPlayerTicketPage && !isProvisioningPage && !isAcceptInvitationPage && !isVerifyEmailPage) {
+  if (!isAdminPanelRoute && !isAuthPage && !isAppealsPage && !isPlayerTicketPage && !isSubmitTicketPage && !isProvisioningPage && !isAcceptInvitationPage && !isVerifyEmailPage) {
     return (
       <main className="h-full bg-background"> {/* Basic wrapper for public pages */}
         <Suspense fallback={<PageLoader />}>
@@ -81,7 +83,7 @@ function Router() {
   
   // Don't show navigation on auth page, appeals page, player ticket page, or provisioning page
   // Note: isAuthPage now covers /auth and /panel/auth
-  if (isAuthPage || isAppealsPage || isPlayerTicketPage || isProvisioningPage || isAcceptInvitationPage || isVerifyEmailPage) {
+  if (isAuthPage || isAppealsPage || isPlayerTicketPage || isSubmitTicketPage || isProvisioningPage || isAcceptInvitationPage || isVerifyEmailPage) {
     return (
       <main className="h-full bg-background">
         <Suspense fallback={<PageLoader />}>
@@ -89,6 +91,8 @@ function Router() {
             <AuthRoute path="/auth" component={AuthPage} />
             <AuthRoute path="/panel/auth" component={AuthPage} />
             <Route path="/appeal" component={AppealsPage} />
+            <Route path="/submit-ticket" component={SubmitTicketPage} />
+            <Route path="/submit-ticket/:type" component={SubmitTicketPage} />
             <Route path="/ticket/:id" component={PlayerTicket} />
             <Route path="/provisioning-in-progress" component={ProvisioningInProgressPage} />
             <Route path="/accept-invitation" component={AcceptInvitationPage} />
@@ -118,6 +122,8 @@ function Router() {
               {/* These routes are assumed to be outside /panel */}
               <AuthRoute path="/auth" component={AuthPage} /> {/* For direct /auth access */}
               <Route path="/appeal" component={AppealsPage} />
+            <Route path="/submit-ticket" component={SubmitTicketPage} />
+            <Route path="/submit-ticket/:type" component={SubmitTicketPage} />
               <Route path="/ticket/:id" component={PlayerTicket} />
               <Route path="/provisioning-in-progress" component={ProvisioningInProgressPage} />
               <Route path="/accept-invitation" component={AcceptInvitationPage} />
@@ -155,6 +161,8 @@ function Router() {
              {/* These routes are assumed to be outside /panel */}
             <AuthRoute path="/auth" component={AuthPage} /> {/* For direct /auth access */}
             <Route path="/appeal" component={AppealsPage} />
+            <Route path="/submit-ticket" component={SubmitTicketPage} />
+            <Route path="/submit-ticket/:type" component={SubmitTicketPage} />
             <Route path="/ticket/:id" component={PlayerTicket} />
             <Route path="/provisioning-in-progress" component={ProvisioningInProgressPage} />
             <Route path="/accept-invitation" component={AcceptInvitationPage} />
