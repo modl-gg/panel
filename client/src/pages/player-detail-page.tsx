@@ -2018,11 +2018,11 @@ const PlayerDetailPage = () => {
             <h4 className="font-medium">Staff Notes</h4>
             <div className="bg-muted/30 p-3 rounded-lg">
               <ul className="space-y-2">
-                {playerInfo.notes.length > 0 ? (
-                  playerInfo.notes.map((note, idx) => (
+                {(playerInfo.notes || []).length > 0 ? (
+                  (playerInfo.notes || []).map((note, idx) => (
                     <li key={idx} className="text-sm flex items-start">
                       <StickyNote className="h-3.5 w-3.5 mr-2 mt-0.5 text-muted-foreground" />
-                      <span>{note}</span>
+                      <span>{typeof note === 'string' ? note : note.text}</span>
                     </li>
                   ))
                 ) : (
@@ -2086,7 +2086,7 @@ const PlayerDetailPage = () => {
                           // Update local state
                           setPlayerInfo(prev => ({
                             ...prev,
-                            notes: [...prev.notes, newNoteWithMetadata],
+                            notes: [...(prev.notes || []), newNoteWithMetadata],
                             isAddingNote: false,
                             newNote: ''
                           }));
