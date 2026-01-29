@@ -44,7 +44,7 @@ import {
 import { Button } from '@modl-gg/shared-web/components/ui/button';
 import { Badge } from '@modl-gg/shared-web/components/ui/badge';
 import { Checkbox } from '@modl-gg/shared-web/components/ui/checkbox';
-import { useTicket, usePanelTicket, useUpdateTicket, useSettings, useStaff, useModifyPunishment, useApplyPunishment, useQuickResponses } from '@/hooks/use-data';
+import { useTicket, usePanelTicket, useUpdateTicket, useSettings, useStaff, useModifyPunishment, useApplyPunishment, useQuickResponses, usePunishmentTypes } from '@/hooks/use-data';
 import { QuickResponsesConfiguration, defaultQuickResponsesConfig } from '@/types/quickResponses';
 import { useToast } from '@/hooks/use-toast';
 import PageContainer from '@/components/layout/PageContainer';
@@ -306,26 +306,27 @@ const TicketDetail = () => {
   
   // Add punishment-related hooks
   const applyPunishment = useApplyPunishment();
-  
+
   // Get settings data early so it's available for useMemo hooks
   const { data: settingsData } = useSettings();
   const { data: quickResponsesData } = useQuickResponses();
+  const { data: punishmentTypesData } = usePunishmentTypes();
 
-  // Get punishment ordinal from dynamic settings data
+  // Get punishment ordinal from dynamic punishment types data
   const getPunishmentOrdinal = useMemo(() => (punishmentName: string): number => {
-    // Use punishment types from settings to find the ordinal
-    if (settingsData?.settings?.punishmentTypes) {
-      const punishmentType = settingsData.settings.punishmentTypes.find(
+    // Use punishment types from dedicated endpoint
+    if (punishmentTypesData && Array.isArray(punishmentTypesData)) {
+      const punishmentType = punishmentTypesData.find(
         (type: any) => type.name === punishmentName
       );
       if (punishmentType) {
         return punishmentType.ordinal;
       }
     }
-    
-    // If not found in settings, return -1 to indicate invalid
+
+    // If not found, return -1 to indicate invalid
     return -1;
-  }, [settingsData]);
+  }, [punishmentTypesData]);
 
   // Convert duration to milliseconds
   const convertDurationToMilliseconds = useMemo(() => (duration: { value: number; unit: string }): number => {
@@ -343,41 +344,48 @@ const TicketDetail = () => {
   
   // Helper function to get punishment types by category
   const punishmentTypesByCategory = useMemo(() => {
-    if (!settingsData?.settings?.punishmentTypes) {
-      // Return empty categories if no settings loaded yet
+    if (!punishmentTypesData || !Array.isArray(punishmentTypesData)) {
+      // Return empty categories if no punishment types loaded yet
       return {
         Administrative: [],
         Social: [],
         Gameplay: []
       };
     }
-    
-    // Organize punishment types by category
+
+    // Organize punishment types by category (same logic as PlayerWindow.tsx)
     const categories: any = {
       Administrative: [],
       Social: [],
       Gameplay: []
     };
-    
-    settingsData.settings.punishmentTypes.forEach((type: any) => {
+
+    punishmentTypesData.forEach((type: any) => {
       const punishmentType = {
         ...type,
-        id: type.id || type.ordinal, // Use the actual ID from settings
-        ordinal: type.ordinal // Use the actual ordinal from settings
+        id: type.id || type.ordinal,
+        ordinal: type.ordinal
       };
-      
-      if (categories[type.category]) {
-        categories[type.category].push(punishmentType);
+
+      const categoryKey = type.category?.charAt(0).toUpperCase() + type.category?.slice(1).toLowerCase();
+      if (categories[categoryKey]) {
+        categories[categoryKey].push(punishmentType);
+      } else if (type.category?.toLowerCase() === 'administrative') {
+        categories.Administrative.push(punishmentType);
+      } else if (type.category?.toLowerCase() === 'social') {
+        categories.Social.push(punishmentType);
+      } else if (type.category?.toLowerCase() === 'gameplay') {
+        categories.Gameplay.push(punishmentType);
       }
     });
-    
+
     // Sort each category by ordinal
     Object.keys(categories).forEach(category => {
       categories[category].sort((a: any, b: any) => (a.ordinal || 0) - (b.ordinal || 0));
     });
-    
+
     return categories;
-  }, [settingsData]);
+  }, [punishmentTypesData]);
 
   // Get current punishment type from punishment data
   const getCurrentPunishmentType = useMemo(() => (punishmentData: any) => {
