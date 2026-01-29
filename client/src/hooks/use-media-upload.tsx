@@ -1,4 +1,4 @@
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { getApiUrl, getCurrentDomain } from '@/lib/api';
 
 async function apiFetch(url: string, options: RequestInit = {}): Promise<Response> {
@@ -54,66 +54,88 @@ export interface UploadProgress {
   percentage: number;
 }
 
+const MEDIA_CONFIG_QUERY_KEY = ['/v1/media/config'];
+
+async function fetchMediaConfig(): Promise<MediaUploadConfig> {
+  const currentPath = window.location.pathname;
+  const isPublic = currentPath.startsWith('/ticket/') ||
+                      currentPath.startsWith('/appeal') ||
+                      currentPath === '/' ||
+                      currentPath.startsWith('/knowledgebase') ||
+                      currentPath.startsWith('/article/');
+
+  console.log('[fetchMediaConfig] Path:', currentPath, 'isPublic:', isPublic);
+
+  try {
+    if (isPublic) {
+      console.log('[fetchMediaConfig] Trying public endpoint...');
+      const publicResponse = await apiFetch('/v1/public/media/config');
+      console.log('[fetchMediaConfig] Public response status:', publicResponse.status);
+      if (publicResponse.ok) {
+        const data = await publicResponse.json();
+        console.log('[fetchMediaConfig] Public config data:', data);
+        return data;
+      }
+    } else {
+      console.log('[fetchMediaConfig] Trying panel endpoint...');
+      const response = await apiFetch('/v1/panel/media/config');
+      console.log('[fetchMediaConfig] Panel response status:', response.status);
+      if (response.ok) {
+        const data = await response.json();
+        console.log('[fetchMediaConfig] Panel config data:', data);
+        return data;
+      }
+      if (response.status === 401) {
+        console.log('[fetchMediaConfig] 401, falling back to public...');
+        const publicResponse = await apiFetch('/v1/public/media/config');
+        if (publicResponse.ok) {
+          const data = await publicResponse.json();
+          console.log('[fetchMediaConfig] Fallback public config data:', data);
+          return data;
+        }
+      }
+    }
+    throw new Error('Failed to fetch media upload configuration from all available endpoints');
+  } catch (error) {
+    console.error('[fetchMediaConfig] Error:', error);
+    try {
+      const fallbackUrl = isPublic ? '/v1/panel/media/config' : '/v1/public/media/config';
+      console.log('[fetchMediaConfig] Trying fallback:', fallbackUrl);
+      const fallbackResponse = await apiFetch(fallbackUrl);
+      if (fallbackResponse.ok) {
+        const data = await fallbackResponse.json();
+        console.log('[fetchMediaConfig] Fallback config data:', data);
+        return data;
+      }
+    } catch (fallbackError) {
+      console.error('[fetchMediaConfig] Fallback error:', fallbackError);
+      return {
+        backblazeConfigured: false,
+        cdnDomain: null,
+        supportedTypes: {
+          evidence: [],
+          tickets: [],
+          appeals: [],
+          articles: [],
+          'server-icons': []
+        },
+        fileSizeLimits: {
+          evidence: 0,
+          tickets: 0,
+          appeals: 0,
+          articles: 0,
+          'server-icons': 0
+        }
+      };
+    }
+    throw error;
+  }
+}
+
 export function useMediaUploadConfig() {
   return useQuery<MediaUploadConfig>({
-    queryKey: ['/v1/media/config'],
-    queryFn: async () => {
-      const currentPath = window.location.pathname;
-      const isPublicPage = currentPath.startsWith('/ticket/') ||
-                          currentPath.startsWith('/appeal') ||
-                          currentPath === '/' ||
-                          currentPath.startsWith('/knowledgebase') ||
-                          currentPath.startsWith('/article/');
-
-      try {
-        if (isPublicPage) {
-          const publicResponse = await apiFetch('/v1/public/media/config');
-          if (publicResponse.ok) {
-            return publicResponse.json();
-          }
-        } else {
-          const response = await apiFetch('/v1/panel/media/config');
-          if (response.ok) {
-            return response.json();
-          }
-          if (response.status === 401) {
-            const publicResponse = await apiFetch('/v1/public/media/config');
-            if (publicResponse.ok) {
-              return publicResponse.json();
-            }
-          }
-        }
-        throw new Error('Failed to fetch media upload configuration from all available endpoints');
-      } catch (error) {
-        try {
-          const fallbackUrl = isPublicPage ? '/v1/panel/media/config' : '/v1/public/media/config';
-          const fallbackResponse = await apiFetch(fallbackUrl);
-          if (fallbackResponse.ok) {
-            return fallbackResponse.json();
-          }
-        } catch {
-          return {
-            backblazeConfigured: false,
-            cdnDomain: null,
-            supportedTypes: {
-              evidence: [],
-              tickets: [],
-              appeals: [],
-              articles: [],
-              'server-icons': []
-            },
-            fileSizeLimits: {
-              evidence: 0,
-              tickets: 0,
-              appeals: 0,
-              articles: 0,
-              'server-icons': 0
-            }
-          };
-        }
-        throw error;
-      }
-    },
+    queryKey: MEDIA_CONFIG_QUERY_KEY,
+    queryFn: fetchMediaConfig,
     staleTime: 5 * 60 * 1000,
     refetchOnWindowFocus: false,
   });
@@ -225,6 +247,7 @@ async function confirmUpload(key: string): Promise<ConfirmResponse> {
 
 export function useMediaUpload() {
   const config = useMediaUploadConfig();
+  const queryClient = useQueryClient();
 
   const uploadMedia = async (
     file: File,
@@ -232,8 +255,24 @@ export function useMediaUpload() {
     _metadata: Record<string, unknown> = {},
     onProgress?: (progress: UploadProgress) => void
   ): Promise<{ url: string; key: string }> => {
-    if (!config.data?.backblazeConfigured) {
-      throw new Error('Media storage is not configured');
+    // Get fresh config from cache or fetch it
+    let currentConfig = queryClient.getQueryData<MediaUploadConfig>(MEDIA_CONFIG_QUERY_KEY);
+    
+    console.log('[MediaUpload] Cached config:', currentConfig);
+    console.log('[MediaUpload] Current path:', window.location.pathname);
+    console.log('[MediaUpload] Is public page:', isPublicPage());
+    
+    // If no cached config or config says not configured, fetch fresh
+    if (!currentConfig || !currentConfig.backblazeConfigured) {
+      console.log('[MediaUpload] Fetching fresh config...');
+      currentConfig = await fetchMediaConfig();
+      console.log('[MediaUpload] Fresh config:', currentConfig);
+      queryClient.setQueryData(MEDIA_CONFIG_QUERY_KEY, currentConfig);
+    }
+
+    if (!currentConfig?.backblazeConfigured) {
+      console.error('[MediaUpload] Still not configured after fresh fetch');
+      throw new Error('Media storage is not configured. Please check your Backblaze B2 credentials.');
     }
 
     const presign = await getPresignedUrl(file, uploadType);
