@@ -1189,9 +1189,10 @@ const TicketDetail = () => {
     const timestamp = now.toISOString();
 
     // Create the new note with proper structure including attachments
+    // Use backend field names: text, issuerName (not content, author)
     const newNote: TicketNote = {
-      content: ticketDetails.newNote?.trim() || '',
-      author: user?.username || 'Staff',
+      text: ticketDetails.newNote?.trim() || '',
+      issuerName: user?.username || 'Staff',
       date: timestamp,
       attachments: noteAttachments.length > 0 ? noteAttachments.map(att => ({
         id: att.id,
@@ -2625,12 +2626,12 @@ const TicketDetail = () => {
                     {(ticketDetails.notes || []).map((note, idx) => (
                       <div key={idx} className="bg-muted/20 p-4 rounded-lg">
                         <div className="flex justify-between items-start mb-3">
-                          <span className="font-medium text-sm text-foreground">{note.author || note.issuerName || 'Staff'}</span>
+                          <span className="font-medium text-sm text-foreground">{note.issuerName || note.author || 'Staff'}</span>
                           <span className="text-xs text-muted-foreground flex-shrink-0">{formatDate(note.date)}</span>
                         </div>
                         <div className="note-content">
                           <MarkdownRenderer
-                            content={note.content || (note as any).text || ''}
+                            content={note.text || note.content || ''}
                             className="text-sm leading-relaxed"
                           />
                         </div>
