@@ -1814,6 +1814,69 @@ const TicketDetail = () => {
               <PunishmentDetailsCard punishmentId={ticketData.data.punishmentId} />
             )}
 
+            {/* Chat Messages Section for Chat Reports */}
+            {ticketDetails.category === 'Chat Report' && ticketData?.chatMessages && ticketData.chatMessages.length > 0 && (
+              <Card className="mb-4">
+                <CardHeader className="pb-3">
+                  <CardTitle className="text-base flex items-center gap-2">
+                    <MessageSquare className="h-4 w-4" />
+                    Chat Log ({ticketData.chatMessages.length} messages)
+                  </CardTitle>
+                  <CardDescription>
+                    Recent chat messages captured at the time of the report
+                  </CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <div className="max-h-[300px] overflow-y-auto space-y-1 font-mono text-sm bg-muted/50 rounded-lg p-3">
+                    {ticketData.chatMessages.map((msg: any, index: number) => {
+                      // Parse message - could be JSON object or have content property
+                      let username = 'Unknown';
+                      let message = '';
+                      let timestamp = '';
+
+                      if (typeof msg === 'object') {
+                        if (msg.content) {
+                          // Legacy format: {content: "json string", timestamp: ...}
+                          try {
+                            const parsed = JSON.parse(msg.content);
+                            username = parsed.username || 'Unknown';
+                            message = parsed.message || '';
+                            timestamp = parsed.timestamp || '';
+                          } catch {
+                            message = msg.content;
+                          }
+                        } else {
+                          // Direct format: {username, message, timestamp}
+                          username = msg.username || 'Unknown';
+                          message = msg.message || '';
+                          timestamp = msg.timestamp || '';
+                        }
+                      } else if (typeof msg === 'string') {
+                        try {
+                          const parsed = JSON.parse(msg);
+                          username = parsed.username || 'Unknown';
+                          message = parsed.message || '';
+                          timestamp = parsed.timestamp || '';
+                        } catch {
+                          message = msg;
+                        }
+                      }
+
+                      return (
+                        <div key={index} className="flex gap-2 py-0.5 hover:bg-muted/70 px-1 rounded">
+                          <span className="text-muted-foreground shrink-0">
+                            {timestamp ? new Date(timestamp).toLocaleTimeString() : ''}
+                          </span>
+                          <span className="font-semibold text-primary">{username}:</span>
+                          <span className="text-foreground break-all">{message}</span>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </CardContent>
+              </Card>
+            )}
+
             {/* AI Analysis Section - Only show for Chat Report tickets with AI analysis that hasn't been applied or dismissed */}
             {ticketDetails.category === 'Chat Report' && ticketDetails.aiAnalysis && !ticketDetails.aiAnalysis.dismissed && !ticketDetails.aiAnalysis.wasAppliedAutomatically && (
               <div className="bg-blue-50 dark:bg-blue-950 border border-blue-200 dark:border-blue-800 rounded-lg p-4 mb-4" data-testid="ai-analysis">
