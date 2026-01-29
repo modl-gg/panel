@@ -326,6 +326,7 @@ export function useSettings() {
       const currentPath = window.location.pathname;
       const isPublicPage = currentPath.startsWith('/ticket/') ||
                           currentPath.startsWith('/appeal') ||
+                          currentPath.startsWith('/submit-ticket') ||
                           currentPath === '/' ||
                           currentPath.startsWith('/knowledgebase') ||
                           currentPath.startsWith('/article/');
