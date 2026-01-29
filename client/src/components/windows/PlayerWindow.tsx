@@ -2569,12 +2569,16 @@ const PlayerWindow = ({ playerId, isOpen, onClose, initialPosition }: PlayerWind
             </p>
             <div className="bg-muted/30 p-3 rounded-lg">
               <ul className="space-y-2">
-                {playerInfo.notes.map((note, idx) => (
-                  <li key={idx} className="text-sm flex items-start">
-                    <StickyNote className="h-3.5 w-3.5 mr-2 mt-0.5 text-muted-foreground" />
-                    <span>{note}</span>
-                  </li>
-                ))}
+                {(playerInfo.notes || []).length > 0 ? (
+                  (playerInfo.notes || []).map((note, idx) => (
+                    <li key={idx} className="text-sm flex items-start">
+                      <StickyNote className="h-3.5 w-3.5 mr-2 mt-0.5 text-muted-foreground" />
+                      <span>{typeof note === 'string' ? note : note.text}</span>
+                    </li>
+                  ))
+                ) : (
+                  <li className="text-sm text-muted-foreground">No staff notes</li>
+                )}
               </ul>
               
               {playerInfo.isAddingNote && (
@@ -2632,7 +2636,7 @@ const PlayerWindow = ({ playerId, isOpen, onClose, initialPosition }: PlayerWind
                           // Update local state
                           setPlayerInfo(prev => ({
                             ...prev,
-                            notes: [...prev.notes, newNoteWithMetadata],
+                            notes: [...(prev.notes || []), newNoteWithMetadata],
                             isAddingNote: false,
                             newNote: ''
                           }));
