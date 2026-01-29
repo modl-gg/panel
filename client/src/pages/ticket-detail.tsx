@@ -135,44 +135,6 @@ interface AIAnalysis {
 
 // Define types for ticket categories and actions
 type TicketCategory = 'Player Report' | 'Chat Report' | 'Bug Report' | 'Punishment Appeal' | 'Support' | 'Application';
-type PlayerReportAction = 'Accepted' | 'Rejected' | 'Close';
-type BugReportAction = 'Completed' | 'Stale' | 'Duplicate' | 'Close';
-type PunishmentAppealAction = 'Pardon' | 'Reduce' | 'Reject' | 'Close';
-
-// Default responses for different ticket actions
-export const defaultReplies: Record<TicketCategory, Record<string, string>> = {
-  'Player Report': {
-    'Accepted': 'Thank you for creating this report. After careful review, we have accepted this and the reported player will be receiving a punishment.',
-    'Rejected': 'Thank you for submitting this report. After reviewing the evidence provided, we have determined that this does not violate our community guidelines.',
-    'Close': 'This ticket has been closed. Please feel free to open a new report if you encounter any other issues.'
-  },
-  'Chat Report': {
-    'Accepted': 'Thank you for creating this report. After careful review, we have accepted this and the reported player will be receiving a punishment.',
-    'Rejected': 'Thank you for submitting this report. After reviewing the evidence provided, we have determined that this does not violate our community guidelines.',
-    'Close': 'This ticket has been closed. Please feel free to open a new report if you encounter any other issues.'
-  },
-  'Bug Report': {
-    'Completed': 'Thank you for reporting this bug. We have fixed the issue and it will be included in our next update.',
-    'Stale': 'This bug report has been marked as stale due to inactivity or lack of information. Please feel free to reopen if you can provide additional details.',
-    'Duplicate': 'This bug has been identified as a duplicate of an existing issue that our team is already working on.',
-    'Close': 'This bug report has been closed. Thank you for your contribution to improving our game.'
-  },
-  'Punishment Appeal': {
-    'Pardon': 'After reviewing your appeal, we have decided to remove the punishment completely. Thank you for your patience during this process.',
-    'Reduce': 'We have reviewed your appeal and decided to reduce the duration of your punishment. The updated duration will be reflected in your account.',
-    'Reject': 'After careful consideration of your appeal, we have decided to uphold the original punishment. The decision remains final.',
-    'Close': 'This appeal has been closed. If you have additional information, please create a new appeal.'
-  },
-  'Support': {
-    'Resolved': 'Your support request has been resolved. If you need further assistance, please feel free to create a new ticket.',
-    'Close': 'This support ticket has been closed. Thank you for contacting us.'
-  },
-  'Application': {
-    'Accepted': 'Congratulations! Your application has been accepted. You will receive further instructions shortly.',
-    'Rejected': 'Thank you for your interest. Unfortunately, we have decided not to move forward with your application at this time.',
-    'Close': 'This application has been closed.'
-  }
-};
 
 export interface TicketDetails {
   id: string;
@@ -1162,24 +1124,14 @@ const TicketDetail = () => {
 
   // Get placeholder text based on selected action
   const getPlaceholderText = () => {
-    if (ticketDetails.selectedAction && ticketDetails.selectedAction !== 'Comment') {
-      // Get quick response message for this action
+    if (ticketDetails.selectedAction && ticketDetails.selectedAction !== 'Comment' && ticketDetails.selectedAction !== 'Close') {
+      // Get quick response message for this action from configured quick responses
       const actions = getQuickResponsesForTicket(ticketDetails.category);
       const action = actions.find(act => act.name === ticketDetails.selectedAction);
-      
+
       if (action?.message) {
         // Replace any placeholders in the message
         let text = action.message;
-        if (ticketDetails.relatedPlayer && text.includes('{reported-player}')) {
-          text = text.replace('{reported-player}', ticketDetails.relatedPlayer);
-        }
-        return text;
-      }
-      
-      // Fallback to default replies if quick response not found
-      if (defaultReplies[ticketDetails.category] && 
-          defaultReplies[ticketDetails.category][ticketDetails.selectedAction]) {
-        let text = defaultReplies[ticketDetails.category][ticketDetails.selectedAction];
         if (ticketDetails.relatedPlayer && text.includes('{reported-player}')) {
           text = text.replace('{reported-player}', ticketDetails.relatedPlayer);
         }
@@ -1213,64 +1165,32 @@ const TicketDetail = () => {
     
     let actionDesc = '';
     if (ticketDetails.selectedAction && ticketDetails.selectedAction !== 'Comment') {
-      switch(ticketDetails.selectedAction) {
-        case 'Accepted':
-          actionDesc = "accepted this report";
-          break;
-        case 'Rejected':
-          actionDesc = "rejected this report";
-          break;
-        case 'Completed':
-          actionDesc = "marked this bug as completed";
-          break;
-        case 'Stale':
-          actionDesc = "marked this bug as stale";
-          break;
-        case 'Duplicate':
-          actionDesc = "marked this bug as duplicate";
-          break;
-        default:
-          // Handle quick response actions first (takes precedence over hardcoded cases)
-          const actions = getQuickResponsesForTicket(ticketDetails.category);
-          const actionConfig = actions.find(act => act.name === ticketDetails.selectedAction);
-          if (actionConfig) {
-            actionDesc = actionConfig.name.toLowerCase();
-            if (actionConfig.closeTicket) {
-              status = 'Closed';
-            }
-          } else {
-            // Fallback to hardcoded cases if not in quick responses
-            switch(ticketDetails.selectedAction) {
-              case 'Pardon':
-                actionDesc = "pardoned this punishment";
-                break;
-              case 'Reduce':
-                actionDesc = ticketDetails.isPermanent 
-                  ? 'changed the punishment to permanent' 
-                  : `reduced the punishment to ${ticketDetails.duration?.value || 0} ${ticketDetails.duration?.unit || 'days'}`;
-                break;
-              case 'Reject':
-                actionDesc = "rejected this appeal";
-                break;
-              case 'Close':
-                actionDesc = "closed this ticket";
-                status = 'Closed';
-                break;
-              case 'Reopen':
-                actionDesc = "reopened this ticket";
-                status = 'Open';
-                break;
-              default:
-                // Handle dynamic reduce actions
-                if (ticketDetails.selectedAction?.toLowerCase().includes('reduce')) {
-                  actionDesc = ticketDetails.isPermanent 
-                    ? 'changed the punishment to permanent' 
-                    : `reduced the punishment to ${ticketDetails.duration?.value || 0} ${ticketDetails.duration?.unit || 'days'}`;
-                  status = 'Closed';
-                }
-                break;
-            }
+      // Handle built-in actions first
+      if (ticketDetails.selectedAction === 'Close') {
+        actionDesc = "closed this ticket";
+        status = 'Closed';
+      } else if (ticketDetails.selectedAction === 'Reopen') {
+        actionDesc = "reopened this ticket";
+        status = 'Open';
+      } else {
+        // Handle configured quick response actions
+        const actions = getQuickResponsesForTicket(ticketDetails.category);
+        const actionConfig = actions.find(act => act.name === ticketDetails.selectedAction);
+        if (actionConfig) {
+          actionDesc = actionConfig.name.toLowerCase();
+          if (actionConfig.closeTicket) {
+            status = 'Closed';
           }
+          // Handle reduce actions with duration
+          if (actionConfig.appealAction === 'reduce' || ticketDetails.selectedAction?.toLowerCase().includes('reduce')) {
+            actionDesc = ticketDetails.isPermanent
+              ? 'changed the punishment to permanent'
+              : `reduced the punishment to ${ticketDetails.duration?.value || 0} ${ticketDetails.duration?.unit || 'days'}`;
+          }
+        } else {
+          // Unknown action - just use the action name
+          actionDesc = ticketDetails.selectedAction.toLowerCase();
+        }
       }
     }
     
@@ -1328,101 +1248,76 @@ const TicketDetail = () => {
           locked: isClosing || status === 'Closed' ? true : ticketDetails.locked
         };
         
-        // Handle punishment modifications for appeal actions
-        if (ticketDetails.selectedAction === 'Pardon') {
-          // Get punishment data from ticket
+        // Handle punishment modifications for appeal actions based on configured appealAction
+        const actions = getQuickResponsesForTicket(ticketDetails.category);
+        const actionConfig = actions.find(act => act.name === ticketDetails.selectedAction);
+        const appealAction = actionConfig?.appealAction;
+
+        if (appealAction) {
           const punishmentId = ticketData?.data?.punishmentId;
           const playerUuid = ticketData?.data?.playerUuid;
-          
+
           if (punishmentId && playerUuid) {
             try {
-              await modifyPunishmentMutation.mutateAsync({
-                uuid: playerUuid,
-                punishmentId: punishmentId,
-                modificationType: 'APPEAL_ACCEPT',
-                reason: 'Appeal approved - full pardon granted',
-                appealTicketId: ticketDetails.id
-              });
-              
-              toast({
-                title: 'Punishment Pardoned',
-                description: `Punishment ${punishmentId} has been pardoned successfully.`
-              });
-            } catch (error) {
-              console.error('Error pardoning punishment:', error);
-              toast({
-                title: 'Error',
-                description: 'Failed to pardon punishment. The ticket reply was sent but the punishment was not modified.',
-                variant: 'destructive'
-              });
-            }
-          }
-        } else if (ticketDetails.selectedAction === 'Reduce' || ticketDetails.selectedAction?.toLowerCase().includes('reduce')) {
-          // Get punishment data from ticket
-          const punishmentId = ticketData?.data?.punishmentId;
-          const playerUuid = ticketData?.data?.playerUuid;
-          
-          if (punishmentId && playerUuid) {
-            try {
-              // Determine the new duration
-              let newDuration;
-              
-              if (ticketDetails.isPermanent) {
-                // Permanent punishment - send 0 value
-                newDuration = { value: 0, unit: 'seconds' };
-              } else if (ticketDetails.duration?.value && ticketDetails.duration?.unit) {
-                // Use the provided duration - the hook will convert to milliseconds
-                newDuration = ticketDetails.duration;
-              } else {
-                throw new Error('Invalid duration specified for reduction');
+              if (appealAction === 'pardon') {
+                await modifyPunishmentMutation.mutateAsync({
+                  uuid: playerUuid,
+                  punishmentId: punishmentId,
+                  modificationType: 'APPEAL_ACCEPT',
+                  reason: 'Appeal approved - full pardon granted',
+                  appealTicketId: ticketDetails.id
+                });
+
+                toast({
+                  title: 'Punishment Pardoned',
+                  description: `Punishment ${punishmentId} has been pardoned successfully.`
+                });
+              } else if (appealAction === 'reduce') {
+                // Determine the new duration
+                let newDuration;
+
+                if (ticketDetails.isPermanent) {
+                  // Permanent punishment - send 0 value
+                  newDuration = { value: 0, unit: 'seconds' };
+                } else if (ticketDetails.duration?.value && ticketDetails.duration?.unit) {
+                  // Use the provided duration - the hook will convert to milliseconds
+                  newDuration = ticketDetails.duration;
+                } else {
+                  throw new Error('Invalid duration specified for reduction');
+                }
+
+                await modifyPunishmentMutation.mutateAsync({
+                  uuid: playerUuid,
+                  punishmentId: punishmentId,
+                  modificationType: 'APPEAL_DURATION_CHANGE',
+                  reason: 'Appeal partially approved - duration reduced',
+                  newDuration: newDuration,
+                  appealTicketId: ticketDetails.id
+                });
+
+                toast({
+                  title: 'Punishment Reduced',
+                  description: `Punishment ${punishmentId} duration has been reduced successfully.`
+                });
+              } else if (appealAction === 'reject') {
+                await modifyPunishmentMutation.mutateAsync({
+                  uuid: playerUuid,
+                  punishmentId: punishmentId,
+                  modificationType: 'APPEAL_REJECT',
+                  reason: 'Appeal rejected - original punishment upheld',
+                  appealTicketId: ticketDetails.id
+                });
+
+                toast({
+                  title: 'Appeal Rejected',
+                  description: `Appeal for punishment ${punishmentId} has been rejected.`
+                });
               }
-              
-              await modifyPunishmentMutation.mutateAsync({
-                uuid: playerUuid,
-                punishmentId: punishmentId,
-                modificationType: 'APPEAL_DURATION_CHANGE',
-                reason: 'Appeal partially approved - duration reduced',
-                newDuration: newDuration,
-                appealTicketId: ticketDetails.id
-              });
-              
-              toast({
-                title: 'Punishment Reduced',
-                description: `Punishment ${punishmentId} duration has been reduced successfully.`
-              });
             } catch (error) {
-              console.error('Error reducing punishment:', error);
+              console.error('Error processing appeal action:', error);
               toast({
                 title: 'Error',
-                description: 'Failed to reduce punishment. The ticket reply was sent but the punishment was not modified.',
-                variant: 'destructive'
-              });
-            }
-          }
-        } else if (ticketDetails.selectedAction === 'Reject' || ticketDetails.selectedAction === 'Rejected' || ticketDetails.selectedAction?.toLowerCase().includes('reject')) {
-          // Get punishment data from ticket
-          const punishmentId = ticketData?.data?.punishmentId;
-          const playerUuid = ticketData?.data?.playerUuid;
-          
-          if (punishmentId && playerUuid) {
-            try {
-              await modifyPunishmentMutation.mutateAsync({
-                uuid: playerUuid,
-                punishmentId: punishmentId,
-                modificationType: 'APPEAL_REJECT',
-                reason: 'Appeal rejected - original punishment upheld',
-                appealTicketId: ticketDetails.id
-              });
-              
-              toast({
-                title: 'Appeal Rejected',
-                description: `Appeal for punishment ${punishmentId} has been rejected.`
-              });
-            } catch (error) {
-              console.error('Error rejecting appeal:', error);
-              toast({
-                title: 'Error',
-                description: 'Failed to record appeal rejection. The ticket reply was sent but the punishment was not updated.',
+                description: 'Failed to process appeal action. The ticket reply was sent but the punishment was not modified.',
                 variant: 'destructive'
               });
             }
@@ -2037,62 +1932,49 @@ const TicketDetail = () => {
                                   let badgeText = action;
                                   let badgeVariant: "default" | "secondary" | "destructive" | "outline" = "outline";
                                   let badgeIcon = null;
-                                  
-                                  // Customize badge based on action type
+                                  const actionLower = action.toLowerCase();
+
+                                  // Built-in Close action
                                   if (action === 'Close') {
                                     badgeText = 'Closed';
                                     badgeVariant = 'secondary';
                                     badgeIcon = <LockIcon className="h-3 w-3 mr-1" />;
-                                  } else if (action === 'Pardon') {
-                                    badgeText = 'Pardoned';
+                                  } else if (actionLower.includes('reduce')) {
+                                    // Handle reduce actions - extract duration info from message content if available
+                                    const durationMatch = message.content.match(/reduced the punishment to (\d+) (\w+)/);
+                                    if (durationMatch) {
+                                      badgeText = `Reduced to ${durationMatch[1]} ${durationMatch[2]}`;
+                                    } else if (message.content.includes('permanent')) {
+                                      badgeText = 'Made Permanent';
+                                    } else {
+                                      badgeText = action;
+                                    }
+                                    badgeVariant = 'outline';
+                                    badgeIcon = <ArrowLeft className="h-3 w-3 mr-1" />;
+                                  } else if (actionLower.includes('pardon')) {
                                     badgeVariant = 'default';
                                     badgeIcon = <ThumbsUp className="h-3 w-3 mr-1" />;
-                                  } else if (action === 'Reduce') {
-                                    // Extract duration info from message content if available
-                                    const durationMatch = message.content.match(/reduced the punishment to (\d+) (\w+)/);
-                                    if (durationMatch) {
-                                      badgeText = `Reduced to ${durationMatch[1]} ${durationMatch[2]}`;
-                                    } else if (message.content.includes('permanent')) {
-                                      badgeText = 'Made Permanent';
-                                    } else {
-                                      badgeText = 'Reduced';
-                                    }
-                                    badgeVariant = 'outline';
-                                    badgeIcon = <ArrowLeft className="h-3 w-3 mr-1" />;
-                                  } else if (action === 'Reject' || action === 'Rejected') {
-                                    badgeText = 'Rejected';
+                                  } else if (actionLower.includes('reject') || actionLower.includes('denied')) {
                                     badgeVariant = 'destructive';
                                     badgeIcon = <XCircle className="h-3 w-3 mr-1" />;
-                                  } else if (action === 'Accept' || action === 'Accepted') {
-                                    badgeText = 'Accepted';
+                                  } else if (actionLower.includes('accept') || actionLower.includes('fixed') || actionLower.includes('completed') || actionLower.includes('resolved')) {
                                     badgeVariant = 'default';
                                     badgeIcon = <CheckCircle2 className="h-3 w-3 mr-1" />;
-                                  } else if (action === 'Completed') {
-                                    badgeText = 'Completed';
-                                    badgeVariant = 'default';
-                                    badgeIcon = <CheckCircle2 className="h-3 w-3 mr-1" />;
-                                  } else if (action === 'Stale') {
-                                    badgeText = 'Stale';
+                                  } else if (actionLower.includes('stale') || actionLower.includes('pending') || actionLower.includes('investigating')) {
                                     badgeVariant = 'secondary';
                                     badgeIcon = <Clock className="h-3 w-3 mr-1" />;
-                                  } else if (action === 'Duplicate') {
-                                    badgeText = 'Duplicate';
+                                  } else if (actionLower.includes('duplicate')) {
                                     badgeVariant = 'secondary';
                                     badgeIcon = <FileText className="h-3 w-3 mr-1" />;
-                                  } else if (action.toLowerCase().includes('reduce')) {
-                                    // Handle dynamic reduce actions
-                                    const durationMatch = message.content.match(/reduced the punishment to (\d+) (\w+)/);
-                                    if (durationMatch) {
-                                      badgeText = `Reduced to ${durationMatch[1]} ${durationMatch[2]}`;
-                                    } else if (message.content.includes('permanent')) {
-                                      badgeText = 'Made Permanent';
-                                    } else {
-                                      badgeText = 'Reduced';
-                                    }
+                                  } else if (actionLower.includes('escalat')) {
                                     badgeVariant = 'outline';
-                                    badgeIcon = <ArrowLeft className="h-3 w-3 mr-1" />;
+                                    badgeIcon = <ArrowUpRight className="h-3 w-3 mr-1" />;
+                                  } else {
+                                    // Default - just show action name with generic icon
+                                    badgeVariant = 'outline';
+                                    badgeIcon = <FileText className="h-3 w-3 mr-1" />;
                                   }
-                                  
+
                                   return (
                                     <Badge variant={badgeVariant} className="text-xs flex items-center">
                                       {badgeIcon}
@@ -2217,7 +2099,7 @@ const TicketDetail = () => {
                                 className="rounded-md"
                               >
                                 {getActionIcon(action.name)}
-                                {action.name.replace(/^(Accept|Reject|Pardon) - /, '')}
+                                {action.name}
                               </Button>
                             );
                           })}
@@ -2235,8 +2117,12 @@ const TicketDetail = () => {
                         </div>
                       </div>
                       
-                      {/* Additional options for Reduce action */}
-                      {ticketDetails.selectedAction && ticketDetails.selectedAction.toLowerCase().includes('reduce') && (
+                      {/* Additional options for Reduce action - show when action has appealAction='reduce' or action name includes 'reduce' */}
+                      {ticketDetails.selectedAction && (() => {
+                        const actions = getQuickResponsesForTicket(ticketDetails.category);
+                        const actionConfig = actions.find(act => act.name === ticketDetails.selectedAction);
+                        return actionConfig?.appealAction === 'reduce' || ticketDetails.selectedAction.toLowerCase().includes('reduce');
+                      })() && (
                         <div className="mb-3 p-3 border rounded-md bg-muted/10">
                           <div className="flex items-center mb-2">
                             <Checkbox 
