@@ -119,8 +119,10 @@ export interface TicketMessage {
 }
 
 interface TicketNote {
-  content: string;
-  author: string;
+  content?: string;
+  text?: string; // Backend may use 'text' instead of 'content'
+  author?: string;
+  issuerName?: string; // Backend may use 'issuerName' instead of 'author'
   date: string;
   attachments?: Array<{
     id: string;
@@ -2623,12 +2625,12 @@ const TicketDetail = () => {
                     {(ticketDetails.notes || []).map((note, idx) => (
                       <div key={idx} className="bg-muted/20 p-4 rounded-lg">
                         <div className="flex justify-between items-start mb-3">
-                          <span className="font-medium text-sm text-foreground">{note.author}</span>
+                          <span className="font-medium text-sm text-foreground">{note.author || note.issuerName || 'Staff'}</span>
                           <span className="text-xs text-muted-foreground flex-shrink-0">{formatDate(note.date)}</span>
                         </div>
                         <div className="note-content">
                           <MarkdownRenderer
-                            content={note.content}
+                            content={note.content || (note as any).text || ''}
                             className="text-sm leading-relaxed"
                           />
                         </div>

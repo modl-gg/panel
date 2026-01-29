@@ -79,9 +79,14 @@ const processMarkdownContent = (content: string, disableClickablePlayers = false
 };
 
 const MarkdownRenderer = ({ content, className, allowHtml = false, disableClickablePlayers = false }: MarkdownRendererProps) => {
-  // Guard against undefined/null content
-  if (!content) {
+  // Guard against undefined/null content - render empty for falsy values
+  if (content === undefined || content === null) {
     return null;
+  }
+
+  // For empty strings, just return an empty container
+  if (content === '') {
+    return <div className={className}></div>;
   }
 
   const processedContent = processMarkdownContent(content, disableClickablePlayers);
