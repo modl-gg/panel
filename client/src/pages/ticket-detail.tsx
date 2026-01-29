@@ -59,6 +59,7 @@ import { getUnverifiedExplanation } from '@/utils/creator-verification';
 import PlayerPunishment, { PlayerPunishmentData } from '@/components/ui/player-punishment';
 import MediaUpload from '@/components/MediaUpload';
 import TicketAttachments from '@/components/TicketAttachments';
+import { useMediaUpload } from '@/hooks/use-media-upload';
 
 // Define PunishmentType interface
 interface PunishmentType {
@@ -203,6 +204,44 @@ export interface TicketDetails {
 }
 
 // Avatar component for messages - moved outside to prevent recreation on re-renders
+const FilePreview = memo(({ file }: { file: File }) => {
+  const [url, setUrl] = useState<string | null>(null);
+  
+  useEffect(() => {
+    if (file.type.startsWith('image/')) {
+      const objectUrl = URL.createObjectURL(file);
+      setUrl(objectUrl);
+      return () => URL.revokeObjectURL(objectUrl);
+    }
+  }, [file]);
+
+  if (url) {
+    return (
+      <Popover>
+        <PopoverTrigger asChild>
+          <img 
+            src={url} 
+            className="h-4 w-4 object-cover rounded-sm cursor-zoom-in" 
+            alt="Preview"
+          />
+        </PopoverTrigger>
+        <PopoverContent className="p-0 w-auto border-none bg-transparent">
+          <img 
+            src={url} 
+            className="max-w-[300px] max-h-[300px] rounded-md shadow-lg border bg-background" 
+            alt="Full Preview"
+          />
+        </PopoverContent>
+      </Popover>
+    );
+  }
+  
+  if (file.type.startsWith('video/')) return <Video className="h-3 w-3" />;
+  if (file.type === 'application/pdf') return <FileText className="h-3 w-3" />;
+  return <File className="h-3 w-3" />;
+});
+FilePreview.displayName = 'FilePreview';
+
 const MessageAvatar = memo(({ message, ticketData, staffData }: { 
   message: TicketMessage; 
   ticketData?: any; 
@@ -756,6 +795,8 @@ const TicketDetail = () => {
   const [formSubject, setFormSubject] = useState('');
   const [formData, setFormData] = useState<Record<string, string>>({});
   const [replyAttachments, setReplyAttachments] = useState<Array<{id: string, url: string, key: string, fileName: string, fileType: string, fileSize: number, uploadedAt: string, uploadedBy: string}>>([]);
+  const [pendingFiles, setPendingFiles] = useState<File[]>([]);
+  const { uploadMedia } = useMediaUpload();
   
 
   // Helper function to get file icon
@@ -1203,12 +1244,61 @@ const TicketDetail = () => {
   };
 
   const handleSendReply = async () => {
-    if (!ticketDetails.newReply?.trim() || !ticketDetails.selectedAction) return;
+    const hasAttachments = pendingFiles.length > 0 || replyAttachments.length > 0;
+    if ((!ticketDetails.newReply?.trim() && !hasAttachments) && !ticketDetails.selectedAction) return;
     
+    setIsSubmitting(true);
+    
+    // Upload pending files first
+    const finalAttachments = [...replyAttachments];
+    
+    if (pendingFiles.length > 0) {
+      try {
+        for (const file of pendingFiles) {
+          // Show toast for large files
+          if (file.size > 5 * 1024 * 1024) {
+            toast({
+              title: "Uploading...",
+              description: `Uploading ${file.name} (${Math.round(file.size / 1024 / 1024)}MB)`,
+            });
+          }
+
+          const result = await uploadMedia(
+            file, 
+            'ticket', 
+            { ticketId: ticketDetails.id, fieldId: 'reply' }
+          );
+          
+          finalAttachments.push({
+            id: Date.now().toString() + Math.random(),
+            url: result.url,
+            key: result.key,
+            fileName: file.name,
+            fileType: file.type,
+            fileSize: file.size,
+            uploadedAt: new Date().toISOString(),
+            uploadedBy: user?.username || 'Staff'
+          });
+        }
+        
+        // Clear pending files after successful upload
+        setPendingFiles([]);
+      } catch (error) {
+        console.error('Failed to upload files:', error);
+        toast({
+          title: "Upload Failed",
+          description: "Failed to upload one or more files. Please try again.",
+          variant: "destructive"
+        });
+        setIsSubmitting(false);
+        return;
+      }
+    }
+
     const now = new Date();
     const timestamp = now.toISOString();
     
-    let messageContent = ticketDetails.newReply.trim();
+    let messageContent = ticketDetails.newReply?.trim() || '';
     let status: 'Open' | 'Closed' = ticketDetails.status;
     
     let actionDesc = '';
@@ -1274,7 +1364,7 @@ const TicketDetail = () => {
       }
     }
     
-    if (messageContent) {
+    if (messageContent || hasAttachments || actionDesc) {
       const isClosing = status === 'Closed';
 
       // Get current staff member's avatar from staffData
@@ -1290,7 +1380,7 @@ const TicketDetail = () => {
         created: new Date(),
         staff: true,
         action: ticketDetails.selectedAction,
-        attachments: replyAttachments
+        attachments: finalAttachments
       };
       
       const clientMessage: TicketMessage = {
@@ -1301,7 +1391,7 @@ const TicketDetail = () => {
         content: newMessage.content,
         timestamp: timestamp,
         staff: newMessage.staff,
-        attachments: replyAttachments,
+        attachments: finalAttachments.map(a => a.url), // TicketMessage expects strings (URLs) usually, but check type definition
         closedAs: ticketDetails.selectedAction && ticketDetails.selectedAction !== 'Comment' && ticketDetails.selectedAction !== 'Reopen' ? ticketDetails.selectedAction : undefined
       };
       
@@ -2144,21 +2234,69 @@ const TicketDetail = () => {
 
                             {/* Show attachments if any */}
                             {message.attachments && message.attachments.length > 0 && (
-                              <div className="flex flex-wrap gap-2 mt-2">
+                              <div className="flex flex-col gap-2 mt-2">
                                 {message.attachments.map((attachment: any, idx: number) => {
                                   // Handle both attachment objects and URL strings
                                   const attachmentData = typeof attachment === 'string' ? 
-                                    { url: attachment, fileName: attachment.split('/').pop() || 'file', fileType: 'application/octet-stream' } : 
+                                    { url: attachment, fileName: attachment.split('/').pop() || 'file', fileType: null } : 
                                     attachment;
+                                  
+                                  // Infer type if missing
+                                  let fileType = attachmentData.fileType;
+                                  if (!fileType && attachmentData.url) {
+                                    const ext = attachmentData.url.split('.').pop()?.toLowerCase();
+                                    if (['jpg', 'jpeg', 'png', 'gif', 'webp'].includes(ext || '')) fileType = 'image/' + ext;
+                                    else if (['mp4', 'webm', 'mov'].includes(ext || '')) fileType = 'video/' + ext;
+                                  }
+
+                                  const isImage = fileType?.startsWith('image/');
+                                  const isVideo = fileType?.startsWith('video/');
+
+                                  if (isImage) {
+                                    return (
+                                      <div key={idx} className="relative group max-w-sm">
+                                        <Popover>
+                                          <PopoverTrigger asChild>
+                                            <img 
+                                              src={attachmentData.url} 
+                                              alt={attachmentData.fileName} 
+                                              className="max-w-full max-h-[300px] rounded-md border shadow-sm object-contain bg-background cursor-zoom-in"
+                                              loading="lazy"
+                                            />
+                                          </PopoverTrigger>
+                                          <PopoverContent className="p-0 w-auto border-none bg-transparent max-w-[90vw] max-h-[90vh]">
+                                            <img 
+                                              src={attachmentData.url} 
+                                              className="max-w-full max-h-[90vh] rounded-md shadow-2xl border bg-background" 
+                                              alt={attachmentData.fileName}
+                                            />
+                                          </PopoverContent>
+                                        </Popover>
+                                      </div>
+                                    );
+                                  }
+
+                                  if (isVideo) {
+                                    return (
+                                      <div key={idx} className="max-w-sm mt-1">
+                                        <video 
+                                          src={attachmentData.url} 
+                                          controls 
+                                          className="max-w-full max-h-[300px] rounded-md border shadow-sm bg-black"
+                                          preload="metadata"
+                                        />
+                                      </div>
+                                    );
+                                  }
                                   
                                   return (
                                     <Badge 
                                       key={idx} 
                                       variant="outline" 
-                                      className="flex items-center gap-1 cursor-pointer hover:bg-muted/50"
+                                      className="flex items-center gap-1 cursor-pointer hover:bg-muted/50 w-fit"
                                       onClick={() => window.open(attachmentData.url, '_blank')}
                                     >
-                                      {getFileIcon(attachmentData.fileType)}
+                                      {getFileIcon(fileType || 'application/octet-stream')}
                                       <span className="text-xs">{truncateFileName(attachmentData.fileName || attachmentData.url.split('/').pop() || 'file')}</span>
                                     </Badge>
                                   );
@@ -2368,8 +2506,9 @@ const TicketDetail = () => {
                         />
                         
                         {/* Attachment Badges */}
-                        {replyAttachments.length > 0 && (
+                        {(replyAttachments.length > 0 || pendingFiles.length > 0) && (
                           <div className="flex flex-wrap gap-2">
+                            {/* Uploaded Attachments */}
                             {replyAttachments.map((attachment) => (
                               <Badge 
                                 key={attachment.id} 
@@ -2391,6 +2530,29 @@ const TicketDetail = () => {
                                 </button>
                               </Badge>
                             ))}
+                            
+                            {/* Pending Files */}
+                            {pendingFiles.map((file, index) => (
+                              <Badge 
+                                key={`pending-${index}`} 
+                                variant="outline" 
+                                className="flex items-center gap-1 cursor-default bg-muted/50 border-dashed pr-1"
+                              >
+                                <FilePreview file={file} />
+                                <span className="text-xs">{truncateFileName(file.name)}</span>
+                                <span className="text-[10px] text-muted-foreground ml-1">(Pending)</span>
+                                <button
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    setPendingFiles(prev => prev.filter((_, i) => i !== index));
+                                  }}
+                                  className="ml-1 hover:bg-destructive/10 rounded-sm p-0.5"
+                                  title={`Remove ${file.name}`}
+                                >
+                                  <X className="h-3 w-3 text-muted-foreground hover:text-destructive" />
+                                </button>
+                              </Badge>
+                            ))}
                           </div>
                         )}
                         
@@ -2398,20 +2560,9 @@ const TicketDetail = () => {
                         <div className="flex items-center justify-between">
                           <MediaUpload
                             uploadType="ticket"
-                            onUploadComplete={(result, file) => {
-                              if (file) {
-                                const newAttachment = {
-                                  id: Date.now().toString(),
-                                  url: result.url,
-                                  key: result.key,
-                                  fileName: file.name,
-                                  fileType: file.type,
-                                  fileSize: file.size,
-                                  uploadedAt: new Date().toISOString(),
-                                  uploadedBy: user?.username || 'Staff'
-                                };
-                                setReplyAttachments(prev => [...prev, newAttachment]);
-                              }
+                            autoUpload={false}
+                            onFilesSelected={(files) => {
+                                setPendingFiles(prev => [...prev, ...files]);
                             }}
                             metadata={{
                               ticketId: ticketDetails.id,
@@ -2423,9 +2574,13 @@ const TicketDetail = () => {
                           <Button 
                             size="sm" 
                             onClick={handleSendReply}
-                            disabled={!ticketDetails.newReply?.trim() && !ticketDetails.selectedAction}
+                            disabled={((!ticketDetails.newReply?.trim() && pendingFiles.length === 0 && replyAttachments.length === 0) && !ticketDetails.selectedAction) || isSubmitting}
                           >
-                            <Send className="h-4 w-4 mr-1.5" />
+                            {isSubmitting ? (
+                              <Loader2 className="h-4 w-4 mr-1.5 animate-spin" />
+                            ) : (
+                              <Send className="h-4 w-4 mr-1.5" />
+                            )}
                             Send
                           </Button>
                         </div>

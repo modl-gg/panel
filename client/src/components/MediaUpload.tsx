@@ -13,6 +13,8 @@ interface MediaUploadProps {
   onUploadComplete?: (result: { url: string; key: string }, file?: File) => void;
   onUploadStart?: () => void;
   onUploadError?: (error: string) => void;
+  onFilesSelected?: (files: File[]) => void;
+  autoUpload?: boolean;
   maxFiles?: number;
   acceptedTypes?: string[];
   maxSizeBytes?: number;
@@ -63,7 +65,9 @@ export function MediaUpload({
   metadata = {},
   disabled = false,
   className,
-  variant = 'default'
+  variant = 'default',
+  autoUpload = true,
+  onFilesSelected
 }: MediaUploadProps) {
   const [uploadedFiles, setUploadedFiles] = useState<UploadedFile[]>([]);
   const [isDragging, setIsDragging] = useState(false);
@@ -114,6 +118,30 @@ export function MediaUpload({
   const handleFileSelect = useCallback(async (files: FileList | null) => {
     if (!files || files.length === 0) return;
     if (isUploading) return; // Prevent new uploads while one is in progress
+
+    // If autoUpload is false, just return the files
+    if (!autoUpload) {
+      const validFiles: File[] = [];
+      const newFiles = Array.from(files);
+      
+      for (const file of newFiles) {
+        const validationError = validateFile(file);
+        if (validationError) {
+          toast({
+            title: "Invalid File",
+            description: `${file.name}: ${validationError}`,
+            variant: "destructive"
+          });
+          continue;
+        }
+        validFiles.push(file);
+      }
+      
+      if (validFiles.length > 0) {
+        onFilesSelected?.(validFiles);
+      }
+      return;
+    }
 
     const newFiles = Array.from(files).slice(0, maxFiles - uploadedFiles.length);
     
@@ -188,7 +216,7 @@ export function MediaUpload({
         });
       }
     }
-  }, [uploadedFiles, maxFiles, onUploadComplete, onUploadStart, onUploadError, toast, uploadType, metadata, isUploading]);
+  }, [uploadedFiles, maxFiles, onUploadComplete, onUploadStart, onUploadError, toast, uploadType, metadata, isUploading, autoUpload, onFilesSelected]);
 
   const handleDragOver = (e: React.DragEvent) => {
     e.preventDefault();
