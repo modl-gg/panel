@@ -1155,6 +1155,7 @@ const TicketDetail = () => {
           timestamp: reply.created ? (new Date(reply.created).toISOString() || new Date().toISOString()) : new Date().toISOString(),
           staff: reply.staff,
           avatar: reply.avatar,
+          attachments: reply.attachments,
           closedAs: (reply.action === "Comment" || reply.action === "Reopen") ? undefined : reply.action,
           creatorIdentifier: reply.creatorIdentifier
         }))),
@@ -1466,6 +1467,8 @@ const TicketDetail = () => {
         });
       }
     }
+
+    setIsSubmitting(false);
   };
   
   const handleUpdateTagsWithPersistence = (tags: string[]) => {
