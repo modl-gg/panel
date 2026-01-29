@@ -1,11 +1,11 @@
-import React, { useState, useRef, useCallback } from 'react';
+import React, { useState, useRef, useCallback, useMemo } from 'react';
 import { Upload, X, FileText, Image, Video, File, Loader2, Check, AlertCircle } from 'lucide-react';
 import { Button } from '@modl-gg/shared-web/components/ui/button';
 import { useToast } from '@modl-gg/shared-web/hooks/use-toast';
 import { Progress } from '@modl-gg/shared-web/components/ui/progress';
 import { Card, CardContent } from '@modl-gg/shared-web/components/ui/card';
 import { cn } from '@modl-gg/shared-web/lib/utils';
-import { useMediaUpload } from '@/hooks/use-media-upload';
+import { useMediaUpload, useMediaUploadConfig } from '@/hooks/use-media-upload';
 import { formatFileSize } from '@/utils/file-utils';
 
 interface MediaUploadProps {
@@ -36,22 +36,34 @@ interface UploadedFile {
   error?: string;
 }
 
-// Default accepted types for each upload type
-const DEFAULT_ACCEPTED_TYPES = {
-  evidence: ['image/jpeg', 'image/png', 'image/gif', 'image/webp', 'video/mp4', 'video/webm', 'video/quicktime'],
-  ticket: ['image/jpeg', 'image/png', 'image/gif', 'image/webp', 'application/pdf', 'text/plain', 'application/msword', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document'],
-  appeal: ['image/jpeg', 'image/png', 'image/gif', 'image/webp', 'application/pdf', 'text/plain', 'application/msword', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document'],
-  article: ['image/jpeg', 'image/png', 'image/gif', 'image/webp', 'video/mp4', 'video/webm'],
-  'server-icon': ['image/jpeg', 'image/png', 'image/gif', 'image/webp']
+// Fallback accepted types (used when backend config is not available)
+const FALLBACK_ACCEPTED_TYPES = {
+  evidence: ['image/jpeg', 'image/png', 'image/gif', 'image/webp', 'video/mp4', 'video/webm', 'video/quicktime', 'video/x-matroska', 'application/pdf'],
+  ticket: ['image/jpeg', 'image/png', 'image/gif', 'image/webp', 'video/mp4', 'video/webm', 'video/quicktime', 'video/x-matroska', 'application/pdf'],
+  appeal: ['image/jpeg', 'image/png', 'image/gif', 'image/webp', 'video/mp4', 'video/webm', 'video/quicktime', 'video/x-matroska', 'application/pdf'],
+  article: ['image/jpeg', 'image/png', 'image/gif', 'image/webp'],
+  'server-icon': ['image/jpeg', 'image/png', 'image/webp']
 };
 
-// Default size limits (in bytes)
-const DEFAULT_SIZE_LIMITS = {
+// Fallback size limits (in bytes, used when backend config is not available)
+const FALLBACK_SIZE_LIMITS = {
   evidence: 100 * 1024 * 1024, // 100MB
   ticket: 10 * 1024 * 1024,    // 10MB
   appeal: 10 * 1024 * 1024,    // 10MB
   article: 50 * 1024 * 1024,   // 50MB
   'server-icon': 5 * 1024 * 1024 // 5MB
+};
+
+// Map singular uploadType to plural config keys
+const uploadTypeToConfigKey = (uploadType: string): string => {
+  const mapping: Record<string, string> = {
+    'evidence': 'evidence',
+    'ticket': 'tickets',
+    'appeal': 'appeals',
+    'article': 'articles',
+    'server-icon': 'server-icons'
+  };
+  return mapping[uploadType] || uploadType;
 };
 
 export function MediaUpload({
@@ -74,10 +86,24 @@ export function MediaUpload({
   const fileInputRef = useRef<HTMLInputElement>(null);
   const { toast } = useToast();
   const { uploadMedia } = useMediaUpload();
+  const { data: mediaConfig } = useMediaUploadConfig();
 
   const isUploading = uploadedFiles.some(f => f.status === 'uploading');
-  const allowedTypes = acceptedTypes || DEFAULT_ACCEPTED_TYPES[uploadType];
-  const sizeLimit = maxSizeBytes || DEFAULT_SIZE_LIMITS[uploadType];
+
+  const configKey = uploadTypeToConfigKey(uploadType);
+  const allowedTypes = useMemo(() => {
+    if (acceptedTypes) return acceptedTypes;
+    const configTypes = mediaConfig?.supportedTypes?.[configKey as keyof typeof mediaConfig.supportedTypes];
+    if (configTypes && configTypes.length > 0) return configTypes;
+    return FALLBACK_ACCEPTED_TYPES[uploadType];
+  }, [acceptedTypes, mediaConfig, configKey, uploadType]);
+
+  const sizeLimit = useMemo(() => {
+    if (maxSizeBytes) return maxSizeBytes;
+    const configLimit = mediaConfig?.fileSizeLimits?.[configKey as keyof typeof mediaConfig.fileSizeLimits];
+    if (configLimit && configLimit > 0) return configLimit;
+    return FALLBACK_SIZE_LIMITS[uploadType];
+  }, [maxSizeBytes, mediaConfig, configKey, uploadType]);
 
   const getFileIcon = (type: string) => {
     if (type.startsWith('image/')) return <Image className="h-4 w-4" />;
