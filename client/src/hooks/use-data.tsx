@@ -445,6 +445,24 @@ export function useTicketFormSettings() {
   });
 }
 
+export function useQuickResponses() {
+  return useQuery({
+    queryKey: ['/v1/panel/settings/quick-responses'],
+    queryFn: async () => {
+      const res = await apiFetch('/v1/panel/settings/quick-responses');
+      if (!res.ok) {
+        if (res.status === 401 || res.status === 403) {
+          return null;
+        }
+        throw new Error('Failed to fetch quick responses');
+      }
+      return res.json();
+    },
+    staleTime: 1000 * 60 * 5,
+    refetchOnWindowFocus: false
+  });
+}
+
 export function useStats() {
   return useQuery({
     queryKey: ['/v1/panel/stats'],

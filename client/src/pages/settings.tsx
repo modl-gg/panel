@@ -16,7 +16,7 @@ import { Badge } from '@modl-gg/shared-web/components/ui/badge';
 import { Checkbox } from '@modl-gg/shared-web/components/ui/checkbox';
 import { useToast } from '@modl-gg/shared-web/hooks/use-toast';
 import { Select, SelectContent, SelectGroup, SelectItem, SelectLabel, SelectTrigger, SelectValue } from '@modl-gg/shared-web/components/ui/select';
-import { useSettings, useBillingStatus, useUsageData, usePunishmentTypes, useTicketFormSettings } from '@/hooks/use-data';
+import { useSettings, useBillingStatus, useUsageData, usePunishmentTypes, useTicketFormSettings, useQuickResponses } from '@/hooks/use-data';
 import PageContainer from '@/components/layout/PageContainer'
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@modl-gg/shared-web/components/ui/dialog";
 import { queryClient } from '@/lib/queryClient';
@@ -1005,6 +1005,7 @@ const Settings = () => {
   const { data: settingsData, isLoading: isLoadingSettings, isFetching: isFetchingSettings } = useSettings();
   const { data: ticketFormSettingsData, isLoading: isLoadingTicketForms } = useTicketFormSettings();
   const { data: punishmentTypesData, isLoading: isLoadingPunishmentTypes } = usePunishmentTypes();
+  const { data: quickResponsesData, isLoading: isLoadingQuickResponses } = useQuickResponses();
   const { data: billingStatus } = useBillingStatus();
   const { data: usageData } = useUsageData();
   const [currentEmail, setCurrentEmail] = useState('');
@@ -1806,12 +1807,23 @@ const Settings = () => {
       };
 
       const { csrfFetch } = await import('@/utils/csrf');
+
+      // Save general settings
       const response = await csrfFetch('/v1/panel/settings/general', {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json'
         },
         body: JSON.stringify(settingsToSave.general)
+      });
+
+      // Save quick responses to dedicated endpoint
+      await csrfFetch('/v1/panel/settings/quick-responses', {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify(settingsToSave.quickResponses)
       });
 
       if (response.ok) {
@@ -1918,6 +1930,22 @@ const Settings = () => {
       }, 100);
     }
   }, [ticketFormSettingsData, isLoadingTicketForms]);
+
+  // Effect: Load quick responses from the dedicated endpoint
+  useEffect(() => {
+    if (isLoadingQuickResponses || !quickResponsesData) {
+      return;
+    }
+
+    // Check if quick responses data has categories
+    if (quickResponsesData.categories && Array.isArray(quickResponsesData.categories)) {
+      justLoadedFromServerRef.current = true;
+      setQuickResponsesState(quickResponsesData as QuickResponsesConfiguration);
+      setTimeout(() => {
+        justLoadedFromServerRef.current = false;
+      }, 100);
+    }
+  }, [quickResponsesData, isLoadingQuickResponses]);
 
   // Debounced auto-save effect - only trigger when settings change after initial load
   useEffect(() => {

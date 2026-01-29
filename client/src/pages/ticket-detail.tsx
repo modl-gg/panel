@@ -44,7 +44,7 @@ import {
 import { Button } from '@modl-gg/shared-web/components/ui/button';
 import { Badge } from '@modl-gg/shared-web/components/ui/badge';
 import { Checkbox } from '@modl-gg/shared-web/components/ui/checkbox';
-import { useTicket, usePanelTicket, useUpdateTicket, useSettings, useStaff, useModifyPunishment, useApplyPunishment } from '@/hooks/use-data';
+import { useTicket, usePanelTicket, useUpdateTicket, useSettings, useStaff, useModifyPunishment, useApplyPunishment, useQuickResponses } from '@/hooks/use-data';
 import { QuickResponsesConfiguration, defaultQuickResponsesConfig } from '@/types/quickResponses';
 import { useToast } from '@/hooks/use-toast';
 import PageContainer from '@/components/layout/PageContainer';
@@ -308,6 +308,7 @@ const TicketDetail = () => {
   
   // Get settings data early so it's available for useMemo hooks
   const { data: settingsData } = useSettings();
+  const { data: quickResponsesData } = useQuickResponses();
 
   // Get punishment ordinal from dynamic settings data
   const getPunishmentOrdinal = useMemo(() => (punishmentName: string): number => {
@@ -804,12 +805,10 @@ const TicketDetail = () => {
 
   // Function to get available quick responses for current ticket category
   const getQuickResponsesForTicket = (category: TicketCategory) => {
-    if (!settingsData?.settings) return defaultQuickResponsesConfig.categories;
-    
-    // Get quick responses from settings (fallback to default config)
-    const quickResponses: QuickResponsesConfiguration = 
-      settingsData.settings.quickResponses || defaultQuickResponsesConfig;
-    
+    // Use quick responses from dedicated endpoint, fallback to default config
+    const quickResponses: QuickResponsesConfiguration =
+      (quickResponsesData?.categories ? quickResponsesData : null) || defaultQuickResponsesConfig;
+
     // Find the category for this ticket type
     let ticketType = '';
     switch(category) {
@@ -834,12 +833,12 @@ const TicketDetail = () => {
       default:
         ticketType = 'support';
     }
-    
+
     // Find the category that handles this ticket type
-    const responseCategory = quickResponses.categories?.find(cat => 
-      cat.ticketTypes.includes(ticketType)
+    const responseCategory = quickResponses.categories?.find(cat =>
+      cat.ticketTypes?.includes(ticketType)
     );
-    
+
     return responseCategory?.actions || [];
   };
 
