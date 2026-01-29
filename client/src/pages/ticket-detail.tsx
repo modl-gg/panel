@@ -2177,24 +2177,15 @@ const TicketDetail = () => {
 
                                   if (isImage) {
                                     return (
-                                      <div key={idx} className="relative group max-w-sm">
-                                        <Popover>
-                                          <PopoverTrigger asChild>
-                                            <img 
-                                              src={attachmentData.url} 
-                                              alt={attachmentData.fileName} 
-                                              className="max-w-full max-h-[300px] rounded-md border shadow-sm object-contain bg-background cursor-zoom-in"
-                                              loading="lazy"
-                                            />
-                                          </PopoverTrigger>
-                                          <PopoverContent className="p-0 w-auto border-none bg-transparent max-w-[90vw] max-h-[90vh]">
-                                            <img 
-                                              src={attachmentData.url} 
-                                              className="max-w-full max-h-[90vh] rounded-md shadow-2xl border bg-background" 
-                                              alt={attachmentData.fileName}
-                                            />
-                                          </PopoverContent>
-                                        </Popover>
+                                      <div key={idx} className="relative group max-w-sm mt-2">
+                                        <a href={attachmentData.url} target="_blank" rel="noopener noreferrer">
+                                          <img 
+                                            src={attachmentData.url} 
+                                            alt={attachmentData.fileName} 
+                                            className="max-w-full max-h-[300px] rounded-md border shadow-sm object-contain bg-background"
+                                            loading="lazy"
+                                          />
+                                        </a>
                                       </div>
                                     );
                                   }
