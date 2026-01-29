@@ -527,15 +527,30 @@ const PlayerTicket = () => {
     }
     
     // Validation already completed above
-    
+
     setIsSubmitting(true);
       try {
+      // Convert formData keys from field IDs to field labels for better readability
+      const labeledFormData: Record<string, string> = {};
+      const allFormFields = formConfig.fields || [];
+
+      for (const [fieldId, value] of Object.entries(formData)) {
+        // Find the field config to get its label
+        const fieldConfig = allFormFields.find((f: FormField) => f.id === fieldId);
+        if (fieldConfig && fieldConfig.label) {
+          labeledFormData[fieldConfig.label] = value;
+        } else {
+          // Fallback to using the ID if no label found (shouldn't happen normally)
+          labeledFormData[fieldId] = value;
+        }
+      }
+
       // Submit the form to complete the ticket using the new public endpoint
       await submitFormMutation.mutateAsync({
         id: ticketDetails.id,
         formData: {
           subject: finalSubject,
-          formData: formData,
+          formData: labeledFormData,
           creatorIdentifier: getCreatorIdentifier(ticketDetails.id) // Include creator identifier for verification
         }
       });
