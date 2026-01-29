@@ -1787,8 +1787,8 @@ const TicketDetail = () => {
                   )}
                 </div>
 
-                {/* Unlinked Account Notice */}
-                {!ticketData?.creatorUuid && (
+                {/* Unlinked Account Notice - only show when ticket is loaded but has no creatorUuid */}
+                {ticketData && !ticketData.creatorUuid && (
                   <div className="mt-3 p-3 bg-amber-50 dark:bg-amber-950 border border-amber-200 dark:border-amber-800 rounded-lg">
                     <div className="flex items-start gap-2">
                       <AlertCircle className="h-4 w-4 text-amber-600 dark:text-amber-400 mt-0.5 flex-shrink-0" />
