@@ -1,16 +1,16 @@
-import { useState, useMemo } from 'react';
+import { useState } from 'react';
 import { useLocation, useParams } from 'wouter';
 import {
   Bug,
   HelpCircle,
   User,
   Loader2,
-  Send,
   ArrowLeft,
   CheckCircle2,
   AlertCircle,
   Link2,
-  Copy
+  Copy,
+  CheckSquare
 } from 'lucide-react';
 import { getApiUrl, getCurrentDomain } from '@/lib/api';
 import { Button } from "@modl-gg/shared-web/components/ui/button";
@@ -18,7 +18,6 @@ import { Input } from "@modl-gg/shared-web/components/ui/input";
 import { Textarea } from "@modl-gg/shared-web/components/ui/textarea";
 import { Label } from "@modl-gg/shared-web/components/ui/label";
 import { Checkbox } from "@modl-gg/shared-web/components/ui/checkbox";
-import { RadioGroup, RadioGroupItem } from "@modl-gg/shared-web/components/ui/radio-group";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@modl-gg/shared-web/components/ui/select";
 import {
   Card,
@@ -46,7 +45,7 @@ async function apiFetch(url: string, options: RequestInit = {}): Promise<Respons
 
 interface FormField {
   id: string;
-  type: 'text' | 'textarea' | 'dropdown' | 'multiple_choice' | 'checkbox' | 'checkboxes' | 'description';
+  type: 'text' | 'textarea' | 'dropdown' | 'multiple_choice' | 'checkbox' | 'checkboxes' | 'description' | 'file_upload';
   label: string;
   description?: string;
   required: boolean;
@@ -68,57 +67,80 @@ interface FormSection {
   hideByDefault?: boolean;
 }
 
+// Map URL types to form keys
+const typeToFormKey: Record<string, string> = {
+  'support': 'support',
+  'bug': 'bug',
+  'staff': 'application',
+  'application': 'application',
+  'apply': 'application',
+};
+
 const ticketTypes = [
-  { id: 'support', label: 'Support Request', icon: HelpCircle, description: 'Get help with an issue', formKey: 'support' },
-  { id: 'bug', label: 'Bug Report', icon: Bug, description: 'Report a bug or technical issue', formKey: 'bug' },
-  { id: 'staff', label: 'Staff Application', icon: User, description: 'Apply to join the staff team', formKey: 'application' },
+  { id: 'support', label: 'Support Request', icon: HelpCircle, description: 'Get help with an issue' },
+  { id: 'bug', label: 'Bug Report', icon: Bug, description: 'Report a bug or technical issue' },
+  { id: 'staff', label: 'Staff Application', icon: User, description: 'Apply to join the staff team' },
 ];
 
 const SubmitTicketPage = () => {
   const [, setLocation] = useLocation();
-  const { type: initialType } = useParams<{ type?: string }>();
+  const { type: urlType } = useParams<{ type?: string }>();
   const { toast } = useToast();
-  const [selectedType, setSelectedType] = useState<string | null>(initialType || null);
+
+  // Map URL type to internal type
+  const initialType = urlType ? (typeToFormKey[urlType.toLowerCase()] ? urlType.toLowerCase() : null) : null;
+
+  const [selectedType, setSelectedType] = useState<string | null>(
+    initialType === 'apply' || initialType === 'application' ? 'staff' : initialType
+  );
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [submittedTicket, setSubmittedTicket] = useState<{ id: string; subject: string } | null>(null);
   const [formData, setFormData] = useState<Record<string, string>>({});
+  const [formSubject, setFormSubject] = useState('');
   const [copied, setCopied] = useState(false);
 
   const { data: settingsData, isLoading: settingsLoading } = useSettings();
 
+  // Handle form field changes
+  const handleFormFieldChange = (fieldId: string, value: string) => {
+    setFormData(prev => ({ ...prev, [fieldId]: value }));
+  };
+
   // Get form configuration for selected type
-  const formConfig = useMemo(() => {
+  const getFormConfig = () => {
     if (!selectedType || !settingsData?.settings?.ticketForms) {
       return null;
     }
 
-    const typeConfig = ticketTypes.find(t => t.id === selectedType);
-    if (!typeConfig) return null;
+    const ticketForms = settingsData.settings.ticketForms;
+    const formKey = typeToFormKey[selectedType] || selectedType;
 
-    const form = settingsData.settings.ticketForms[typeConfig.formKey];
-    if (!form) return null;
+    // Try multiple keys for backwards compatibility
+    let formConfig = ticketForms[formKey] || ticketForms[selectedType];
 
-    return {
-      fields: (form.fields || []).sort((a: FormField, b: FormField) => a.order - b.order),
-      sections: (form.sections || []).sort((a: FormSection, b: FormSection) => a.order - b.order),
-    };
-  }, [selectedType, settingsData]);
+    // Special handling for staff/application
+    if (!formConfig && (selectedType === 'staff' || selectedType === 'application')) {
+      formConfig = ticketForms['application'] || ticketForms['staff'];
+    }
+
+    return formConfig;
+  };
+
+  const formConfig = getFormConfig();
 
   // Get visible sections based on form data
-  const getVisibleSections = () => {
-    if (!formConfig) return new Set<string>();
-
+  const getVisibleSections = (fields: FormField[], sectionDefinitions: FormSection[]): Set<string> => {
     const visibleSections = new Set<string>();
 
-    // Add sections without conditional logic
-    formConfig.sections.forEach((section: FormSection) => {
+    // Add sections without conditional logic and not hidden by default
+    sectionDefinitions.forEach((section) => {
       if (!section.showIfFieldId && !section.hideByDefault) {
         visibleSections.add(section.id);
       }
     });
 
     // Check conditional sections
-    formConfig.sections.forEach((section: FormSection) => {
+    sectionDefinitions.forEach((section) => {
       if (section.showIfFieldId) {
         const triggerFieldValue = formData[section.showIfFieldId];
         if (section.showIfValue && triggerFieldValue === section.showIfValue) {
@@ -129,13 +151,23 @@ const SubmitTicketPage = () => {
       }
     });
 
-    // Check field-level navigation
-    formConfig.fields.forEach((field: FormField) => {
+    // Check field-level navigation (optionSectionMapping)
+    fields.forEach((field) => {
       const fieldValue = formData[field.id];
       if (field.optionSectionMapping && fieldValue) {
-        const targetSection = field.optionSectionMapping[fieldValue];
-        if (targetSection) {
-          visibleSections.add(targetSection);
+        if (field.type === 'dropdown' || field.type === 'multiple_choice') {
+          const targetSection = field.optionSectionMapping[fieldValue];
+          if (targetSection) {
+            visibleSections.add(targetSection);
+          }
+        } else if (field.type === 'checkboxes') {
+          const selectedValues = fieldValue.split(',').map(v => v.trim()).filter(v => v);
+          selectedValues.forEach(value => {
+            const targetSection = field.optionSectionMapping![value];
+            if (targetSection) {
+              visibleSections.add(targetSection);
+            }
+          });
         }
       }
     });
@@ -143,184 +175,166 @@ const SubmitTicketPage = () => {
     return visibleSections;
   };
 
-  const visibleSections = getVisibleSections();
-
-  // Check if a field should be visible
-  const isFieldVisible = (field: FormField) => {
-    if (!field.sectionId) return true;
-    return visibleSections.has(field.sectionId);
-  };
-
-  // Render a form field
+  // Render a form field (same logic as player-ticket.tsx)
   const renderField = (field: FormField) => {
-    if (!isFieldVisible(field)) return null;
+    // Handle description fields (display-only)
+    if (field.type === 'description') {
+      return (
+        <div key={field.id} className="space-y-1">
+          {field.label && (
+            <Label className="font-medium">{field.label}</Label>
+          )}
+          {field.description && (
+            <p className="text-sm text-muted-foreground">{field.description}</p>
+          )}
+        </div>
+      );
+    }
 
-    const value = formData[field.id] || '';
+    return (
+      <div key={field.id} className="space-y-1">
+        {field.type !== 'checkbox' && (
+          <Label htmlFor={field.id} className="font-medium">
+            {field.label}
+            {field.required && <span className="text-destructive ml-1">*</span>}
+          </Label>
+        )}
 
-    switch (field.type) {
-      case 'description':
-        return (
-          <div key={field.id} className="text-sm text-muted-foreground py-2">
-            {field.description || field.label}
-          </div>
-        );
+        {field.description && (
+          <p className="text-sm text-muted-foreground mb-1">{field.description}</p>
+        )}
 
-      case 'text':
-        return (
-          <div key={field.id} className="space-y-2">
-            <Label htmlFor={field.id}>
-              {field.label}
-              {field.required && <span className="text-red-500 ml-1">*</span>}
-            </Label>
-            {field.description && (
-              <p className="text-sm text-muted-foreground">{field.description}</p>
-            )}
-            <Input
-              id={field.id}
-              value={value}
-              onChange={(e) => setFormData(prev => ({ ...prev, [field.id]: e.target.value }))}
-            />
-          </div>
-        );
-
-      case 'textarea':
-        return (
-          <div key={field.id} className="space-y-2">
-            <Label htmlFor={field.id}>
-              {field.label}
-              {field.required && <span className="text-red-500 ml-1">*</span>}
-            </Label>
-            {field.description && (
-              <p className="text-sm text-muted-foreground">{field.description}</p>
-            )}
-            <Textarea
-              id={field.id}
-              value={value}
-              onChange={(e) => setFormData(prev => ({ ...prev, [field.id]: e.target.value }))}
-              rows={4}
-            />
-          </div>
-        );
-
-      case 'dropdown':
-        return (
-          <div key={field.id} className="space-y-2">
-            <Label htmlFor={field.id}>
-              {field.label}
-              {field.required && <span className="text-red-500 ml-1">*</span>}
-            </Label>
-            {field.description && (
-              <p className="text-sm text-muted-foreground">{field.description}</p>
-            )}
-            <Select
-              value={value}
-              onValueChange={(val) => setFormData(prev => ({ ...prev, [field.id]: val }))}
-            >
-              <SelectTrigger>
-                <SelectValue placeholder="Select an option" />
-              </SelectTrigger>
-              <SelectContent>
-                {field.options?.map((option) => (
-                  <SelectItem key={option} value={option}>
-                    {option}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
-        );
-
-      case 'multiple_choice':
-        return (
-          <div key={field.id} className="space-y-2">
-            <Label>
-              {field.label}
-              {field.required && <span className="text-red-500 ml-1">*</span>}
-            </Label>
-            {field.description && (
-              <p className="text-sm text-muted-foreground">{field.description}</p>
-            )}
-            <RadioGroup
-              value={value}
-              onValueChange={(val) => setFormData(prev => ({ ...prev, [field.id]: val }))}
-            >
+        {field.type === 'textarea' ? (
+          <Textarea
+            id={field.id}
+            placeholder={`Enter ${field.label.toLowerCase()}`}
+            value={formData[field.id] || ''}
+            onChange={(e) => handleFormFieldChange(field.id, e.target.value)}
+            className={selectedType === 'staff' ?
+              (field.id === 'introduction' || field.id === 'server_perspective' || field.id === 'passion') ?
+                "min-h-[180px]" : "min-h-[120px]"
+              : "min-h-[120px]"}
+            required={field.required}
+          />
+        ) : field.type === 'dropdown' ? (
+          <Select
+            value={formData[field.id] || ''}
+            onValueChange={(value) => handleFormFieldChange(field.id, value)}
+          >
+            <SelectTrigger>
+              <SelectValue placeholder={`Select ${field.label.toLowerCase()}`} />
+            </SelectTrigger>
+            <SelectContent>
               {field.options?.map((option) => (
-                <div key={option} className="flex items-center space-x-2">
-                  <RadioGroupItem value={option} id={`${field.id}-${option}`} />
-                  <Label htmlFor={`${field.id}-${option}`} className="font-normal cursor-pointer">
-                    {option}
-                  </Label>
-                </div>
+                <SelectItem key={option} value={option}>
+                  {option}
+                </SelectItem>
               ))}
-            </RadioGroup>
-          </div>
-        );
-
-      case 'checkbox':
-        return (
-          <div key={field.id} className="flex items-start space-x-2 py-2">
+            </SelectContent>
+          </Select>
+        ) : field.type === 'checkbox' ? (
+          <div className="flex items-start space-x-2 mt-2">
             <Checkbox
               id={field.id}
-              checked={value === 'true'}
-              onCheckedChange={(checked) => setFormData(prev => ({ ...prev, [field.id]: checked ? 'true' : '' }))}
+              checked={formData[field.id] === "true"}
+              onCheckedChange={(checked: boolean) => handleFormFieldChange(field.id, checked ? "true" : "false")}
+              className="mt-1"
             />
-            <div className="space-y-1 leading-none">
-              <Label htmlFor={field.id} className="cursor-pointer font-normal">
-                {field.label}
-                {field.required && <span className="text-red-500 ml-1">*</span>}
-              </Label>
-              {field.description && (
-                <p className="text-sm text-muted-foreground">{field.description}</p>
-              )}
-            </div>
-          </div>
-        );
-
-      case 'checkboxes':
-        const selectedValues = value ? value.split(',').filter(v => v) : [];
-        return (
-          <div key={field.id} className="space-y-2">
-            <Label>
+            <label
+              htmlFor={field.id}
+              className="text-sm font-normal leading-tight peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
+            >
               {field.label}
-              {field.required && <span className="text-red-500 ml-1">*</span>}
-            </Label>
-            {field.description && (
-              <p className="text-sm text-muted-foreground">{field.description}</p>
-            )}
-            <div className="space-y-2">
-              {field.options?.map((option) => (
-                <div key={option} className="flex items-center space-x-2">
-                  <Checkbox
-                    id={`${field.id}-${option}`}
-                    checked={selectedValues.includes(option)}
-                    onCheckedChange={(checked) => {
-                      const newValues = checked
-                        ? [...selectedValues, option]
-                        : selectedValues.filter(v => v !== option);
-                      setFormData(prev => ({ ...prev, [field.id]: newValues.join(',') }));
-                    }}
-                  />
-                  <Label htmlFor={`${field.id}-${option}`} className="font-normal cursor-pointer">
-                    {option}
-                  </Label>
-                </div>
-              ))}
-            </div>
+              {field.required && <span className="text-destructive ml-1">*</span>}
+            </label>
           </div>
-        );
-
-      default:
-        return null;
-    }
+        ) : field.type === 'multiple_choice' ? (
+          <div className="space-y-2">
+            {field.options?.map((option) => (
+              <div key={option} className="flex items-center space-x-2">
+                <input
+                  type="radio"
+                  id={`${field.id}-${option}`}
+                  name={field.id}
+                  value={option}
+                  checked={formData[field.id] === option}
+                  onChange={(e) => {
+                    if (e.target.checked) {
+                      handleFormFieldChange(field.id, option);
+                    }
+                  }}
+                  className="h-4 w-4 text-primary focus:ring-primary border-gray-300"
+                />
+                <label
+                  htmlFor={`${field.id}-${option}`}
+                  className="text-sm font-normal leading-tight cursor-pointer"
+                >
+                  {option}
+                </label>
+              </div>
+            ))}
+          </div>
+        ) : field.type === 'checkboxes' ? (
+          <div className="space-y-2">
+            {field.options?.map((option) => (
+              <div key={option} className="flex items-center space-x-2">
+                <Checkbox
+                  id={`${field.id}-${option}`}
+                  checked={formData[field.id]?.includes(option) || false}
+                  onCheckedChange={(checked: boolean) => {
+                    const currentValues = formData[field.id] ? formData[field.id].split(',') : [];
+                    if (checked) {
+                      const newValues = [...currentValues, option].filter(v => v.trim() !== '');
+                      handleFormFieldChange(field.id, newValues.join(','));
+                    } else {
+                      const newValues = currentValues.filter(v => v !== option);
+                      handleFormFieldChange(field.id, newValues.join(','));
+                    }
+                  }}
+                  className="mt-1"
+                />
+                <label
+                  htmlFor={`${field.id}-${option}`}
+                  className="text-sm font-normal leading-tight"
+                >
+                  {option}
+                </label>
+              </div>
+            ))}
+          </div>
+        ) : field.type === 'file_upload' ? (
+          <div className="space-y-2">
+            <p className="text-sm text-muted-foreground">File uploads are only available after ticket creation.</p>
+          </div>
+        ) : (
+          <Input
+            id={field.id}
+            type="text"
+            placeholder={`Enter ${field.label.toLowerCase()}`}
+            value={formData[field.id] || ''}
+            onChange={(e) => handleFormFieldChange(field.id, e.target.value)}
+            required={field.required}
+          />
+        )}
+      </div>
+    );
   };
 
-  const handleSubmit = async () => {
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+
     if (!selectedType || !formConfig) return;
 
-    // Validate required fields
-    for (const field of formConfig.fields) {
-      if (!isFieldVisible(field)) continue;
+    const fields = formConfig.fields || [];
+    const sectionDefinitions = formConfig.sections || [];
+    const visibleSections = getVisibleSections(fields, sectionDefinitions);
+
+    // Validate required fields (only visible ones)
+    for (const field of fields) {
       if (field.type === 'description') continue;
+
+      // Skip fields in non-visible sections
+      if (field.sectionId && !visibleSections.has(field.sectionId)) continue;
 
       if (field.required) {
         const value = formData[field.id];
@@ -358,7 +372,7 @@ const SubmitTicketPage = () => {
           labeledFormData['Email'] = value;
           continue;
         }
-        const fieldConfig = formConfig.fields.find((f: FormField) => f.id === fieldId);
+        const fieldConfig = fields.find((f: FormField) => f.id === fieldId);
         if (fieldConfig && fieldConfig.label) {
           labeledFormData[fieldConfig.label] = value;
         } else {
@@ -366,17 +380,17 @@ const SubmitTicketPage = () => {
         }
       }
 
-      // Build subject from form data
-      const subjectField = formData['subject'] || formData['name'] || formData['title'];
-      const subject = subjectField ? `${typeLabel}: ${subjectField}` : typeLabel;
+      // Build subject
+      const subject = formSubject ||
+        (selectedType === 'staff' ? `Staff Application` : typeLabel);
 
       // Create the ticket with form data
       const response = await apiFetch('/v1/public/tickets', {
         method: 'POST',
         body: JSON.stringify({
-          type: selectedType,
+          type: selectedType === 'staff' ? 'application' : selectedType,
           subject,
-          creatorName: formData['name'] || formData['minecraft_username'] || 'Web User',
+          creatorName: formData['name'] || formData['minecraft_username'] || formData['username'] || 'Web User',
           creatorEmail: formData['email'],
           formData: labeledFormData,
         }),
@@ -442,10 +456,10 @@ const SubmitTicketPage = () => {
 
             <div className="bg-amber-50 dark:bg-amber-950 border border-amber-200 dark:border-amber-800 rounded-lg p-4">
               <div className="flex items-start gap-2">
-                <AlertCircle className="h-4 w-4 text-amber-600 dark:text-amber-400 mt-0.5 flex-shrink-0" />
+                <AlertCircle className="h-4 w-4 text-amber-600 dark:text-white mt-0.5 flex-shrink-0" />
                 <div className="text-sm">
-                  <p className="font-medium text-amber-800 dark:text-amber-200">Link to your Minecraft account</p>
-                  <p className="text-amber-700 dark:text-amber-300 mt-1">
+                  <p className="font-medium text-amber-800 dark:text-white">Link to your Minecraft account</p>
+                  <p className="text-amber-700 dark:text-white/80 mt-1">
                     To link this ticket to your Minecraft account, run this command in-game:
                   </p>
                   <code className="block mt-2 bg-amber-100 dark:bg-amber-900 px-2 py-1 rounded text-xs">
@@ -470,6 +484,7 @@ const SubmitTicketPage = () => {
                 setSubmittedTicket(null);
                 setSelectedType(null);
                 setFormData({});
+                setFormSubject('');
               }}
             >
               Submit Another Ticket
@@ -519,14 +534,50 @@ const SubmitTicketPage = () => {
     );
   }
 
-  // Loading form config
-  if (settingsLoading || !formConfig) {
+  // Loading state
+  if (settingsLoading) {
     return (
       <div className="min-h-screen bg-background flex items-center justify-center p-4">
-        <div className="flex items-center gap-2">
-          <Loader2 className="h-5 w-5 animate-spin" />
-          <span>Loading form...</span>
+        <div className="text-center">
+          <Loader2 className="h-8 w-8 animate-spin mx-auto mb-4 text-primary" />
+          <p className="text-muted-foreground">Loading form configuration...</p>
         </div>
+      </div>
+    );
+  }
+
+  // No form config found
+  if (!formConfig || !formConfig.fields) {
+    return (
+      <div className="min-h-screen bg-background flex items-center justify-center p-4">
+        <Card className="w-full max-w-lg">
+          <CardContent className="pt-6">
+            <div className="text-center py-8 border-2 border-dashed border-red-200 dark:border-red-800 bg-red-50 dark:bg-red-950 rounded-lg">
+              <div className="text-red-600 dark:text-red-400 mb-4">
+                <svg className="h-12 w-12 mx-auto" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L4.082 15.5c-.77.833.192 2.5 1.732 2.5z" />
+                </svg>
+              </div>
+              <h3 className="text-lg font-medium text-red-800 dark:text-red-300 mb-2">Form Not Configured</h3>
+              <p className="text-red-700 dark:text-red-400 mb-4">
+                No form configuration found for {selectedType} tickets.
+              </p>
+              <p className="text-sm text-red-600 dark:text-red-500 mb-4">
+                Please contact server administration to configure this ticket form.
+              </p>
+              <Button
+                variant="outline"
+                onClick={() => {
+                  setSelectedType(null);
+                  setFormData({});
+                }}
+              >
+                <ArrowLeft className="h-4 w-4 mr-2" />
+                Go Back
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
       </div>
     );
   }
@@ -535,16 +586,71 @@ const SubmitTicketPage = () => {
   const currentType = ticketTypes.find(t => t.id === selectedType);
   const Icon = currentType?.icon || HelpCircle;
 
-  // Group fields by section
-  const fieldsWithoutSection = formConfig.fields.filter((f: FormField) => !f.sectionId);
-  const sectionedFields = formConfig.sections.map((section: FormSection) => ({
-    section,
-    fields: formConfig.fields.filter((f: FormField) => f.sectionId === section.id),
+  // Build fields array with email field
+  let fields: FormField[] = formConfig.fields || [];
+  const sectionDefinitions: FormSection[] = formConfig.sections || [];
+
+  const emailField: FormField = {
+    id: 'email',
+    type: 'text',
+    label: 'Email Address',
+    description: 'Your email address for response notifications',
+    required: true,
+    order: 1,
+    sectionId: undefined,
+    options: undefined
+  };
+
+  // Adjust order of existing fields and add email
+  const adjustedFields = fields.map(field => ({
+    ...field,
+    order: field.order >= 1 ? field.order + 1 : field.order
   }));
+  fields = [emailField, ...adjustedFields].sort((a, b) => a.order - b.order);
+
+  // Group fields by section
+  const fieldsBySection: Record<string, FormField[]> = {};
+  const fieldsWithoutSection: FormField[] = [];
+
+  fields.forEach((field) => {
+    if (field.sectionId) {
+      if (!fieldsBySection[field.sectionId]) {
+        fieldsBySection[field.sectionId] = [];
+      }
+      fieldsBySection[field.sectionId].push(field);
+    } else {
+      fieldsWithoutSection.push(field);
+    }
+  });
+
+  // Sort fields within each group
+  Object.keys(fieldsBySection).forEach(sectionId => {
+    fieldsBySection[sectionId].sort((a, b) => a.order - b.order);
+  });
+  fieldsWithoutSection.sort((a, b) => a.order - b.order);
+
+  const visibleSections = getVisibleSections(fields, sectionDefinitions);
 
   return (
     <div className="min-h-screen bg-background py-8 px-4">
-      <div className="max-w-2xl mx-auto">
+      <div className="max-w-3xl mx-auto">
+        {/* Security Disclaimer */}
+        <div className="bg-yellow-50 dark:bg-yellow-950 border border-yellow-200 dark:border-yellow-800 rounded-lg p-4 mb-6">
+          <div className="flex items-start gap-3">
+            <div className="text-yellow-600 dark:text-yellow-400 mt-0.5">
+              <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+                <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clipRule="evenodd" />
+              </svg>
+            </div>
+            <div>
+              <h3 className="font-medium text-yellow-800 dark:text-white">Security Notice</h3>
+              <p className="text-sm text-yellow-700 dark:text-white/80 mt-1">
+                Do not share sensitive information, personal data, or passwords over tickets.
+              </p>
+            </div>
+          </div>
+        </div>
+
         <Card>
           <CardHeader>
             <div className="flex items-center gap-3">
@@ -554,6 +660,7 @@ const SubmitTicketPage = () => {
                 onClick={() => {
                   setSelectedType(null);
                   setFormData({});
+                  setFormSubject('');
                 }}
               >
                 <ArrowLeft className="h-4 w-4" />
@@ -567,61 +674,66 @@ const SubmitTicketPage = () => {
               </div>
             </div>
           </CardHeader>
-          <CardContent className="space-y-6">
-            {/* Email field (always required) */}
-            <div className="space-y-2">
-              <Label htmlFor="email">
-                Email Address
-                <span className="text-red-500 ml-1">*</span>
-              </Label>
-              <p className="text-sm text-muted-foreground">We'll use this to notify you about updates to your ticket.</p>
-              <Input
-                id="email"
-                type="email"
-                value={formData['email'] || ''}
-                onChange={(e) => setFormData(prev => ({ ...prev, email: e.target.value }))}
-                placeholder="your@email.com"
-              />
-            </div>
+          <CardContent>
+            <form onSubmit={handleSubmit} className="space-y-6">
+              <div className="space-y-4">
+                {/* Subject field for non-application tickets */}
+                {selectedType !== 'staff' && (
+                  <div className="space-y-1">
+                    <Label htmlFor="subject" className="font-medium">Ticket Subject</Label>
+                    <Input
+                      id="subject"
+                      type="text"
+                      placeholder="Enter a subject for your ticket"
+                      value={formSubject}
+                      onChange={(e) => setFormSubject(e.target.value)}
+                      required
+                    />
+                  </div>
+                )}
 
-            {/* Fields without sections */}
-            {fieldsWithoutSection.map((field: FormField) => renderField(field))}
+                {/* Render fields without sections first */}
+                {fieldsWithoutSection.map((field) => renderField(field))}
 
-            {/* Sectioned fields */}
-            {sectionedFields.map(({ section, fields }: { section: FormSection; fields: FormField[] }) => {
-              if (!visibleSections.has(section.id) && section.hideByDefault) return null;
-              if (fields.length === 0) return null;
+                {/* Render sections in order - only show visible sections */}
+                {sectionDefinitions
+                  .filter((section) => visibleSections.has(section.id))
+                  .sort((a, b) => a.order - b.order)
+                  .map((section) => {
+                    const sectionFields = fieldsBySection[section.id] || [];
+                    if (sectionFields.length === 0) return null;
 
-              return (
-                <div key={section.id} className="space-y-4 pt-4 border-t">
-                  {section.title && (
-                    <div>
-                      <h3 className="font-medium">{section.title}</h3>
-                      {section.description && (
-                        <p className="text-sm text-muted-foreground">{section.description}</p>
-                      )}
-                    </div>
+                    return (
+                      <div key={section.id} className="border rounded-lg p-4 space-y-4 bg-muted/20">
+                        <div className="border-b pb-2">
+                          <h3 className="font-medium text-lg">{section.title}</h3>
+                          {section.description && (
+                            <p className="text-sm text-muted-foreground mt-1">{section.description}</p>
+                          )}
+                        </div>
+                        {sectionFields.map((field) => renderField(field))}
+                      </div>
+                    );
+                  })}
+              </div>
+
+              <div className="flex justify-end">
+                <Button type="submit" disabled={isSubmitting} className="flex items-center">
+                  {isSubmitting ? (
+                    <>
+                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                      Submitting...
+                    </>
+                  ) : (
+                    <>
+                      <CheckSquare className="mr-2 h-4 w-4" />
+                      Submit Ticket
+                    </>
                   )}
-                  {fields.map((field: FormField) => renderField(field))}
-                </div>
-              );
-            })}
+                </Button>
+              </div>
+            </form>
           </CardContent>
-          <CardFooter className="flex justify-end">
-            <Button onClick={handleSubmit} disabled={isSubmitting}>
-              {isSubmitting ? (
-                <>
-                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                  Submitting...
-                </>
-              ) : (
-                <>
-                  <Send className="h-4 w-4 mr-2" />
-                  Submit Ticket
-                </>
-              )}
-            </Button>
-          </CardFooter>
         </Card>
       </div>
     </div>
