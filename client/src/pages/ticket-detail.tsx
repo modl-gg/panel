@@ -122,6 +122,13 @@ interface TicketNote {
   content: string;
   author: string;
   date: string;
+  attachments?: Array<{
+    id: string;
+    url: string;
+    fileName: string;
+    fileType: string;
+    fileSize: number;
+  }>;
 }
 
 interface AIAnalysis {
@@ -766,6 +773,7 @@ const TicketDetail = () => {
   const [formSubject, setFormSubject] = useState('');
   const [formData, setFormData] = useState<Record<string, string>>({});
   const [replyAttachments, setReplyAttachments] = useState<Array<{id: string, url: string, key: string, fileName: string, fileType: string, fileSize: number, uploadedAt: string, uploadedBy: string}>>([]);
+  const [noteAttachments, setNoteAttachments] = useState<Array<{id: string, url: string, key: string, fileName: string, fileType: string, fileSize: number, uploadedAt: string, uploadedBy: string}>>([]);
   const [pendingFiles, setPendingFiles] = useState<File[]>([]);
   const { uploadMedia } = useMediaUpload();
   
@@ -849,7 +857,7 @@ const TicketDetail = () => {
 
     // Find the category that handles any of these ticket types
     const responseCategory = quickResponses.categories?.find(cat =>
-      cat.ticketTypes?.some(type => ticketTypes.includes(type.toLowerCase()))
+      cat.ticketTypes?.some(type => type && ticketTypes.includes(type.toLowerCase()))
     );
 
     return responseCategory?.actions || [];
@@ -1171,27 +1179,37 @@ const TicketDetail = () => {
 
   // Define updated handlers that save changes to MongoDB
   const handleAddNote = () => {
-    if (!ticketDetails.newNote?.trim()) return;
-    
+    if (!ticketDetails.newNote?.trim() && noteAttachments.length === 0) return;
+
     const now = new Date();
     // Store ISO string for the server
     const timestamp = now.toISOString();
-    
-    // Create the new note with proper structure
+
+    // Create the new note with proper structure including attachments
     const newNote: TicketNote = {
-      content: ticketDetails.newNote.trim(),
+      content: ticketDetails.newNote?.trim() || '',
       author: user?.username || 'Staff',
-      date: timestamp
+      date: timestamp,
+      attachments: noteAttachments.length > 0 ? noteAttachments.map(att => ({
+        id: att.id,
+        url: att.url,
+        fileName: att.fileName,
+        fileType: att.fileType,
+        fileSize: att.fileSize
+      })) : undefined
     };
-    
+
     // First update local state for immediate UI feedback
     setTicketDetails(prev => ({
       ...prev,
-      notes: [...prev.notes, newNote],
+      notes: [...(prev.notes || []), newNote],
       newNote: '',
       isAddingNote: false
     }));
-    
+
+    // Clear note attachments
+    setNoteAttachments([]);
+
     // Then send update to server
     updateTicketMutation.mutate({
       id: ticketDetails.id,
@@ -2599,22 +2617,41 @@ const TicketDetail = () => {
               {activeTab === 'notes' && (
                 <div className="space-y-4">
                   <div className="space-y-4 mb-5 max-h-[480px] overflow-y-auto p-2">
-                    {ticketDetails.notes.map((note, idx) => (
+                    {(ticketDetails.notes || []).map((note, idx) => (
                       <div key={idx} className="bg-muted/20 p-4 rounded-lg">
                         <div className="flex justify-between items-start mb-3">
                           <span className="font-medium text-sm text-foreground">{note.author}</span>
                           <span className="text-xs text-muted-foreground flex-shrink-0">{formatDate(note.date)}</span>
                         </div>
                         <div className="note-content">
-                          <MarkdownRenderer 
-                            content={note.content} 
+                          <MarkdownRenderer
+                            content={note.content}
                             className="text-sm leading-relaxed"
                           />
                         </div>
+                        {note.attachments && note.attachments.length > 0 && (
+                          <div className="mt-3 pt-3 border-t border-border/50">
+                            <p className="text-xs text-muted-foreground mb-2">Attachments:</p>
+                            <div className="flex flex-wrap gap-2">
+                              {note.attachments.map((att, attIdx) => (
+                                <a
+                                  key={attIdx}
+                                  href={att.url}
+                                  target="_blank"
+                                  rel="noopener noreferrer"
+                                  className="flex items-center gap-1.5 px-2 py-1 bg-muted rounded text-xs hover:bg-muted/80 transition-colors"
+                                >
+                                  {getFileIcon(att.fileType)}
+                                  <span className="truncate max-w-[150px]">{att.fileName}</span>
+                                </a>
+                              ))}
+                            </div>
+                          </div>
+                        )}
                       </div>
                     ))}
 
-                    {ticketDetails.notes.length === 0 && (
+                    {(!ticketDetails.notes || ticketDetails.notes.length === 0) && (
                       <div className="text-center py-8">
                         <StickyNote className="h-8 w-8 mx-auto text-muted-foreground opacity-50" />
                         <p className="mt-2 text-sm text-muted-foreground">No staff notes yet</p>
@@ -2638,28 +2675,78 @@ const TicketDetail = () => {
                           }));
                         }}
                       />
-                      <div className="flex justify-end gap-2">
-                        <Button 
-                          variant="outline" 
-                          size="sm"
-                          onClick={() => {
-                            setTicketDetails(prev => ({
-                              ...prev,
-                              isAddingNote: false,
-                              newNote: ''
-                            }));
+
+                      {/* Show attached files */}
+                      {noteAttachments.length > 0 && (
+                        <div className="mb-3 p-2 bg-muted/30 rounded-md">
+                          <p className="text-xs text-muted-foreground mb-2">Attachments:</p>
+                          <div className="flex flex-wrap gap-2">
+                            {noteAttachments.map((attachment) => (
+                              <div
+                                key={attachment.id}
+                                className="flex items-center gap-1.5 px-2 py-1 bg-background border rounded text-xs"
+                              >
+                                {getFileIcon(attachment.fileType)}
+                                <span className="truncate max-w-[120px]">{attachment.fileName}</span>
+                                <button
+                                  onClick={() => setNoteAttachments(prev => prev.filter(a => a.id !== attachment.id))}
+                                  className="ml-1 text-muted-foreground hover:text-destructive"
+                                >
+                                  <X className="h-3 w-3" />
+                                </button>
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+
+                      <div className="flex justify-between items-center gap-2">
+                        <MediaUpload
+                          uploadType="ticket"
+                          onUploadComplete={(result, file) => {
+                            const newAttachment = {
+                              id: result.key || `att-${Date.now()}`,
+                              url: result.url,
+                              key: result.key || '',
+                              fileName: file?.name || 'Unknown file',
+                              fileType: file?.type || 'application/octet-stream',
+                              fileSize: file?.size || 0,
+                              uploadedAt: new Date().toISOString(),
+                              uploadedBy: user?.username || 'Staff'
+                            };
+                            setNoteAttachments(prev => [...prev, newAttachment]);
                           }}
-                        >
-                          Cancel
-                        </Button>
-                        <Button 
-                          size="sm" 
-                          onClick={handleAddNote}
-                          disabled={!ticketDetails.newNote?.trim()}
-                        >
-                          <StickyNote className="h-4 w-4 mr-1.5" />
-                          Add Note
-                        </Button>
+                          metadata={{
+                            ticketId: ticketDetails.id,
+                            category: 'note'
+                          }}
+                          variant="button-only"
+                          maxFiles={5}
+                        />
+                        <div className="flex gap-2">
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => {
+                              setTicketDetails(prev => ({
+                                ...prev,
+                                isAddingNote: false,
+                                newNote: ''
+                              }));
+                              setNoteAttachments([]);
+                            }}
+                          >
+                            Cancel
+                          </Button>
+                          <Button
+                            size="sm"
+                            onClick={handleAddNote}
+                            disabled={!ticketDetails.newNote?.trim() && noteAttachments.length === 0}
+                          >
+                            <StickyNote className="h-4 w-4 mr-1.5" />
+                            Add Note
+                          </Button>
+                        </div>
                       </div>
                     </div>
                   ) : (
