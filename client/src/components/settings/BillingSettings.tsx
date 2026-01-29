@@ -254,33 +254,48 @@ const BillingSettings = () => {
 
   const getCurrentPlan = () => {
     if (!billingStatus) return 'free';
-    const { subscription_status, current_period_end } = billingStatus;
+    const { plan, subscriptionStatus, currentPeriodEnd } = billingStatus;
     
-    // For cancelled subscriptions, check if the period has ended
-    if (subscription_status === 'canceled') {
-      if (!current_period_end) {
-        return 'free'; // No end date means it's already expired
+    // If plan is explicitly set to premium in the database, trust it
+    if (plan === 'premium') {
+      // For cancelled subscriptions, check if the period has ended
+      if (subscriptionStatus === 'canceled') {
+        if (!currentPeriodEnd) {
+          return 'free'; // No end date means it's already expired
+        }
+        const endDate = new Date(currentPeriodEnd);
+        const now = new Date();
+        if (endDate <= now) {
+          return 'free'; // Cancellation period has ended
+        }
+        return 'premium'; // Still has access until end date
       }
-      const endDate = new Date(current_period_end);
-      const now = new Date();
-      if (endDate <= now) {
-        return 'free'; // Cancellation period has ended
-      }
-      return 'premium'; // Still has access until end date
-    }
-    
-    // Active and trialing are clearly premium
-    if (['active', 'trialing'].includes(subscription_status)) {
       return 'premium';
     }
     
-    // For payment issues (past_due, unpaid), check if still within period
-    if (['past_due', 'unpaid', 'incomplete'].includes(subscription_status)) {
-      if (current_period_end) {
-        const endDate = new Date(current_period_end);
+    // Fallback logic for subscription status
+    if (subscriptionStatus === 'canceled') {
+      if (!currentPeriodEnd) {
+        return 'free';
+      }
+      const endDate = new Date(currentPeriodEnd);
+      const now = new Date();
+      if (endDate <= now) {
+        return 'free';
+      }
+      return 'premium';
+    }
+    
+    if (['active', 'trialing'].includes(subscriptionStatus)) {
+      return 'premium';
+    }
+    
+    if (['past_due', 'unpaid', 'incomplete'].includes(subscriptionStatus)) {
+      if (currentPeriodEnd) {
+        const endDate = new Date(currentPeriodEnd);
         const now = new Date();
         if (endDate > now) {
-          return 'premium'; // Still within paid period despite payment issues
+          return 'premium';
         }
       }
     }
@@ -295,11 +310,11 @@ const BillingSettings = () => {
   const getSubscriptionAlert = () => {
     if (isBillingLoading || !billingStatus) return null;
 
-    const { subscription_status, current_period_end } = billingStatus;
+    const { subscriptionStatus, currentPeriodEnd } = billingStatus;
 
     // Special handling for cancelled subscriptions
-    if (subscription_status === 'canceled') {
-      if (!current_period_end) {
+    if (subscriptionStatus === 'canceled') {
+      if (!currentPeriodEnd) {
         // No end date means it's already expired - show expired message
         return (
           <Alert className="flex items-center border-red-200 bg-red-50 dark:border-red-800 dark:bg-red-950">
@@ -311,7 +326,7 @@ const BillingSettings = () => {
         );
       }
       
-      const endDate = new Date(current_period_end);
+      const endDate = new Date(currentPeriodEnd);
       const today = new Date();
       
       if (endDate <= today) {
@@ -340,7 +355,7 @@ const BillingSettings = () => {
     }
 
     // Handle other problematic statuses
-    if (['past_due', 'unpaid'].includes(subscription_status)) {
+    if (['past_due', 'unpaid'].includes(subscriptionStatus)) {
       return (
         <Alert variant="destructive" className="flex items-center">
           <AlertTriangle className="h-4 w-4" />
@@ -357,14 +372,14 @@ const BillingSettings = () => {
   const getSubscriptionStatusBadge = () => {
     if (!billingStatus) return null;
     
-    const { subscription_status, current_period_end } = billingStatus;
+    const { subscriptionStatus, currentPeriodEnd } = billingStatus;
     
     // Special handling for cancelled subscriptions
-    if (subscription_status === 'canceled') {
-      if (!current_period_end) {
+    if (subscriptionStatus === 'canceled') {
+      if (!currentPeriodEnd) {
         return <Badge variant="secondary" className="bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-100"><AlertTriangle className="h-3 w-3 mr-1" />Expired</Badge>;
       }
-      const endDate = new Date(current_period_end);
+      const endDate = new Date(currentPeriodEnd);
       const today = new Date();
       if (endDate <= today) {
         return <Badge variant="secondary" className="bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-100"><AlertTriangle className="h-3 w-3 mr-1" />Expired</Badge>;
@@ -373,7 +388,7 @@ const BillingSettings = () => {
       }
     }
     
-    switch (subscription_status) {
+    switch (subscriptionStatus) {
       case 'active':
         return <Badge variant="secondary" className="bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-100"><CheckCircle className="h-3 w-3 mr-1" />Active</Badge>;
       case 'trialing':
@@ -381,7 +396,7 @@ const BillingSettings = () => {
       case 'past_due':
         return <Badge variant="destructive"><AlertTriangle className="h-3 w-3 mr-1" />Past Due</Badge>;
       default:
-        return <Badge variant="outline">{subscription_status}</Badge>;
+        return <Badge variant="outline">{subscriptionStatus}</Badge>;
     }
   };
 
@@ -456,7 +471,7 @@ const BillingSettings = () => {
   };
 
   const PremiumBillingView = () => {
-    const { subscription_status, current_period_end } = billingStatus || {};
+    const { subscriptionStatus, currentPeriodEnd } = billingStatus || {};
 
 
     return (
@@ -473,13 +488,13 @@ const BillingSettings = () => {
                   <span className="text-2xl font-bold text-primary">$9.99/month</span>
                 </CardTitle>
                 <CardDescription className='mt-4'>
-                  {subscription_status === 'canceled' && current_period_end
-                    ? `Access ends ${new Date(current_period_end).toLocaleDateString()}`
-                    : subscription_status === 'canceled' && !current_period_end
+                  {subscriptionStatus === 'canceled' && currentPeriodEnd
+                    ? `Access ends ${new Date(currentPeriodEnd).toLocaleDateString()}`
+                    : subscriptionStatus === 'canceled' && !currentPeriodEnd
                     ? 'Your subscription has been cancelled and access has ended.'
-                    : current_period_end 
-                    ? `${subscription_status === 'trialing' ? 'Trial ends' : 'Next billing'} ${new Date(current_period_end).toLocaleDateString()}`
-                    : subscription_status === 'active'
+                    : currentPeriodEnd 
+                    ? `${subscriptionStatus === 'trialing' ? 'Trial ends' : 'Next billing'} ${new Date(currentPeriodEnd).toLocaleDateString()}`
+                    : subscriptionStatus === 'active'
                     ? 'Your premium subscription is active. Billing information is being synced with Stripe.'
                     : 'Modl uses Stripe to handle billing. Use the buttons below to manage your subscription.'
                   }
@@ -493,7 +508,7 @@ const BillingSettings = () => {
           <CardContent className="space-y-6">
             {/* Billing Management Buttons */}
             <div className="flex gap-3">
-              {subscription_status !== 'canceled' && (
+              {subscriptionStatus !== 'canceled' && (
                 <Button 
                   onClick={handleCreatePortalSession}
                   disabled={isLoading}
@@ -504,7 +519,7 @@ const BillingSettings = () => {
                 </Button>
               )}
               
-              {subscription_status === 'active' && (
+              {subscriptionStatus === 'active' && (
                 <AlertDialog>
                   <AlertDialogTrigger asChild>
                     <Button 
@@ -520,7 +535,7 @@ const BillingSettings = () => {
                     <AlertDialogHeader>
                       <AlertDialogTitle>Cancel Premium Subscription</AlertDialogTitle>
                       <AlertDialogDescription>
-                        Are you sure you want to cancel your Premium subscription? You'll continue to have access to all Premium features until the end of your current billing period{current_period_end ? ` (${new Date(current_period_end).toLocaleDateString()})` : ''}.
+                        Are you sure you want to cancel your Premium subscription? You'll continue to have access to all Premium features until the end of your current billing period{currentPeriodEnd ? ` (${new Date(currentPeriodEnd).toLocaleDateString()})` : ''}.
                         <br /><br />
                         After that, your server will be downgraded to the Free plan.
                       </AlertDialogDescription>
@@ -538,7 +553,7 @@ const BillingSettings = () => {
                 </AlertDialog>
               )}
               
-              {subscription_status === 'canceled' && (
+              {subscriptionStatus === 'canceled' && (
                 <>
                   <Button 
                     onClick={handleCreatePortalSession}

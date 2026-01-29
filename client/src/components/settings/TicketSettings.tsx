@@ -134,20 +134,20 @@ const TicketSettings = ({
   // Check if user has premium access
   const isPremiumUser = () => {
     if (!billingStatus) return false;
-    const { subscription_status, current_period_end, plan } = billingStatus;
+    const { subscriptionStatus, currentPeriodEnd, plan } = billingStatus;
     
     // For cancelled subscriptions, check if the period has ended
-    if (subscription_status === 'canceled') {
-      if (!current_period_end) return false;
-      const endDate = new Date(current_period_end);
+    if (subscriptionStatus === 'canceled') {
+      if (!currentPeriodEnd) return false;
+      const endDate = new Date(currentPeriodEnd);
       const now = new Date();
       return endDate > now && plan === 'premium';
     }
     
     // Active, trialing, or payment issues within period
-    return (['active', 'trialing'].includes(subscription_status) && plan === 'premium') ||
-           (['past_due', 'unpaid', 'incomplete'].includes(subscription_status) && plan === 'premium' && 
-            current_period_end && new Date(current_period_end) > new Date());
+    return (['active', 'trialing'].includes(subscriptionStatus) && plan === 'premium') ||
+           (['past_due', 'unpaid', 'incomplete'].includes(subscriptionStatus) && plan === 'premium' && 
+            currentPeriodEnd && new Date(currentPeriodEnd) > new Date());
   };
 
   // Collapsible state

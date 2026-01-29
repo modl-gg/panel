@@ -1015,14 +1015,30 @@ const Settings = () => {
     
     // Use the same logic as BillingSettings.tsx getCurrentPlan() function
     const getCurrentPlan = () => {
-      const { subscription_status, current_period_end } = billingStatus;
+      const { plan, subscriptionStatus, currentPeriodEnd } = billingStatus;
+      
+      // If plan is explicitly set to premium in the database, trust it
+      if (plan === 'premium') {
+        if (subscriptionStatus === 'canceled') {
+          if (!currentPeriodEnd) {
+            return 'Free';
+          }
+          const endDate = new Date(currentPeriodEnd);
+          const now = new Date();
+          if (endDate <= now) {
+            return 'Free';
+          }
+          return 'Premium';
+        }
+        return 'Premium';
+      }
       
       // For cancelled subscriptions, check if the period has ended
-      if (subscription_status === 'canceled') {
-        if (!current_period_end) {
+      if (subscriptionStatus === 'canceled') {
+        if (!currentPeriodEnd) {
           return 'Free'; // No end date means it's already expired
         }
-        const endDate = new Date(current_period_end);
+        const endDate = new Date(currentPeriodEnd);
         const now = new Date();
         if (endDate <= now) {
           return 'Free'; // Cancellation period has ended
@@ -1031,14 +1047,14 @@ const Settings = () => {
       }
       
       // Active and trialing are clearly premium
-      if (['active', 'trialing'].includes(subscription_status)) {
+      if (['active', 'trialing'].includes(subscriptionStatus)) {
         return 'Premium';
       }
       
       // For payment issues (past_due, unpaid), check if still within period
-      if (['past_due', 'unpaid', 'incomplete'].includes(subscription_status)) {
-        if (current_period_end) {
-          const endDate = new Date(current_period_end);
+      if (['past_due', 'unpaid', 'incomplete'].includes(subscriptionStatus)) {
+        if (currentPeriodEnd) {
+          const endDate = new Date(currentPeriodEnd);
           const now = new Date();
           if (endDate > now) {
             return 'Premium'; // Still within paid period despite payment issues
@@ -1050,8 +1066,8 @@ const Settings = () => {
     };
 
     const plan = getCurrentPlan();
-    const status = billingStatus.subscription_status || "active";
-    const nextBilling = billingStatus.current_period_end ? new Date(billingStatus.current_period_end).toLocaleDateString() : null;
+    const status = billingStatus.subscriptionStatus || "active";
+    const nextBilling = billingStatus.currentPeriodEnd ? new Date(billingStatus.currentPeriodEnd).toLocaleDateString() : null;
     
     let statusBadge = "";
     if (status === "active") statusBadge = "Active";
