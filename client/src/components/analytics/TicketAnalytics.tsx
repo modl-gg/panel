@@ -6,9 +6,9 @@ import { BarChart, Bar, LineChart, Line, PieChart, Pie, Cell, XAxis, YAxis, Cart
 
 interface TicketData {
   byStatus: Array<{ status: string; count: number }>;
-  byType: Array<{ type: string; count: number }>;
-  dailyTrend: Array<{ date: string; count: number }>;
-  avgResolutionTime: number;
+  byCategory: Array<{ category: string; count: number }>;
+  dailyTickets: Array<{ date: string; count: number }>;
+  avgResolutionByCategory?: Array<{ category: string; avgHours: number }>;
 }
 
 interface TicketAnalyticsProps {
@@ -56,10 +56,15 @@ export function TicketAnalytics({ data, loading, period, onPeriodChange }: Ticke
   }
 
   // Format daily trend data for better display
-  const formattedDailyTrend = data.dailyTrend.map(item => ({
+  const formattedDailyTrend = (data.dailyTickets || []).map(item => ({
     ...item,
-    displayDate: new Date(item.date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
+    displayDate: item.date
   }));
+
+  // Calculate average resolution time
+  const avgResolutionTime = data.avgResolutionByCategory && data.avgResolutionByCategory.length > 0
+    ? Math.round(data.avgResolutionByCategory.reduce((sum, item) => sum + item.avgHours, 0) / data.avgResolutionByCategory.length)
+    : 0;
 
   return (
     <Card className="col-span-full">
@@ -98,7 +103,7 @@ export function TicketAnalytics({ data, loading, period, onPeriodChange }: Ticke
                   <CardTitle className="text-base">Average Resolution Time</CardTitle>
                 </CardHeader>
                 <CardContent>
-                  <div className="text-3xl font-bold">{data.avgResolutionTime} hours</div>
+                  <div className="text-3xl font-bold">{avgResolutionTime} hours</div>
                   <p className="text-sm text-muted-foreground">Time to resolve tickets</p>
                 </CardContent>
               </Card>
@@ -108,7 +113,7 @@ export function TicketAnalytics({ data, loading, period, onPeriodChange }: Ticke
                 </CardHeader>
                 <CardContent>
                   <div className="text-3xl font-bold">
-                    {data.byStatus.reduce((sum, item) => sum + item.count, 0)}
+                    {(data.byStatus || []).reduce((sum, item) => sum + item.count, 0)}
                   </div>
                   <p className="text-sm text-muted-foreground">In selected period</p>
                 </CardContent>
@@ -121,7 +126,7 @@ export function TicketAnalytics({ data, loading, period, onPeriodChange }: Ticke
               <ResponsiveContainer width="100%" height="100%">
                 <PieChart>
                   <Pie
-                    data={data.byStatus}
+                    data={data.byStatus || []}
                     cx="50%"
                     cy="50%"
                     labelLine={false}
@@ -130,7 +135,7 @@ export function TicketAnalytics({ data, loading, period, onPeriodChange }: Ticke
                     fill="#8884d8"
                     dataKey="count"
                   >
-                    {data.byStatus.map((entry, index) => (
+                    {(data.byStatus || []).map((entry, index) => (
                       <Cell key={`cell-${index}`} fill={statusColorMap[entry.status] || COLORS[index % COLORS.length]} />
                     ))}
                   </Pie>
@@ -143,14 +148,14 @@ export function TicketAnalytics({ data, loading, period, onPeriodChange }: Ticke
           <TabsContent value="type">
             <div className="h-80">
               <ResponsiveContainer width="100%" height="100%">
-                <BarChart data={data.byType}>
+                <BarChart data={data.byCategory || []}>
                   <CartesianGrid strokeDasharray="3 3" />
-                  <XAxis dataKey="type" />
+                  <XAxis dataKey="category" />
                   <YAxis />
                   <Tooltip />
                   <Bar dataKey="count" fill="#3b82f6">
-                    {data.byType.map((entry, index) => (
-                      <Cell key={`cell-${index}`} fill={typeColorMap[entry.type] || COLORS[index % COLORS.length]} />
+                    {(data.byCategory || []).map((entry, index) => (
+                      <Cell key={`cell-${index}`} fill={typeColorMap[entry.category?.toLowerCase()] || COLORS[index % COLORS.length]} />
                     ))}
                   </Bar>
                 </BarChart>

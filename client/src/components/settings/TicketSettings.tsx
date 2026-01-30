@@ -191,6 +191,14 @@ const TicketSettings = ({
   const [selectedPunishmentTypeId, setSelectedPunishmentTypeId] = useState<number | null>(null);
   const [newAIPunishmentDescription, setNewAIPunishmentDescription] = useState('');
 
+  // Quick Response deletion confirmation state
+  const [quickResponseDeleteDialogOpen, setQuickResponseDeleteDialogOpen] = useState(false);
+  const [quickResponseToDelete, setQuickResponseToDelete] = useState<{categoryId: string; actionId: string; actionName: string} | null>(null);
+
+  // AI Punishment Type deletion confirmation state
+  const [aiPunishmentDeleteDialogOpen, setAiPunishmentDeleteDialogOpen] = useState(false);
+  const [aiPunishmentToDelete, setAiPunishmentToDelete] = useState<{id: string; name: string} | null>(null);
+
   // Tag deletion confirmation states
   const [tagDeleteDialogOpen, setTagDeleteDialogOpen] = useState(false);
   const [tagToDelete, setTagToDelete] = useState<{type: 'bug' | 'player' | 'appeal'; index: number; name: string} | null>(null);
@@ -621,15 +629,12 @@ const TicketSettings = ({
                               setShowActionDialog(true);
                             }}
                             onDelete={() => {
-                              const updatedConfig = {
-                                ...quickResponsesState,
-                                categories: quickResponsesState.categories.map(cat => 
-                                  cat.id === category.id
-                                    ? { ...cat, actions: cat.actions.filter(a => a.id !== action.id) }
-                                    : cat
-                                )
-                              };
-                              setQuickResponsesState(updatedConfig);
+                              setQuickResponseToDelete({
+                                categoryId: category.id,
+                                actionId: action.id,
+                                actionName: action.title
+                              });
+                              setQuickResponseDeleteDialogOpen(true);
                             }}
                           />
                         ))}
@@ -1187,11 +1192,11 @@ const TicketSettings = ({
                                 variant="destructive"
                                 size="sm"
                                 onClick={() => {
-                                  setAiModerationSettings((prev: any) => {
-                                    const newConfigs = { ...prev.aiPunishmentConfigs };
-                                    delete newConfigs[punishmentType.id];
-                                    return { ...prev, aiPunishmentConfigs: newConfigs };
+                                  setAiPunishmentToDelete({
+                                    id: punishmentType.id,
+                                    name: punishmentType.name
                                   });
+                                  setAiPunishmentDeleteDialogOpen(true);
                                 }}
                               >
                                 Remove
@@ -1807,6 +1812,72 @@ const TicketSettings = ({
             <AlertDialogCancel>Cancel</AlertDialogCancel>
             <AlertDialogAction onClick={confirmSectionDelete} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
               Delete
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      {/* Quick Response Deletion Confirmation Dialog */}
+      <AlertDialog open={quickResponseDeleteDialogOpen} onOpenChange={setQuickResponseDeleteDialogOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete Quick Response</AlertDialogTitle>
+            <AlertDialogDescription>
+              Are you sure you want to delete the quick response "{quickResponseToDelete?.actionName}"? This action cannot be undone.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={() => {
+                if (quickResponseToDelete) {
+                  const updatedConfig = {
+                    ...quickResponsesState,
+                    categories: quickResponsesState.categories.map(cat =>
+                      cat.id === quickResponseToDelete.categoryId
+                        ? { ...cat, actions: cat.actions.filter(a => a.id !== quickResponseToDelete.actionId) }
+                        : cat
+                    )
+                  };
+                  setQuickResponsesState(updatedConfig);
+                }
+                setQuickResponseDeleteDialogOpen(false);
+                setQuickResponseToDelete(null);
+              }}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              Delete
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      {/* AI Punishment Type Deletion Confirmation Dialog */}
+      <AlertDialog open={aiPunishmentDeleteDialogOpen} onOpenChange={setAiPunishmentDeleteDialogOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Remove AI Punishment Type</AlertDialogTitle>
+            <AlertDialogDescription>
+              Are you sure you want to remove "{aiPunishmentToDelete?.name}" from AI moderation? The AI will no longer suggest this punishment type.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={() => {
+                if (aiPunishmentToDelete) {
+                  setAiModerationSettings((prev: any) => {
+                    const newConfigs = { ...prev.aiPunishmentConfigs };
+                    delete newConfigs[aiPunishmentToDelete.id];
+                    return { ...prev, aiPunishmentConfigs: newConfigs };
+                  });
+                }
+                setAiPunishmentDeleteDialogOpen(false);
+                setAiPunishmentToDelete(null);
+              }}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              Remove
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

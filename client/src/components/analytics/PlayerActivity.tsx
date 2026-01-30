@@ -38,14 +38,15 @@ export function PlayerActivity({ data, loading, period, onPeriodChange }: Player
   }
 
   // Format new players trend data for better display
-  const formattedNewPlayersTrend = data.newPlayersTrend.map(item => ({
+  const formattedNewPlayersTrend = (data.newPlayersTrend || []).map(item => ({
     ...item,
-    displayDate: new Date(item.date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
+    displayDate: item.date
   }));
 
   // Calculate total new players
-  const totalNewPlayers = data.newPlayersTrend.reduce((sum, item) => sum + item.count, 0);
-  const totalSuspicious = data.suspiciousActivity.proxyCount + data.suspiciousActivity.hostingCount;
+  const totalNewPlayers = (data.newPlayersTrend || []).reduce((sum, item) => sum + item.count, 0);
+  const suspiciousActivity = data.suspiciousActivity || { proxyCount: 0, hostingCount: 0 };
+  const totalSuspicious = suspiciousActivity.proxyCount + suspiciousActivity.hostingCount;
 
   return (
     <Card className="col-span-full">
@@ -94,7 +95,7 @@ export function PlayerActivity({ data, loading, period, onPeriodChange }: Player
                   <Shield className="h-4 w-4 text-muted-foreground" />
                 </CardHeader>
                 <CardContent>
-                  <div className="text-3xl font-bold">{data.loginsByCountry.length}</div>
+                  <div className="text-3xl font-bold">{(data.loginsByCountry || []).length}</div>
                   <p className="text-sm text-muted-foreground">Different countries</p>
                 </CardContent>
               </Card>
@@ -128,13 +129,13 @@ export function PlayerActivity({ data, loading, period, onPeriodChange }: Player
           <TabsContent value="geography">
             <div className="h-80">
               <ResponsiveContainer width="100%" height="100%">
-                <BarChart data={data.loginsByCountry}>
+                <BarChart data={data.loginsByCountry || []}>
                   <CartesianGrid strokeDasharray="3 3" />
                   <XAxis dataKey="country" />
                   <YAxis />
                   <Tooltip />
                   <Bar dataKey="count" fill="#10b981">
-                    {data.loginsByCountry.map((entry, index) => (
+                    {(data.loginsByCountry || []).map((entry, index) => (
                       <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
                     ))}
                   </Bar>
@@ -152,7 +153,7 @@ export function PlayerActivity({ data, loading, period, onPeriodChange }: Player
                   </CardHeader>
                   <CardContent>
                     <div className="text-3xl font-bold text-amber-600">
-                      {data.suspiciousActivity.proxyCount}
+                      {suspiciousActivity.proxyCount}
                     </div>
                     <p className="text-sm text-muted-foreground">Players using proxy servers</p>
                   </CardContent>
@@ -163,7 +164,7 @@ export function PlayerActivity({ data, loading, period, onPeriodChange }: Player
                   </CardHeader>
                   <CardContent>
                     <div className="text-3xl font-bold text-red-600">
-                      {data.suspiciousActivity.hostingCount}
+                      {suspiciousActivity.hostingCount}
                     </div>
                     <p className="text-sm text-muted-foreground">Players using hosting providers</p>
                   </CardContent>
@@ -176,8 +177,8 @@ export function PlayerActivity({ data, loading, period, onPeriodChange }: Player
                     <PieChart>
                       <Pie
                         data={[
-                          { name: 'Proxy', value: data.suspiciousActivity.proxyCount },
-                          { name: 'Hosting', value: data.suspiciousActivity.hostingCount }
+                          { name: 'Proxy', value: suspiciousActivity.proxyCount },
+                          { name: 'Hosting', value: suspiciousActivity.hostingCount }
                         ]}
                         cx="50%"
                         cy="50%"

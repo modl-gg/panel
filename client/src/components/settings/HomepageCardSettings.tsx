@@ -4,6 +4,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@modl
 import { Input } from '@modl-gg/shared-web/components/ui/input';
 import { Textarea } from '@modl-gg/shared-web/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@modl-gg/shared-web/components/ui/select';
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@modl-gg/shared-web/components/ui/alert-dialog';
 import { useToast } from '@modl-gg/shared-web/hooks/use-toast';
 import { queryClient } from '@/lib/queryClient';
 import { useQuery, useMutation } from '@tanstack/react-query';
@@ -106,6 +107,8 @@ const HomepageCardSettings: React.FC = () => {
   const { toast } = useToast();
   const [editingCard, setEditingCard] = useState<HomepageCard | null>(null);
   const [isCreating, setIsCreating] = useState(false);
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const [cardToDelete, setCardToDelete] = useState<string | null>(null);
   const [formData, setFormData] = useState({
     title: '',
     description: '',
@@ -269,9 +272,16 @@ const HomepageCardSettings: React.FC = () => {
   };
 
   const handleDeleteCard = (cardId: string) => {
-    if (window.confirm('Are you sure you want to delete this homepage card?')) {
-      deleteCardMutation.mutate(cardId);
+    setCardToDelete(cardId);
+    setDeleteDialogOpen(true);
+  };
+
+  const confirmDeleteCard = () => {
+    if (cardToDelete) {
+      deleteCardMutation.mutate(cardToDelete);
     }
+    setDeleteDialogOpen(false);
+    setCardToDelete(null);
   };
 
   const IconPreview = ({ iconName, color }: { iconName: string; color?: string }) => {
@@ -501,6 +511,24 @@ const HomepageCardSettings: React.FC = () => {
           </div>
         </CardContent>
       </Card>
+
+      {/* Delete Confirmation Dialog */}
+      <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete Homepage Card</AlertDialogTitle>
+            <AlertDialogDescription>
+              Are you sure you want to delete this homepage card? This action cannot be undone.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction onClick={confirmDeleteCard} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
+              Delete
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 };

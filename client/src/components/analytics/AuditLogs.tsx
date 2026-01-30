@@ -7,7 +7,6 @@ import { BarChart, Bar, LineChart, Line, PieChart, Pie, Cell, XAxis, YAxis, Cart
 
 interface AuditLogData {
   byLevel: Array<{ level: string; count: number }>;
-  bySource: Array<{ source: string; count: number }>;
   hourlyTrend: Array<{ hour: string; count: number }>;
 }
 
@@ -52,13 +51,13 @@ export function AuditLogs({ data, loading, period, onPeriodChange }: AuditLogsPr
   }
 
   // Format hourly trend data for better display
-  const formattedHourlyTrend = data.hourlyTrend.map(item => ({
+  const formattedHourlyTrend = (data.hourlyTrend || []).map(item => ({
     ...item,
-    displayHour: new Date(item.hour).toLocaleTimeString('en-US', { hour: 'numeric', hour12: true })
+    displayHour: item.hour
   }));
 
   // Calculate total logs
-  const totalLogs = data.byLevel.reduce((sum, item) => sum + item.count, 0);
+  const totalLogs = (data.byLevel || []).reduce((sum, item) => sum + item.count, 0);
 
   return (
     <Card className="col-span-full">
@@ -85,7 +84,6 @@ export function AuditLogs({ data, loading, period, onPeriodChange }: AuditLogsPr
           <TabsList>
             <TabsTrigger value="overview">Overview</TabsTrigger>
             <TabsTrigger value="levels">By Level</TabsTrigger>
-            <TabsTrigger value="sources">By Source</TabsTrigger>
             <TabsTrigger value="hourly">Hourly Trend</TabsTrigger>
           </TabsList>
           
@@ -100,7 +98,7 @@ export function AuditLogs({ data, loading, period, onPeriodChange }: AuditLogsPr
                   <p className="text-sm text-muted-foreground">In selected period</p>
                 </CardContent>
               </Card>
-              {data.byLevel.map((level, index) => (
+              {(data.byLevel || []).map((level, index) => (
                 <Card key={level.level}>
                   <CardHeader>
                     <CardTitle className="text-base flex items-center gap-2">
@@ -125,7 +123,7 @@ export function AuditLogs({ data, loading, period, onPeriodChange }: AuditLogsPr
               <ResponsiveContainer width="100%" height="100%">
                 <PieChart>
                   <Pie
-                    data={data.byLevel}
+                    data={data.byLevel || []}
                     cx="50%"
                     cy="50%"
                     labelLine={false}
@@ -134,30 +132,12 @@ export function AuditLogs({ data, loading, period, onPeriodChange }: AuditLogsPr
                     fill="#8884d8"
                     dataKey="count"
                   >
-                    {data.byLevel.map((entry, index) => (
+                    {(data.byLevel || []).map((entry, index) => (
                       <Cell key={entry.level} fill={levelColorMap[entry.level] || COLORS[index % COLORS.length]} />
                     ))}
                   </Pie>
                   <Tooltip />
                 </PieChart>
-              </ResponsiveContainer>
-            </div>
-          </TabsContent>
-          
-          <TabsContent value="sources">
-            <div className="h-80">
-              <ResponsiveContainer width="100%" height="100%">
-                <BarChart data={data.bySource}>
-                  <CartesianGrid strokeDasharray="3 3" />
-                  <XAxis dataKey="source" />
-                  <YAxis />
-                  <Tooltip />
-                  <Bar dataKey="count" fill="#3b82f6">
-                    {data.bySource.map((entry, index) => (
-                      <Cell key={entry.source} fill={COLORS[index % COLORS.length]} />
-                    ))}
-                  </Bar>
-                </BarChart>
               </ResponsiveContainer>
             </div>
           </TabsContent>

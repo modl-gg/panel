@@ -227,32 +227,42 @@ const MigrationTool: React.FC = () => {
         </Card>
       )}
 
-      {/* Completed/Failed Migration Result */}
-      {showCompletedAlert && lastCompletedMigration && (
-        <Alert variant={lastCompletedMigration.status === 'completed' ? 'default' : 'destructive'}>
-          {lastCompletedMigration.status === 'completed' ? (
-            <CheckCircle2 className="h-4 w-4" />
-          ) : (
-            <AlertCircle className="h-4 w-4" />
-          )}
-          <AlertDescription>
-            {lastCompletedMigration.status === 'completed' ? (
-              <>
-                Migration completed successfully!
-                {lastCompletedMigration.progress && (
-                  <span className="ml-1">
-                    Processed {lastCompletedMigration.progress.recordsProcessed} records
-                    {lastCompletedMigration.progress.recordsSkipped > 0 && 
-                      `, skipped ${lastCompletedMigration.progress.recordsSkipped}`}.
-                  </span>
-                )}
-              </>
+      {/* Completed/Failed/Cancelled Migration Result */}
+      {showCompletedAlert && lastCompletedMigration && (() => {
+        const isCancelled = lastCompletedMigration.error?.toLowerCase().includes('cancelled');
+        const isSuccess = lastCompletedMigration.status === 'completed';
+        const variant = isSuccess ? 'default' : (isCancelled ? 'default' : 'destructive');
+
+        return (
+          <Alert variant={variant} className={isCancelled ? 'border-amber-500/50 bg-amber-500/5' : undefined}>
+            {isSuccess ? (
+              <CheckCircle2 className="h-4 w-4" />
+            ) : isCancelled ? (
+              <X className="h-4 w-4 text-amber-600" />
             ) : (
-              lastCompletedMigration.error || 'Migration failed. You can retry immediately.'
+              <AlertCircle className="h-4 w-4" />
             )}
-          </AlertDescription>
-        </Alert>
-      )}
+            <AlertDescription className={isCancelled ? 'text-amber-700 dark:text-amber-400' : undefined}>
+              {isSuccess ? (
+                <>
+                  Migration completed successfully!
+                  {lastCompletedMigration.progress && (
+                    <span className="ml-1">
+                      Processed {lastCompletedMigration.progress.recordsProcessed} records
+                      {lastCompletedMigration.progress.recordsSkipped > 0 &&
+                        `, skipped ${lastCompletedMigration.progress.recordsSkipped}`}.
+                    </span>
+                  )}
+                </>
+              ) : isCancelled ? (
+                'Migration cancelled. You can start a new migration immediately.'
+              ) : (
+                lastCompletedMigration.error || 'Migration failed. You can retry immediately.'
+              )}
+            </AlertDescription>
+          </Alert>
+        );
+      })()}
 
       {/* Cooldown Warning */}
       {onCooldown && !isActive && (

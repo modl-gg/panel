@@ -249,7 +249,7 @@ const fetchStorageData = async () => {
         // Determine file type based on the folder in the path
         let fileType = 'other';
         if (file.key?.includes('/evidence/')) fileType = 'evidence';
-        else if (file.key?.includes('/tickets/')) fileType = 'ticket';
+        else if (file.key?.includes('/ticket/')) fileType = 'ticket';
         else if (file.key?.includes('/logs/')) fileType = 'logs';
         else if (file.key?.includes('/backup/')) fileType = 'backup';
         
@@ -334,11 +334,38 @@ const fetchStorageData = async () => {
 
   const getTypeColor = (type: string): string => {
     switch (type) {
-      case 'ticket': return 'bg-blue-100 text-blue-800';
-      case 'evidence': return 'bg-red-100 text-red-800';
-      case 'logs': return 'bg-green-100 text-green-800';
-      case 'backup': return 'bg-purple-100 text-purple-800';
-      default: return 'bg-gray-100 text-gray-800';
+      case 'ticket': return 'bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-300';
+      case 'evidence': return 'bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-300';
+      case 'logs': return 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-300';
+      case 'backup': return 'bg-purple-100 text-purple-800 dark:bg-purple-900/30 dark:text-purple-300';
+      default: return 'bg-gray-100 text-gray-800 dark:bg-gray-800 dark:text-gray-300';
+    }
+  };
+
+  const getFileType = (filename: string): string => {
+    const ext = filename.split('.').pop()?.toLowerCase() || '';
+    if (['jpg', 'jpeg', 'png', 'gif', 'webp', 'svg', 'bmp', 'ico'].includes(ext)) return 'Image';
+    if (['mp4', 'webm', 'mov', 'avi', 'mkv', 'flv'].includes(ext)) return 'Video';
+    if (['mp3', 'wav', 'ogg', 'flac', 'aac'].includes(ext)) return 'Audio';
+    if (['pdf'].includes(ext)) return 'PDF';
+    if (['doc', 'docx', 'txt', 'rtf', 'odt'].includes(ext)) return 'Document';
+    if (['zip', 'rar', '7z', 'tar', 'gz'].includes(ext)) return 'Archive';
+    if (['json', 'xml', 'yml', 'yaml', 'csv'].includes(ext)) return 'Data';
+    if (['log'].includes(ext)) return 'Log';
+    return 'File';
+  };
+
+  const getFileTypeColor = (fileType: string): string => {
+    switch (fileType) {
+      case 'Image': return 'bg-pink-100 text-pink-800 dark:bg-pink-900/30 dark:text-pink-300';
+      case 'Video': return 'bg-indigo-100 text-indigo-800 dark:bg-indigo-900/30 dark:text-indigo-300';
+      case 'Audio': return 'bg-cyan-100 text-cyan-800 dark:bg-cyan-900/30 dark:text-cyan-300';
+      case 'PDF': return 'bg-orange-100 text-orange-800 dark:bg-orange-900/30 dark:text-orange-300';
+      case 'Document': return 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-300';
+      case 'Archive': return 'bg-amber-100 text-amber-800 dark:bg-amber-900/30 dark:text-amber-300';
+      case 'Data': return 'bg-teal-100 text-teal-800 dark:bg-teal-900/30 dark:text-teal-300';
+      case 'Log': return 'bg-slate-100 text-slate-800 dark:bg-slate-800 dark:text-slate-300';
+      default: return 'bg-gray-100 text-gray-800 dark:bg-gray-800 dark:text-gray-300';
     }
   };
 
@@ -837,6 +864,7 @@ const fetchStorageData = async () => {
                     />
                   </TableHead>
                   <TableHead>Name</TableHead>
+                  <TableHead>Category</TableHead>
                   <TableHead>Type</TableHead>
                   <TableHead>Size</TableHead>
                   <TableHead>Modified</TableHead>
@@ -863,7 +891,12 @@ const fetchStorageData = async () => {
                     <TableCell>
                       <Badge variant="outline" className={getTypeColor(file.type)}>
                         <span className="mr-1">{getTypeIcon(file.type)}</span>
-                        {file.type}
+                        {file.type.charAt(0).toUpperCase() + file.type.slice(1)}
+                      </Badge>
+                    </TableCell>
+                    <TableCell>
+                      <Badge variant="outline" className={getFileTypeColor(getFileType(file.name))}>
+                        {getFileType(file.name)}
                       </Badge>
                     </TableCell>
                     <TableCell>{formatFileSize(file.size)}</TableCell>

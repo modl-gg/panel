@@ -6,8 +6,9 @@ import { BarChart, Bar, LineChart, Line, PieChart, Pie, Cell, XAxis, YAxis, Cart
 
 interface PunishmentData {
   byType: Array<{ type: string; count: number }>;
-  dailyTrend: Array<{ date: string; count: number }>;
-  topReasons: Array<{ reason: string; count: number }>;
+  dailyPunishments: Array<{ date: string; count: number }>;
+  byStaff: Array<{ staffName: string; count: number }>;
+  bySeverity?: Array<{ severity: string; count: number }>;
 }
 
 interface PunishmentAnalyticsProps {
@@ -45,13 +46,13 @@ export function PunishmentAnalytics({ data, loading, period, onPeriodChange }: P
   }
 
   // Format daily trend data for better display
-  const formattedDailyTrend = data.dailyTrend.map(item => ({
+  const formattedDailyTrend = (data.dailyPunishments || []).map(item => ({
     ...item,
-    displayDate: new Date(item.date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
+    displayDate: item.date
   }));
 
   // Calculate total punishments
-  const totalPunishments = data.byType.reduce((sum, item) => sum + item.count, 0);
+  const totalPunishments = (data.byType || []).reduce((sum, item) => sum + item.count, 0);
 
   return (
     <Card className="col-span-full">
@@ -79,7 +80,7 @@ export function PunishmentAnalytics({ data, loading, period, onPeriodChange }: P
           <TabsList>
             <TabsTrigger value="overview">Overview</TabsTrigger>
             <TabsTrigger value="types">By Type</TabsTrigger>
-            <TabsTrigger value="reasons">Top Reasons</TabsTrigger>
+            <TabsTrigger value="reasons">By Staff</TabsTrigger>
             <TabsTrigger value="trend">Daily Trend</TabsTrigger>
           </TabsList>
           
@@ -100,10 +101,10 @@ export function PunishmentAnalytics({ data, loading, period, onPeriodChange }: P
                 </CardHeader>
                 <CardContent>
                   <div className="text-2xl font-bold">
-                    {data.byType.length > 0 ? data.byType[0].type : 'N/A'}
+                    {(data.byType || []).length > 0 ? data.byType[0].type : 'N/A'}
                   </div>
                   <p className="text-sm text-muted-foreground">
-                    {data.byType.length > 0 ? `${data.byType[0].count} issued` : 'No data'}
+                    {(data.byType || []).length > 0 ? `${data.byType[0].count} issued` : 'No data'}
                   </p>
                 </CardContent>
               </Card>
@@ -113,8 +114,8 @@ export function PunishmentAnalytics({ data, loading, period, onPeriodChange }: P
                 </CardHeader>
                 <CardContent>
                   <div className="text-3xl font-bold">
-                    {data.dailyTrend.length > 0 
-                      ? Math.round(totalPunishments / data.dailyTrend.length)
+                    {(data.dailyPunishments || []).length > 0
+                      ? Math.round(totalPunishments / data.dailyPunishments.length)
                       : 0}
                   </div>
                   <p className="text-sm text-muted-foreground">Punishments per day</p>
@@ -128,7 +129,7 @@ export function PunishmentAnalytics({ data, loading, period, onPeriodChange }: P
               <ResponsiveContainer width="100%" height="100%">
                 <PieChart>
                   <Pie
-                    data={data.byType}
+                    data={data.byType || []}
                     cx="50%"
                     cy="50%"
                     labelLine={false}
@@ -136,7 +137,7 @@ export function PunishmentAnalytics({ data, loading, period, onPeriodChange }: P
                     fill="#8884d8"
                     dataKey="count"
                   >
-                    {data.byType.map((entry, index) => (
+                    {(data.byType || []).map((entry, index) => (
                       <Cell key={`cell-${index}`} fill={punishmentColorMap[entry.type] || COLORS[index % COLORS.length]} />
                     ))}
                   </Pie>
@@ -149,9 +150,9 @@ export function PunishmentAnalytics({ data, loading, period, onPeriodChange }: P
           <TabsContent value="reasons">
             <div className="h-80">
               <ResponsiveContainer width="100%" height="100%">
-                <BarChart data={data.topReasons} layout="horizontal">
+                <BarChart data={data.byStaff || []} layout="horizontal">
                   <CartesianGrid strokeDasharray="3 3" />
-                  <XAxis dataKey="reason" />
+                  <XAxis dataKey="staffName" />
                   <YAxis />
                   <Tooltip />
                   <Bar dataKey="count" fill="#ef4444" />
