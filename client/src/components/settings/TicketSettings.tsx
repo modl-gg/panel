@@ -14,6 +14,7 @@ import { HTML5Backend } from 'react-dnd-html5-backend';
 import { Card, CardContent, CardHeader, CardTitle } from '@modl-gg/shared-web/components/ui/card';
 import { Separator } from '@modl-gg/shared-web/components/ui/separator';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@modl-gg/shared-web/components/ui/dialog';
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@modl-gg/shared-web/components/ui/alert-dialog';
 import { QuickResponseAction, QuickResponseCategory, QuickResponsesConfiguration, defaultQuickResponsesConfig } from '@/types/quickResponses';
 import { useBillingStatus } from '@/hooks/use-data';
 import { useAuth } from '@/hooks/use-auth';
@@ -189,6 +190,61 @@ const TicketSettings = ({
   const [selectedAIPunishmentType, setSelectedAIPunishmentType] = useState<any | null>(null);
   const [selectedPunishmentTypeId, setSelectedPunishmentTypeId] = useState<number | null>(null);
   const [newAIPunishmentDescription, setNewAIPunishmentDescription] = useState('');
+
+  // Tag deletion confirmation states
+  const [tagDeleteDialogOpen, setTagDeleteDialogOpen] = useState(false);
+  const [tagToDelete, setTagToDelete] = useState<{type: 'bug' | 'player' | 'appeal'; index: number; name: string} | null>(null);
+
+  const handleTagDeleteClick = (type: 'bug' | 'player' | 'appeal', index: number, name: string) => {
+    setTagToDelete({ type, index, name });
+    setTagDeleteDialogOpen(true);
+  };
+
+  const confirmTagDelete = () => {
+    if (tagToDelete) {
+      if (tagToDelete.type === 'bug') {
+        setBugReportTags(bugReportTags.filter((_, i) => i !== tagToDelete.index));
+      } else if (tagToDelete.type === 'player') {
+        setPlayerReportTags(playerReportTags.filter((_, i) => i !== tagToDelete.index));
+      } else {
+        setAppealTags(appealTags.filter((_, i) => i !== tagToDelete.index));
+      }
+    }
+    setTagDeleteDialogOpen(false);
+    setTagToDelete(null);
+  };
+
+  // Form field/section deletion confirmation states
+  const [fieldDeleteDialogOpen, setFieldDeleteDialogOpen] = useState(false);
+  const [fieldToDelete, setFieldToDelete] = useState<{id: string; label: string} | null>(null);
+  const [sectionDeleteDialogOpen, setSectionDeleteDialogOpen] = useState(false);
+  const [sectionToDelete, setSectionToDelete] = useState<{id: string; title: string} | null>(null);
+
+  const handleFieldDeleteClick = (fieldId: string, fieldLabel: string) => {
+    setFieldToDelete({ id: fieldId, label: fieldLabel });
+    setFieldDeleteDialogOpen(true);
+  };
+
+  const confirmFieldDelete = () => {
+    if (fieldToDelete) {
+      removeTicketFormField(fieldToDelete.id);
+    }
+    setFieldDeleteDialogOpen(false);
+    setFieldToDelete(null);
+  };
+
+  const handleSectionDeleteClick = (sectionId: string, sectionTitle: string) => {
+    setSectionToDelete({ id: sectionId, title: sectionTitle });
+    setSectionDeleteDialogOpen(true);
+  };
+
+  const confirmSectionDelete = () => {
+    if (sectionToDelete) {
+      removeTicketFormSection(sectionToDelete.id);
+    }
+    setSectionDeleteDialogOpen(false);
+    setSectionToDelete(null);
+  };
 
   // Ticket form management functions
   const addTicketFormField = () => {
@@ -647,9 +703,7 @@ const TicketSettings = ({
                             variant="ghost"
                             size="icon"
                             className="h-4 w-4 rounded-full hover:bg-muted ml-1"
-                            onClick={() => {
-                              setBugReportTags(bugReportTags.filter((_, i) => i !== index));
-                            }}
+                            onClick={() => handleTagDeleteClick('bug', index, tag)}
                           >
                             <X className="h-3 w-3" />
                           </Button>
@@ -696,9 +750,7 @@ const TicketSettings = ({
                             variant="ghost"
                             size="icon"
                             className="h-4 w-4 rounded-full hover:bg-muted ml-1"
-                            onClick={() => {
-                              setPlayerReportTags(playerReportTags.filter((_, i) => i !== index));
-                            }}
+                            onClick={() => handleTagDeleteClick('player', index, tag)}
                           >
                             <X className="h-3 w-3" />
                           </Button>
@@ -745,9 +797,7 @@ const TicketSettings = ({
                             variant="ghost"
                             size="icon"
                             className="h-4 w-4 rounded-full hover:bg-muted ml-1"
-                            onClick={() => {
-                              setAppealTags(appealTags.filter((_, i) => i !== index));
-                            }}
+                            onClick={() => handleTagDeleteClick('appeal', index, tag)}
                           >
                             <X className="h-3 w-3" />
                           </Button>
@@ -880,7 +930,12 @@ const TicketSettings = ({
                                 setNewTicketFormSectionHideByDefault(section.hideByDefault || false);
                                 setIsAddTicketFormSectionDialogOpen(true);
                               }}
-                              onDeleteSection={removeTicketFormSection}
+                              onDeleteSection={(sectionId) => {
+                                const sectionToRemove = ticketForms[selectedTicketFormType]?.sections?.find(s => s.id === sectionId);
+                                if (sectionToRemove) {
+                                  handleSectionDeleteClick(sectionId, sectionToRemove.title);
+                                }
+                              }}
                               onEditField={(field) => {
                                 setSelectedTicketFormField(field);
                                 setNewTicketFormFieldLabel(field.label);
@@ -893,7 +948,12 @@ const TicketSettings = ({
                                 setNewTicketFormFieldOptionSectionMapping(field.optionSectionMapping || {});
                                 setIsAddTicketFormFieldDialogOpen(true);
                               }}
-                              onDeleteField={removeTicketFormField}
+                              onDeleteField={(fieldId) => {
+                                const fieldToRemove = ticketForms[selectedTicketFormType]?.fields?.find(f => f.id === fieldId);
+                                if (fieldToRemove) {
+                                  handleFieldDeleteClick(fieldId, fieldToRemove.label);
+                                }
+                              }}
                               onAddField={() => {
                                 // Clear all field form state for new field
                                 setSelectedTicketFormField(null);
@@ -1697,6 +1757,60 @@ const TicketSettings = ({
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      {/* Tag Deletion Confirmation Dialog */}
+      <AlertDialog open={tagDeleteDialogOpen} onOpenChange={setTagDeleteDialogOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete Tag</AlertDialogTitle>
+            <AlertDialogDescription>
+              Are you sure you want to delete the tag "{tagToDelete?.name}"? This action cannot be undone.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction onClick={confirmTagDelete} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
+              Delete
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      {/* Field Deletion Confirmation Dialog */}
+      <AlertDialog open={fieldDeleteDialogOpen} onOpenChange={setFieldDeleteDialogOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete Form Field</AlertDialogTitle>
+            <AlertDialogDescription>
+              Are you sure you want to delete the field "{fieldToDelete?.label}"? This action cannot be undone.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction onClick={confirmFieldDelete} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
+              Delete
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      {/* Section Deletion Confirmation Dialog */}
+      <AlertDialog open={sectionDeleteDialogOpen} onOpenChange={setSectionDeleteDialogOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete Form Section</AlertDialogTitle>
+            <AlertDialogDescription>
+              Are you sure you want to delete the section "{sectionToDelete?.title}"? All fields in this section will also be deleted. This action cannot be undone.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction onClick={confirmSectionDelete} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
+              Delete
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 };

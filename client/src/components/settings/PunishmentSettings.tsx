@@ -6,6 +6,7 @@ import { Label } from '@modl-gg/shared-web/components/ui/label';
 import { Separator } from '@modl-gg/shared-web/components/ui/separator';
 import { Slider } from '@modl-gg/shared-web/components/ui/slider';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@modl-gg/shared-web/components/ui/select';
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@modl-gg/shared-web/components/ui/alert-dialog';
 
 interface PunishmentType {
   id: number;
@@ -52,6 +53,21 @@ const PunishmentSettings = ({
   setSelectedPunishment
 }: PunishmentSettingsProps) => {
   const [showCorePunishments, setShowCorePunishments] = useState(false);
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const [punishmentToDelete, setPunishmentToDelete] = useState<PunishmentType | null>(null);
+
+  const handleDeleteClick = (type: PunishmentType) => {
+    setPunishmentToDelete(type);
+    setDeleteDialogOpen(true);
+  };
+
+  const confirmDelete = () => {
+    if (punishmentToDelete) {
+      removePunishmentType(punishmentToDelete.id);
+    }
+    setDeleteDialogOpen(false);
+    setPunishmentToDelete(null);
+  };
 
   return (
     <div className="space-y-6 p-6">
@@ -268,7 +284,7 @@ const PunishmentSettings = ({
                         <Button
                           variant="ghost"
                           size="icon"
-                          onClick={() => removePunishmentType(type.id)}
+                          onClick={() => handleDeleteClick(type)}
                           className="h-7 w-7 text-muted-foreground hover:text-destructive"
                         >
                           <Trash2 className="h-4 w-4" />
@@ -313,7 +329,7 @@ const PunishmentSettings = ({
                         <Button
                           variant="ghost"
                           size="icon"
-                          onClick={() => removePunishmentType(type.id)}
+                          onClick={() => handleDeleteClick(type)}
                           className="h-7 w-7 text-muted-foreground hover:text-destructive"
                         >
                           <Trash2 className="h-4 w-4" />
@@ -326,6 +342,23 @@ const PunishmentSettings = ({
             </div>
           </div>
         </div>
+
+        <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
+          <AlertDialogContent>
+            <AlertDialogHeader>
+              <AlertDialogTitle>Delete Punishment Type</AlertDialogTitle>
+              <AlertDialogDescription>
+                Are you sure you want to delete "{punishmentToDelete?.name}"? This action cannot be undone.
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogCancel>Cancel</AlertDialogCancel>
+              <AlertDialogAction onClick={confirmDelete} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
+                Delete
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
 
         <Separator className="my-6" />
 

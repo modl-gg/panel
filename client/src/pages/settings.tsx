@@ -1787,34 +1787,25 @@ const Settings = () => {
     pendingChangesRef.current = false;
 
     try {
-      const settingsToSave = {
-        punishmentTypes,
-        statusThresholds,
+      const { csrfFetch } = await import('@/utils/csrf');
+
+      // Save general settings (now includes tags)
+      const generalSettingsPayload = {
+        serverDisplayName,
+        discordWebhookUrl,
+        homepageIconUrl,
+        panelIconUrl,
         bugReportTags,
         playerReportTags,
         appealTags,
-        ticketForms,
-        quickResponses: quickResponsesState,
-        mongodbUri,
-        has2FA,
-        hasPasskey,
-        general: {
-          serverDisplayName,
-          discordWebhookUrl,
-          homepageIconUrl,
-          panelIconUrl,
-        },
       };
 
-      const { csrfFetch } = await import('@/utils/csrf');
-
-      // Save general settings
       const response = await csrfFetch('/v1/panel/settings/general', {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json'
         },
-        body: JSON.stringify(settingsToSave.general)
+        body: JSON.stringify(generalSettingsPayload)
       });
 
       // Save quick responses to dedicated endpoint
@@ -1823,19 +1814,26 @@ const Settings = () => {
         headers: {
           'Content-Type': 'application/json'
         },
-        body: JSON.stringify(settingsToSave.quickResponses)
+        body: JSON.stringify(quickResponsesState)
       });
 
+      // Save ticket forms to dedicated endpoint
+      if (ticketForms) {
+        await csrfFetch('/v1/panel/settings/ticket-forms', {
+          method: 'PUT',
+          headers: {
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify(ticketForms)
+        });
+      }
+
       if (response.ok) {
-        // Don't invalidate the query here - it causes a loop
-        // await queryClient.invalidateQueries({ queryKey: ['/v1/panel/settings/general'] });
         setLastSaved(new Date());
-        // Don't show a toast on every auto-save to avoid spam
       } else {
         const errorData = await response.json().catch(() => ({ error: 'Unknown error' }));
         console.error('Settings save failed:', response.status, errorData);
-        
-        // Show permission toast for 403 errors with the specific error message
+
         if (response.status === 403) {
           toast({
             title: "Permission Denied",
@@ -2292,8 +2290,37 @@ const Settings = () => {
   };
 
   // Remove a punishment type
-  const removePunishmentType = (id: number) => {
-    setPunishmentTypes(prevTypes => prevTypes.filter(pt => pt.id !== id));
+  const removePunishmentType = async (id: number) => {
+    const typeToRemove = punishmentTypes.find(pt => pt.id === id);
+    if (!typeToRemove || typeToRemove.ordinal < 6) {
+      return;
+    }
+
+    try {
+      const { csrfFetch } = await import('@/utils/csrf');
+      const response = await csrfFetch(`/v1/panel/settings/punishment-types/${typeToRemove.ordinal}`, {
+        method: 'DELETE',
+      });
+
+      if (response.ok) {
+        setPunishmentTypes(prevTypes => prevTypes.filter(pt => pt.id !== id));
+        queryClient.invalidateQueries({ queryKey: ['/v1/panel/settings/punishment-types'] });
+      } else {
+        const errorData = await response.json().catch(() => ({ error: 'Unknown error' }));
+        toast({
+          title: "Error",
+          description: errorData.error || 'Failed to delete punishment type',
+          variant: "destructive"
+        });
+      }
+    } catch (error) {
+      console.error("Error deleting punishment type:", error);
+      toast({
+        title: "Error",
+        description: "Failed to delete punishment type",
+        variant: "destructive"
+      });
+    }
   };
 
   // Update punishment type

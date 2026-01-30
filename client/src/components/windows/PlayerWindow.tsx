@@ -620,7 +620,7 @@ const PlayerWindow = ({ playerId, isOpen, onClose, initialPosition }: PlayerWind
   };
 
     // Use React Query hook to fetch player data with refetch capability
-  const { data: player, isLoading, error, refetch } = usePlayer(playerId);
+  const { data: player, isLoading, isFetching, error, refetch } = usePlayer(playerId);
   
   // Fetch all player tickets (both created by them and reports against them)
   const { data: playerTickets, isLoading: isLoadingTickets } = usePlayerAllTickets(playerId);
@@ -1403,7 +1403,22 @@ const PlayerWindow = ({ playerId, isOpen, onClose, initialPosition }: PlayerWind
                 )}
               </div>
               <div className="flex-1 min-w-0">
-                <h5 className="text-lg font-medium">{playerInfo.username || 'Unknown'}</h5>
+                <div className="flex items-center gap-2">
+                  <h5 className="text-lg font-medium">{playerInfo.username || 'Unknown'}</h5>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className="h-7 w-7"
+                    onClick={() => {
+                      refetch();
+                      refetchLinkedAccounts();
+                    }}
+                    disabled={isFetching || isLoadingLinkedAccounts}
+                    title="Refresh player data"
+                  >
+                    <RefreshCcw className={`h-4 w-4 ${isFetching || isLoadingLinkedAccounts ? 'animate-spin' : ''}`} />
+                  </Button>
+                </div>
                 <div className="flex flex-wrap gap-2 mt-1">
                   <Badge variant="outline" className={playerInfo.status === 'Online' ? 
                     "bg-success/10 text-success border-success/20" : 

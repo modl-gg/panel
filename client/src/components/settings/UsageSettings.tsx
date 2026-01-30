@@ -149,16 +149,25 @@ const fetchStorageData = async () => {
       }
       
       // Transform the data to match expected format
+      // Use byType from backend if available, otherwise fallback to putting all in "other"
+      const byType = usageData.byType ? {
+        ticket: usageData.byType.ticket ?? 0,
+        evidence: usageData.byType.evidence ?? 0,
+        logs: usageData.byType.logs ?? 0,
+        backup: usageData.byType.backup ?? 0,
+        other: usageData.byType.other ?? 0
+      } : {
+        ticket: 0,
+        evidence: 0,
+        logs: 0,
+        backup: 0,
+        other: cdnUsedBytes
+      };
+
       const usage: StorageUsage = {
         totalUsed: cdnUsedBytes,
         totalQuota: cdnLimitBytes,
-        byType: {
-          ticket: 0,
-          evidence: 0,
-          logs: 0,
-          backup: 0,
-          other: cdnUsedBytes
-        },
+        byType,
         quota: {
           totalUsed: cdnUsedBytes,
           totalUsedFormatted: usageData.usedFormatted ?? formatFileSize(cdnUsedBytes),
@@ -176,7 +185,25 @@ const fetchStorageData = async () => {
           usagePercentage: Math.round(cdnPercentage * 100) / 100,
           baseUsagePercentage: Math.round(cdnPercentage * 100) / 100
         },
-        aiQuota: usageData.ai ? {
+        aiQuota: usageData.aiQuota ? {
+          totalUsed: usageData.aiQuota.totalUsed ?? 0,
+          baseLimit: usageData.aiQuota.baseLimit ?? 0,
+          overageUsed: usageData.aiQuota.overageUsed ?? 0,
+          overageCost: usageData.aiQuota.overageCost ?? 0,
+          canUseAI: usageData.aiQuota.canUseAI ?? false,
+          usagePercentage: Math.round((usageData.aiQuota.usagePercentage ?? 0) * 100) / 100,
+          byService: usageData.aiQuota.byService ? {
+            moderation: usageData.aiQuota.byService.moderation ?? 0,
+            ticket_analysis: usageData.aiQuota.byService.ticket_analysis ?? 0,
+            appeal_analysis: usageData.aiQuota.byService.appeal_analysis ?? 0,
+            other: usageData.aiQuota.byService.other ?? 0
+          } : {
+            moderation: 0,
+            ticket_analysis: 0,
+            appeal_analysis: 0,
+            other: usageData.aiQuota.totalUsed ?? 0
+          }
+        } : usageData.ai ? {
           totalUsed: usageData.ai.used ?? 0,
           baseLimit: usageData.ai.limit ?? 0,
           overageUsed: usageData.ai.overage ?? 0,
