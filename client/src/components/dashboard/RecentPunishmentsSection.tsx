@@ -8,13 +8,13 @@ import { formatTimeAgo } from '@/utils/date-utils';
 
 export interface RecentPunishment {
   id: string;
-  type: 'ban' | 'kick' | 'mute' | 'warn' | 'tempban';
+  type: string;
   playerName: string;
   playerUuid: string;
   reason: string;
   duration?: string | number;
-  issuedBy: string;
-  issuedAt: string | Date;
+  issuerName: string;
+  issued: string | Date;
   active: boolean;
 }
 
@@ -29,14 +29,6 @@ const punishmentColors = {
   kick: 'bg-yellow-500/20 text-yellow-500',
   mute: 'bg-blue-500/20 text-blue-500',
   warn: 'bg-purple-500/20 text-purple-500'
-};
-
-const punishmentIcons = {
-  ban: '🔨',
-  tempban: '⏰',
-  kick: '👢',
-  mute: '🔇',
-  warn: '⚠️'
 };
 
 export function RecentPunishmentsSection({ punishments, loading }: RecentPunishmentsSectionProps) {
@@ -141,7 +133,7 @@ export function RecentPunishmentsSection({ punishments, loading }: RecentPunishm
                             {punishment.type && (
                               <Badge
                                 variant="secondary"
-                                className={`text-xs ${punishmentColors[punishment.type] || ''}`}
+                                className={`text-xs`}
                               >
                                 {punishment.type.toUpperCase()}
                               </Badge>
@@ -156,7 +148,7 @@ export function RecentPunishmentsSection({ punishments, loading }: RecentPunishm
                       </div>
                       <div className="flex items-center gap-2">
                         <div className="text-xs text-muted-foreground">
-                          {formatTimeAgo(punishment.issuedAt)}
+                          {formatTimeAgo(punishment.issued)}
                         </div>
                         {isExpanded ? (
                           <ChevronUp className="h-4 w-4 text-muted-foreground" />
@@ -178,7 +170,7 @@ export function RecentPunishmentsSection({ punishments, loading }: RecentPunishm
                         {punishment.playerName}
                       </Button>
                       <span className="text-sm text-muted-foreground">
-                        {punishment.type || 'Punishment'} by {punishment.issuedBy || 'Unknown'}
+                        {punishment.type || 'Punishment'} by {punishment.issuerName || 'Unknown'}
                       </span>
                     </div>
                   </div>
@@ -204,7 +196,7 @@ export function RecentPunishmentsSection({ punishments, loading }: RecentPunishm
                         <div className="flex justify-between items-center pt-2">
                           <div className="flex items-center gap-1 text-xs text-muted-foreground">
                             <User className="h-3 w-3" />
-                            <span>Issued by {punishment.issuedBy}</span>
+                            <span>Issued by {punishment.issuerName}</span>
                           </div>
                           {punishment.active && (
                             <div className="flex items-center gap-1 text-red-500 text-xs">
