@@ -181,10 +181,13 @@ function Router() {
 }
 
 function AppContent() {
-  const { user, isLoading, maintenanceMode, maintenanceMessage } = useAuth();
+  const { user, isLoading } = useAuth();
   const { data: publicSettings, isLoading: isLoadingSettings } = usePublicSettings();
   const [location] = useLocation();
   const [isWelcomeModalOpen, setWelcomeModalOpen] = useState(false);
+
+  const maintenanceMode = publicSettings?.maintenanceMode ?? false;
+  const maintenanceMessage = publicSettings?.maintenanceMessage ?? '';
 
   useDocumentTitle();
   useProvisioningStatusCheck();
