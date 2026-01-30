@@ -23,7 +23,7 @@ interface ArticleListItemProps {
   categoryId: string;
   moveArticle: (categoryId: string, dragIndex: number, hoverIndex: number) => void;
   onEdit: (article: KnowledgebaseArticle) => void;
-  onDelete: (categoryId: string, articleId: string) => void;
+  onDelete: (categoryId: string, articleId: string, title: string) => void;
   onDropArticle: (categoryId: string) => void; // To trigger save on drop
   // deleteArticleMutation: any; // If needed directly, or handled by parent
 }
@@ -116,8 +116,7 @@ const ArticleListItem: React.FC<ArticleListItemProps> = ({
               variant="ghost"
               size="icon"
               className="h-7 w-7"
-              onClick={() => onDelete(categoryId, article.id)}
-              // disabled={deleteArticleMutation?.isPending} // Example if mutation passed
+              onClick={() => onDelete(categoryId, article.id, article.title)}
             >
               <Trash2 className="h-3.5 w-3.5 text-destructive" />
             </Button>

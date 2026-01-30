@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
 import { 
-  Eye, TriangleAlert, Ban, RefreshCcw, Search, LockOpen, History, 
+  Eye, TriangleAlert, Ban, Search, LockOpen, History, 
   Link2, StickyNote, Ticket, UserRound, Shield, FileText, Upload, Loader2,
   ChevronDown, ChevronRight, Settings, Plus
 } from 'lucide-react';
@@ -1369,6 +1369,11 @@ const PlayerWindow = ({ playerId, isOpen, onClose, initialPosition }: PlayerWind
       title={playerInfo.username}
       isOpen={isOpen}
       onClose={onClose}
+      onRefresh={() => {
+        refetch();
+        refetchLinkedAccounts();
+      }}
+      isRefreshing={isFetching || isLoadingLinkedAccounts}
       initialPosition={initialPosition}
       initialSize={{ width: 650, height: 550 }}
     >
@@ -1403,22 +1408,7 @@ const PlayerWindow = ({ playerId, isOpen, onClose, initialPosition }: PlayerWind
                 )}
               </div>
               <div className="flex-1 min-w-0">
-                <div className="flex items-center gap-2">
-                  <h5 className="text-lg font-medium">{playerInfo.username || 'Unknown'}</h5>
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    className="h-7 w-7"
-                    onClick={() => {
-                      refetch();
-                      refetchLinkedAccounts();
-                    }}
-                    disabled={isFetching || isLoadingLinkedAccounts}
-                    title="Refresh player data"
-                  >
-                    <RefreshCcw className={`h-4 w-4 ${isFetching || isLoadingLinkedAccounts ? 'animate-spin' : ''}`} />
-                  </Button>
-                </div>
+                <h5 className="text-lg font-medium">{playerInfo.username || 'Unknown'}</h5>
                 <div className="flex flex-wrap gap-2 mt-1">
                   <Badge variant="outline" className={playerInfo.status === 'Online' ? 
                     "bg-success/10 text-success border-success/20" : 

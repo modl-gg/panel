@@ -4,6 +4,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@modl
 import { Input } from '@modl-gg/shared-web/components/ui/input';
 import { Textarea } from '@modl-gg/shared-web/components/ui/textarea';
 import { useToast } from '@modl-gg/shared-web/hooks/use-toast';
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@modl-gg/shared-web/components/ui/alert-dialog';
 import { queryClient } from '@/lib/queryClient';
 import { useQuery, useMutation } from '@tanstack/react-query';
 import { Plus, Edit, Trash2, GripVertical, Eye, EyeOff, ArrowUpDown } from 'lucide-react';
@@ -38,7 +39,7 @@ interface CategoryItemProps {
   index: number;
   moveCategory: (dragIndex: number, hoverIndex: number) => void;
   onEdit: (category: KnowledgebaseCategory) => void;
-  onDelete: (categoryId: string) => void;
+  onDelete: (category: KnowledgebaseCategory) => void;
   onAddArticle: (categoryId: string) => void;
   editingCategory: KnowledgebaseCategory | null;
   handleUpdateCategory: () => void;
@@ -48,7 +49,7 @@ interface CategoryItemProps {
   editingArticle: KnowledgebaseArticle | null;
   setEditingArticle: React.Dispatch<React.SetStateAction<KnowledgebaseArticle | null>>;
   handleUpdateArticle: () => void;
-  handleDeleteArticle: (categoryId: string, articleId: string) => void;
+  handleDeleteArticle: (categoryId: string, articleId: string, title: string) => void;
   updateArticleMutation: any; // This should be specific to article update
   deleteArticleMutation: any;
   handleDropCategory: () => void;
@@ -178,7 +179,7 @@ const CategoryItem: React.FC<CategoryItemProps> = ({
             ) : (
               <Button variant="ghost" size="sm" onClick={() => onEdit(category)}><Edit className="h-4 w-4" /></Button>
             )}
-            <Button variant="ghost" size="sm" onClick={() => onDelete(category.id)} disabled={deleteCategoryMutation.isPending}><Trash2 className="h-4 w-4 text-destructive" /></Button>
+            <Button variant="ghost" size="sm" onClick={() => onDelete(category)} disabled={deleteCategoryMutation.isPending}><Trash2 className="h-4 w-4 text-destructive" /></Button>
           </div>
         </div>
         <div className="mt-4 pl-6 space-y-3">
@@ -219,6 +220,12 @@ const KnowledgebaseSettings: React.FC = () => {
   const [editingArticle, setEditingArticle] = useState<KnowledgebaseArticle | null>(null);
   // const [selectedCategoryForNewArticle, setSelectedCategoryForNewArticle] = useState<string | null>(null); // Replaced by newArticleForModal
   const [newArticleForModal, setNewArticleForModal] = useState<{ categoryId: string; title: string; content: string; is_visible: boolean } | null>(null);
+
+  // Delete confirmation dialog state
+  const [deleteCategoryDialogOpen, setDeleteCategoryDialogOpen] = useState(false);
+  const [categoryToDelete, setCategoryToDelete] = useState<KnowledgebaseCategory | null>(null);
+  const [deleteArticleDialogOpen, setDeleteArticleDialogOpen] = useState(false);
+  const [articleToDelete, setArticleToDelete] = useState<{ categoryId: string; articleId: string; title: string } | null>(null);
 
 
   const { data: categories, isLoading: isLoadingCategories, refetch: refetchCategories } = useQuery<KnowledgebaseCategory[], Error>({
@@ -352,10 +359,17 @@ const KnowledgebaseSettings: React.FC = () => {
     }
   };
 
-  const handleDeleteCategory = (categoryId: string) => {
-    if (window.confirm('Are you sure you want to delete this category and all its articles?')) {
-      deleteCategoryMutation.mutate(categoryId);
+  const handleDeleteCategoryClick = (category: KnowledgebaseCategory) => {
+    setCategoryToDelete(category);
+    setDeleteCategoryDialogOpen(true);
+  };
+
+  const confirmDeleteCategory = () => {
+    if (categoryToDelete) {
+      deleteCategoryMutation.mutate(categoryToDelete.id);
     }
+    setDeleteCategoryDialogOpen(false);
+    setCategoryToDelete(null);
   };
 
   const moveCategory = useCallback((dragIndex: number, hoverIndex: number) => {
@@ -537,10 +551,17 @@ const KnowledgebaseSettings: React.FC = () => {
     }
   };
 
-  const handleDeleteArticle = (categoryId: string, articleId: string) => {
-    if (window.confirm('Are you sure you want to delete this article?')) {
-      deleteArticleMutation.mutate({ categoryId, articleId });
+  const handleDeleteArticleClick = (categoryId: string, articleId: string, title: string) => {
+    setArticleToDelete({ categoryId, articleId, title });
+    setDeleteArticleDialogOpen(true);
+  };
+
+  const confirmDeleteArticle = () => {
+    if (articleToDelete) {
+      deleteArticleMutation.mutate({ categoryId: articleToDelete.categoryId, articleId: articleToDelete.articleId });
     }
+    setDeleteArticleDialogOpen(false);
+    setArticleToDelete(null);
   };
 
   const onDragEndArticles = (categoryId: string, result: any /* DropResult */) => {
@@ -599,7 +620,7 @@ const KnowledgebaseSettings: React.FC = () => {
                   category={category}
                   moveCategory={moveCategory}
                   onEdit={setEditingCategoryState}
-                  onDelete={handleDeleteCategory}
+                  onDelete={handleDeleteCategoryClick}
                   onAddArticle={openCreateArticleModal}
                   editingCategory={editingCategoryState}
                   handleUpdateCategory={handleUpdateCategoryLocal}
@@ -610,7 +631,7 @@ const KnowledgebaseSettings: React.FC = () => {
                   editingArticle={editingArticle}
                   setEditingArticle={setEditingArticle}
                   handleUpdateArticle={handleUpdateArticle}
-                  handleDeleteArticle={handleDeleteArticle} // Global delete
+                  handleDeleteArticle={handleDeleteArticleClick} // Global delete
                   updateArticleMutation={updateArticleMutation} // Global update for articles (modal)
                   deleteArticleMutation={deleteArticleMutation} // Global delete for articles
                   handleDropCategory={handleDropCategory}
@@ -703,6 +724,50 @@ const KnowledgebaseSettings: React.FC = () => {
         )}
 
       </div>
+
+      {/* Delete Category Confirmation Dialog */}
+      <AlertDialog open={deleteCategoryDialogOpen} onOpenChange={setDeleteCategoryDialogOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete Category?</AlertDialogTitle>
+            <AlertDialogDescription>
+              Are you sure you want to delete "{categoryToDelete?.name}" and all {categoryToDelete?.articles?.length || 0} articles? This action cannot be undone.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel onClick={() => setCategoryToDelete(null)}>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={confirmDeleteCategory}
+              disabled={deleteCategoryMutation.isPending}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              {deleteCategoryMutation.isPending ? 'Deleting...' : 'Delete'}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      {/* Delete Article Confirmation Dialog */}
+      <AlertDialog open={deleteArticleDialogOpen} onOpenChange={setDeleteArticleDialogOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete Article?</AlertDialogTitle>
+            <AlertDialogDescription>
+              Are you sure you want to delete "{articleToDelete?.title}"? This action cannot be undone.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel onClick={() => setArticleToDelete(null)}>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={confirmDeleteArticle}
+              disabled={deleteArticleMutation.isPending}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              {deleteArticleMutation.isPending ? 'Deleting...' : 'Delete'}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </DndProvider>
   );
 };

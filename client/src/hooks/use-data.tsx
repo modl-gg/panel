@@ -349,13 +349,24 @@ export function useSettings() {
             };
           }
         } else {
-          const res = await apiFetch('/v1/panel/settings/general');
+          const [res, webhookRes] = await Promise.all([
+            apiFetch('/v1/panel/settings/general'),
+            apiFetch('/v1/panel/settings/webhooks')
+          ]);
 
           if (res.ok) {
             const data = await res.json();
+            let webhookSettings = null;
+
+            if (webhookRes.ok) {
+              webhookSettings = await webhookRes.json();
+            }
 
             return {
-              settings: data
+              settings: {
+                ...data,
+                webhookSettings
+              }
             };
           }
 

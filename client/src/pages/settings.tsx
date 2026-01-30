@@ -2217,11 +2217,8 @@ const Settings = () => {
   }, []); // Empty dependencies since we use refs to get current values
 
   // Add a new punishment type
-  const addPunishmentType = () => {
+  const addPunishmentType = async () => {
     if (newPunishmentName.trim()) {
-      const newId = Math.max(...punishmentTypes.map(pt => pt.id)) + 1;
-      const newOrdinal = Math.max(...punishmentTypes.map(pt => pt.ordinal)) + 1;
-
       // Default durations and points based on category
       const defaultUnit = 'minutes' as 'seconds' | 'minutes' | 'hours' | 'days' | 'weeks' | 'months';
 
@@ -2275,17 +2272,43 @@ const Settings = () => {
         severe: 5
       };
 
-      const newPunishment: PunishmentType = {
-        id: newId,
+      const newPunishment = {
         name: newPunishmentName.trim(),
         category: newPunishmentCategory,
         isCustomizable: true,
-        ordinal: newOrdinal,
         durations: newPunishmentCategory === 'Gameplay' ? defaultGameplayDurations : defaultSocialDurations,
         points: newPunishmentCategory === 'Gameplay' ? defaultGameplayPoints : defaultSocialPoints
       };
-      setPunishmentTypes(prevTypes => [...prevTypes, newPunishment]);
-      setNewPunishmentName('');
+
+      try {
+        const { csrfFetch } = await import('@/utils/csrf');
+        const response = await csrfFetch('/v1/panel/settings/punishment-types', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(newPunishment),
+        });
+
+        if (response.ok) {
+          const createdType = await response.json();
+          setPunishmentTypes(prevTypes => [...prevTypes, createdType]);
+          setNewPunishmentName('');
+          queryClient.invalidateQueries({ queryKey: ['/v1/panel/settings/punishment-types'] });
+        } else {
+          const errorData = await response.json().catch(() => ({ error: 'Unknown error' }));
+          toast({
+            title: "Error",
+            description: errorData.error || 'Failed to create punishment type',
+            variant: "destructive"
+          });
+        }
+      } catch (error) {
+        console.error('Failed to create punishment type:', error);
+        toast({
+          title: "Error",
+          description: 'Failed to create punishment type',
+          variant: "destructive"
+        });
+      }
     }
   };
 

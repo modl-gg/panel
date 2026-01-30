@@ -1,5 +1,5 @@
 import { useRef, useEffect, useState, ReactNode } from 'react';
-import { X, Maximize2, Minimize2, ChevronUp, ChevronDown, User } from 'lucide-react';
+import { X, Maximize2, Minimize2, ChevronUp, ChevronDown, User, RefreshCcw } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { WindowPosition } from '@modl-gg/shared-web/types';
 import { Button } from '@modl-gg/shared-web/components/ui/button';
@@ -20,6 +20,8 @@ interface ResizableWindowProps {
   initialPosition?: WindowPosition;
   initialSize?: { width: number; height: number };
   onClose: () => void;
+  onRefresh?: () => void;
+  isRefreshing?: boolean;
   children: ReactNode;
 }
 
@@ -30,6 +32,8 @@ const ResizableWindow = ({
   initialPosition = { x: '50%', y: '50%' },
   initialSize = { width: 600, height: 500 },
   onClose,
+  onRefresh,
+  isRefreshing,
   children
 }: ResizableWindowProps) => {
   const windowRef = useRef<HTMLDivElement>(null);
@@ -344,8 +348,24 @@ const ResizableWindow = ({
           
           {/* Control buttons */}
           <div className="flex space-x-2 ml-auto">
+            {/* Refresh button */}
+            {onRefresh && (
+              <div
+                role="button"
+                tabIndex={0}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onRefresh();
+                }}
+                className={`h-5 w-5 flex items-center justify-center p-0 text-muted-foreground hover:text-foreground cursor-pointer ${isRefreshing ? 'pointer-events-none' : ''}`}
+                title="Refresh"
+              >
+                <RefreshCcw className={`h-3 w-3 ${isRefreshing ? 'animate-spin' : ''}`} />
+              </div>
+            )}
+
             {/* Restore button */}
-            <div 
+            <div
               role="button"
               tabIndex={0}
               onClick={(e) => {
@@ -356,7 +376,7 @@ const ResizableWindow = ({
             >
               <ChevronUp className="h-3 w-3" />
             </div>
-            
+
             {/* Close button */}
             <div
               role="button"
@@ -407,20 +427,37 @@ const ResizableWindow = ({
         
         {/* Control buttons */}
         <div className="flex space-x-1 ml-auto">
+          {/* Refresh button */}
+          {onRefresh && (
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={(e) => {
+                e.stopPropagation();
+                onRefresh();
+              }}
+              disabled={isRefreshing}
+              className="h-5 w-5 min-w-0 p-0 text-muted-foreground hover:text-foreground z-50"
+              title="Refresh"
+            >
+              <RefreshCcw className={`h-3 w-3 ${isRefreshing ? 'animate-spin' : ''}`} />
+            </Button>
+          )}
+
           {/* Minimize button */}
-          <Button 
-            variant="ghost" 
-            size="icon" 
+          <Button
+            variant="ghost"
+            size="icon"
             onClick={handleMinimize}
             className="h-5 w-5 min-w-0 p-0 text-muted-foreground hover:text-foreground z-50"
           >
             <ChevronDown className="h-3 w-3" />
           </Button>
-          
+
           {/* Close button */}
-          <Button 
-            variant="ghost" 
-            size="icon" 
+          <Button
+            variant="ghost"
+            size="icon"
             onClick={onClose}
             className="h-5 w-5 min-w-0 p-0 text-muted-foreground hover:text-destructive z-50"
           >
