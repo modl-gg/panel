@@ -2275,7 +2275,7 @@ const Settings = () => {
       const newPunishment = {
         name: newPunishmentName.trim(),
         category: newPunishmentCategory,
-        isCustomizable: true,
+        customizable: true,
         durations: newPunishmentCategory === 'Gameplay' ? defaultGameplayDurations : defaultSocialDurations,
         points: newPunishmentCategory === 'Gameplay' ? defaultGameplayPoints : defaultSocialPoints
       };

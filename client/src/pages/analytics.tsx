@@ -38,6 +38,20 @@ const fetchAnalyticsData = async (endpoint: string, period?: string) => {
   return response.json();
 };
 
+const fetchStaffPerformance = async (period?: string) => {
+  const { getApiUrl, getCurrentDomain } = await import('@/lib/api');
+  const url = `/v1/panel/audit/staff-performance${period ? `?period=${period}` : ''}`;
+  const response = await fetch(getApiUrl(url), {
+    credentials: 'include',
+    headers: { 'X-Server-Domain': getCurrentDomain() }
+  });
+  if (!response.ok) {
+    throw new Error('Failed to fetch staff performance');
+  }
+  const data = await response.json();
+  return { staffPerformance: data };
+};
+
 export default function AnalyticsPage() {
   return <AnalyticsContent />;
 }
@@ -66,7 +80,7 @@ function AnalyticsContent() {
   // Staff performance
   const { data: staffData, isLoading: staffLoading } = useQuery({
     queryKey: ['analytics', 'staff-performance', staffPeriod],
-    queryFn: () => fetchAnalyticsData('staff-performance', staffPeriod),
+    queryFn: () => fetchStaffPerformance(staffPeriod),
     refetchInterval: 5 * 60 * 1000
   });
 
@@ -105,7 +119,7 @@ function AnalyticsContent() {
   }
 
   return (
-    <PageContainer title="Analytics" subtitle="Comprehensive server statistics and insights">
+    <PageContainer title="Analytics">
       <div className="space-y-6">
         {/* Overview Cards */}
         <OverviewCards data={overviewData?.overview || null} loading={overviewLoading} />
@@ -146,7 +160,7 @@ function AnalyticsContent() {
 
           <TabsContent value="staff" className="space-y-4">
             <StaffPerformance
-              data={staffData}
+              data={staffData ?? null}
               loading={staffLoading}
               period={staffPeriod}
               onPeriodChange={setStaffPeriod}

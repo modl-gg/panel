@@ -7,7 +7,7 @@ import { BarChart, Bar, LineChart, Line, PieChart, Pie, Cell, XAxis, YAxis, Cart
 interface PunishmentData {
   byType: Array<{ type: string; count: number }>;
   dailyPunishments: Array<{ date: string; count: number }>;
-  byStaff: Array<{ staffName: string; count: number }>;
+  byStaff: Array<{ username: string; count: number }>;
   bySeverity?: Array<{ severity: string; count: number }>;
 }
 
@@ -125,7 +125,7 @@ export function PunishmentAnalytics({ data, loading, period, onPeriodChange }: P
           </TabsContent>
           
           <TabsContent value="types">
-            <div className="h-100">
+            <div className="h-80">
               <ResponsiveContainer width="100%" height="100%">
                 <PieChart>
                   <Pie
@@ -133,6 +133,7 @@ export function PunishmentAnalytics({ data, loading, period, onPeriodChange }: P
                     cx="50%"
                     cy="50%"
                     labelLine={false}
+                    label={(entry) => `${entry.type}: ${entry.count}`}
                     outerRadius={80}
                     fill="#8884d8"
                     dataKey="count"
@@ -152,7 +153,7 @@ export function PunishmentAnalytics({ data, loading, period, onPeriodChange }: P
               <ResponsiveContainer width="100%" height="100%">
                 <BarChart data={data.byStaff || []} layout="horizontal">
                   <CartesianGrid strokeDasharray="3 3" />
-                  <XAxis dataKey="staffName" />
+                  <XAxis dataKey="username" />
                   <YAxis />
                   <Tooltip />
                   <Bar dataKey="count" fill="#ef4444" />

@@ -77,10 +77,8 @@ interface StaffMember {
   totalActions: number;
   ticketResponses: number;
   punishmentsIssued: number;
-  notesAdded: number;
   avgResponseTime: number;
   lastActive: string;
-  recentActions: TransformedLog[];
 }
 
 interface PunishmentAction {
@@ -216,8 +214,7 @@ const fetchStaffPerformance = async (period = '30d') => {
     headers: { 'X-Server-Domain': getCurrentDomain() }
   });
   if (!response.ok) throw new Error('Failed to fetch staff performance');
-  const data = await response.json();
-  return data.staffPerformance || [];
+  return response.json();
 };
 
 const fetchTicketAnalytics = async (period = '30d') => {
@@ -1196,9 +1193,9 @@ const StaffDetailRow = ({ staff }: { staff: StaffMember }) => {
 
   return (
     <>
-      <tr 
-        key={staff.id} 
-        className="border-b hover:bg-muted/50 cursor-pointer transition-colors" 
+      <tr
+        key={staff.id}
+        className="border-b hover:bg-muted/50 cursor-pointer transition-colors"
         onClick={() => setIsDetailModalOpen(true)}
       >
         <td className="p-2 font-medium flex items-center gap-2">
@@ -1210,11 +1207,10 @@ const StaffDetailRow = ({ staff }: { staff: StaffMember }) => {
         </td>
         <td className="p-2">{staff.ticketResponses}</td>
         <td className="p-2">{staff.punishmentsIssued}</td>
-        <td className="p-2">{staff.notesAdded || 0}</td>
         <td className="p-2 font-medium">{staff.totalActions}</td>
       </tr>
-      
-      <StaffDetailModal 
+
+      <StaffDetailModal
         staff={staff}
         isOpen={isDetailModalOpen}
         onClose={() => setIsDetailModalOpen(false)}
@@ -2127,7 +2123,6 @@ const AuditLog = () => {
                           <th className="text-left p-2">Role</th>
                           <th className="text-left p-2">Ticket Responses</th>
                           <th className="text-left p-2">Punishments Issued</th>
-                          <th className="text-left p-2">Notes Added</th>
                           <th className="text-left p-2">Total Actions</th>
                         </tr>
                       </thead>

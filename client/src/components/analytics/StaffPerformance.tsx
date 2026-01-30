@@ -11,8 +11,9 @@ interface StaffMember {
   role: string;
   ticketResponses: number;
   punishmentsIssued: number;
-  notesAdded: number;
   totalActions: number;
+  avgResponseTime?: number;
+  lastActive?: string;
 }
 
 interface StaffPerformanceProps {
@@ -52,12 +53,14 @@ export function StaffPerformance({ data, loading, period, onPeriodChange }: Staf
   }
 
   // Prepare data for chart
-  const chartData = data.staffPerformance.slice(0, 10).map(staff => ({
+  const staffList = data.staffPerformance || [];
+  const chartData = staffList.slice(0, 10).map(staff => ({
     name: staff.username,
     'Ticket Responses': staff.ticketResponses,
-    'Punishments': staff.punishmentsIssued,
-    'Notes': staff.notesAdded
+    'Punishments': staff.punishmentsIssued
   }));
+
+  const hasData = staffList.length > 0;
 
   return (
     <Card className="col-span-full">
@@ -80,55 +83,58 @@ export function StaffPerformance({ data, loading, period, onPeriodChange }: Staf
         </div>
       </CardHeader>
       <CardContent>
-        <div className="space-y-6">
-          {/* Performance Chart */}
-          <div className="h-80">
-            <ResponsiveContainer width="100%" height="100%">
-              <BarChart data={chartData}>
-                <CartesianGrid strokeDasharray="3 3" />
-                <XAxis dataKey="name" />
-                <YAxis />
-                <Tooltip />
-                <Legend />
-                <Bar dataKey="Ticket Responses" fill="#3b82f6" />
-                <Bar dataKey="Punishments" fill="#ef4444" />
-                <Bar dataKey="Notes" fill="#10b981" />
-              </BarChart>
-            </ResponsiveContainer>
+        {!hasData ? (
+          <div className="h-80 flex items-center justify-center text-muted-foreground">
+            No staff performance data available for this period
           </div>
+        ) : (
+          <div className="space-y-6">
+            {/* Performance Chart */}
+            <div className="h-80">
+              <ResponsiveContainer width="100%" height="100%">
+                <BarChart data={chartData}>
+                  <CartesianGrid strokeDasharray="3 3" />
+                  <XAxis dataKey="name" />
+                  <YAxis />
+                  <Tooltip />
+                  <Legend />
+                  <Bar dataKey="Ticket Responses" fill="#3b82f6" />
+                  <Bar dataKey="Punishments" fill="#ef4444" />
+                </BarChart>
+              </ResponsiveContainer>
+            </div>
 
-          {/* Performance Table */}
-          <div className="rounded-md border">
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Staff Member</TableHead>
-                  <TableHead>Role</TableHead>
-                  <TableHead className="text-center">Tickets</TableHead>
-                  <TableHead className="text-center">Punishments</TableHead>
-                  <TableHead className="text-center">Notes</TableHead>
-                  <TableHead className="text-right">Total Actions</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {data.staffPerformance.map((staff) => (
-                  <TableRow key={staff.id}>
-                    <TableCell className="font-medium">{staff.username}</TableCell>
-                    <TableCell>
-                      <Badge variant={getRoleColor(staff.role) as any}>
-                        {staff.role}
-                      </Badge>
-                    </TableCell>
-                    <TableCell className="text-center">{staff.ticketResponses}</TableCell>
-                    <TableCell className="text-center">{staff.punishmentsIssued}</TableCell>
-                    <TableCell className="text-center">{staff.notesAdded}</TableCell>
-                    <TableCell className="text-right font-medium">{staff.totalActions}</TableCell>
+            {/* Performance Table */}
+            <div className="rounded-md border">
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Staff Member</TableHead>
+                    <TableHead>Role</TableHead>
+                    <TableHead className="text-center">Tickets</TableHead>
+                    <TableHead className="text-center">Punishments</TableHead>
+                    <TableHead className="text-right">Total Actions</TableHead>
                   </TableRow>
-                ))}
-              </TableBody>
-            </Table>
+                </TableHeader>
+                <TableBody>
+                  {staffList.map((staff) => (
+                    <TableRow key={staff.id}>
+                      <TableCell className="font-medium">{staff.username}</TableCell>
+                      <TableCell>
+                        <Badge variant={getRoleColor(staff.role) as any}>
+                          {staff.role}
+                        </Badge>
+                      </TableCell>
+                      <TableCell className="text-center">{staff.ticketResponses}</TableCell>
+                      <TableCell className="text-center">{staff.punishmentsIssued}</TableCell>
+                      <TableCell className="text-right font-medium">{staff.totalActions}</TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </div>
           </div>
-        </div>
+        )}
       </CardContent>
     </Card>
   );
