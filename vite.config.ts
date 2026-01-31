@@ -8,8 +8,12 @@ export default defineConfig({
     alias: {
       "@": path.resolve(import.meta.dirname, "client", "src"),
       "@shared": path.resolve(import.meta.dirname, "shared"),
+      // Ensure only one React instance is used (fixes "Invalid hook call" errors)
+      "react": path.resolve(import.meta.dirname, "node_modules", "react"),
+      "react-dom": path.resolve(import.meta.dirname, "node_modules", "react-dom"),
     },
     preserveSymlinks: true,
+    dedupe: ['react', 'react-dom'],
   },
   optimizeDeps: {
     include: ["@modl-gg/shared-web"],
