@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { Scale, Shield, Globe, Tag, Plus, X, Fingerprint, KeyRound, Lock, QrCode, Copy, Check, Mail, Trash2, GamepadIcon, MessageCircle, Save, CheckCircle, User as UserIcon, LogOut, CreditCard, BookOpen, Settings as SettingsIcon, Upload, Key, Eye, EyeOff, RefreshCw, ChevronDown, ChevronRight, Layers, GripVertical, Edit3 } from 'lucide-react';
-import { getApiUrl, getCurrentDomain, apiFetch } from '@/lib/api';
+import { getApiUrl, getCurrentDomain, apiFetch, apiUpload } from '@/lib/api';
 import { Button } from '@modl-gg/shared-web/components/ui/button';
 import { Card, CardContent, CardHeader } from '@modl-gg/shared-web/components/ui/card';
 import { useSidebar } from '@/hooks/use-sidebar';
@@ -1212,14 +1212,11 @@ const Settings = () => {
       const formData = new FormData();
       formData.append('icon', file);
 
-      const csrfFetch = apiFetch;
-      const response = await csrfFetch(`/v1/panel/settings/upload-icon?iconType=${iconType}`, {
-        method: 'POST',
-        body: formData,
-      });
+      const response = await apiUpload(`/v1/panel/settings/upload-icon?iconType=${iconType}`, formData);
 
       if (!response.ok) {
-        throw new Error('Upload failed');
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(errorData.error || 'Upload failed');
       }
 
       const result = await response.json();
@@ -1228,7 +1225,7 @@ const Settings = () => {
       console.error('Upload error:', error);
       toast({
         title: "Upload Failed",
-        description: "Failed to upload the icon. Please try again.",
+        description: error instanceof Error ? error.message : "Failed to upload the icon. Please try again.",
         variant: "destructive",
       });
       return null;
