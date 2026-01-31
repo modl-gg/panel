@@ -107,10 +107,19 @@ const DomainSettings: React.FC = () => {
       if (response.ok) {
         const data = await response.json();
         setDomainStatus(data.status);
-        toast({
-          title: "Domain Configuration Started",
-          description: "Your custom domain has been configured. Please set up the CNAME record and click verify.",
-        });
+
+        if (data.status?.status === 'error') {
+          toast({
+            title: "Configuration Error",
+            description: data.status.error || "Failed to configure domain in Cloudflare",
+            variant: "destructive",
+          });
+        } else {
+          toast({
+            title: "Domain Configuration Started",
+            description: "Your custom domain has been configured. Please set up the CNAME record and click verify.",
+          });
+        }
       } else {
         const error = await response.json();
         toast({
