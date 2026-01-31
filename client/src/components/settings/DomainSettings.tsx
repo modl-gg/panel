@@ -93,6 +93,15 @@ const DomainSettings: React.FC = () => {
       return;
     }
 
+    if (domainStatus?.domain && domainStatus.domain.toLowerCase() === customDomain.trim().toLowerCase()) {
+      toast({
+        title: "Domain Already Configured",
+        description: "This domain is already configured. Please verify the existing configuration or remove it first.",
+        variant: "destructive",
+      });
+      return;
+    }
+
     setIsLoading(true);
     try {
       const csrfFetch = apiFetch;
