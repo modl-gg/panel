@@ -4,6 +4,7 @@ import { Button } from '@modl-gg/shared-web/components/ui/button';
 import { Badge } from '@modl-gg/shared-web/components/ui/badge';
 import { useToast } from '@modl-gg/shared-web/hooks/use-toast';
 import { loadStripe } from '@stripe/stripe-js';
+import { apiFetch } from '@/lib/api';
 import { useBillingStatus, useCancelSubscription, useResubscribe } from '@/hooks/use-data';
 import { useQueryClient } from '@tanstack/react-query';
 import { Skeleton } from '@modl-gg/shared-web/components/ui/skeleton';
@@ -109,7 +110,7 @@ const BillingSettings = () => {
   const handleCreateCheckoutSession = async () => {
     setIsLoading(true);
     try {
-      const { csrfFetch } = await import('@/utils/csrf');
+      const csrfFetch = apiFetch;
       const response = await csrfFetch('/v1/panel/billing/checkout-session', {
         method: 'POST',
         headers: {
@@ -166,7 +167,7 @@ const BillingSettings = () => {
   const handleCreatePortalSession = async () => {
     setIsLoading(true);
     try {
-      const { csrfFetch } = await import('@/utils/csrf');
+      const csrfFetch = apiFetch;
       const response = await csrfFetch('/v1/panel/billing/portal-session', {
         method: 'POST',
       });

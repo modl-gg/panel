@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
 import { useAuth } from '@/hooks/use-auth';
 import { usePermissions } from '@/hooks/use-permissions';
+import { apiFetch } from '@/lib/api';
 import { Button } from '@modl-gg/shared-web/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@modl-gg/shared-web/components/ui/card';
 import ChangeRoleModal from './ChangeRoleModal'; // Import the new modal
@@ -118,7 +119,7 @@ const StaffManagementPanel = () => {
     if (!selectedStaffMember) return;
 
     try {
-      const { csrfFetch } = await import('@/utils/csrf');
+      const csrfFetch = apiFetch;
       const response = await csrfFetch(`/v1/panel/staff/${selectedStaffMember.id}`, {
         method: 'DELETE',
       });
@@ -151,7 +152,7 @@ const StaffManagementPanel = () => {
 
   const handleResendInvitation = async (staffId: string) => {
     try {
-      const { csrfFetch } = await import('@/utils/csrf');
+      const csrfFetch = apiFetch;
       const response = await csrfFetch(`/v1/panel/staff/invitations/${staffId}/resend`, {
         method: 'POST',
       });

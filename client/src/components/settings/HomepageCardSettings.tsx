@@ -7,6 +7,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@modl-gg/shared-web/components/ui/alert-dialog';
 import { useToast } from '@modl-gg/shared-web/hooks/use-toast';
 import { queryClient } from '@/lib/queryClient';
+import { apiFetch } from '@/lib/api';
 import { useQuery, useMutation } from '@tanstack/react-query';
 import { Plus, Edit, Trash2, GripVertical, Eye, EyeOff } from 'lucide-react';
 import { Switch } from '@modl-gg/shared-web/components/ui/switch';
@@ -140,7 +141,7 @@ const HomepageCardSettings: React.FC = () => {
 
   const createCardMutation = useMutation<HomepageCard, Error, Partial<HomepageCard>>({
     mutationFn: async (newCard) => {
-      const { csrfFetch } = await import('@/utils/csrf');
+      const csrfFetch = apiFetch;
       const response = await csrfFetch('/v1/panel/homepage-cards', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -166,7 +167,7 @@ const HomepageCardSettings: React.FC = () => {
   const updateCardMutation = useMutation<HomepageCard, Error, { id: string } & Partial<HomepageCard>>({
     mutationFn: async (updatedCard) => {
       const { id, ...updateData } = updatedCard;
-      const { csrfFetch } = await import('@/utils/csrf');
+      const csrfFetch = apiFetch;
       const response = await csrfFetch(`/v1/panel/homepage-cards/${id}`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
@@ -191,7 +192,7 @@ const HomepageCardSettings: React.FC = () => {
 
   const deleteCardMutation = useMutation<void, Error, string>({
     mutationFn: async (cardId) => {
-      const { csrfFetch } = await import('@/utils/csrf');
+      const csrfFetch = apiFetch;
       const response = await csrfFetch(`/v1/panel/homepage-cards/${cardId}`, {
         method: 'DELETE',
       });

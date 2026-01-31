@@ -48,6 +48,7 @@ import { useTicket, usePanelTicket, useUpdateTicket, useSettings, useStaff, useM
 import { QuickResponsesConfiguration, defaultQuickResponsesConfig } from '@/types/quickResponses';
 import { useToast } from '@/hooks/use-toast';
 import PageContainer from '@/components/layout/PageContainer';
+import { apiFetch } from '@/lib/api';
 import { Card, CardHeader, CardTitle, CardDescription, CardContent, CardFooter } from '@modl-gg/shared-web/components/ui/card';
 import { apiRequest } from '@/lib/queryClient';
 import { useAddTicketReply } from '@/hooks/use-add-ticket-reply';
@@ -950,7 +951,7 @@ const TicketDetail = () => {
     }
 
     try {
-      const { csrfFetch } = await import('@/utils/csrf');
+      const csrfFetch = apiFetch;
       const response = await csrfFetch(`/v1/panel/settings/ai-apply-punishment/${ticketDetails.id}`, {
         method: 'POST',
         headers: {
@@ -1025,7 +1026,7 @@ const TicketDetail = () => {
     }
 
     try {
-      const { csrfFetch } = await import('@/utils/csrf');
+      const csrfFetch = apiFetch;
       const response = await csrfFetch(`/v1/panel/settings/ai-dismiss-suggestion/${ticketDetails.id}`, {
         method: 'POST',
         headers: {
@@ -3320,7 +3321,7 @@ const PunishmentDetailsCard = ({ punishmentId }: { punishmentId: string }) => {
                           };
                         }
                         
-                        const { csrfFetch } = await import('@/utils/csrf');
+                        const csrfFetch = apiFetch;
                         const response = await csrfFetch(`/v1/panel/players/${punishmentData.playerUuid}/punishments/${punishmentId}/evidence`, {
                           method: 'POST',
                           headers: {

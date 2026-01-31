@@ -10,6 +10,7 @@ import { Badge } from '@modl-gg/shared-web/components/ui/badge';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@modl-gg/shared-web/components/ui/collapsible';
 import { usePermissions } from '@/hooks/use-permissions';
 import { toast } from '@/hooks/use-toast';
+import { apiFetch } from '@/lib/api';
 import EmbedTemplateEditor from './EmbedTemplateEditor';
 
 interface EmbedField {
@@ -282,7 +283,7 @@ const WebhookSettings: React.FC<WebhookSettingsProps> = ({
 
     try {
       setIsTesting(true);
-      const { csrfFetch } = await import('@/utils/csrf');
+      const csrfFetch = apiFetch;
       const response = await csrfFetch('/v1/panel/settings/webhooks/test', {
         method: 'POST',
         headers: {

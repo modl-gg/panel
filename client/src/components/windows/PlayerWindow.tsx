@@ -16,7 +16,7 @@ import { toast } from '@/hooks/use-toast';
 import PlayerPunishment, { PlayerPunishmentData } from '@/components/ui/player-punishment';
 import MediaUpload from '@/components/MediaUpload';
 import { formatDateWithTime } from '@/utils/date-utils';
-import { getAvatarUrl } from '@/lib/api';
+import { getAvatarUrl, apiFetch } from '@/lib/api';
 
 // Local type definitions
 interface WindowPosition {
@@ -2294,7 +2294,7 @@ const PlayerWindow = ({ playerId, isOpen, onClose, initialPosition }: PlayerWind
                                       };
                                     }
                                     
-                                    const { csrfFetch } = await import('@/utils/csrf');
+                                    const csrfFetch = apiFetch;
                                     const response = await csrfFetch(`/v1/panel/players/${playerId}/punishments/${warning.id}/evidence`, {
                                       method: 'POST',
                                       headers: {
@@ -2625,7 +2625,7 @@ const PlayerWindow = ({ playerId, isOpen, onClose, initialPosition }: PlayerWind
                         };
                           try {
                           // Send note to the server
-                          const { csrfFetch } = await import('@/utils/csrf');
+                          const csrfFetch = apiFetch;
                           const response = await csrfFetch(`/v1/panel/players/${playerId}/notes`, {
                             method: 'POST',
                             headers: {

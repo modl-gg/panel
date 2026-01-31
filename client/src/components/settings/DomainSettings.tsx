@@ -8,6 +8,7 @@ import { Alert, AlertDescription, AlertTitle } from '@modl-gg/shared-web/compone
 import { Badge } from '@modl-gg/shared-web/components/ui/badge';
 import { Separator } from '@modl-gg/shared-web/components/ui/separator';
 import { useToast } from '@modl-gg/shared-web/hooks/use-toast';
+import { apiFetch } from '@/lib/api';
 import { useAuth } from '@/hooks/use-auth';
 import { usePermissions } from '@/hooks/use-permissions';
 
@@ -94,7 +95,7 @@ const DomainSettings: React.FC = () => {
 
     setIsLoading(true);
     try {
-      const { csrfFetch } = await import('@/utils/csrf');
+      const csrfFetch = apiFetch;
       const response = await csrfFetch('/v1/panel/settings/domain', {
         method: 'POST',
         headers: {
@@ -134,7 +135,7 @@ const DomainSettings: React.FC = () => {
 
     setIsVerifying(true);
     try {
-      const { csrfFetch } = await import('@/utils/csrf');
+      const csrfFetch = apiFetch;
       const response = await csrfFetch('/v1/panel/settings/domain/verify', {
         method: 'POST',
         headers: {
@@ -194,7 +195,7 @@ const DomainSettings: React.FC = () => {
 
     setIsLoading(true);
     try {
-      const { csrfFetch } = await import('@/utils/csrf');
+      const csrfFetch = apiFetch;
       const response = await csrfFetch('/v1/panel/settings/domain', {
         method: 'DELETE',
       });

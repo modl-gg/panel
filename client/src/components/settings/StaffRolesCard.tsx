@@ -13,6 +13,7 @@ import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, D
 import { Separator } from '@modl-gg/shared-web/components/ui/separator';
 import { useSettings, useRoles, usePermissions, useCreateRole, useUpdateRole, useDeleteRole } from '@/hooks/use-data';
 import { useAuth } from '@/hooks/use-auth';
+import { apiFetch, getCSRFToken } from '@/lib/api';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@modl-gg/shared-web/components/ui/alert-dialog';
 
 // Permission categories and definitions
@@ -373,7 +374,6 @@ export default function StaffRolesCard() {
     
     try {
       // Pre-fetch CSRF token to avoid initial request failure
-      const { getCSRFToken } = await import('@/utils/csrf');
       await getCSRFToken();
       
       // Filter out Super Admin from the reorder request since it should never be reordered
@@ -384,7 +384,7 @@ export default function StaffRolesCard() {
         order: index + 1  // Start from 1 since Super Admin is always 0
       }));
       
-      const { csrfFetch } = await import('@/utils/csrf');
+      const csrfFetch = apiFetch;
       const response = await csrfFetch('/v1/panel/roles/reorder', {
         method: 'POST',
         headers: {

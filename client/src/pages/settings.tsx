@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { Scale, Shield, Globe, Tag, Plus, X, Fingerprint, KeyRound, Lock, QrCode, Copy, Check, Mail, Trash2, GamepadIcon, MessageCircle, Save, CheckCircle, User as UserIcon, LogOut, CreditCard, BookOpen, Settings as SettingsIcon, Upload, Key, Eye, EyeOff, RefreshCw, ChevronDown, ChevronRight, Layers, GripVertical, Edit3 } from 'lucide-react';
-import { getApiUrl, getCurrentDomain } from '@/lib/api';
+import { getApiUrl, getCurrentDomain, apiFetch } from '@/lib/api';
 import { Button } from '@modl-gg/shared-web/components/ui/button';
 import { Card, CardContent, CardHeader } from '@modl-gg/shared-web/components/ui/card';
 import { useSidebar } from '@/hooks/use-sidebar';
@@ -1134,7 +1134,7 @@ const Settings = () => {
   const handleWebhookSave = async (webhookSettings: any) => {
     setSavingWebhookSettings(true);
     try {
-      const { csrfFetch } = await import('@/utils/csrf');
+      const csrfFetch = apiFetch;
       const response = await csrfFetch('/v1/panel/settings/webhooks', {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
@@ -1212,7 +1212,7 @@ const Settings = () => {
       const formData = new FormData();
       formData.append('icon', file);
 
-      const { csrfFetch } = await import('@/utils/csrf');
+      const csrfFetch = apiFetch;
       const response = await csrfFetch(`/v1/panel/settings/upload-icon?iconType=${iconType}`, {
         method: 'POST',
         body: formData,
@@ -1297,7 +1297,7 @@ const Settings = () => {
   const generateApiKey = async () => {
     setIsGeneratingApiKey(true);
     try {
-      const { csrfFetch } = await import('@/utils/csrf');
+      const csrfFetch = apiFetch;
       const response = await csrfFetch('/v1/panel/settings/api-keys/panel/generate', {
         method: 'POST',
       });
@@ -1332,7 +1332,7 @@ const Settings = () => {
     
     setIsRevokingApiKey(true);
     try {
-      const { csrfFetch } = await import('@/utils/csrf');
+      const csrfFetch = apiFetch;
       const response = await csrfFetch('/v1/panel/settings/api-keys/panel', {
         method: 'DELETE',
       });
@@ -1455,7 +1455,7 @@ const Settings = () => {
         aiPunishmentConfigs: configs || settings.aiPunishmentConfigs
       };
       
-      const { csrfFetch } = await import('@/utils/csrf');
+      const csrfFetch = apiFetch;
       const response = await csrfFetch('/v1/panel/settings/ai-moderation', {
         method: 'PUT',
         headers: {
@@ -1528,7 +1528,7 @@ const Settings = () => {
   // Add AI punishment type configuration
   const addAiPunishmentType = async (punishmentTypeId: number, aiDescription: string) => {
     try {
-      const { csrfFetch } = await import('@/utils/csrf');
+      const csrfFetch = apiFetch;
       const response = await csrfFetch('/v1/panel/settings/ai-punishment-types', {
         method: 'POST',
         headers: {
@@ -1564,7 +1564,7 @@ const Settings = () => {
   // Update AI punishment type
   const updateAiPunishmentType = async (id: number, updates: { enabled?: boolean; aiDescription?: string }) => {
     try {
-      const { csrfFetch } = await import('@/utils/csrf');
+      const csrfFetch = apiFetch;
       const response = await csrfFetch(`/v1/panel/settings/ai-punishment-types/${id}`, {
         method: 'PUT',
         headers: {
@@ -1597,7 +1597,7 @@ const Settings = () => {
   // Remove AI punishment type configuration
   const removeAiPunishmentType = async (id: number) => {
     try {
-      const { csrfFetch } = await import('@/utils/csrf');
+      const csrfFetch = apiFetch;
       const response = await csrfFetch(`/v1/panel/settings/ai-punishment-types/${id}`, {
         method: 'DELETE',
       });
@@ -1787,7 +1787,7 @@ const Settings = () => {
     pendingChangesRef.current = false;
 
     try {
-      const { csrfFetch } = await import('@/utils/csrf');
+      const csrfFetch = apiFetch;
 
       // Save general settings (now includes tags)
       const generalSettingsPayload = {
@@ -1990,7 +1990,7 @@ const Settings = () => {
       setIsTestingConnection(true);
 
       try {
-        const { csrfFetch } = await import('@/utils/csrf');
+        const csrfFetch = apiFetch;
         const response = await csrfFetch('/v1/panel/settings/test-database', {
           method: 'POST',
           headers: {
@@ -2091,7 +2091,7 @@ const Settings = () => {
   // Save profile settings function
   const saveProfileSettings = useCallback(async () => {
     try {
-      const { csrfFetch } = await import('@/utils/csrf');
+      const csrfFetch = apiFetch;
       const response = await csrfFetch('/v1/panel/auth/profile', {
         method: 'PATCH',
         headers: {
@@ -2161,7 +2161,7 @@ const Settings = () => {
       }
       
       try {
-        const { csrfFetch } = await import('@/utils/csrf');
+        const csrfFetch = apiFetch;
         const response = await csrfFetch('/v1/panel/auth/profile', {
           method: 'PATCH',
           headers: {
@@ -2281,7 +2281,7 @@ const Settings = () => {
       };
 
       try {
-        const { csrfFetch } = await import('@/utils/csrf');
+        const csrfFetch = apiFetch;
         const response = await csrfFetch('/v1/panel/settings/punishment-types', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
@@ -2320,7 +2320,7 @@ const Settings = () => {
     }
 
     try {
-      const { csrfFetch } = await import('@/utils/csrf');
+      const csrfFetch = apiFetch;
       const response = await csrfFetch(`/v1/panel/settings/punishment-types/${typeToRemove.ordinal}`, {
         method: 'DELETE',
       });

@@ -37,6 +37,7 @@ import { Separator } from '@/components/ui/separator';
 import { Textarea } from '@/components/ui/textarea';
 import { Badge } from '@/components/ui/badge';
 import { useSettings, useCreateAppeal, useAppealsByPunishment } from '@/hooks/use-data';
+import { apiFetch } from '@/lib/api';
 
 // Appeal form field interfaces
 interface AppealFormField {
@@ -332,7 +333,7 @@ const AppealsPage = () => {
     if (!newReply.trim() || !appealInfo) return;
 
     try {
-      const { csrfFetch } = await import('@/utils/csrf');
+      const csrfFetch = apiFetch;
       const response = await csrfFetch(`/v1/panel/appeals/${appealInfo.id}/replies`, {
         method: 'POST',
         headers: {

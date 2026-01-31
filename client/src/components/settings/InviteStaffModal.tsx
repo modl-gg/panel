@@ -25,6 +25,7 @@ import { useAuth } from '@/hooks/use-auth';
 import { useToast } from '@modl-gg/shared-web/hooks/use-toast';
 import { Loader2 } from 'lucide-react';
 import { useQuery } from '@tanstack/react-query';
+import { apiFetch } from '@/lib/api';
 
 const inviteSchema = z.object({
   email: z.string().email({ message: 'Invalid email address.' }),
@@ -87,7 +88,7 @@ const InviteStaffModal: React.FC<InviteStaffModalProps> = ({ isOpen, onClose, on
   const onSubmit = async (values: InviteFormValues) => {
     setIsLoading(true);
     try {
-      const { csrfFetch } = await import('@/utils/csrf');
+      const csrfFetch = apiFetch;
       const response = await csrfFetch('/v1/panel/staff/invite', {
         method: 'POST',
         headers: {

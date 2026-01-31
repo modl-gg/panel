@@ -25,7 +25,7 @@ import {
   Undo2,
   Gavel
 } from 'lucide-react';
-import { getApiUrl, getCurrentDomain } from '@/lib/api';
+import { getApiUrl, getCurrentDomain, apiFetch } from '@/lib/api';
 import { Button } from '@modl-gg/shared-web/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@modl-gg/shared-web/components/ui/card';
 import { Badge } from '@modl-gg/shared-web/components/ui/badge';
@@ -287,7 +287,7 @@ const CustomTooltip = ({ active, payload, label, formatValue, formatName }: any)
 };
 
 const rollbackPunishment = async (id: string, reason?: string) => {
-  const { csrfFetch } = await import('@/utils/csrf');
+  const csrfFetch = apiFetch;
   const response = await csrfFetch(`/v1/panel/audit/punishments/${id}/rollback`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
@@ -480,7 +480,7 @@ const PunishmentRollbackModal = () => {
     }
     
     try {
-      const { csrfFetch } = await import('@/utils/csrf');
+      const csrfFetch = apiFetch;
       const response = await csrfFetch('/v1/panel/audit/punishments/bulk-rollback', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -657,7 +657,7 @@ const StaffDetailModal = ({ staff, isOpen, onClose }: {
     }
 
     try {
-      const { csrfFetch } = await import('@/utils/csrf');
+      const csrfFetch = apiFetch;
       const response = await csrfFetch(`/v1/panel/audit/staff/${staff.username}/rollback-date-range`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -1070,7 +1070,7 @@ const StaffDetailModal = ({ staff, isOpen, onClose }: {
                                     onClick={async () => {
                                       try {
                                                                           
-                                        const { csrfFetch } = await import('@/utils/csrf');
+                                        const csrfFetch = apiFetch;
                                         const response = await csrfFetch(`/v1/panel/audit/punishment/${punishment.id}/rollback`, {
                                           method: 'POST',
                                           headers: { 'Content-Type': 'application/json' },

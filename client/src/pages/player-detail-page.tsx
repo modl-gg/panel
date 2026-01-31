@@ -18,6 +18,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import PlayerPunishment, { PlayerPunishmentData } from '@/components/ui/player-punishment';
 import MediaUpload from '@/components/MediaUpload';
 import { formatDateWithTime } from '@/utils/date-utils';
+import { apiFetch } from '@/lib/api';
 
 interface PlayerInfo {
   username: string;
@@ -1715,7 +1716,7 @@ const PlayerDetailPage = () => {
                                       };
                                     }
                                     
-                                    const { csrfFetch } = await import('@/utils/csrf');
+                                    const csrfFetch = apiFetch;
                                     const response = await csrfFetch(`/v1/panel/players/${playerId}/punishments/${warning.id}/evidence`, {
                                       method: 'POST',
                                       headers: {
@@ -2070,7 +2071,7 @@ const PlayerDetailPage = () => {
 
                         try {
                           // Send note to the server
-                          const { csrfFetch } = await import('@/utils/csrf');
+                          const csrfFetch = apiFetch;
                           const response = await csrfFetch(`/v1/panel/players/${playerId}/notes`, {
                             method: 'POST',
                             headers: {

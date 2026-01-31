@@ -5,6 +5,7 @@ import { Input } from '@modl-gg/shared-web/components/ui/input';
 import { Label } from '@modl-gg/shared-web/components/ui/label';
 import { useToast } from '@modl-gg/shared-web/hooks/use-toast';
 import { useAuth } from '@/hooks/use-auth';
+import { apiFetch } from '@/lib/api';
 
 const ProfileSettings = () => {
   const { user } = useAuth();
@@ -22,7 +23,7 @@ const ProfileSettings = () => {
   const handleSaveProfile = async () => {
     setIsUpdating(true);
     try {
-      const { csrfFetch } = await import('@/utils/csrf');
+      const csrfFetch = apiFetch;
       const response = await csrfFetch('/v1/panel/auth/profile', {
         method: 'PATCH',
         headers: {

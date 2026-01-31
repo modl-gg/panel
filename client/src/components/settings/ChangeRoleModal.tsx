@@ -16,6 +16,7 @@ import { useQueryClient } from '@tanstack/react-query';
 import { useAuth } from '@/hooks/use-auth';
 import { useToast } from '@modl-gg/shared-web/hooks/use-toast';
 import { useQuery } from '@tanstack/react-query';
+import { apiFetch } from '@/lib/api';
 
 interface StaffMember {
   id: string;
@@ -82,7 +83,7 @@ const ChangeRoleModal: React.FC<ChangeRoleModalProps> = ({ isOpen, onClose, staf
     }
 
     try {
-      const { csrfFetch } = await import('@/utils/csrf');
+      const csrfFetch = apiFetch;
       const response = await csrfFetch(`/v1/panel/staff/${staffMember.id}/role`, {
         method: 'PATCH',
         headers: {

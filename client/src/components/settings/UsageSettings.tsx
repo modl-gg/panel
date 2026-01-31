@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { HardDrive, Search, Filter, Trash2, Download, FolderOpen, Calendar, AlertCircle, Settings, CreditCard, TrendingUp, Brain, Zap } from 'lucide-react';
-import { getApiUrl, getCurrentDomain } from '@/lib/api';
+import { getApiUrl, getCurrentDomain, apiFetch } from '@/lib/api';
 import { Button } from '@modl-gg/shared-web/components/ui/button';
 import { Input } from '@modl-gg/shared-web/components/ui/input';
 import { Label } from '@modl-gg/shared-web/components/ui/label';
@@ -434,7 +434,7 @@ const fetchStorageData = async () => {
 
   const confirmDelete = async () => {
     try {
-      const { csrfFetch } = await import('@/utils/csrf');
+      const csrfFetch = apiFetch;
       if (deleteTarget === 'single') {
         const fileToDeleteKey = files.find(f => f.id === fileToDelete)?.path || fileToDelete;
         await csrfFetch('/v1/panel/storage/bulk-delete', {

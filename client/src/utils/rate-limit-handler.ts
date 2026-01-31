@@ -1,4 +1,5 @@
 // Rate limit handling utility
+import { apiFetch } from '@/lib/api';
 
 interface RateLimitResponse {
   error: string;
@@ -74,7 +75,7 @@ export async function rateLimitAwareCSRFfetch(
   options: RequestInit = {},
   currentPath?: string
 ): Promise<Response> {
-  const { csrfFetch } = await import('@/utils/csrf');
+  const csrfFetch = apiFetch;
   const response = await csrfFetch(url, options);
   
   if (isRateLimitError(response)) {
