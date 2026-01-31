@@ -70,15 +70,9 @@ const HomePage: React.FC = () => {
   const [isLoading, setIsLoading] = useState(true);
   const [isSearching, setIsSearching] = useState(false);
   const [expandedCards, setExpandedCards] = useState<Set<string>>(new Set());
-  const [mounted, setMounted] = useState(false);
   const { theme, setTheme } = useTheme();
   const { data: publicSettings } = usePublicSettings();
   const { user } = useAuth();
-
-  // Prevent hydration mismatch with next-themes
-  useEffect(() => {
-    setMounted(true);
-  }, []);
 
   // Fetch categories on component mount
   useEffect(() => {
@@ -245,17 +239,15 @@ const HomePage: React.FC = () => {
     <div className="min-h-screen bg-background">{/* Removed gradient for better theme compatibility */}
       {/* Header with Sign In and Theme Toggle - responsive positioning */}
       <div className="absolute top-4 right-4 z-10 flex items-center gap-1 sm:gap-2">
-        {/* Theme Toggle - only render when mounted to prevent hydration mismatch */}
-        {mounted && (
-          <Button
-            variant="secondary"
-            size="sm"
-            className="bg-card/80 hover:bg-card/90 text-foreground border-muted p-2 sm:px-3"
-            onClick={() => setTheme(theme === 'dark' ? 'light' : 'dark')}
-          >
-            {theme === 'dark' ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
-          </Button>
-        )}
+        {/* Theme Toggle */}
+        <Button
+          variant="secondary"
+          size="sm"
+          className="bg-card/80 hover:bg-card/90 text-foreground border-muted p-2 sm:px-3"
+          onClick={() => setTheme(theme === 'dark' ? 'light' : 'dark')}
+        >
+          {theme === 'dark' ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
+        </Button>
 
         {/* Sign In / Go To Panel Button */}
         <Link href={user ? "/panel" : "/panel/auth"}>
