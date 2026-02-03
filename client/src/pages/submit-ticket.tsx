@@ -237,6 +237,21 @@ const SubmitTicketPage = () => {
       }
     }
 
+    // Validate email format
+    const email = formData['email']?.trim();
+    if (email) {
+      // Email regex: must have @ followed by domain with at least one dot
+      const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+      if (!emailRegex.test(email)) {
+        toast({
+          title: "Invalid Email Format",
+          description: "Please enter a valid email address (e.g., name@example.com).",
+          variant: "destructive"
+        });
+        return;
+      }
+    }
+
     setIsSubmitting(true);
 
     try {
@@ -610,7 +625,7 @@ const SubmitTicketPage = () => {
           ) : (
             <Input
               id={field.id}
-              type="text"
+              type={field.id === 'email' ? 'email' : 'text'}
               placeholder={`Enter ${field.label.toLowerCase()}`}
               value={formData[field.id] || ''}
               onChange={(e) => handleFormFieldChange(field.id, e.target.value)}
