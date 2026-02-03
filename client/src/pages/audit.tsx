@@ -1231,323 +1231,177 @@ const fetchStaffDetails = async (username: string, period: string) => {
 
 // Ticket Analytics Section Component
 const TicketAnalyticsSection = ({ analyticsPeriod }: { analyticsPeriod: string }) => {
-  // Define the correct ticket categories
-  const ticketCategories = ['Bug', 'Support', 'Appeal', 'Player Report', 'Chat Report', 'Application'];
-  
-  // State for selected categories
-  const [selectedCategories, setSelectedCategories] = useState<string[]>(ticketCategories);
-  
-  // Normalize category names for data keys (lowercase, spaces to underscores)
-  const normalizeCategory = (category: string) => {
-    return category.toLowerCase().replace(/\s+/g, '_');
-  };
-
   const { data: ticketAnalytics } = useQuery({
     queryKey: ['ticket-analytics', analyticsPeriod],
     queryFn: () => fetchTicketAnalytics(analyticsPeriod),
     staleTime: 5 * 60 * 1000
   });
 
-  // Process data for the chart
-  const chartData = useMemo(() => {
-    if (!ticketAnalytics) return [];
+  // Calculate totals from the data
+  const totalTickets = useMemo(() => {
+    return (ticketAnalytics?.byStatus || []).reduce((sum: number, item: any) => sum + item.count, 0);
+  }, [ticketAnalytics]);
 
-    const dateMap = new Map();
-    
-    // Process daily trend data
-    ticketAnalytics.dailyTrendByCategory?.forEach((item: any) => {
-      const date = item._id.date;
-      const rawCategory = item._id.category || 'Other';
-      const category = normalizeCategory(rawCategory);
-      const status = item._id.status?.toLowerCase();
-      
-      // Only process if category is selected
-      if (!selectedCategories.some(cat => normalizeCategory(cat) === category)) {
-        return;
-      }
-      
-      if (!dateMap.has(date)) {
-        dateMap.set(date, { 
-          date, 
-          opened_overall: 0, 
-          closed_overall: 0, 
-          responseTime_overall: 0,
-          responseTimeCount: 0 
-        });
-      }
-      
-      const dayData = dateMap.get(date);
-      
-      // Count opened tickets
-      dayData.opened_overall = (dayData.opened_overall || 0) + item.count;
-      
-      // Count closed tickets
-      if (status === 'resolved' || status === 'closed') {
-        dayData.closed_overall = (dayData.closed_overall || 0) + item.count;
-      }
-    });
-
-    // Process response time data
-    ticketAnalytics.responseTimeByCategory?.forEach((item: any) => {
-      const date = item._id.date;
-      const rawCategory = item._id.category || 'Other';
-      const category = normalizeCategory(rawCategory);
-      const responseTimeHours = item.avgResponseTimeMs / (1000 * 60 * 60);
-      
-      // Only process if category is selected
-      if (!selectedCategories.some(cat => normalizeCategory(cat) === category)) {
-        return;
-      }
-      
-      if (!dateMap.has(date)) {
-        dateMap.set(date, { 
-          date, 
-          opened_overall: 0, 
-          closed_overall: 0, 
-          responseTime_overall: 0,
-          responseTimeCount: 0 
-        });
-      }
-      
-      const dayData = dateMap.get(date);
-      
-      // Accumulate response times for averaging
-      dayData.responseTime_overall = (dayData.responseTime_overall || 0) + responseTimeHours;
-      dayData.responseTimeCount = (dayData.responseTimeCount || 0) + 1;
-    });
-
-    // Calculate averages and fill in missing dates
-    const allDates = Array.from(dateMap.keys()).sort();
-    const filledData = allDates.map(date => {
-      const dayData = dateMap.get(date) || { 
-        date, 
-        opened_overall: 0, 
-        closed_overall: 0, 
-        responseTime_overall: 0,
-        responseTimeCount: 0 
-      };
-      
-      // Calculate average response time
-      if (dayData.responseTimeCount > 0) {
-        dayData.responseTime_overall = dayData.responseTime_overall / dayData.responseTimeCount;
-      } else {
-        dayData.responseTime_overall = 0;
-      }
-      
-      // Clean up temporary count field
-      delete dayData.responseTimeCount;
-      
-      return dayData;
-    });
-
-    return filledData;
-  }, [ticketAnalytics, selectedCategories]);
+  // Calculate average resolution time
+  const avgResolutionHours = useMemo(() => {
+    const resolutions = ticketAnalytics?.avgResolutionByCategory || [];
+    if (resolutions.length === 0) return 0;
+    const total = resolutions.reduce((sum: number, item: any) => sum + (item.avgHours || 0), 0);
+    return Math.round(total / resolutions.length);
+  }, [ticketAnalytics]);
 
   return (
     <div className="space-y-6">
       <h3 className="text-lg font-medium">Ticket Analytics</h3>
-      
-      {/* Average Resolution Times by Category */}
-      <Card>
-        <CardHeader>
-          <CardTitle className="text-base">Average Resolution Time by Category</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-            {/* Overall */}
-            <div className="p-4 border rounded">
-              <h4 className="font-medium text-sm">Overall</h4>
-              <p className="text-2xl font-bold">{ticketAnalytics?.overallAvgResolution?.display || '0s'}</p>
-              <p className="text-xs text-muted-foreground">
-                {ticketAnalytics?.totalFinishedTickets || 0} finished tickets
-              </p>
-            </div>
-            
-            {/* By Category */}
-            {(ticketAnalytics?.avgResolutionByCategory || []).map((cat: any, index: number) => (
-              <div key={index} className="p-4 border rounded">
-                <h4 className="font-medium text-sm capitalize">{cat.category || 'Uncategorized'}</h4>
-                <p className="text-2xl font-bold">{cat.display}</p>
-                <p className="text-xs text-muted-foreground">
-                  {cat.ticketCount} tickets
-                </p>
-              </div>
-            ))}
-          </div>
-        </CardContent>
-      </Card>
 
-      {/* Overall Ticket Trends Chart */}
+      {/* Summary Cards */}
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+        <Card>
+          <CardContent className="p-4">
+            <div className="text-sm text-muted-foreground">Total Tickets</div>
+            <div className="text-2xl font-bold">{totalTickets}</div>
+            <p className="text-xs text-muted-foreground">In selected period</p>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardContent className="p-4">
+            <div className="text-sm text-muted-foreground">Avg Resolution Time</div>
+            <div className="text-2xl font-bold">{avgResolutionHours}h</div>
+            <p className="text-xs text-muted-foreground">Time to resolve tickets</p>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardContent className="p-4">
+            <div className="text-sm text-muted-foreground">Categories</div>
+            <div className="text-2xl font-bold">{(ticketAnalytics?.byCategory || []).length}</div>
+            <p className="text-xs text-muted-foreground">Different ticket types</p>
+          </CardContent>
+        </Card>
+      </div>
+
+      {/* Charts Row */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        {/* Tickets by Status */}
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-base">Tickets by Status</CardTitle>
+          </CardHeader>
+          <CardContent>
+            {!ticketAnalytics?.byStatus || ticketAnalytics.byStatus.length === 0 ? (
+              <div className="flex items-center justify-center h-[250px] text-muted-foreground">
+                <div className="text-center">
+                  <FileText className="h-8 w-8 mx-auto mb-2 opacity-50" />
+                  <p className="text-sm">No status data available</p>
+                </div>
+              </div>
+            ) : (
+              <ResponsiveContainer width="100%" height={250}>
+                <PieChart>
+                  <Pie
+                    data={ticketAnalytics.byStatus}
+                    cx="50%"
+                    cy="50%"
+                    outerRadius={80}
+                    fill="#8884d8"
+                    dataKey="count"
+                    label={({ status, percent }) => `${status} ${((percent || 0) * 100).toFixed(0)}%`}
+                  >
+                    {ticketAnalytics.byStatus.map((entry: any, index: number) => (
+                      <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+                    ))}
+                  </Pie>
+                  <Tooltip content={<CustomTooltip />} />
+                </PieChart>
+              </ResponsiveContainer>
+            )}
+          </CardContent>
+        </Card>
+
+        {/* Tickets by Category */}
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-base">Tickets by Category</CardTitle>
+          </CardHeader>
+          <CardContent>
+            {!ticketAnalytics?.byCategory || ticketAnalytics.byCategory.length === 0 ? (
+              <div className="flex items-center justify-center h-[250px] text-muted-foreground">
+                <div className="text-center">
+                  <FileText className="h-8 w-8 mx-auto mb-2 opacity-50" />
+                  <p className="text-sm">No category data available</p>
+                </div>
+              </div>
+            ) : (
+              <ResponsiveContainer width="100%" height={250}>
+                <BarChart data={ticketAnalytics.byCategory}>
+                  <CartesianGrid strokeDasharray="3 3" className="opacity-30" />
+                  <XAxis dataKey="category" className="text-muted-foreground" fontSize={12} />
+                  <YAxis className="text-muted-foreground" fontSize={12} />
+                  <Tooltip cursor={false} content={<CustomTooltip />} />
+                  <Bar dataKey="count" fill="#3b82f6" style={{ filter: 'none' }} />
+                </BarChart>
+              </ResponsiveContainer>
+            )}
+          </CardContent>
+        </Card>
+      </div>
+
+      {/* Daily Ticket Trend */}
       <Card>
         <CardHeader>
-          <CardTitle className="text-base">Overall Ticket Trends</CardTitle>
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-6 text-sm">
-              <div className="flex items-center gap-2">
-                <div className="w-3 h-0.5 bg-blue-500"></div>
-                <span>Average Response Time (hours)</span>
-              </div>
-              <div className="flex items-center gap-2">
-                <div className="w-3 h-0.5 bg-green-500"></div>
-                <span>Tickets Opened</span>
-              </div>
-              <div className="flex items-center gap-2">
-                <div className="w-3 h-0.5 bg-red-500"></div>
-                <span>Tickets Closed</span>
-              </div>
-            </div>
-            
-            {/* Category Selection */}
-            <Popover>
-              <PopoverTrigger asChild>
-                <Button variant="outline" size="sm" className="w-48 justify-between">
-                  Categories ({selectedCategories.length})
-                  <ChevronDown className="h-4 w-4" />
-                </Button>
-              </PopoverTrigger>
-              <PopoverContent className="w-56 p-2">
-                <div className="space-y-2">
-                  {/* Select All checkbox */}
-                  <div className="flex items-center space-x-2">
-                    <Checkbox
-                      id="select-all-categories"
-                      checked={selectedCategories.length === ticketCategories.length}
-                      onCheckedChange={(checked) => {
-                        if (checked) {
-                          setSelectedCategories(ticketCategories);
-                        } else {
-                          setSelectedCategories([]);
-                        }
-                      }}
-                    />
-                    <label 
-                      htmlFor="select-all-categories"
-                      className="text-sm font-medium cursor-pointer"
-                    >
-                      Select All
-                    </label>
-                  </div>
-                  <Separator />
-                  
-                  {/* Individual category checkboxes */}
-                  {ticketCategories.map(category => {
-                    const isSelected = selectedCategories.includes(category);
-                    
-                    return (
-                      <div key={category} className="flex items-center space-x-2">
-                        <Checkbox
-                          id={`category-${category}`}
-                          checked={isSelected}
-                          onCheckedChange={(checked) => {
-                            if (checked) {
-                              setSelectedCategories(prev => [...prev, category]);
-                            } else {
-                              setSelectedCategories(prev => prev.filter(c => c !== category));
-                            }
-                          }}
-                        />
-                        <label 
-                          htmlFor={`category-${category}`}
-                          className="text-sm cursor-pointer"
-                        >
-                          {category}
-                        </label>
-                      </div>
-                    );
-                  })}
-                </div>
-              </PopoverContent>
-            </Popover>
-          </div>
+          <CardTitle className="text-base">Daily Ticket Trend</CardTitle>
         </CardHeader>
         <CardContent>
-          {!chartData || chartData.length === 0 ? (
-            <div className="flex items-center justify-center h-[400px] text-muted-foreground">
+          {!ticketAnalytics?.dailyTickets || ticketAnalytics.dailyTickets.length === 0 ? (
+            <div className="flex items-center justify-center h-[300px] text-muted-foreground">
               <div className="text-center">
                 <FileText className="h-8 w-8 mx-auto mb-2 opacity-50" />
                 <p className="text-sm">No ticket trend data available</p>
               </div>
             </div>
           ) : (
-            <ResponsiveContainer width="100%" height={400}>
-              <LineChart data={chartData}>
+            <ResponsiveContainer width="100%" height={300}>
+              <LineChart data={ticketAnalytics.dailyTickets}>
                 <CartesianGrid strokeDasharray="3 3" className="opacity-30" />
-                <XAxis 
-                  dataKey="date" 
-                  className="text-muted-foreground"
-                  fontSize={12}
-                />
-                <YAxis 
-                  className="text-muted-foreground"
-                  fontSize={12}
-                />
-                <Tooltip 
-                  content={({ active, payload, label }) => {
-                    if (active && payload && payload.length) {
-                      return (
-                        <div className="bg-background border border-border rounded-lg p-3 shadow-md">
-                          <p className="text-sm font-medium mb-2">{label}</p>
-                          {payload.map((entry, index) => (
-                            <div key={index} className="flex items-center gap-2 text-sm">
-                              <div 
-                                className="w-3 h-3 rounded-full" 
-                                style={{ backgroundColor: entry.color }}
-                              />
-                              <span className="text-muted-foreground">{entry.name}:</span>
-                              <span className="font-medium">
-                                {entry.name?.includes('Response Time') 
-                                  ? `${Number(entry.value).toFixed(1)}h`
-                                  : entry.value
-                                }
-                              </span>
-                            </div>
-                          ))}
-                        </div>
-                      );
-                    }
-                    return null;
-                  }}
-                  allowEscapeViewBox={{ x: false, y: false }}
-                />
-                
-                {/* Average Response Time Line */}
+                <XAxis dataKey="date" className="text-muted-foreground" fontSize={12} />
+                <YAxis className="text-muted-foreground" fontSize={12} />
+                <Tooltip content={<CustomTooltip />} />
                 <Line
                   type="monotone"
-                  dataKey="responseTime_overall"
+                  dataKey="count"
                   stroke="#3b82f6"
                   strokeWidth={2}
-                  name="Average Response Time (hours)"
-                  connectNulls={true}
                   dot={false}
                   activeDot={false}
-                />
-                
-                {/* Opened Tickets Line */}
-                <Line
-                  type="monotone"
-                  dataKey="opened_overall"
-                  stroke="#10b981"
-                  strokeWidth={2}
-                  name="Tickets Opened"
-                  dot={false}
-                  activeDot={false}
-                />
-                
-                {/* Closed Tickets Line */}
-                <Line
-                  type="monotone"
-                  dataKey="closed_overall"
-                  stroke="#ef4444"
-                  strokeWidth={2}
-                  name="Tickets Closed"
-                  dot={false}
-                  activeDot={false}
+                  name="Tickets"
                 />
               </LineChart>
             </ResponsiveContainer>
           )}
         </CardContent>
       </Card>
+
+      {/* Resolution Time by Category */}
+      {ticketAnalytics?.avgResolutionByCategory && ticketAnalytics.avgResolutionByCategory.length > 0 && (
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-base">Average Resolution Time by Category</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <ResponsiveContainer width="100%" height={250}>
+              <BarChart data={ticketAnalytics.avgResolutionByCategory}>
+                <CartesianGrid strokeDasharray="3 3" className="opacity-30" />
+                <XAxis dataKey="category" className="text-muted-foreground" fontSize={12} />
+                <YAxis className="text-muted-foreground" fontSize={12} />
+                <Tooltip
+                  cursor={false}
+                  content={<CustomTooltip formatValue={(value: any) => `${Number(value).toFixed(1)}h`} />}
+                />
+                <Bar dataKey="avgHours" fill="#10b981" style={{ filter: 'none' }} name="Avg Hours" />
+              </BarChart>
+            </ResponsiveContainer>
+          </CardContent>
+        </Card>
+      )}
     </div>
   );
 };
@@ -1979,7 +1833,7 @@ const AuditLog = () => {
                   <CardTitle className="text-base">Ticket Trends</CardTitle>
                 </CardHeader>
                 <CardContent>
-                  {!ticketAnalytics?.dailyTrend || ticketAnalytics.dailyTrend.length === 0 ? (
+                  {!ticketAnalytics?.dailyTickets || ticketAnalytics.dailyTickets.length === 0 ? (
                     <div className="flex items-center justify-center h-[200px] text-muted-foreground">
                       <div className="text-center">
                         <BarChart3 className="h-8 w-8 mx-auto mb-2 opacity-50" />
@@ -1988,7 +1842,7 @@ const AuditLog = () => {
                     </div>
                   ) : (
                     <ResponsiveContainer width="100%" height={200}>
-                      <LineChart data={ticketAnalytics.dailyTrend}>
+                      <LineChart data={ticketAnalytics.dailyTickets}>
                         <CartesianGrid strokeDasharray="3 3" className="opacity-30" />
                         <XAxis dataKey="date" className="text-muted-foreground" fontSize={12} />
                         <YAxis className="text-muted-foreground" fontSize={12} />
@@ -2181,7 +2035,7 @@ const AuditLog = () => {
                   <CardTitle className="text-base">Daily Punishment Trend</CardTitle>
                 </CardHeader>
                 <CardContent>
-                  {!punishmentAnalytics?.dailyTrend || punishmentAnalytics.dailyTrend.length === 0 ? (
+                  {!punishmentAnalytics?.dailyPunishments || punishmentAnalytics.dailyPunishments.length === 0 ? (
                     <div className="flex items-center justify-center h-[250px] text-muted-foreground">
                       <div className="text-center">
                         <TrendingUp className="h-8 w-8 mx-auto mb-2 opacity-50" />
@@ -2190,7 +2044,7 @@ const AuditLog = () => {
                     </div>
                   ) : (
                     <ResponsiveContainer width="100%" height={250}>
-                      <LineChart data={punishmentAnalytics.dailyTrend}>
+                      <LineChart data={punishmentAnalytics.dailyPunishments}>
                         <CartesianGrid strokeDasharray="3 3" className="opacity-30" />
                         <XAxis dataKey="date" className="text-muted-foreground" fontSize={12} />
                         <YAxis className="text-muted-foreground" fontSize={12} />
@@ -2208,7 +2062,7 @@ const AuditLog = () => {
                 <CardTitle className="text-base">Top Punishers (Staff)</CardTitle>
               </CardHeader>
               <CardContent>
-                {!punishmentAnalytics?.topPunishers || punishmentAnalytics.topPunishers.length === 0 ? (
+                {!punishmentAnalytics?.byStaff || punishmentAnalytics.byStaff.length === 0 ? (
                   <div className="flex items-center justify-center h-[200px] text-muted-foreground">
                     <div className="text-center">
                       <Shield className="h-8 w-8 mx-auto mb-2 opacity-50" />
@@ -2217,14 +2071,13 @@ const AuditLog = () => {
                   </div>
                 ) : (
                   <div className="space-y-2">
-                    {punishmentAnalytics.topPunishers.map((staff: any, index: number) => (
-                      <div key={staff.staffId || staff.staffName || `punisher-${index}`} className="flex items-center justify-between p-2 border rounded">
+                    {punishmentAnalytics.byStaff.map((staff: any, index: number) => (
+                      <div key={staff.username || `punisher-${index}`} className="flex items-center justify-between p-2 border rounded">
                         <div className="flex items-center gap-2">
                           <Shield className="h-4 w-4 text-blue-600" />
-                          <span className="font-medium">{staff.staffName}</span>
-                          <Badge variant="outline" className="text-xs">{staff.role}</Badge>
+                          <span className="font-medium">{staff.username}</span>
                         </div>
-                        <Badge variant="secondary">{staff.punishmentCount}</Badge>
+                        <Badge variant="secondary">{staff.count}</Badge>
                       </div>
                     ))}
                   </div>
