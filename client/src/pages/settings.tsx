@@ -3028,7 +3028,8 @@ const Settings = () => {
               return null;
             }
 
-            const isSelected = expandedCategory === category.id;
+            // Only highlight if this category has a selected sub-category
+            const isSelected = expandedCategory === category.id && !!expandedSubCategory;
             const Icon = category.icon;
 
             return (
@@ -3085,6 +3086,7 @@ const Settings = () => {
                 setProfileUsername={setProfileUsername}
                 currentEmail={currentEmail}
                 setCurrentEmail={setCurrentEmail}
+                minecraftUsername={user?.minecraftUsername}
               />
             )}
 

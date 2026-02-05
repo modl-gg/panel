@@ -82,17 +82,17 @@ export function FilterDropdown({
         variant="outline"
         size="sm"
         onClick={() => setIsOpen(!isOpen)}
-        className="h-8 px-3 justify-between min-w-[120px]"
+        className="h-8 px-3 justify-between w-[140px]"
       >
         <span className="flex items-center gap-1.5 truncate">
           {label}
           {selected.length > 0 && (
-            <Badge variant="secondary" className="h-4 px-1 text-xs font-normal">
+            <Badge variant="secondary" className="h-4 min-w-[18px] px-1 text-xs font-normal">
               {selected.length}
             </Badge>
           )}
         </span>
-        <ChevronDown className={`h-3.5 w-3.5 ml-1 transition-transform ${isOpen ? 'rotate-180' : ''}`} />
+        <ChevronDown className={`h-3.5 w-3.5 ml-1 flex-shrink-0 transition-transform ${isOpen ? 'rotate-180' : ''}`} />
       </Button>
 
       {isOpen && (

@@ -290,15 +290,12 @@ function LabelManagementTable({ labels, onLabelsChange }: LabelManagementTablePr
       {/* Add new label form */}
       <div className="flex flex-col sm:flex-row gap-3 items-start sm:items-end p-4 bg-muted/30 rounded-lg">
         <div className="flex items-center gap-2">
-          <div className="space-y-1">
-            <Label className="text-xs">Color</Label>
-            <input
-              type="color"
-              value={newLabelColor}
-              onChange={(e) => setNewLabelColor(e.target.value)}
-              className="w-8 h-8 rounded cursor-pointer border-0"
-            />
-          </div>
+          <input
+            type="color"
+            value={newLabelColor}
+            onChange={(e) => setNewLabelColor(e.target.value)}
+            className="w-8 h-8 rounded cursor-pointer border-0 mt-5"
+          />
           <div className="space-y-1">
             <Label className="text-xs">Name</Label>
             <Input

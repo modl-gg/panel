@@ -1734,7 +1734,7 @@ const TicketDetail = () => {
                         </Badge>
                       ))}
                       
-                      {/* Tag add button */}
+                      {/* Label add button */}
                       <Popover>
                         <PopoverTrigger asChild>
                           <Button variant="outline" size="sm" className="h-6 px-2 py-1 text-xs rounded-full gap-1 bg-background">
@@ -1744,13 +1744,13 @@ const TicketDetail = () => {
                         </PopoverTrigger>
                         <PopoverContent className="w-64 p-3" align="start">
                           <div className="space-y-2">
-                            <h4 className="text-sm font-medium">Add Tag</h4>
+                            <h4 className="text-sm font-medium">Add Label</h4>
                             <div className="flex items-center space-x-2">
                               <input
                                 className="flex h-8 w-full rounded-md border border-input bg-background px-3 py-1 text-sm shadow-sm transition-colors file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50"
-                                placeholder="New tag"
+                                placeholder="New label"
                                 value={ticketDetails.newTag || ''}
-                                onChange={(e) => 
+                                onChange={(e) =>
                                   setTicketDetails(prev => ({
                                     ...prev,
                                     newTag: e.target.value
@@ -1762,7 +1762,7 @@ const TicketDetail = () => {
                                   }
                                 }}
                               />
-                              <Button 
+                              <Button
                                 size="sm"
                                 onClick={() => {
                                   if (ticketDetails.newTag?.trim()) {
@@ -1775,12 +1775,12 @@ const TicketDetail = () => {
                               </Button>
                             </div>
                             <div className="mt-2">
-                              <h5 className="text-xs text-muted-foreground mb-1">Suggested tags:</h5>
+                              <h5 className="text-xs text-muted-foreground mb-1">Suggested labels:</h5>
                               <div className="flex flex-wrap gap-1">
                                 {getDefaultTagsForCategory(ticketDetails.category).map((tag, idx) => (
-                                  <Badge 
-                                    key={idx} 
-                                    variant="outline" 
+                                  <Badge
+                                    key={idx}
+                                    variant="outline"
                                     className="cursor-pointer bg-muted/20 hover:bg-muted/40"
                                     onClick={() => {
                                       if (!ticketDetails.tags?.includes(tag)) {
