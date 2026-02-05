@@ -641,8 +641,8 @@ const PlayerWindow = ({ playerId, isOpen, onClose, initialPosition }: PlayerWind
       findLinkedAccountsMutation.mutate(playerId, {
         onError: (error) => {
           console.error('Failed to trigger linked account search:', error);
-          // Reset the flag so user can try again if needed
-          setHasTriggeredLinkedSearch(false);
+          // Don't reset the flag - this prevents retry loops on rate limit errors
+          // User can close and reopen the window to retry if needed
         }
       });
     }

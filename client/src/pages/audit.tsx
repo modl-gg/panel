@@ -326,6 +326,7 @@ const StaffPerformanceModal = () => {
                 <SelectItem value="7d">7 days</SelectItem>
                 <SelectItem value="30d">30 days</SelectItem>
                 <SelectItem value="90d">90 days</SelectItem>
+                <SelectItem value="all">All time</SelectItem>
               </SelectContent>
             </Select>
           </DialogTitle>
@@ -811,6 +812,7 @@ const StaffDetailModal = ({ staff, isOpen, onClose }: {
                 <SelectItem value="7d">7 days</SelectItem>
                 <SelectItem value="30d">30 days</SelectItem>
                 <SelectItem value="90d">90 days</SelectItem>
+                <SelectItem value="all">All time</SelectItem>
               </SelectContent>
             </Select>
           </div>
@@ -1669,6 +1671,7 @@ const AuditLog = () => {
                 <SelectItem value="7d">7 days</SelectItem>
                 <SelectItem value="30d">30 days</SelectItem>
                 <SelectItem value="90d">90 days</SelectItem>
+                <SelectItem value="all">All time</SelectItem>
               </SelectContent>
             </Select>
 
