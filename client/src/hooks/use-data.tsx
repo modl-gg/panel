@@ -85,11 +85,15 @@ export function useTickets(options?: {
   search?: string;
   status?: string;
   type?: string;
+  author?: string;
+  labels?: string[];
+  assignee?: string;
+  sort?: string;
 }) {
-  const { page = 1, limit = 10, search = '', status = '', type = '' } = options || {};
+  const { page = 1, limit = 10, search = '', status = '', type = '', author = '', labels = [], assignee = '', sort = 'newest' } = options || {};
 
   return useQuery({
-    queryKey: ['/v1/panel/tickets', { page, limit, search, status, type }],
+    queryKey: ['/v1/panel/tickets', { page, limit, search, status, type, author, labels, assignee, sort }],
     queryFn: async () => {
       const params = new URLSearchParams();
       params.append('page', page.toString());
@@ -97,6 +101,12 @@ export function useTickets(options?: {
       if (search) params.append('search', search);
       if (status) params.append('status', status);
       if (type) params.append('type', type);
+      if (author) params.append('author', author);
+      if (labels.length > 0) {
+        labels.forEach(label => params.append('labels', label));
+      }
+      if (assignee) params.append('assignee', assignee);
+      if (sort) params.append('sort', sort);
 
       const res = await apiFetch(`/v1/panel/tickets?${params.toString()}`);
       if (!res.ok) {
@@ -1166,6 +1176,102 @@ export function useTicketCounts(options?: {
   const isError = queries.some(query => query.isError);
 
   return { counts, isLoading, isError };
+}
+
+export function useTicketStatusCounts(options?: {
+  search?: string;
+  type?: string;
+  author?: string;
+  labels?: string[];
+  assignee?: string;
+}) {
+  const { search = '', type = '', author = '', labels = [], assignee = '' } = options || {};
+
+  return useQuery({
+    queryKey: ['/v1/panel/tickets/counts', { search, type, author, labels, assignee }],
+    queryFn: async () => {
+      const params = new URLSearchParams();
+      if (search) params.append('search', search);
+      if (type) params.append('type', type);
+      if (author) params.append('author', author);
+      if (labels.length > 0) {
+        labels.forEach(label => params.append('labels', label));
+      }
+      if (assignee) params.append('assignee', assignee);
+
+      const res = await apiFetch(`/v1/panel/tickets/counts?${params.toString()}`);
+      if (!res.ok) {
+        throw new Error('Failed to fetch ticket counts');
+      }
+      return res.json() as Promise<{ open: number; closed: number }>;
+    },
+    staleTime: 30000,
+    refetchOnMount: true,
+    refetchOnWindowFocus: true
+  });
+}
+
+export function useBulkUpdateTickets() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async (request: {
+      ticketIds: string[];
+      locked?: boolean;
+      addLabels?: string[];
+      removeLabels?: string[];
+      assignTo?: string;
+    }) => {
+      const res = await apiFetch('/v1/panel/tickets/bulk', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(request),
+      });
+
+      if (!res.ok) {
+        throw new Error('Failed to bulk update tickets');
+      }
+
+      return res.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['/v1/panel/tickets'] });
+      queryClient.invalidateQueries({ queryKey: ['/v1/panel/tickets/counts'] });
+    },
+  });
+}
+
+export function useLabels() {
+  return useQuery({
+    queryKey: ['/v1/panel/settings/general/labels'],
+    queryFn: async () => {
+      const res = await apiFetch('/v1/panel/settings/general');
+      if (!res.ok) {
+        throw new Error('Failed to fetch labels');
+      }
+      const data = await res.json();
+      return data.labels || [];
+    },
+    staleTime: 1000 * 60 * 5,
+    refetchOnWindowFocus: false
+  });
+}
+
+export function useAssignedTicketUpdates(limit: number = 10) {
+  return useQuery({
+    queryKey: ['/v1/panel/ticket-subscriptions/assigned-updates', limit],
+    queryFn: async () => {
+      const res = await apiFetch(`/v1/panel/ticket-subscriptions/assigned-updates?limit=${limit}`);
+      if (!res.ok) {
+        throw new Error('Failed to fetch assigned ticket updates');
+      }
+      return res.json();
+    },
+    staleTime: 30 * 1000,
+    refetchOnWindowFocus: true,
+  });
 }
 
 export function usePlayerSearch(searchQuery: string, debounceMs: number = 300) {

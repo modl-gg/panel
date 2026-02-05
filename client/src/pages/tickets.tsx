@@ -1,113 +1,120 @@
 import { useState, useEffect } from 'react';
 import { useLocation } from 'wouter';
 import {
-  Bug,
-  Users,
-  MessageSquare,
-  LockKeyhole,
-  Filter,
-  Eye,
+  CircleDot,
+  CheckCircle2,
   Loader2,
   Search,
   ChevronLeft,
-  ChevronRight
+  ChevronRight,
+  Square,
+  CheckSquare,
+  Eye,
+  User,
+  SortAsc
 } from 'lucide-react';
 import { formatDate, formatTimeAgo } from '../utils/date-utils';
 import { Button } from '@modl-gg/shared-web/components/ui/button';
-import { Card, CardContent, CardHeader } from '@modl-gg/shared-web/components/ui/card';
-import { Badge } from '@modl-gg/shared-web/components/ui/badge';
+import { Card, CardContent } from '@modl-gg/shared-web/components/ui/card';
 import { Input } from '@modl-gg/shared-web/components/ui/input';
-import { useSidebar } from '@/hooks/use-sidebar';
+import { Checkbox } from '@modl-gg/shared-web/components/ui/checkbox';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@modl-gg/shared-web/components/ui/table';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@modl-gg/shared-web/components/ui/tabs';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@modl-gg/shared-web/components/ui/select';
-import { useTickets, useTicketCounts } from '@/hooks/use-data';
+import { useTickets, useTicketStatusCounts, useBulkUpdateTickets, useLabels, useStaff } from '@/hooks/use-data';
 import { useIsMobile } from '@/hooks/use-mobile';
 import PageContainer from '@/components/layout/PageContainer';
+import { FilterDropdown } from '@/components/tickets/FilterDropdown';
+import { BulkActionBar } from '@/components/tickets/BulkActionBar';
+import { LabelBadge } from '@/components/ui/label-badge';
+import { useToast } from '@modl-gg/shared-web/hooks/use-toast';
 
-// Define the Ticket interface to match the MongoDB schema
 interface Ticket {
   _id?: string;
   id: string;
-  type: 'bug' | 'player' | 'chat' | 'appeal' | 'staff' | 'support';
+  type: string;
   subject: string;
   reportedBy: string;
   reportedByName?: string;
   date: string;
-  status: 'Unfinished' | 'Open' | 'Closed';
+  status: string;
   locked?: boolean;
-  description?: string;
-  lastReply?: string;
-  messages?: Array<{
-    id: string;
-    sender: string;
-    senderType: string;
-    content: string;
-    timestamp: string;
-    staff?: boolean;
-  }>;
-  notes?: Array<{
-    author: string;
-    content: string;
-    timestamp: string;
-    isStaffOnly: boolean;
-  }>;
+  tags?: string[];
+  assignedTo?: string;
+  lastReply?: {
+    created: string;
+    name: string;
+    staff: boolean;
+  };
+  replyCount?: number;
 }
 
-// Generate a badge color and text based on ticket status
-const getTicketStatusInfo = (ticket: Ticket) => {
-  // Use simplified status system - only Open or Closed
-  const isOpen = !ticket.locked;
-                  
-  const statusClass = isOpen
-    ? 'bg-green-50 text-green-700 border-green-200'
-    : 'bg-red-50 text-red-700 border-red-200';
-    
-  const statusText = isOpen ? 'Open' : 'Closed';
-  
-  return { statusClass, statusText, isOpen };
-};
+interface Label {
+  id: string;
+  name: string;
+  color: string;
+  description?: string;
+}
 
 const Tickets = () => {
-  const { } = useSidebar(); // We're not using sidebar context in this component
-  const [statusFilter, setStatusFilter] = useState("all");
-  const [activeTab, setActiveTab] = useState("support");
-  const [searchQuery, setSearchQuery] = useState("");
-  const [currentPage, setCurrentPage] = useState(1);
   const [, setLocation] = useLocation();
   const isMobile = useIsMobile();
-  
-  // Debounced search query to avoid too many API calls
-  const [debouncedSearchQuery, setDebouncedSearchQuery] = useState("");
-  
+  const { toast } = useToast();
+
+  // State for filters
+  const [statusFilter, setStatusFilter] = useState<'open' | 'closed'>('open');
+  const [searchQuery, setSearchQuery] = useState('');
+  const [debouncedSearchQuery, setDebouncedSearchQuery] = useState('');
+  const [authorFilter, setAuthorFilter] = useState<string[]>([]);
+  const [labelFilters, setLabelFilters] = useState<string[]>([]);
+  const [assigneeFilter, setAssigneeFilter] = useState<string[]>([]);
+  const [typeFilter, setTypeFilter] = useState<string[]>([]);
+  const [sortOption, setSortOption] = useState('newest');
+  const [currentPage, setCurrentPage] = useState(1);
+
+  // Multi-select state
+  const [selectedTickets, setSelectedTickets] = useState<Set<string>>(new Set());
+
+  // Debounce search
   useEffect(() => {
     const timer = setTimeout(() => {
       setDebouncedSearchQuery(searchQuery);
-      setCurrentPage(1); // Reset to first page when search changes
+      setCurrentPage(1);
     }, 300);
-    
     return () => clearTimeout(timer);
   }, [searchQuery]);
-  
-  const { data: ticketsResponse, isLoading, error } = useTickets({
-    page: currentPage,
-    limit: 10,
-    search: debouncedSearchQuery,
-    status: statusFilter === "all" ? "" : statusFilter,
-    type: activeTab,
-  });
-  
-  // Get ticket counts for all categories to show in tab badges
-  const { counts: ticketCounts, isLoading: isLoadingCounts } = useTicketCounts({
-    search: debouncedSearchQuery,
-    status: statusFilter === "all" ? "" : statusFilter,
-  });
-  
-  // More generous left margin to prevent text overlap with sidebar
-  const mainContentClass = "ml-[32px] pl-8";
 
-  // Extract data from the paginated response
-  const tickets = ticketsResponse?.tickets || [];
+  // Reset page when filters change
+  useEffect(() => {
+    setCurrentPage(1);
+    setSelectedTickets(new Set());
+  }, [statusFilter, authorFilter, labelFilters, assigneeFilter, typeFilter, sortOption]);
+
+  // Fetch data
+  const { data: ticketsResponse, isLoading, refetch } = useTickets({
+    page: currentPage,
+    limit: 25,
+    search: debouncedSearchQuery,
+    status: statusFilter,
+    type: typeFilter.length === 1 ? typeFilter[0] : '',
+    author: authorFilter.length === 1 ? authorFilter[0] : '',
+    labels: labelFilters,
+    assignee: assigneeFilter.length === 1 ? assigneeFilter[0] : '',
+    sort: sortOption,
+  });
+
+  const { data: statusCounts } = useTicketStatusCounts({
+    search: debouncedSearchQuery,
+    type: typeFilter.length === 1 ? typeFilter[0] : '',
+    author: authorFilter.length === 1 ? authorFilter[0] : '',
+    labels: labelFilters,
+    assignee: assigneeFilter.length === 1 ? assigneeFilter[0] : '',
+  });
+
+  const { data: labelsData } = useLabels();
+  const { data: staffData } = useStaff();
+  const bulkUpdateMutation = useBulkUpdateTickets();
+
+  const tickets: Ticket[] = ticketsResponse?.tickets || [];
   const pagination = ticketsResponse?.pagination || {
     current: 1,
     total: 1,
@@ -115,400 +122,432 @@ const Tickets = () => {
     hasNext: false,
     hasPrev: false,
   };
-  
-  // Convert ticket status to simplified Open/Closed
-  const getSimplifiedStatus = (ticket: Ticket): 'open' | 'closed' => {
-    // Using simplified status system - if it's not Open or it's locked, it's closed
-    if (ticket.locked === true) {
-      return 'closed';
+
+  const labels: Label[] = labelsData || [];
+  const staffMembers = (staffData || []).map((s: any) => ({
+    value: s.username || s.email?.split('@')[0] || '',
+    label: s.username || s.email?.split('@')[0] || 'Unknown',
+  }));
+
+  // Selection handlers
+  const handleSelectAll = () => {
+    if (selectedTickets.size === tickets.length) {
+      setSelectedTickets(new Set());
+    } else {
+      setSelectedTickets(new Set(tickets.map((t) => t.id)));
     }
-    return 'open';
   };
-  
-  // Reset page when tab changes
-  useEffect(() => {
-    setCurrentPage(1);
-  }, [activeTab, statusFilter]);
-    const handleNavigateToTicket = (ticketId: string) => {
-    // Navigate to the ticket detail page
-    // Navigate to ticket
-    
-    // Ensure ticketId is defined and is a string
-    if (!ticketId || typeof ticketId !== 'string') {
-      console.error('Invalid ticket ID for navigation:', ticketId);
-      return;
+
+  const handleSelectTicket = (ticketId: string) => {
+    const newSelection = new Set(selectedTickets);
+    if (newSelection.has(ticketId)) {
+      newSelection.delete(ticketId);
+    } else {
+      newSelection.add(ticketId);
     }
-    
-    // Remove any characters that might cause issues in the URL
-    // Replace # with "ID-" to avoid hash confusion in the URL
+    setSelectedTickets(newSelection);
+  };
+
+  // Bulk action handlers
+  const handleBulkClose = async () => {
+    try {
+      await bulkUpdateMutation.mutateAsync({
+        ticketIds: Array.from(selectedTickets),
+        locked: true,
+      });
+      toast({ title: 'Success', description: `Closed ${selectedTickets.size} tickets` });
+      setSelectedTickets(new Set());
+      refetch();
+    } catch (error) {
+      toast({ title: 'Error', description: 'Failed to close tickets', variant: 'destructive' });
+    }
+  };
+
+  const handleBulkReopen = async () => {
+    try {
+      await bulkUpdateMutation.mutateAsync({
+        ticketIds: Array.from(selectedTickets),
+        locked: false,
+      });
+      toast({ title: 'Success', description: `Reopened ${selectedTickets.size} tickets` });
+      setSelectedTickets(new Set());
+      refetch();
+    } catch (error) {
+      toast({ title: 'Error', description: 'Failed to reopen tickets', variant: 'destructive' });
+    }
+  };
+
+  const handleBulkAddLabels = async (labelsToAdd: string[]) => {
+    try {
+      await bulkUpdateMutation.mutateAsync({
+        ticketIds: Array.from(selectedTickets),
+        addLabels: labelsToAdd,
+      });
+      toast({ title: 'Success', description: `Added labels to ${selectedTickets.size} tickets` });
+      setSelectedTickets(new Set());
+      refetch();
+    } catch (error) {
+      toast({ title: 'Error', description: 'Failed to add labels', variant: 'destructive' });
+    }
+  };
+
+  const handleBulkAssign = async (assignee: string) => {
+    try {
+      await bulkUpdateMutation.mutateAsync({
+        ticketIds: Array.from(selectedTickets),
+        assignTo: assignee,
+      });
+      toast({ title: 'Success', description: `Assigned ${selectedTickets.size} tickets` });
+      setSelectedTickets(new Set());
+      refetch();
+    } catch (error) {
+      toast({ title: 'Error', description: 'Failed to assign tickets', variant: 'destructive' });
+    }
+  };
+
+  const handleNavigateToTicket = (ticketId: string) => {
+    if (!ticketId || typeof ticketId !== 'string') return;
     const safeTicketId = ticketId.replace('#', 'ID-');
-    // Ticket ID processed for URL
-    
-    // Add a small delay to make sure the navigation occurs
-    setTimeout(() => {
-      setLocation(`/panel/tickets/${safeTicketId}`);
-    }, 50);
+    setTimeout(() => setLocation(`/panel/tickets/${safeTicketId}`), 50);
   };
 
-  // Get the timestamp of the last message in the ticket
-  const getLastReplyTimestamp = (ticket: Ticket): string => {
-    if (!ticket.messages || ticket.messages.length === 0) {
-      return ticket.date; // If no messages, use the ticket creation date
-    }
-    
-    // Sort messages by timestamp (newest first)
-    const sortedMessages = [...ticket.messages].sort((a, b) => 
-      new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime()
-    );
-    
-    return sortedMessages[0].timestamp;
-  };
+  // Type filter options
+  const typeOptions = [
+    { value: 'support', label: 'Support' },
+    { value: 'bug', label: 'Bug Report' },
+    { value: 'player', label: 'Player Report' },
+    { value: 'chat', label: 'Chat Report' },
+    { value: 'appeal', label: 'Ban Appeal' },
+    { value: 'staff', label: 'Staff Application' },
+  ];
 
-  // Render a single ticket row
-  const renderTicketRow = (ticket: Ticket, index: number) => {
-    const lastReplyTimestamp = getLastReplyTimestamp(ticket);
-    
+  // Sort options
+  const sortOptions = [
+    { value: 'newest', label: 'Newest' },
+    { value: 'oldest', label: 'Oldest' },
+    { value: 'recently-updated', label: 'Recently Updated' },
+    { value: 'least-recently-updated', label: 'Least Recently Updated' },
+  ];
+
+  const renderTicketRow = (ticket: Ticket) => {
+    const isSelected = selectedTickets.has(ticket.id);
+    const ticketLabels = ticket.tags || [];
+
     return (
-      <TableRow key={index} className="border-b border-border">
-        <TableCell>{ticket.id}</TableCell>
-        <TableCell className="font-medium">
-          {ticket.subject}
-          <div className="flex flex-wrap gap-1.5 mt-1">
-            <Badge 
-              variant="outline" 
-              className={`text-xs px-1.5 py-0 h-5 ${getTicketStatusInfo(ticket).statusClass}`}
-            >
-              {getTicketStatusInfo(ticket).statusText}
-            </Badge>
+      <TableRow
+        key={ticket.id}
+        className={`border-b border-border hover:bg-muted/50 cursor-pointer ${isSelected ? 'bg-primary/5' : ''}`}
+      >
+        <TableCell className="w-10" onClick={(e) => e.stopPropagation()}>
+          <Checkbox
+            checked={isSelected}
+            onCheckedChange={() => handleSelectTicket(ticket.id)}
+          />
+        </TableCell>
+        <TableCell onClick={() => handleNavigateToTicket(ticket.id)}>
+          <div className="flex items-start gap-3">
+            {ticket.locked ? (
+              <CheckCircle2 className="h-4 w-4 text-purple-500 mt-1 flex-shrink-0" />
+            ) : (
+              <CircleDot className="h-4 w-4 text-green-500 mt-1 flex-shrink-0" />
+            )}
+            <div className="min-w-0 flex-1">
+              <div className="flex items-center gap-2 flex-wrap">
+                <span className="font-medium text-sm">{ticket.subject}</span>
+                {ticketLabels.map((tagName) => {
+                  const label = labels.find((l) => l.name === tagName);
+                  return (
+                    <LabelBadge
+                      key={tagName}
+                      name={tagName}
+                      color={label?.color || '#6b7280'}
+                      size="sm"
+                    />
+                  );
+                })}
+              </div>
+              <div className="text-xs text-muted-foreground mt-0.5">
+                #{ticket.id} opened {formatTimeAgo(ticket.date)} by {ticket.reportedByName || ticket.reportedBy}
+              </div>
+            </div>
           </div>
         </TableCell>
-        <TableCell>{ticket.reportedByName || ticket.reportedBy}</TableCell>
-        <TableCell>{formatDate(ticket.date)}</TableCell>
-        <TableCell>{formatTimeAgo(lastReplyTimestamp)}</TableCell>
-        <TableCell>
-          <div className="flex space-x-2">
-            <Button variant="ghost" size="icon" className="h-8 w-8 text-primary" title="View" onClick={() => handleNavigateToTicket(ticket.id)}>
-              <Eye className="h-4 w-4" />
-            </Button>
-          </div>
+        <TableCell className="text-right text-sm text-muted-foreground">
+          {ticket.assignedTo && (
+            <div className="flex items-center justify-end gap-1">
+              <User className="h-3.5 w-3.5" />
+              <span>{ticket.assignedTo}</span>
+            </div>
+          )}
+        </TableCell>
+        <TableCell className="text-right text-sm text-muted-foreground whitespace-nowrap">
+          {ticket.replyCount || 0} replies
+        </TableCell>
+        <TableCell className="text-right text-sm text-muted-foreground whitespace-nowrap">
+          {ticket.lastReply ? formatTimeAgo(ticket.lastReply.created) : '-'}
+        </TableCell>
+        <TableCell className="w-10">
+          <Button
+            variant="ghost"
+            size="icon"
+            className="h-8 w-8"
+            onClick={(e) => {
+              e.stopPropagation();
+              handleNavigateToTicket(ticket.id);
+            }}
+          >
+            <Eye className="h-4 w-4" />
+          </Button>
         </TableCell>
       </TableRow>
     );
   };
 
-  // Render a loading row
-  const renderLoadingRow = () => (
-    <TableRow>
-      <TableCell colSpan={6} className="text-center py-6">
-        <div className="flex justify-center items-center">
-          <Loader2 className="h-6 w-6 animate-spin text-primary mr-2" />
-          <span className="text-muted-foreground">Loading tickets...</span>
-        </div>
-      </TableCell>
-    </TableRow>
-  );
-
-  // Render an empty table message
-  const renderEmptyRow = () => (
-    <TableRow>
-      <TableCell colSpan={6} className="text-center py-6 text-muted-foreground">
-        No tickets match your current filters.
-      </TableCell>
-    </TableRow>
-  );
-
-  // Render ticket table content based on loading state and data
-  const renderTicketTableContent = () => {
-    if (isLoading) {
-      return renderLoadingRow();
-    }
-    
-    if (tickets.length > 0) {
-      return tickets.map((ticket: Ticket, index: number) => renderTicketRow(ticket, index));
-    }
-    
-    return renderEmptyRow();
-  };
-
-  // Render table with header and content
-  const renderTicketTable = () => (
-    <Table>
-      <TableHeader className="bg-muted/50">
-        <TableRow>
-          <TableHead className="rounded-l-lg">ID</TableHead>
-          <TableHead>Subject</TableHead>
-          <TableHead>Reported By</TableHead>
-          <TableHead>Created</TableHead>
-          <TableHead>Last Reply</TableHead>
-          <TableHead className="rounded-r-lg">Actions</TableHead>
-        </TableRow>
-      </TableHeader>
-      <TableBody>
-        {renderTicketTableContent()}
-      </TableBody>
-    </Table>
-  );
-
-  // Render mobile-friendly card layout
-  const renderMobileTicketCards = () => {
-    if (isLoading) {
-      return (
-        <div className="space-y-3">
-          {[...Array(3)].map((_, i) => (
-            <Card key={i} className="animate-pulse">
-              <CardContent className="p-4">
-                <div className="h-4 bg-muted rounded w-3/4 mb-2"></div>
-                <div className="h-3 bg-muted rounded w-1/2 mb-2"></div>
-                <div className="h-3 bg-muted rounded w-1/3"></div>
-              </CardContent>
-            </Card>
-          ))}
-        </div>
-      );
-    }
-
-    if (tickets.length === 0) {
-      return (
-        <Card>
-          <CardContent className="p-6 text-center text-muted-foreground">
-            No tickets match your current filters.
-          </CardContent>
-        </Card>
-      );
-    }
+  const renderMobileTicketCard = (ticket: Ticket) => {
+    const isSelected = selectedTickets.has(ticket.id);
+    const ticketLabels = ticket.tags || [];
 
     return (
-      <div className="space-y-3">
-        {tickets.map((ticket: Ticket, index: number) => {
-          const lastReplyTimestamp = ticket.lastReply || ticket.date;
-          const statusInfo = getTicketStatusInfo(ticket);
-
-          return (
-            <Card key={index} className="hover:shadow-md transition-shadow cursor-pointer" onClick={() => handleNavigateToTicket(ticket.id)}>
-              <CardContent className="p-4">
-                <div className="flex justify-between items-start mb-2">
-                  <div className="flex-1 min-w-0">
-                    <h4 className="font-medium text-sm truncate">{ticket.subject}</h4>
-                    <p className="text-xs text-muted-foreground">#{ticket.id} • {ticket.reportedByName || ticket.reportedBy}</p>
-                  </div>
-                  <Badge
-                    variant="outline"
-                    className={`text-xs px-2 py-0 h-5 ml-2 flex-shrink-0 ${statusInfo.statusClass}`}
-                  >
-                    {statusInfo.statusText}
-                  </Badge>
+      <Card
+        key={ticket.id}
+        className={`mb-3 ${isSelected ? 'ring-2 ring-primary' : ''}`}
+        onClick={() => handleNavigateToTicket(ticket.id)}
+      >
+        <CardContent className="p-4">
+          <div className="flex items-start gap-3">
+            <div onClick={(e) => e.stopPropagation()}>
+              <Checkbox
+                checked={isSelected}
+                onCheckedChange={() => handleSelectTicket(ticket.id)}
+              />
+            </div>
+            <div className="flex-1 min-w-0">
+              <div className="flex items-center gap-2 mb-1">
+                {ticket.locked ? (
+                  <CheckCircle2 className="h-4 w-4 text-purple-500 flex-shrink-0" />
+                ) : (
+                  <CircleDot className="h-4 w-4 text-green-500 flex-shrink-0" />
+                )}
+                <span className="font-medium text-sm truncate">{ticket.subject}</span>
+              </div>
+              <div className="flex flex-wrap gap-1 mb-2">
+                {ticketLabels.map((tagName) => {
+                  const label = labels.find((l) => l.name === tagName);
+                  return (
+                    <LabelBadge
+                      key={tagName}
+                      name={tagName}
+                      color={label?.color || '#6b7280'}
+                      size="sm"
+                    />
+                  );
+                })}
+              </div>
+              <div className="text-xs text-muted-foreground">
+                #{ticket.id} - {ticket.reportedByName || ticket.reportedBy} - {formatTimeAgo(ticket.date)}
+              </div>
+              {ticket.assignedTo && (
+                <div className="text-xs text-muted-foreground mt-1 flex items-center gap-1">
+                  <User className="h-3 w-3" />
+                  {ticket.assignedTo}
                 </div>
-                <div className="flex justify-between items-center text-xs text-muted-foreground">
-                  <span>Created {formatTimeAgo(ticket.date)}</span>
-                  <span>Last reply {formatTimeAgo(lastReplyTimestamp)}</span>
-                </div>
-              </CardContent>
-            </Card>
-          );
-        })}
-      </div>
+              )}
+            </div>
+          </div>
+        </CardContent>
+      </Card>
     );
   };
 
-  // Handle pagination navigation
-  const handlePageChange = (page: number) => {
-    setCurrentPage(page);
-  };
-  
-  // Render pagination controls
-  const renderPagination = () => (
-    <div className="flex flex-col space-y-2 md:flex-row md:space-y-0 md:justify-between md:items-center pt-4">
-      <div className="text-sm text-muted-foreground text-center md:text-left">
-        Showing {((pagination.current - 1) * 10) + 1}-{Math.min(pagination.current * 10, pagination.totalTickets)} of {pagination.totalTickets} entries
-      </div>
-      <div className="flex justify-center space-x-1">
-        <Button 
-          variant="outline" 
-          size="sm" 
-          className="px-3 py-1"
-          disabled={!pagination.hasPrev}
-          onClick={() => handlePageChange(pagination.current - 1)}
-        >
-          <ChevronLeft className="h-4 w-4" />
-        </Button>
-        {/* Page numbers */}
-        {Array.from({ length: Math.min(5, pagination.total) }, (_, i) => {
-          const page = Math.max(1, pagination.current - 2) + i;
-          if (page > pagination.total) return null;
-          
-          return (
-            <Button
-              key={page}
-              variant={page === pagination.current ? "default" : "outline"}
-              size="sm"
-              className="px-3 py-1"
-              onClick={() => handlePageChange(page)}
-            >
-              {page}
-            </Button>
-          );
-        })}
-        
-        <Button 
-          variant="outline" 
-          size="sm" 
-          className="px-3 py-1"
-          disabled={!pagination.hasNext}
-          onClick={() => handlePageChange(pagination.current + 1)}
-        >
-          <ChevronRight className="h-4 w-4" />
-        </Button>
-      </div>
-    </div>
-  );
-
   return (
     <PageContainer>
-      <div className="flex flex-col space-y-6">
-        <div className="flex flex-col space-y-4 md:flex-row md:justify-between md:items-center">
+      <div className="flex flex-col space-y-4">
+        {/* Header */}
+        <div className="flex flex-col gap-4 md:flex-row md:justify-between md:items-center">
           <h2 className="text-xl font-semibold">Tickets</h2>
-          <div className="flex flex-col space-y-2 md:flex-row md:space-y-0 md:space-x-2 md:items-center">
-            <div className="relative">
-              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-              <Input
-                placeholder="Search tickets..."
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                className="pl-10 w-full md:w-80"
-              />
-            </div>
-            <Select value={statusFilter} onValueChange={setStatusFilter}>
-              <SelectTrigger className="w-full md:w-[180px] bg-background border border-border text-sm">
-                <SelectValue placeholder="All Statuses" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">All Statuses</SelectItem>
-                <SelectItem value="open">Open</SelectItem>
-                <SelectItem value="closed">Closed</SelectItem>
-              </SelectContent>
-            </Select>
+          <div className="relative w-full md:w-80">
+            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+            <Input
+              placeholder="Search tickets..."
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              className="pl-10"
+            />
           </div>
         </div>
-        
+
+        {/* Filter bar */}
+        <div className="flex flex-wrap items-center gap-2 border-b border-border pb-4">
+          {/* Status tabs */}
+          <div className="flex items-center gap-1 mr-2">
+            <Button
+              variant={statusFilter === 'open' ? 'secondary' : 'ghost'}
+              size="sm"
+              onClick={() => setStatusFilter('open')}
+              className="h-8"
+            >
+              <CircleDot className="h-4 w-4 mr-1.5 text-green-500" />
+              {statusCounts?.open ?? 0} Open
+            </Button>
+            <Button
+              variant={statusFilter === 'closed' ? 'secondary' : 'ghost'}
+              size="sm"
+              onClick={() => setStatusFilter('closed')}
+              className="h-8"
+            >
+              <CheckCircle2 className="h-4 w-4 mr-1.5 text-purple-500" />
+              {statusCounts?.closed ?? 0} Closed
+            </Button>
+          </div>
+
+          <div className="h-6 w-px bg-border mx-1" />
+
+          {/* Filter dropdowns */}
+          <FilterDropdown
+            label="Type"
+            options={typeOptions}
+            selected={typeFilter}
+            onChange={setTypeFilter}
+          />
+
+          <FilterDropdown
+            label="Label"
+            options={labels.map((l) => ({ value: l.name, label: l.name, color: l.color }))}
+            selected={labelFilters}
+            onChange={setLabelFilters}
+            multiSelect
+            searchable
+          />
+
+          <FilterDropdown
+            label="Assignee"
+            options={[{ value: 'none', label: 'Unassigned' }, ...staffMembers]}
+            selected={assigneeFilter}
+            onChange={setAssigneeFilter}
+            searchable
+          />
+
+          <div className="flex-1" />
+
+          {/* Sort */}
+          <Select value={sortOption} onValueChange={setSortOption}>
+            <SelectTrigger className="w-[180px] h-8">
+              <SortAsc className="h-3.5 w-3.5 mr-1.5" />
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              {sortOptions.map((opt) => (
+                <SelectItem key={opt.value} value={opt.value}>
+                  {opt.label}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
+
+        {/* Bulk action bar */}
+        {selectedTickets.size > 0 && (
+          <BulkActionBar
+            selectedCount={selectedTickets.size}
+            onClearSelection={() => setSelectedTickets(new Set())}
+            onClose={handleBulkClose}
+            onReopen={handleBulkReopen}
+            onAddLabels={handleBulkAddLabels}
+            onAssign={handleBulkAssign}
+            availableLabels={labels}
+            staffMembers={staffMembers}
+            isLoading={bulkUpdateMutation.isPending}
+          />
+        )}
+
+        {/* Ticket list */}
         <Card>
-          <CardHeader className="p-0">
-            <Tabs value={activeTab} className="w-full" onValueChange={setActiveTab}>
-              {isMobile ? (
-                <div className="p-4 border-b border-border">
-                  <Select value={activeTab} onValueChange={setActiveTab}>
-                    <SelectTrigger className="w-full">
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="support">Support ({ticketCounts.support || 0})</SelectItem>
-                      <SelectItem value="bug">Bug Reports ({ticketCounts.bug || 0})</SelectItem>
-                      <SelectItem value="player">Player Reports ({ticketCounts.player || 0})</SelectItem>
-                      <SelectItem value="chat">Chat Reports ({ticketCounts.chat || 0})</SelectItem>
-                      <SelectItem value="appeal">Ban Appeals ({ticketCounts.appeal || 0})</SelectItem>
-                      <SelectItem value="staff">Staff Applications ({ticketCounts.staff || 0})</SelectItem>
-                    </SelectContent>
-                  </Select>
+          <CardContent className="p-0">
+            {isLoading ? (
+              <div className="flex justify-center items-center py-12">
+                <Loader2 className="h-6 w-6 animate-spin text-primary mr-2" />
+                <span className="text-muted-foreground">Loading tickets...</span>
+              </div>
+            ) : tickets.length === 0 ? (
+              <div className="text-center py-12 text-muted-foreground">
+                No tickets match your current filters.
+              </div>
+            ) : isMobile ? (
+              <div className="p-4">
+                <div className="flex items-center gap-2 mb-4">
+                  <Checkbox
+                    checked={selectedTickets.size === tickets.length && tickets.length > 0}
+                    onCheckedChange={handleSelectAll}
+                  />
+                  <span className="text-sm text-muted-foreground">Select all</span>
                 </div>
-              ) : (
-                <div className="overflow-x-auto pb-1 border-b border-border">
-                  <TabsList className="w-max flex rounded-none bg-transparent">
-                    <TabsTrigger
-                      value="support"
-                      className="data-[state=active]:border-b-2 data-[state=active]:border-primary data-[state=active]:text-primary rounded-none px-3 py-0.5 flex-shrink-0 text-sm"
-                    >
-                      <MessageSquare className="h-4 w-4 mr-2" />
-                      Support
-                      <Badge variant="outline" className="ml-2 bg-muted/30 text-foreground border-none text-xs font-medium">{ticketCounts.support || 0}</Badge>
-                    </TabsTrigger>
-                    <TabsTrigger
-                      value="bug"
-                      className="data-[state=active]:border-b-2 data-[state=active]:border-primary data-[state=active]:text-primary rounded-none px-2 py-0.5 flex-shrink-0 text-sm"
-                    >
-                      <Bug className="h-4 w-4 mr-2" />
-                      Bug Reports
-                      <Badge variant="outline" className="ml-2 bg-muted/30 text-foreground border-none text-xs font-medium">{ticketCounts.bug || 0}</Badge>
-                    </TabsTrigger>
-                    <TabsTrigger
-                      value="player"
-                      className="data-[state=active]:border-b-2 data-[state=active]:border-primary data-[state=active]:text-primary rounded-none px-3 py-0.5 flex-shrink-0 text-sm"
-                    >
-                      <Users className="h-4 w-4 mr-2" />
-                      Player Reports
-                      <Badge variant="outline" className="ml-2 bg-muted/30 text-foreground border-none text-xs font-medium">{ticketCounts.player || 0}</Badge>
-                    </TabsTrigger>
-                    <TabsTrigger
-                      value="chat"
-                      className="data-[state=active]:border-b-2 data-[state=active]:border-primary data-[state=active]:text-primary rounded-none px-3 py-0.5 flex-shrink-0 text-sm"
-                    >
-                      <MessageSquare className="h-4 w-4 mr-2" />
-                      Chat Reports
-                      <Badge variant="outline" className="ml-2 bg-muted/30 text-foreground border-none text-xs font-medium">{ticketCounts.chat || 0}</Badge>
-                    </TabsTrigger>
-                    <TabsTrigger
-                      value="appeal"
-                      className="data-[state=active]:border-b-2 data-[state=active]:border-primary data-[state=active]:text-primary rounded-none px-3 py-0.5 flex-shrink-0 text-sm"
-                    >
-                      <LockKeyhole className="h-4 w-4 mr-2" />
-                      Ban Appeals
-                      <Badge variant="outline" className="ml-2 bg-muted/30 text-foreground border-none text-xs font-medium">{ticketCounts.appeal || 0}</Badge>
-                    </TabsTrigger>
-                    <TabsTrigger
-                      value="staff"
-                      className="data-[state=active]:border-b-2 data-[state=active]:border-primary data-[state=active]:text-primary rounded-none px-3 py-0.5 flex-shrink-0 text-sm"
-                    >
-                      <MessageSquare className="h-4 w-4 mr-2" />
-                      Staff Applications
-                      <Badge variant="outline" className="ml-2 bg-muted/30 text-foreground border-none text-xs font-medium">{ticketCounts.staff || 0}</Badge>
-                    </TabsTrigger>
-                  </TabsList>
-                </div>
-              )}
-
-              <TabsContent value="support" className="p-0 mt-0">
-                <CardContent className="p-4">
-                  {isMobile ? renderMobileTicketCards() : renderTicketTable()}
-                  {renderPagination()}
-                </CardContent>
-              </TabsContent>
-
-              <TabsContent value="bug" className="p-0 mt-0">
-                <CardContent className="p-4">
-                  {isMobile ? renderMobileTicketCards() : renderTicketTable()}
-                  {renderPagination()}
-                </CardContent>
-              </TabsContent>
-
-              <TabsContent value="player" className="p-0 mt-0">
-                <CardContent className="p-4">
-                  {isMobile ? renderMobileTicketCards() : renderTicketTable()}
-                  {renderPagination()}
-                </CardContent>
-              </TabsContent>
-
-              <TabsContent value="chat" className="p-0 mt-0">
-                <CardContent className="p-4">
-                  {isMobile ? renderMobileTicketCards() : renderTicketTable()}
-                  {renderPagination()}
-                </CardContent>
-              </TabsContent>
-
-              <TabsContent value="appeal" className="p-0 mt-0">
-                <CardContent className="p-4">
-                  {isMobile ? renderMobileTicketCards() : renderTicketTable()}
-                  {renderPagination()}
-                </CardContent>
-              </TabsContent>
-
-              <TabsContent value="staff" className="p-0 mt-0">
-                <CardContent className="p-4">
-                  {isMobile ? renderMobileTicketCards() : renderTicketTable()}
-                  {renderPagination()}
-                </CardContent>
-              </TabsContent>
-          
-            </Tabs>
-          </CardHeader>
+                {tickets.map(renderMobileTicketCard)}
+              </div>
+            ) : (
+              <Table>
+                <TableHeader>
+                  <TableRow className="hover:bg-transparent">
+                    <TableHead className="w-10">
+                      <Checkbox
+                        checked={selectedTickets.size === tickets.length && tickets.length > 0}
+                        onCheckedChange={handleSelectAll}
+                      />
+                    </TableHead>
+                    <TableHead>Ticket</TableHead>
+                    <TableHead className="text-right">Assignee</TableHead>
+                    <TableHead className="text-right">Replies</TableHead>
+                    <TableHead className="text-right">Last Reply</TableHead>
+                    <TableHead className="w-10"></TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {tickets.map(renderTicketRow)}
+                </TableBody>
+              </Table>
+            )}
+          </CardContent>
         </Card>
+
+        {/* Pagination */}
+        {tickets.length > 0 && (
+          <div className="flex flex-col space-y-2 md:flex-row md:space-y-0 md:justify-between md:items-center">
+            <div className="text-sm text-muted-foreground text-center md:text-left">
+              Showing {((pagination.current - 1) * 25) + 1}-{Math.min(pagination.current * 25, pagination.totalTickets)} of {pagination.totalTickets} tickets
+            </div>
+            <div className="flex justify-center space-x-1">
+              <Button
+                variant="outline"
+                size="sm"
+                disabled={!pagination.hasPrev}
+                onClick={() => setCurrentPage((p) => p - 1)}
+              >
+                <ChevronLeft className="h-4 w-4" />
+              </Button>
+              {Array.from({ length: Math.min(5, pagination.total) }, (_, i) => {
+                const page = Math.max(1, pagination.current - 2) + i;
+                if (page > pagination.total) return null;
+                return (
+                  <Button
+                    key={page}
+                    variant={page === pagination.current ? 'default' : 'outline'}
+                    size="sm"
+                    onClick={() => setCurrentPage(page)}
+                  >
+                    {page}
+                  </Button>
+                );
+              })}
+              <Button
+                variant="outline"
+                size="sm"
+                disabled={!pagination.hasNext}
+                onClick={() => setCurrentPage((p) => p + 1)}
+              >
+                <ChevronRight className="h-4 w-4" />
+              </Button>
+            </div>
+          </div>
+        )}
       </div>
     </PageContainer>
   );

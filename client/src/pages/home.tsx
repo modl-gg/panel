@@ -11,15 +11,14 @@ import {
   useStats,
   useRecentTickets,
   useRecentPunishments,
-  useTicketSubscriptionUpdates,
-  useUnsubscribeFromTicket,
+  useAssignedTicketUpdates,
   useMarkSubscriptionUpdateAsRead
 } from '@/hooks/use-data';
 import { useToast } from '@modl-gg/shared-web/hooks/use-toast';
 import PageContainer from '@/components/layout/PageContainer';
 import { RecentTicketsSection } from '@/components/dashboard/RecentTicketsSection';
 import { RecentPunishmentsSection } from '@/components/dashboard/RecentPunishmentsSection';
-import { TicketSubscriptionsSection } from '@/components/dashboard/TicketSubscriptionsSection';
+import { AssignedTicketUpdatesSection } from '@/components/dashboard/AssignedTicketUpdatesSection';
 
 
 const Home = () => {
@@ -30,10 +29,9 @@ const Home = () => {
   // Fetch all dashboard data
   const { data: recentTicketsData, isLoading: isLoadingTickets, refetch: refetchTickets } = useRecentTickets(3);
   const { data: recentPunishmentsData, isLoading: isLoadingPunishments, refetch: refetchPunishments } = useRecentPunishments(5);
-  const { data: subscriptionUpdatesData, isLoading: isLoadingUpdates, refetch: refetchUpdates } = useTicketSubscriptionUpdates(10);
-  
-  // Mutations for subscription management
-  const unsubscribeMutation = useUnsubscribeFromTicket();
+  const { data: assignedUpdatesData, isLoading: isLoadingUpdates, refetch: refetchUpdates } = useAssignedTicketUpdates(10);
+
+  // Mutations for updates management
   const markAsReadMutation = useMarkSubscriptionUpdateAsRead();
 
   const handleRefreshData = async () => {
@@ -63,10 +61,6 @@ const Home = () => {
     }
   };
 
-  const handleUnsubscribe = async (ticketId: string) => {
-    return unsubscribeMutation.mutateAsync(ticketId);
-  };
-
   const handleMarkAsRead = async (updateId: string) => {
     return markAsReadMutation.mutateAsync(updateId);
   };
@@ -76,9 +70,6 @@ const Home = () => {
       <div className="flex justify-between items-center mb-6">
         <h2 className="text-xl font-semibold">Dashboard</h2>
         <div className="flex items-center space-x-2">
-          <Button variant="ghost" size="icon" className="text-muted-foreground">
-            <Bell className="h-5 w-5" />
-          </Button>
           <Button 
             variant="ghost" 
             size="icon" 
@@ -99,12 +90,11 @@ const Home = () => {
         </div>
       </div>
       
-      {/* Ticket Subscriptions - Full Width */}
+      {/* Assigned Ticket Updates - Full Width */}
       <div className="mb-6">
-        <TicketSubscriptionsSection 
-          updates={subscriptionUpdatesData || []}
+        <AssignedTicketUpdatesSection
+          updates={assignedUpdatesData || []}
           loading={isLoadingUpdates}
-          onUnsubscribe={handleUnsubscribe}
           onMarkAsRead={handleMarkAsRead}
         />
       </div>

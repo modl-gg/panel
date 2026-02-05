@@ -591,7 +591,10 @@ const StaffDetailModal = ({ staff, isOpen, onClose, initialPeriod = '30d' }: {
   const [rollbackStartDate, setRollbackStartDate] = useState<Date | undefined>(undefined);
   const [rollbackEndDate, setRollbackEndDate] = useState<Date | undefined>(undefined);
   const { toast } = useToast();
-  const { openPlayerWindow } = usePlayerWindow();
+  const { openPlayerWindow, windows } = usePlayerWindow();
+
+  // Check if any player windows are open
+  const hasOpenPlayerWindows = windows.some(w => w.isOpen);
 
   // Sync selectedPeriod with initialPeriod when modal opens
   useEffect(() => {
@@ -675,7 +678,21 @@ const StaffDetailModal = ({ staff, isOpen, onClose, initialPeriod = '30d' }: {
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="max-w-6xl max-h-[90vh] overflow-y-auto">
+      <DialogContent
+        className="max-w-6xl max-h-[90vh] overflow-y-auto"
+        onInteractOutside={(e) => {
+          // Prevent closing when clicking on player windows
+          if (hasOpenPlayerWindows) {
+            e.preventDefault();
+          }
+        }}
+        onPointerDownOutside={(e) => {
+          // Also prevent pointer down outside when player windows are open
+          if (hasOpenPlayerWindows) {
+            e.preventDefault();
+          }
+        }}
+      >
         <DialogHeader>
           <DialogTitle className="flex items-center gap-3">
             <User className="h-6 w-6" />
@@ -683,7 +700,7 @@ const StaffDetailModal = ({ staff, isOpen, onClose, initialPeriod = '30d' }: {
             <Badge variant="outline">{staff.role}</Badge>
           </DialogTitle>
         </DialogHeader>
-        
+
         {/* Bulk Rollback Controls - Moved outside header */}
         <div className="flex justify-end mb-4">
           <Popover open={showBulkRollback} onOpenChange={setShowBulkRollback}>

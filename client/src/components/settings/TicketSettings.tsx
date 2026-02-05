@@ -55,12 +55,24 @@ interface TicketFormsConfiguration {
   application: TicketFormSettings;
 }
 
+// Label type definition
+interface Label {
+  id: string;
+  name: string;
+  color: string;
+  description?: string;
+}
+
 interface TicketSettingsProps {
   // Quick Responses State
   quickResponsesState: QuickResponsesConfiguration;
   setQuickResponsesState: (value: QuickResponsesConfiguration) => void;
-  
-  // Tag Management State
+
+  // Label Management State (new unified system)
+  labels: Label[];
+  setLabels: (value: Label[]) => void;
+
+  // Deprecated Tag Management State - kept for backwards compatibility
   bugReportTags: string[];
   setBugReportTags: (value: string[]) => void;
   playerReportTags: string[];
@@ -93,11 +105,253 @@ interface TicketSettingsProps {
   onAddField?: () => void;
   moveField?: (dragIndex: number, hoverIndex: number, sectionId: string) => void;
   moveFieldBetweenSections?: (fieldId: string, fromSectionId: string, toSectionId: string, targetIndex?: number) => void;
+
+  // Optional prop to show only a specific section
+  // 'quick-responses' | 'label-management' | 'ticket-forms' | 'ai-moderation' | undefined (show all)
+  visibleSection?: string;
+}
+
+// Default label colors for the color picker
+const DEFAULT_LABEL_COLORS = [
+  '#d73a4a', // Red
+  '#e99695', // Light red
+  '#0969da', // Blue
+  '#1f6feb', // Light blue
+  '#8250df', // Purple
+  '#a371f7', // Light purple
+  '#238636', // Green
+  '#3fb950', // Light green
+  '#f9c513', // Yellow
+  '#d29922', // Orange
+  '#6e7781', // Gray
+  '#ffffff', // White
+];
+
+// Label Management Table Component
+interface LabelManagementTableProps {
+  labels: Label[];
+  onLabelsChange: (labels: Label[]) => void;
+}
+
+function LabelManagementTable({ labels, onLabelsChange }: LabelManagementTableProps) {
+  const [newLabelName, setNewLabelName] = useState('');
+  const [newLabelColor, setNewLabelColor] = useState('#6b7280');
+  const [newLabelDescription, setNewLabelDescription] = useState('');
+  const [editingLabelId, setEditingLabelId] = useState<string | null>(null);
+  const [editLabelName, setEditLabelName] = useState('');
+  const [editLabelColor, setEditLabelColor] = useState('');
+  const [editLabelDescription, setEditLabelDescription] = useState('');
+
+  const handleAddLabel = () => {
+    if (!newLabelName.trim()) return;
+
+    const newLabel: Label = {
+      id: Date.now().toString(),
+      name: newLabelName.trim(),
+      color: newLabelColor,
+      description: newLabelDescription.trim() || undefined,
+    };
+
+    onLabelsChange([...labels, newLabel]);
+    setNewLabelName('');
+    setNewLabelColor('#6b7280');
+    setNewLabelDescription('');
+  };
+
+  const handleDeleteLabel = (labelId: string) => {
+    onLabelsChange(labels.filter((l) => l.id !== labelId));
+  };
+
+  const handleStartEdit = (label: Label) => {
+    setEditingLabelId(label.id);
+    setEditLabelName(label.name);
+    setEditLabelColor(label.color);
+    setEditLabelDescription(label.description || '');
+  };
+
+  const handleSaveEdit = () => {
+    if (!editingLabelId || !editLabelName.trim()) return;
+
+    onLabelsChange(
+      labels.map((l) =>
+        l.id === editingLabelId
+          ? {
+              ...l,
+              name: editLabelName.trim(),
+              color: editLabelColor,
+              description: editLabelDescription.trim() || undefined,
+            }
+          : l
+      )
+    );
+    setEditingLabelId(null);
+  };
+
+  const handleCancelEdit = () => {
+    setEditingLabelId(null);
+  };
+
+  return (
+    <div className="space-y-4">
+      {/* Labels table */}
+      {labels.length > 0 && (
+        <div className="border rounded-lg overflow-hidden">
+          <table className="w-full">
+            <thead className="bg-muted/50">
+              <tr>
+                <th className="text-left p-3 text-sm font-medium">Label</th>
+                <th className="text-left p-3 text-sm font-medium">Description</th>
+                <th className="text-right p-3 text-sm font-medium">Actions</th>
+              </tr>
+            </thead>
+            <tbody>
+              {labels.map((label) => (
+                <tr key={label.id} className="border-t border-border">
+                  {editingLabelId === label.id ? (
+                    <>
+                      <td className="p-3">
+                        <div className="flex items-center gap-2">
+                          <input
+                            type="color"
+                            value={editLabelColor}
+                            onChange={(e) => setEditLabelColor(e.target.value)}
+                            className="w-6 h-6 rounded cursor-pointer border-0"
+                          />
+                          <Input
+                            value={editLabelName}
+                            onChange={(e) => setEditLabelName(e.target.value)}
+                            className="max-w-[150px] h-8"
+                            placeholder="Label name"
+                          />
+                        </div>
+                      </td>
+                      <td className="p-3">
+                        <Input
+                          value={editLabelDescription}
+                          onChange={(e) => setEditLabelDescription(e.target.value)}
+                          className="h-8"
+                          placeholder="Description (optional)"
+                        />
+                      </td>
+                      <td className="p-3 text-right">
+                        <div className="flex items-center justify-end gap-2">
+                          <Button size="sm" variant="ghost" onClick={handleCancelEdit}>
+                            Cancel
+                          </Button>
+                          <Button size="sm" onClick={handleSaveEdit}>
+                            <Save className="h-3.5 w-3.5 mr-1" />
+                            Save
+                          </Button>
+                        </div>
+                      </td>
+                    </>
+                  ) : (
+                    <>
+                      <td className="p-3">
+                        <div className="flex items-center gap-2">
+                          <span
+                            className="w-4 h-4 rounded-full flex-shrink-0"
+                            style={{ backgroundColor: label.color }}
+                          />
+                          <span className="font-medium">{label.name}</span>
+                        </div>
+                      </td>
+                      <td className="p-3 text-sm text-muted-foreground">
+                        {label.description || '-'}
+                      </td>
+                      <td className="p-3 text-right">
+                        <div className="flex items-center justify-end gap-2">
+                          <Button
+                            size="sm"
+                            variant="ghost"
+                            onClick={() => handleStartEdit(label)}
+                          >
+                            <Edit3 className="h-3.5 w-3.5" />
+                          </Button>
+                          <Button
+                            size="sm"
+                            variant="ghost"
+                            className="text-destructive hover:text-destructive"
+                            onClick={() => handleDeleteLabel(label.id)}
+                          >
+                            <Trash2 className="h-3.5 w-3.5" />
+                          </Button>
+                        </div>
+                      </td>
+                    </>
+                  )}
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
+
+      {/* Add new label form */}
+      <div className="flex flex-col sm:flex-row gap-3 items-start sm:items-end p-4 bg-muted/30 rounded-lg">
+        <div className="flex items-center gap-2">
+          <div className="space-y-1">
+            <Label className="text-xs">Color</Label>
+            <input
+              type="color"
+              value={newLabelColor}
+              onChange={(e) => setNewLabelColor(e.target.value)}
+              className="w-8 h-8 rounded cursor-pointer border-0"
+            />
+          </div>
+          <div className="space-y-1">
+            <Label className="text-xs">Name</Label>
+            <Input
+              value={newLabelName}
+              onChange={(e) => setNewLabelName(e.target.value)}
+              className="w-[150px] h-8"
+              placeholder="bug, critical, etc."
+              onKeyDown={(e) => {
+                if (e.key === 'Enter') handleAddLabel();
+              }}
+            />
+          </div>
+        </div>
+        <div className="flex-1 space-y-1">
+          <Label className="text-xs">Description (optional)</Label>
+          <Input
+            value={newLabelDescription}
+            onChange={(e) => setNewLabelDescription(e.target.value)}
+            className="h-8"
+            placeholder="Brief description of when to use this label"
+            onKeyDown={(e) => {
+              if (e.key === 'Enter') handleAddLabel();
+            }}
+          />
+        </div>
+        <Button size="sm" onClick={handleAddLabel} disabled={!newLabelName.trim()}>
+          <Plus className="h-4 w-4 mr-1" />
+          Add Label
+        </Button>
+      </div>
+
+      {/* Color preset palette */}
+      <div className="flex flex-wrap gap-1.5 pt-2">
+        <span className="text-xs text-muted-foreground mr-2">Quick colors:</span>
+        {DEFAULT_LABEL_COLORS.map((color) => (
+          <button
+            key={color}
+            className="w-5 h-5 rounded border border-border hover:scale-110 transition-transform"
+            style={{ backgroundColor: color }}
+            onClick={() => setNewLabelColor(color)}
+            title={color}
+          />
+        ))}
+      </div>
+    </div>
+  );
 }
 
 const TicketSettings = ({
   quickResponsesState,
   setQuickResponsesState,
+  labels,
+  setLabels,
   bugReportTags,
   setBugReportTags,
   playerReportTags,
@@ -124,7 +378,8 @@ const TicketSettings = ({
   onDeleteField,
   onAddField,
   moveField,
-  moveFieldBetweenSections
+  moveFieldBetweenSections,
+  visibleSection
 }: TicketSettingsProps) => {
   // User authentication and role information
   const { user: currentUser } = useAuth();
@@ -542,17 +797,27 @@ const TicketSettings = ({
     }
   }, [isAddTicketFormFieldDialogOpen, selectedTicketFormField]);
 
-  return (
-    <div className="space-y-6 p-6">
-      <div>
-        <h3 className="text-lg font-medium mb-4">Ticket Settings</h3>
-        <p className="text-sm text-muted-foreground mb-6">
-          Configure ticket tags, quick responses, and form settings.
-        </p>
+  // Determine which sections to show
+  const showQuickResponses = !visibleSection || visibleSection === 'quick-responses';
+  const showLabelManagement = !visibleSection || visibleSection === 'label-management';
+  const showTicketForms = !visibleSection || visibleSection === 'ticket-forms';
+  const showAIModeration = !visibleSection || visibleSection === 'ai-moderation';
 
-        <div className="space-y-6">
-          {/* Quick Responses Section */}
-          <Collapsible open={isQuickResponsesExpanded} onOpenChange={setIsQuickResponsesExpanded}>
+  return (
+    <div className={visibleSection ? "space-y-4" : "space-y-6 p-6"}>
+      {!visibleSection && (
+        <div>
+          <h3 className="text-lg font-medium mb-4">Ticket Settings</h3>
+          <p className="text-sm text-muted-foreground mb-6">
+            Configure ticket tags, quick responses, and form settings.
+          </p>
+        </div>
+      )}
+
+      <div className="space-y-6">
+        {/* Quick Responses Section */}
+        {showQuickResponses && (
+        <Collapsible open={visibleSection ? true : isQuickResponsesExpanded} onOpenChange={visibleSection ? undefined : setIsQuickResponsesExpanded}>
             <CollapsibleTrigger className="flex items-center justify-between w-full p-4 bg-muted/50 rounded-lg hover:bg-muted/70 transition-colors">
               <div className="flex items-center">
                 <MessageCircle className="h-4 w-4 mr-2" />
@@ -668,18 +933,20 @@ const TicketSettings = ({
               </div>
             </CollapsibleContent>
           </Collapsible>
+        )}
 
-          {/* Tag Management Section */}
-          <Collapsible open={isTagManagementExpanded} onOpenChange={setIsTagManagementExpanded}>
+          {/* Label Management Section */}
+          {showLabelManagement && (
+          <Collapsible open={visibleSection ? true : isTagManagementExpanded} onOpenChange={visibleSection ? undefined : setIsTagManagementExpanded}>
             <CollapsibleTrigger className="flex items-center justify-between w-full p-4 bg-muted/50 rounded-lg hover:bg-muted/70 transition-colors">
               <div className="flex items-center">
                 <Tag className="h-4 w-4 mr-2" />
-                <h4 className="text-base font-medium">Tag Management</h4>
+                <h4 className="text-base font-medium">Label Management</h4>
               </div>
               <div className="flex items-center space-x-2">
                 {!isTagManagementExpanded && (
                   <span className="text-sm text-muted-foreground">
-                    {bugReportTags.length + playerReportTags.length + appealTags.length} tags configured
+                    {labels?.length || 0} labels configured
                   </span>
                 )}
                 {isTagManagementExpanded ? (
@@ -689,161 +956,25 @@ const TicketSettings = ({
                 )}
               </div>
             </CollapsibleTrigger>
-            
+
             <CollapsibleContent className="pt-4">
               <div className="border rounded-lg p-4">
                 <p className="text-sm text-muted-foreground mb-6">
-                  Customize tags for different ticket categories. These tags will appear as options when staff respond to tickets.
+                  Create labels to categorize and organize tickets. Labels can be applied to any ticket type and will appear with their assigned colors.
                 </p>
 
-                <div className="space-y-8">
-                  {/* Bug Report Tags */}
-                  <div className="space-y-3">
-                    <h4 className="text-base font-medium">Bug Report Tags</h4>
-                    <div className="flex flex-wrap gap-2 mb-4">
-                      {bugReportTags.map((tag, index) => (
-                        <Badge key={index} variant="outline" className="py-1.5 pl-3 pr-2 flex items-center gap-1 bg-background">
-                          {tag}
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            className="h-4 w-4 rounded-full hover:bg-muted ml-1"
-                            onClick={() => handleTagDeleteClick('bug', index, tag)}
-                          >
-                            <X className="h-3 w-3" />
-                          </Button>
-                        </Badge>
-                      ))}
-                    </div>
-                    <div className="flex gap-2 items-center">
-                      <Input
-                        placeholder="New tag name"
-                        className="max-w-xs"
-                        value={newBugTag}
-                        onChange={(e) => setNewBugTag(e.target.value)}
-                        onKeyDown={(e) => {
-                          if (e.key === 'Enter' && newBugTag.trim()) {
-                            setBugReportTags([...bugReportTags, newBugTag.trim()]);
-                            setNewBugTag('');
-                          }
-                        }}
-                      />
-                      <Button
-                        size="sm"
-                        onClick={() => {
-                          if (newBugTag.trim()) {
-                            setBugReportTags([...bugReportTags, newBugTag.trim()]);
-                            setNewBugTag('');
-                          }
-                        }}
-                        disabled={!newBugTag.trim()}
-                      >
-                        <Plus className="h-4 w-4 mr-1" />
-                        Add Tag
-                      </Button>
-                    </div>
-                  </div>
-
-                  {/* Player Report Tags */}
-                  <div className="space-y-3">
-                    <h4 className="text-base font-medium">Player Report Tags</h4>
-                    <div className="flex flex-wrap gap-2 mb-4">
-                      {playerReportTags.map((tag, index) => (
-                        <Badge key={index} variant="outline" className="py-1.5 pl-3 pr-2 flex items-center gap-1 bg-background">
-                          {tag}
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            className="h-4 w-4 rounded-full hover:bg-muted ml-1"
-                            onClick={() => handleTagDeleteClick('player', index, tag)}
-                          >
-                            <X className="h-3 w-3" />
-                          </Button>
-                        </Badge>
-                      ))}
-                    </div>
-                    <div className="flex gap-2 items-center">
-                      <Input
-                        placeholder="New tag name"
-                        className="max-w-xs"
-                        value={newPlayerTag}
-                        onChange={(e) => setNewPlayerTag(e.target.value)}
-                        onKeyDown={(e) => {
-                          if (e.key === 'Enter' && newPlayerTag.trim()) {
-                            setPlayerReportTags([...playerReportTags, newPlayerTag.trim()]);
-                            setNewPlayerTag('');
-                          }
-                        }}
-                      />
-                      <Button
-                        size="sm"
-                        onClick={() => {
-                          if (newPlayerTag.trim()) {
-                            setPlayerReportTags([...playerReportTags, newPlayerTag.trim()]);
-                            setNewPlayerTag('');
-                          }
-                        }}
-                        disabled={!newPlayerTag.trim()}
-                      >
-                        <Plus className="h-4 w-4 mr-1" />
-                        Add Tag
-                      </Button>
-                    </div>
-                  </div>
-
-                  {/* Appeal Tags */}
-                  <div className="space-y-3">
-                    <h4 className="text-base font-medium">Appeal Tags</h4>
-                    <div className="flex flex-wrap gap-2 mb-4">
-                      {appealTags.map((tag, index) => (
-                        <Badge key={index} variant="outline" className="py-1.5 pl-3 pr-2 flex items-center gap-1 bg-background">
-                          {tag}
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            className="h-4 w-4 rounded-full hover:bg-muted ml-1"
-                            onClick={() => handleTagDeleteClick('appeal', index, tag)}
-                          >
-                            <X className="h-3 w-3" />
-                          </Button>
-                        </Badge>
-                      ))}
-                    </div>
-                    <div className="flex gap-2 items-center">
-                      <Input
-                        placeholder="New tag name"
-                        className="max-w-xs"
-                        value={newAppealTag}
-                        onChange={(e) => setNewAppealTag(e.target.value)}
-                        onKeyDown={(e) => {
-                          if (e.key === 'Enter' && newAppealTag.trim()) {
-                            setAppealTags([...appealTags, newAppealTag.trim()]);
-                            setNewAppealTag('');
-                          }
-                        }}
-                      />
-                      <Button
-                        size="sm"
-                        onClick={() => {
-                          if (newAppealTag.trim()) {
-                            setAppealTags([...appealTags, newAppealTag.trim()]);
-                            setNewAppealTag('');
-                          }
-                        }}
-                        disabled={!newAppealTag.trim()}
-                      >
-                        <Plus className="h-4 w-4 mr-1" />
-                        Add Tag
-                      </Button>
-                    </div>
-                  </div>
-                </div>
+                <LabelManagementTable
+                  labels={labels || []}
+                  onLabelsChange={setLabels}
+                />
               </div>
             </CollapsibleContent>
           </Collapsible>
+          )}
 
           {/* Ticket Form Configuration Section */}
-          <Collapsible open={isTicketFormsExpanded} onOpenChange={setIsTicketFormsExpanded}>
+          {showTicketForms && (
+          <Collapsible open={visibleSection ? true : isTicketFormsExpanded} onOpenChange={visibleSection ? undefined : setIsTicketFormsExpanded}>
             <CollapsibleTrigger className="flex items-center justify-between w-full p-4 bg-muted/50 rounded-lg hover:bg-muted/70 transition-colors">
               <div className="flex items-center">
                 <Layers className="h-4 w-4 mr-2" />
@@ -1000,9 +1131,11 @@ const TicketSettings = ({
               </div>
             </CollapsibleContent>
           </Collapsible>
+          )}
 
           {/* AI Moderation Settings Section */}
-          <Collapsible open={isAIModerationExpanded} onOpenChange={isPremiumUser() ? setIsAIModerationExpanded : undefined}>
+          {showAIModeration && (
+          <Collapsible open={visibleSection ? (isPremiumUser() ? true : false) : isAIModerationExpanded} onOpenChange={isPremiumUser() ? (visibleSection ? undefined : setIsAIModerationExpanded) : undefined}>
             <CollapsibleTrigger className={`flex items-center justify-between w-full p-4 bg-muted/50 rounded-lg transition-colors ${isPremiumUser() ? 'hover:bg-muted/70' : 'cursor-not-allowed opacity-60'}`}>
               <div className="flex items-center">
                 <Shield className="h-4 w-4 mr-2" />
@@ -1221,8 +1354,8 @@ const TicketSettings = ({
               </div>
             </CollapsibleContent>
           </Collapsible>
+          )}
         </div>
-      </div>
 
       {/* Add AI Punishment Type Dialog */}
       {isAddAIPunishmentDialogOpen && (

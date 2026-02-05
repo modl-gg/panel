@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
-import { Scale, Shield, Globe, Tag, Plus, X, Fingerprint, KeyRound, Lock, QrCode, Copy, Check, Mail, Trash2, GamepadIcon, MessageCircle, Save, CheckCircle, User as UserIcon, LogOut, CreditCard, BookOpen, Settings as SettingsIcon, Upload, Key, Eye, EyeOff, RefreshCw, ChevronDown, ChevronRight, Layers, GripVertical, Edit3 } from 'lucide-react';
+import { Scale, Shield, Globe, Tag, Plus, X, Fingerprint, KeyRound, Lock, QrCode, Copy, Check, Mail, Trash2, GamepadIcon, MessageCircle, Save, CheckCircle, User as UserIcon, CreditCard, BookOpen, Settings as SettingsIcon, Upload, Key, Eye, EyeOff, RefreshCw, ChevronDown, ChevronRight, Layers, GripVertical, Edit3, Users, Bot, FileText, Home } from 'lucide-react';
 import { getApiUrl, getCurrentDomain, apiFetch, apiUpload } from '@/lib/api';
 import { Button } from '@modl-gg/shared-web/components/ui/button';
 import { Card, CardContent, CardHeader } from '@modl-gg/shared-web/components/ui/card';
@@ -752,17 +752,17 @@ const Settings = () => {
   const { canAccessSettingsTab, getAccessibleSettingsTabs } = usePermissions();
   const isMobile = useIsMobile();
   const mainContentClass = "ml-[32px] pl-8";
-  const [activeTab, setActiveTab] = useState('account');
-  const [activeSection, setActiveSection] = useState<string>('');
+  const [expandedCategory, setExpandedCategory] = useState<string | null>('account');
+  const [expandedSubCategory, setExpandedSubCategory] = useState<string | null>(null);
 
-  // Update URL when tab or section changes
-  const updateURL = (tab: string, section?: string) => {
+  // Update URL when category changes
+  const updateURL = (category: string, subCategory?: string) => {
     const url = new URL(window.location.href);
-    url.searchParams.set('tab', tab);
-    if (section) {
-      url.searchParams.set('section', section);
+    url.searchParams.set('category', category);
+    if (subCategory) {
+      url.searchParams.set('sub', subCategory);
     } else {
-      url.searchParams.delete('section');
+      url.searchParams.delete('sub');
     }
     window.history.replaceState({}, '', url.toString());
   };
@@ -770,63 +770,64 @@ const Settings = () => {
   // Initialize from URL parameters
   useEffect(() => {
     const urlParams = new URLSearchParams(window.location.search);
-    const urlTab = urlParams.get('tab');
-    const urlSection = urlParams.get('section');
-    
+    const urlCategory = urlParams.get('category') || urlParams.get('tab'); // Support legacy tab param
+    const urlSubCategory = urlParams.get('sub') || urlParams.get('section');
+
     // Handle legacy session_id parameter
     if (urlParams.has('session_id') && user?.role === 'Super Admin') {
-      const newTab = 'general';
-      setActiveTab(newTab);
-      updateURL(newTab);
+      setExpandedCategory('general');
+      updateURL('general');
       return;
     }
-    
-    // If URL has tab parameter, validate and set it
-    if (urlTab && user) {
-      // Check if user can access the requested tab
-      if (canAccessSettingsTab(urlTab as any)) {
-        setActiveTab(urlTab);
-        // Only set section if the tab supports sections (currently only 'staff')
-        if (urlSection && urlTab === 'staff') {
-          setActiveSection(urlSection);
-        } else {
-          setActiveSection('');
+
+    // If URL has category parameter, validate and set it
+    if (urlCategory && user) {
+      // Map legacy tab names to new category names
+      const categoryMap: Record<string, string> = {
+        'tags': 'tickets',
+        'homepage': 'knowledgebase',
+      };
+      const mappedCategory = categoryMap[urlCategory] || urlCategory;
+
+      // Check if user can access the requested category
+      if (canAccessSettingsTab(mappedCategory as any) || mappedCategory === 'account') {
+        setExpandedCategory(mappedCategory);
+        if (urlSubCategory) {
+          setExpandedSubCategory(urlSubCategory);
         }
       } else {
         // User doesn't have permission, redirect to account
-        setActiveTab('account');
-        setActiveSection('');
+        setExpandedCategory('account');
         updateURL('account');
       }
     }
   }, [user, canAccessSettingsTab]);
 
-  // Redirect users to accessible tabs if they don't have permission for current tab
-  useEffect(() => {
-    if (!user) return;
-    
-    // Check if user can access the current tab
-    if (!canAccessSettingsTab(activeTab as any)) {
-      setActiveTab('account'); // Redirect to account tab which everyone can access
-      setActiveSection('');
-      updateURL('account');
+  // Handle category expansion - only one category open at a time
+  const handleCategoryToggle = (category: string) => {
+    if (expandedCategory === category) {
+      // Don't collapse if clicking the same category
+      return;
     }
-  }, [user, activeTab, canAccessSettingsTab]);
-  
-  // Custom tab change handler that updates URL
-  const handleTabChange = (tabValue: string) => {
-    setActiveTab(tabValue);
-    setActiveSection(''); // Reset section when changing tabs
-    updateURL(tabValue);
+    setExpandedCategory(category);
+    setExpandedSubCategory(null);
+    updateURL(category);
   };
-  
-  // Custom section change handler that updates URL
-  const handleSectionChange = (sectionValue: string) => {
-    setActiveSection(sectionValue);
-    // Only update URL with section for tabs that support sections
-    if (activeTab === 'staff') {
-      updateURL(activeTab, sectionValue);
+
+  // Handle sub-category expansion within a category
+  const handleSubCategoryToggle = (category: string, subCategory: string) => {
+    if (expandedCategory !== category) {
+      setExpandedCategory(category);
     }
+    setExpandedSubCategory(expandedSubCategory === subCategory ? null : subCategory);
+    updateURL(category, expandedSubCategory === subCategory ? undefined : subCategory);
+  };
+
+  // Expand all sub-categories when clicking the main category card
+  const handleExpandAllSubCategories = (category: string) => {
+    setExpandedCategory(category);
+    setExpandedSubCategory('all');
+    updateURL(category, 'all');
   };
   
   // Auto-save state
@@ -910,7 +911,16 @@ const Settings = () => {
   // Quick responses state for each ticket category
   const [quickResponsesState, setQuickResponsesState] = useState<QuickResponsesConfiguration>(defaultQuickResponsesConfig);
 
-  // Tags state for each ticket category
+  // Labels state (new unified system)
+  interface Label {
+    id: string;
+    name: string;
+    color: string;
+    description?: string;
+  }
+  const [labelsState, setLabelsState] = useState<Label[]>([]);
+
+  // Tags state for each ticket category (deprecated - kept for backwards compatibility)
   const [bugReportTagsState, setBugReportTagsState] = useState<string[]>([
     'UI Issue', 'Server', 'Performance', 'Crash', 'Game Mechanics'
   ]);
@@ -1162,6 +1172,7 @@ const Settings = () => {
   const statusThresholds = statusThresholdsState;
   const selectedPunishment = selectedPunishmentState;
   const showCorePunishments = showCorePunishmentsState;
+  const labels = labelsState;
   const bugReportTags = bugReportTagsState;
   const playerReportTags = playerReportTagsState;
   const appealTags = appealTagsState;
@@ -1651,6 +1662,7 @@ const Settings = () => {
     const currentSettingsSnapshot = {
       punishmentTypes: JSON.parse(JSON.stringify(punishmentTypes)), // Deep copy
       statusThresholds: JSON.parse(JSON.stringify(statusThresholds)), // Deep copy
+      labels: JSON.parse(JSON.stringify(labels)), // Deep copy
       bugReportTags: JSON.parse(JSON.stringify(bugReportTags)), // Deep copy
       playerReportTags: JSON.parse(JSON.stringify(playerReportTags)), // Deep copy
       appealTags: JSON.parse(JSON.stringify(appealTags)), // Deep copy
@@ -1663,7 +1675,7 @@ const Settings = () => {
       panelIconUrl,
     };
     initialSettingsRef.current = currentSettingsSnapshot;
-  }, [punishmentTypes, statusThresholds, bugReportTags, playerReportTags, appealTags, ticketForms, quickResponsesState, mongodbUri, has2FA, hasPasskey, serverDisplayName, homepageIconUrl, panelIconUrl]);
+  }, [punishmentTypes, statusThresholds, labels, bugReportTags, playerReportTags, appealTags, ticketForms, quickResponsesState, mongodbUri, has2FA, hasPasskey, serverDisplayName, homepageIconUrl, panelIconUrl]);
 
   // Helper to apply a settings object to all state variables without triggering auto-save
   const applySettingsObjectToState = useCallback((settingsObject: any) => {
@@ -1677,6 +1689,12 @@ const Settings = () => {
       setPunishmentTypesState(typeof pt === 'string' ? JSON.parse(pt) : JSON.parse(JSON.stringify(pt)));
     }
     if (settingsObject.statusThresholds) setStatusThresholdsState(JSON.parse(JSON.stringify(settingsObject.statusThresholds)));
+    // Load labels (new unified system)
+    if (settingsObject.labels) {
+      const lbls = settingsObject.labels;
+      setLabelsState(typeof lbls === 'string' ? JSON.parse(lbls) : JSON.parse(JSON.stringify(lbls)));
+    }
+    // Load deprecated tags for backwards compatibility
     if (settingsObject.bugReportTags) {
       const brt = settingsObject.bugReportTags;
       setBugReportTagsState(typeof brt === 'string' ? JSON.parse(brt) : JSON.parse(JSON.stringify(brt)));
@@ -1792,6 +1810,7 @@ const Settings = () => {
         discordWebhookUrl,
         homepageIconUrl,
         panelIconUrl,
+        labels,
         bugReportTags,
         playerReportTags,
         appealTags,
@@ -1857,7 +1876,7 @@ const Settings = () => {
     }
   }, [
     punishmentTypes, statusThresholds, serverDisplayName, discordWebhookUrl, homepageIconUrl, panelIconUrl,
-    bugReportTags, playerReportTags, appealTags, ticketForms, quickResponsesState, mongodbUri, has2FA, hasPasskey, toast
+    labels, bugReportTags, playerReportTags, appealTags, ticketForms, quickResponsesState, mongodbUri, has2FA, hasPasskey, toast
   ]);
 
   // Effect: Load settings from React Query into local component state
@@ -1971,7 +1990,7 @@ const Settings = () => {
       }
     };  }, [
     punishmentTypes, statusThresholds, serverDisplayName, discordWebhookUrl, homepageIconUrl, panelIconUrl,
-    bugReportTags, playerReportTags, appealTags, ticketForms, quickResponsesState, mongodbUri, has2FA, hasPasskey, 
+    labels, bugReportTags, playerReportTags, appealTags, ticketForms, quickResponsesState, mongodbUri, has2FA, hasPasskey,
     // profileUsername removed - it has its own separate save function
     isLoadingSettings, isFetchingSettings, saveSettings
   ]);
@@ -2917,6 +2936,69 @@ const Settings = () => {
     setIsAddAppealFieldDialogOpen(true);
   }, []);
 
+  // Settings categories configuration
+  const settingsCategories = [
+    {
+      id: 'account',
+      title: 'Account',
+      description: 'Manage your profile, email, and security settings',
+      icon: UserIcon,
+      permission: null, // Everyone can access
+      subCategories: null,
+    },
+    {
+      id: 'general',
+      title: 'Server & Billing',
+      description: 'Configure server settings, billing, API keys, and integrations',
+      icon: SettingsIcon,
+      permission: 'general',
+      subCategories: null,
+    },
+    {
+      id: 'punishment',
+      title: 'Punishment Types',
+      description: 'Configure punishment categories, durations, and point thresholds',
+      icon: Scale,
+      permission: 'punishment',
+      subCategories: null,
+    },
+    {
+      id: 'tickets',
+      title: 'Tickets',
+      description: 'Configure ticket system settings and AI moderation',
+      icon: FileText,
+      permission: 'tags',
+      subCategories: [
+        { id: 'quick-responses', title: 'Quick Responses', icon: MessageCircle },
+        { id: 'label-management', title: 'Label Management', icon: Tag },
+        { id: 'ticket-forms', title: 'Ticket Forms', icon: Layers },
+        { id: 'ai-moderation', title: 'AI Moderation', icon: Bot },
+      ],
+    },
+    {
+      id: 'staff',
+      title: 'Staff & Roles',
+      description: 'Manage staff members and configure role permissions',
+      icon: Users,
+      permission: 'staff',
+      subCategories: [
+        { id: 'staff-management', title: 'Staff Management', icon: UserIcon },
+        { id: 'roles-permissions', title: 'Roles & Permissions', icon: Shield },
+      ],
+    },
+    {
+      id: 'knowledgebase',
+      title: 'Knowledgebase & Homepage',
+      description: 'Manage knowledge base articles and homepage customization',
+      icon: BookOpen,
+      permission: 'knowledgebase',
+      subCategories: [
+        { id: 'knowledgebase-articles', title: 'Knowledgebase', icon: BookOpen },
+        { id: 'homepage-cards', title: 'Homepage Cards', icon: Home },
+      ],
+    },
+  ];
+
   return (
     <PageContainer>
       <div className="flex flex-col space-y-6">
@@ -2943,245 +3025,276 @@ const Settings = () => {
                 </Tooltip>
               </TooltipProvider>
             ) : null}
-            <Button variant="ghost" size="sm" onClick={logout}>
-              <LogOut className="h-4 w-4 mr-2" />
-              Sign Out
-            </Button>
           </div>
         </div>
 
-        <Card>
-          <CardHeader className="p-0">
-            <Tabs value={activeTab} onValueChange={handleTabChange}>
-              {isMobile ? (
-                <div className="p-4 border-b border-border">
-                  <Select value={activeTab} onValueChange={handleTabChange}>
-                    <SelectTrigger className="w-full">
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="account">Account</SelectItem>
-                      {canAccessSettingsTab('general') && <SelectItem value="general">Server & Billing</SelectItem>}
-                      {canAccessSettingsTab('punishment') && <SelectItem value="punishment">Punishment Types</SelectItem>}
-                      {canAccessSettingsTab('tags') && <SelectItem value="tags">Tickets</SelectItem>}
-                      {canAccessSettingsTab('staff') && <SelectItem value="staff">Staff Management</SelectItem>}
-                      {canAccessSettingsTab('knowledgebase') && <SelectItem value="knowledgebase">Knowledgebase</SelectItem>}
-                      {canAccessSettingsTab('homepage') && <SelectItem value="homepage">Homepage Cards</SelectItem>}
-                    </SelectContent>
-                  </Select>
-                </div>
-              ) : (
-                <div className="overflow-x-auto pb-1 border-b border-border">
-                  <TabsList className="w-max flex rounded-none bg-transparent">
-                    <TabsTrigger
-                      value="account"
-                      className="data-[state=active]:border-b-2 data-[state=active]:border-primary data-[state=active]:text-primary rounded-none px-6 py-2 flex-shrink-0 text-sm"
-                    >
-                      <UserIcon className="h-4 w-4 mr-2" />
-                      Account
-                    </TabsTrigger>
-                    {canAccessSettingsTab('general') && (
-                      <TabsTrigger
-                        value="general"
-                        className="data-[state=active]:border-b-2 data-[state=active]:border-primary data-[state=active]:text-primary rounded-none px-6 py-2 flex-shrink-0 text-sm"
-                      >
-                        <SettingsIcon className="h-4 w-4 mr-2" />
-                        Server & Billing
-                      </TabsTrigger>
-                    )}
-                    {canAccessSettingsTab('punishment') && (
-                      <TabsTrigger
-                        value="punishment"
-                        className="data-[state=active]:border-b-2 data-[state=active]:border-primary data-[state=active]:text-primary rounded-none px-6 py-2 flex-shrink-0 text-sm"
-                      >
-                        <Scale className="h-4 w-4 mr-2" />
-                        Punishment Types
-                      </TabsTrigger>
-                    )}
-                    {canAccessSettingsTab('tags') && (
-                      <TabsTrigger
-                        value="tags"
-                        className="data-[state=active]:border-b-2 data-[state=active]:border-primary data-[state=active]:text-primary rounded-none px-6 py-2 flex-shrink-0 text-sm"
-                      >
-                        <Tag className="h-4 w-4 mr-2" />
-                        Tickets
-                      </TabsTrigger>
-                    )}
-                    {canAccessSettingsTab('staff') && (
-                      <TabsTrigger
-                        value="staff"
-                        className="data-[state=active]:border-b-2 data-[state=active]:border-primary data-[state=active]:text-primary rounded-none px-6 py-2 flex-shrink-0 text-sm"
-                      >
-                        <Shield className="h-4 w-4 mr-2" />
-                        Staff Management
-                      </TabsTrigger>
-                    )}
-                    {canAccessSettingsTab('knowledgebase') && (
-                      <TabsTrigger
-                        value="knowledgebase"
-                        className="data-[state=active]:border-b-2 data-[state=active]:border-primary data-[state=active]:text-primary rounded-none px-6 py-2 flex-shrink-0 text-sm"
-                      >
-                        <BookOpen className="h-4 w-4 mr-2" />
-                        Knowledgebase
-                      </TabsTrigger>
-                    )}
-                    {canAccessSettingsTab('homepage') && (
-                      <TabsTrigger
-                        value="homepage"
-                        className="data-[state=active]:border-b-2 data-[state=active]:border-primary data-[state=active]:text-primary rounded-none px-6 py-2 flex-shrink-0 text-sm"
-                      >
-                        <Globe className="h-4 w-4 mr-2" />
-                        Homepage Cards
-                      </TabsTrigger>
-                    )}
-                  </TabsList>
-                </div>
-              )}
-              
-              <TabsContent value="account">
-                <AccountSettings
-                  profileUsername={profileUsername}
-                  setProfileUsername={setProfileUsername}
-                  currentEmail={currentEmail}
-                  setCurrentEmail={setCurrentEmail}
-                />
-              </TabsContent>
+        <div className="space-y-4">
+          {settingsCategories.map((category) => {
+            // Check permission
+            if (category.permission && !canAccessSettingsTab(category.permission as any)) {
+              return null;
+            }
 
-              {canAccessSettingsTab('general') && (
-                <TabsContent value="general">
-                  <GeneralSettings
-                    serverDisplayName={serverDisplayName}
-                    setServerDisplayName={setServerDisplayName}
-                    discordWebhookUrl={discordWebhookUrl}
-                    setDiscordWebhookUrl={setDiscordWebhookUrl}
-                    homepageIconUrl={homepageIconUrl}
-                    panelIconUrl={panelIconUrl}
-                    uploadingHomepageIcon={uploadingHomepageIcon}
-                    uploadingPanelIcon={uploadingPanelIcon}
-                    handleHomepageIconUpload={handleHomepageIconUpload}
-                    handlePanelIconUpload={handlePanelIconUpload}
-                    apiKey={apiKey}
-                    fullApiKey={fullApiKey}
-                    showApiKey={showApiKey}
-                    apiKeyCopied={apiKeyCopied}
-                    isGeneratingApiKey={isGeneratingApiKey}
-                    isRevokingApiKey={isRevokingApiKey}
-                    generateApiKey={generateApiKey}
-                    revokeApiKey={revokeApiKey}
-                    revealApiKey={revealApiKey}
-                    copyApiKey={copyApiKey}
-                    maskApiKey={maskApiKey}
-                    usageData={usageData}
-                    getBillingSummary={getBillingSummary}
-                    getUsageSummary={getUsageSummary}
-                    getServerConfigSummary={getServerConfigSummary}
-                    getDomainSummary={getDomainSummary}
-                    webhookSettings={settingsData?.settings?.webhookSettings}
-                    getWebhookSummary={getWebhookSummary}
-                    handleWebhookSave={handleWebhookSave}
-                    savingWebhookSettings={savingWebhookSettings}
-                  />
-                </TabsContent>
-              )}
+            const isExpanded = expandedCategory === category.id;
+            const Icon = category.icon;
 
-              {canAccessSettingsTab('punishment') && (
-                <TabsContent value="punishment">
-                  <PunishmentSettings
-                    statusThresholds={statusThresholds}
-                    setStatusThresholds={setStatusThresholds}
-                    punishmentTypes={punishmentTypes}
-                    newPunishmentName={newPunishmentName}
-                    setNewPunishmentName={setNewPunishmentName}
-                    newPunishmentCategory={newPunishmentCategory}
-                    setNewPunishmentCategory={setNewPunishmentCategory}
-                    addPunishmentType={addPunishmentType}
-                    removePunishmentType={removePunishmentType}
-                    setSelectedPunishment={setSelectedPunishment}
-                  />
-                </TabsContent>
-              )}
-
-              {canAccessSettingsTab('tags') && (
-                <TabsContent value="tags">
-                  <TicketSettings
-                  quickResponsesState={quickResponsesState}
-                  setQuickResponsesState={setQuickResponsesState}
-                  bugReportTags={bugReportTags}
-                  setBugReportTags={setBugReportTagsState}
-                  playerReportTags={playerReportTags}
-                  setPlayerReportTags={setPlayerReportTagsState}
-                  appealTags={appealTags}
-                  setAppealTags={setAppealTagsState}
-                  newBugTag={newBugTag}
-                  setNewBugTag={setNewBugTag}
-                  newPlayerTag={newPlayerTag}
-                  setNewPlayerTag={setNewPlayerTag}
-                  newAppealTag={newAppealTag}
-                  setNewAppealTag={setNewAppealTag}
-                  ticketForms={ticketForms}
-                  setTicketForms={setTicketFormsState}
-                  selectedTicketFormType={selectedTicketFormType}
-                  setSelectedTicketFormType={setSelectedTicketFormType}
-                  aiModerationSettings={aiModerationSettings}
-                  setAiModerationSettings={setAiModerationSettings}
-                  punishmentTypesState={punishmentTypes}
-                  onEditSection={onEditSection}
-                  onDeleteSection={onDeleteSection}
-                  onEditField={onEditField}
-                  onDeleteField={onDeleteField}
-                  onAddField={onAddField}
-                  moveField={moveField}
-                  moveFieldBetweenSections={moveFieldBetweenSections}
-                />
-                </TabsContent>
-              )}
-
-
-              <TabsContent value="staff" className="p-6">
-                {canAccessSettingsTab('staff') ? (
-                  <Tabs value={activeSection || "staff-management"} onValueChange={handleSectionChange} className="w-full">
-                    <TabsList className="grid w-full grid-cols-2">
-                      <TabsTrigger value="staff-management" className="flex items-center gap-2">
-                        <UserIcon className="h-4 w-4" />
-                        Staff Management
-                      </TabsTrigger>
-                      <TabsTrigger value="roles-permissions" className="flex items-center gap-2">
-                        <Shield className="h-4 w-4" />
-                        Roles & Permissions
-                      </TabsTrigger>
-                    </TabsList>
-                    
-                    <TabsContent value="staff-management" className="mt-6">
-                      <StaffManagementPanel />
-                    </TabsContent>
-                    
-                    <TabsContent value="roles-permissions" className="mt-6">
-                      <StaffRolesCard />
-                    </TabsContent>
-                  </Tabs>
-                ) : (
-                  <div className="flex items-center justify-center h-64 border-2 border-dashed border-muted rounded-lg">
-                    <p className="text-muted-foreground">You do not have permission to view this page.</p>
+            return (
+              <Card key={category.id} className={isExpanded ? 'ring-2 ring-primary' : ''}>
+                {/* Category Header */}
+                <div
+                  className="p-4 cursor-pointer hover:bg-muted/50 transition-colors"
+                  onClick={() => category.subCategories ? handleExpandAllSubCategories(category.id) : handleCategoryToggle(category.id)}
+                >
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-4">
+                      <div className="p-2 rounded-lg bg-muted">
+                        <Icon className="h-5 w-5 text-muted-foreground" />
+                      </div>
+                      <div>
+                        <h3 className="font-medium">{category.title}</h3>
+                        <p className="text-sm text-muted-foreground">{category.description}</p>
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      {isExpanded ? (
+                        <ChevronDown className="h-5 w-5 text-muted-foreground" />
+                      ) : (
+                        <ChevronRight className="h-5 w-5 text-muted-foreground" />
+                      )}
+                    </div>
                   </div>
+
+                  {/* Sub-categories list (when collapsed) */}
+                  {category.subCategories && !isExpanded && (
+                    <div className="mt-3 flex flex-wrap gap-2">
+                      {category.subCategories.map((sub) => {
+                        const SubIcon = sub.icon;
+                        return (
+                          <Button
+                            key={sub.id}
+                            variant="outline"
+                            size="sm"
+                            className="text-xs"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleSubCategoryToggle(category.id, sub.id);
+                            }}
+                          >
+                            <SubIcon className="h-3 w-3 mr-1" />
+                            {sub.title}
+                          </Button>
+                        );
+                      })}
+                    </div>
+                  )}
+                </div>
+
+                {/* Expanded Content */}
+                {isExpanded && (
+                  <CardContent className="pt-0">
+                    {/* Account Settings */}
+                    {category.id === 'account' && (
+                      <AccountSettings
+                        profileUsername={profileUsername}
+                        setProfileUsername={setProfileUsername}
+                        currentEmail={currentEmail}
+                        setCurrentEmail={setCurrentEmail}
+                      />
+                    )}
+
+                    {/* Server & Billing Settings */}
+                    {category.id === 'general' && (
+                      <GeneralSettings
+                        serverDisplayName={serverDisplayName}
+                        setServerDisplayName={setServerDisplayName}
+                        discordWebhookUrl={discordWebhookUrl}
+                        setDiscordWebhookUrl={setDiscordWebhookUrl}
+                        homepageIconUrl={homepageIconUrl}
+                        panelIconUrl={panelIconUrl}
+                        uploadingHomepageIcon={uploadingHomepageIcon}
+                        uploadingPanelIcon={uploadingPanelIcon}
+                        handleHomepageIconUpload={handleHomepageIconUpload}
+                        handlePanelIconUpload={handlePanelIconUpload}
+                        apiKey={apiKey}
+                        fullApiKey={fullApiKey}
+                        showApiKey={showApiKey}
+                        apiKeyCopied={apiKeyCopied}
+                        isGeneratingApiKey={isGeneratingApiKey}
+                        isRevokingApiKey={isRevokingApiKey}
+                        generateApiKey={generateApiKey}
+                        revokeApiKey={revokeApiKey}
+                        revealApiKey={revealApiKey}
+                        copyApiKey={copyApiKey}
+                        maskApiKey={maskApiKey}
+                        usageData={usageData}
+                        getBillingSummary={getBillingSummary}
+                        getUsageSummary={getUsageSummary}
+                        getServerConfigSummary={getServerConfigSummary}
+                        getDomainSummary={getDomainSummary}
+                        webhookSettings={settingsData?.settings?.webhookSettings}
+                        getWebhookSummary={getWebhookSummary}
+                        handleWebhookSave={handleWebhookSave}
+                        savingWebhookSettings={savingWebhookSettings}
+                      />
+                    )}
+
+                    {/* Punishment Types Settings */}
+                    {category.id === 'punishment' && (
+                      <PunishmentSettings
+                        statusThresholds={statusThresholds}
+                        setStatusThresholds={setStatusThresholds}
+                        punishmentTypes={punishmentTypes}
+                        newPunishmentName={newPunishmentName}
+                        setNewPunishmentName={setNewPunishmentName}
+                        newPunishmentCategory={newPunishmentCategory}
+                        setNewPunishmentCategory={setNewPunishmentCategory}
+                        addPunishmentType={addPunishmentType}
+                        removePunishmentType={removePunishmentType}
+                        setSelectedPunishment={setSelectedPunishment}
+                      />
+                    )}
+
+                    {/* Tickets Settings with Sub-categories */}
+                    {category.id === 'tickets' && category.subCategories && (
+                      <div className="space-y-4">
+                        {category.subCategories.map((sub) => {
+                          const SubIcon = sub.icon;
+                          const isSubExpanded = expandedSubCategory === 'all' || expandedSubCategory === sub.id;
+
+                          return (
+                            <div key={sub.id} className="border rounded-lg">
+                              <div
+                                className="p-3 cursor-pointer hover:bg-muted/50 transition-colors flex items-center justify-between"
+                                onClick={() => handleSubCategoryToggle(category.id, sub.id)}
+                              >
+                                <div className="flex items-center gap-3">
+                                  <SubIcon className="h-4 w-4 text-muted-foreground" />
+                                  <span className="font-medium text-sm">{sub.title}</span>
+                                </div>
+                                {isSubExpanded ? (
+                                  <ChevronDown className="h-4 w-4 text-muted-foreground" />
+                                ) : (
+                                  <ChevronRight className="h-4 w-4 text-muted-foreground" />
+                                )}
+                              </div>
+                              {isSubExpanded && (
+                                <div className="p-4 pt-0">
+                                  <TicketSettings
+                                    quickResponsesState={quickResponsesState}
+                                    setQuickResponsesState={setQuickResponsesState}
+                                    labels={labels}
+                                    setLabels={setLabelsState}
+                                    bugReportTags={bugReportTags}
+                                    setBugReportTags={setBugReportTagsState}
+                                    playerReportTags={playerReportTags}
+                                    setPlayerReportTags={setPlayerReportTagsState}
+                                    appealTags={appealTags}
+                                    setAppealTags={setAppealTagsState}
+                                    newBugTag={newBugTag}
+                                    setNewBugTag={setNewBugTag}
+                                    newPlayerTag={newPlayerTag}
+                                    setNewPlayerTag={setNewPlayerTag}
+                                    newAppealTag={newAppealTag}
+                                    setNewAppealTag={setNewAppealTag}
+                                    ticketForms={ticketForms}
+                                    setTicketForms={setTicketFormsState}
+                                    selectedTicketFormType={selectedTicketFormType}
+                                    setSelectedTicketFormType={setSelectedTicketFormType}
+                                    aiModerationSettings={aiModerationSettings}
+                                    setAiModerationSettings={setAiModerationSettings}
+                                    punishmentTypesState={punishmentTypes}
+                                    onEditSection={onEditSection}
+                                    onDeleteSection={onDeleteSection}
+                                    onEditField={onEditField}
+                                    onDeleteField={onDeleteField}
+                                    onAddField={onAddField}
+                                    moveField={moveField}
+                                    moveFieldBetweenSections={moveFieldBetweenSections}
+                                    visibleSection={sub.id}
+                                  />
+                                </div>
+                              )}
+                            </div>
+                          );
+                        })}
+                      </div>
+                    )}
+
+                    {/* Staff & Roles Settings with Sub-categories */}
+                    {category.id === 'staff' && category.subCategories && (
+                      <div className="space-y-4">
+                        {category.subCategories.map((sub) => {
+                          const SubIcon = sub.icon;
+                          const isSubExpanded = expandedSubCategory === 'all' || expandedSubCategory === sub.id;
+
+                          return (
+                            <div key={sub.id} className="border rounded-lg">
+                              <div
+                                className="p-3 cursor-pointer hover:bg-muted/50 transition-colors flex items-center justify-between"
+                                onClick={() => handleSubCategoryToggle(category.id, sub.id)}
+                              >
+                                <div className="flex items-center gap-3">
+                                  <SubIcon className="h-4 w-4 text-muted-foreground" />
+                                  <span className="font-medium text-sm">{sub.title}</span>
+                                </div>
+                                {isSubExpanded ? (
+                                  <ChevronDown className="h-4 w-4 text-muted-foreground" />
+                                ) : (
+                                  <ChevronRight className="h-4 w-4 text-muted-foreground" />
+                                )}
+                              </div>
+                              {isSubExpanded && (
+                                <div className="p-4 pt-0">
+                                  {sub.id === 'staff-management' && <StaffManagementPanel />}
+                                  {sub.id === 'roles-permissions' && <StaffRolesCard />}
+                                </div>
+                              )}
+                            </div>
+                          );
+                        })}
+                      </div>
+                    )}
+
+                    {/* Knowledgebase & Homepage Settings with Sub-categories */}
+                    {category.id === 'knowledgebase' && category.subCategories && (
+                      <div className="space-y-4">
+                        {category.subCategories.map((sub) => {
+                          const SubIcon = sub.icon;
+                          const isSubExpanded = expandedSubCategory === 'all' || expandedSubCategory === sub.id;
+
+                          return (
+                            <div key={sub.id} className="border rounded-lg">
+                              <div
+                                className="p-3 cursor-pointer hover:bg-muted/50 transition-colors flex items-center justify-between"
+                                onClick={() => handleSubCategoryToggle(category.id, sub.id)}
+                              >
+                                <div className="flex items-center gap-3">
+                                  <SubIcon className="h-4 w-4 text-muted-foreground" />
+                                  <span className="font-medium text-sm">{sub.title}</span>
+                                </div>
+                                {isSubExpanded ? (
+                                  <ChevronDown className="h-4 w-4 text-muted-foreground" />
+                                ) : (
+                                  <ChevronRight className="h-4 w-4 text-muted-foreground" />
+                                )}
+                              </div>
+                              {isSubExpanded && (
+                                <div className="p-4 pt-0">
+                                  {sub.id === 'knowledgebase-articles' && <KnowledgebaseSettings />}
+                                  {sub.id === 'homepage-cards' && <HomepageCardSettings />}
+                                </div>
+                              )}
+                            </div>
+                          );
+                        })}
+                      </div>
+                    )}
+                  </CardContent>
                 )}
-              </TabsContent>
-
-
-              {canAccessSettingsTab('knowledgebase') && (
-                <TabsContent value="knowledgebase" className="space-y-6 p-6">
-                  <KnowledgebaseSettings />
-                </TabsContent>
-              )}
-
-              {canAccessSettingsTab('homepage') && (
-                <TabsContent value="homepage" className="space-y-6 p-6">
-                  <HomepageCardSettings />
-                </TabsContent>
-              )}
-
-            </Tabs>
-          </CardHeader>
-        </Card>
+              </Card>
+            );
+          })}
+        </div>
 
         {/* Punishment Configuration Dialog */}
         {selectedPunishment && (
