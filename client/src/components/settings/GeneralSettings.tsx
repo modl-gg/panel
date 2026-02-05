@@ -22,7 +22,7 @@ interface GeneralSettingsProps {
   setServerDisplayName: (value: string) => void;
   discordWebhookUrl: string;
   setDiscordWebhookUrl: (value: string) => void;
-  
+
   // Server Icons
   homepageIconUrl: string;
   panelIconUrl: string;
@@ -30,7 +30,7 @@ interface GeneralSettingsProps {
   uploadingPanelIcon: boolean;
   handleHomepageIconUpload: (file: File) => void;
   handlePanelIconUpload: (file: File) => void;
-  
+
   // API Key Management
   apiKey: string;
   fullApiKey: string;
@@ -43,7 +43,7 @@ interface GeneralSettingsProps {
   revealApiKey: () => void;
   copyApiKey: () => void;
   maskApiKey: (key: string) => string;
-  
+
   // Billing and Usage Data
   usageData?: any;
   getBillingSummary: () => string;
@@ -56,6 +56,10 @@ interface GeneralSettingsProps {
   getWebhookSummary: () => string;
   handleWebhookSave: (settings: any) => Promise<void>;
   savingWebhookSettings?: boolean;
+
+  // Optional prop to show only a specific section
+  // 'billing' | 'usage' | 'server-config' | 'domain' | 'webhooks' | undefined (show all)
+  visibleSection?: string;
 }
 
 const GeneralSettings = ({
@@ -88,16 +92,24 @@ const GeneralSettings = ({
   webhookSettings,
   getWebhookSummary,
   handleWebhookSave,
-  savingWebhookSettings
+  savingWebhookSettings,
+  visibleSection
 }: GeneralSettingsProps) => {
   const { user } = useAuth();
   const { hasPermission } = usePermissions();
-  
-  // Collapsible state
-  const [isBillingExpanded, setIsBillingExpanded] = useState(false);
-  const [isUsageExpanded, setIsUsageExpanded] = useState(false);
-  const [isServerConfigExpanded, setIsServerConfigExpanded] = useState(false);
-  const [isDomainExpanded, setIsDomainExpanded] = useState(false);
+
+  // Determine which sections to show
+  const showBilling = !visibleSection || visibleSection === 'billing';
+  const showUsage = !visibleSection || visibleSection === 'usage';
+  const showServerConfig = !visibleSection || visibleSection === 'server-config';
+  const showDomain = !visibleSection || visibleSection === 'domain';
+  const showWebhooks = !visibleSection || visibleSection === 'webhooks';
+
+  // Collapsible state - auto-expand when specific section is requested
+  const [isBillingExpanded, setIsBillingExpanded] = useState(visibleSection === 'billing');
+  const [isUsageExpanded, setIsUsageExpanded] = useState(visibleSection === 'usage');
+  const [isServerConfigExpanded, setIsServerConfigExpanded] = useState(visibleSection === 'server-config');
+  const [isDomainExpanded, setIsDomainExpanded] = useState(visibleSection === 'domain');
   const [isWebhookExpanded, setIsWebhookExpanded] = useState(false);
   const [isMigrationExpanded, setIsMigrationExpanded] = useState(false);
 
@@ -125,7 +137,7 @@ const GeneralSettings = ({
     <div className="space-y-6 p-6">
       <div className="space-y-4">
         {/* Billing Settings - Moved to top */}
-        {hasPermission('admin.settings.modify') && (
+        {showBilling && hasPermission('admin.settings.modify') && (
           <Collapsible open={isBillingExpanded} onOpenChange={setIsBillingExpanded}>
             <CollapsibleTrigger className="flex items-center justify-between w-full p-4 bg-muted/50 rounded-lg hover:bg-muted/70 transition-colors">
               <div className="flex items-center">
@@ -178,6 +190,7 @@ const GeneralSettings = ({
         )}
 
         {/* Usage Section */}
+        {showUsage && (
         <Collapsible open={isUsageExpanded} onOpenChange={setIsUsageExpanded}>
           <CollapsibleTrigger className="flex items-center justify-between w-full p-4 bg-muted/50 rounded-lg hover:bg-muted/70 transition-colors">
             <div className="flex items-center">
@@ -197,8 +210,10 @@ const GeneralSettings = ({
             <UsageSettings />
           </CollapsibleContent>
         </Collapsible>
+        )}
 
         {/* Server Configuration */}
+        {showServerConfig && (
         <Collapsible open={isServerConfigExpanded} onOpenChange={setIsServerConfigExpanded}>
           <CollapsibleTrigger className="flex items-center justify-between w-full p-4 bg-muted/50 rounded-lg hover:bg-muted/70 transition-colors">
             <div className="flex items-center">
@@ -422,9 +437,10 @@ const GeneralSettings = ({
             </div>
           </CollapsibleContent>
         </Collapsible>
+        )}
 
         {/* Custom Domain Settings */}
-        {hasPermission('admin.settings.view') && (
+        {showDomain && hasPermission('admin.settings.view') && (
           <Collapsible open={isDomainExpanded} onOpenChange={setIsDomainExpanded}>
             <CollapsibleTrigger className="flex items-center justify-between w-full p-4 bg-muted/50 rounded-lg hover:bg-muted/70 transition-colors">
               <div className="flex items-center">
@@ -445,7 +461,7 @@ const GeneralSettings = ({
         )}
 
         {/* Discord Webhook Settings */}
-        {hasPermission('admin.settings.view') && (
+        {showWebhooks && hasPermission('admin.settings.view') && (
           <Collapsible open={isWebhookExpanded} onOpenChange={setIsWebhookExpanded}>
             <CollapsibleTrigger className="flex items-center justify-between w-full p-4 bg-muted/50 rounded-lg hover:bg-muted/70 transition-colors">
               <div className="flex items-center">

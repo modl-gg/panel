@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { X, Lock, Unlock, Tag, UserPlus } from 'lucide-react';
+import { X, Tag, UserPlus, CircleDot, CheckCircle2 } from 'lucide-react';
 import { Button } from '@modl-gg/shared-web/components/ui/button';
 import { FilterDropdown } from './FilterDropdown';
 
@@ -12,10 +12,9 @@ interface Label {
 interface BulkActionBarProps {
   selectedCount: number;
   onClearSelection: () => void;
-  onClose: () => void;
-  onReopen: () => void;
+  onMarkAs: (status: 'open' | 'closed') => void;
   onAddLabels: (labels: string[]) => void;
-  onAssign: (assignee: string) => void;
+  onAssign: (assignees: string[]) => void;
   availableLabels: Label[];
   staffMembers: { value: string; label: string }[];
   isLoading?: boolean;
@@ -24,8 +23,7 @@ interface BulkActionBarProps {
 export function BulkActionBar({
   selectedCount,
   onClearSelection,
-  onClose,
-  onReopen,
+  onMarkAs,
   onAddLabels,
   onAssign,
   availableLabels,
@@ -33,7 +31,8 @@ export function BulkActionBar({
   isLoading = false,
 }: BulkActionBarProps) {
   const [selectedLabels, setSelectedLabels] = useState<string[]>([]);
-  const [selectedAssignee, setSelectedAssignee] = useState<string[]>([]);
+  const [selectedAssignees, setSelectedAssignees] = useState<string[]>([]);
+  const [selectedStatus, setSelectedStatus] = useState<string[]>([]);
 
   const handleAddLabels = () => {
     if (selectedLabels.length > 0) {
@@ -43,9 +42,16 @@ export function BulkActionBar({
   };
 
   const handleAssign = () => {
-    if (selectedAssignee.length > 0) {
-      onAssign(selectedAssignee[0]);
-      setSelectedAssignee([]);
+    if (selectedAssignees.length > 0) {
+      onAssign(selectedAssignees);
+      setSelectedAssignees([]);
+    }
+  };
+
+  const handleMarkAs = () => {
+    if (selectedStatus.length > 0) {
+      onMarkAs(selectedStatus[0] as 'open' | 'closed');
+      setSelectedStatus([]);
     }
   };
 
@@ -54,6 +60,11 @@ export function BulkActionBar({
     label: label.name,
     color: label.color,
   }));
+
+  const statusOptions = [
+    { value: 'open', label: 'Open' },
+    { value: 'closed', label: 'Closed' },
+  ];
 
   return (
     <div className="flex items-center justify-between gap-4 p-3 bg-muted/50 border border-border rounded-lg mb-4">
@@ -76,29 +87,30 @@ export function BulkActionBar({
         <div className="h-4 w-px bg-border" />
 
         <div className="flex items-center gap-2">
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={onClose}
-            disabled={isLoading}
-            className="h-7"
-          >
-            <Lock className="h-3.5 w-3.5 mr-1.5" />
-            Close
-          </Button>
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={onReopen}
-            disabled={isLoading}
-            className="h-7"
-          >
-            <Unlock className="h-3.5 w-3.5 mr-1.5" />
-            Reopen
-          </Button>
+          {/* Mark as dropdown */}
+          <div className="flex items-center gap-1">
+            <FilterDropdown
+              label="Mark as"
+              options={statusOptions}
+              selected={selectedStatus}
+              onChange={setSelectedStatus}
+              placeholder="Select status"
+            />
+            {selectedStatus.length > 0 && (
+              <Button
+                size="sm"
+                onClick={handleMarkAs}
+                disabled={isLoading}
+                className="h-8"
+              >
+                Apply
+              </Button>
+            )}
+          </div>
 
           <div className="h-4 w-px bg-border" />
 
+          {/* Add Label dropdown */}
           <div className="flex items-center gap-1">
             <FilterDropdown
               label="Add Label"
@@ -123,19 +135,18 @@ export function BulkActionBar({
 
           <div className="h-4 w-px bg-border" />
 
+          {/* Assign dropdown - now supports multiple */}
           <div className="flex items-center gap-1">
             <FilterDropdown
               label="Assign"
-              options={[
-                { value: 'none', label: 'Unassigned' },
-                ...staffMembers,
-              ]}
-              selected={selectedAssignee}
-              onChange={setSelectedAssignee}
+              options={staffMembers}
+              selected={selectedAssignees}
+              onChange={setSelectedAssignees}
+              multiSelect
               searchable
-              placeholder="Select assignee"
+              placeholder="Select assignees"
             />
-            {selectedAssignee.length > 0 && (
+            {selectedAssignees.length > 0 && (
               <Button
                 size="sm"
                 onClick={handleAssign}

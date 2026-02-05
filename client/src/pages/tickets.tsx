@@ -95,19 +95,19 @@ const Tickets = () => {
     limit: 25,
     search: debouncedSearchQuery,
     status: statusFilter,
-    type: typeFilter.length === 1 ? typeFilter[0] : '',
+    types: typeFilter,
     author: authorFilter.length === 1 ? authorFilter[0] : '',
     labels: labelFilters,
-    assignee: assigneeFilter.length === 1 ? assigneeFilter[0] : '',
+    assignees: assigneeFilter,
     sort: sortOption,
   });
 
   const { data: statusCounts } = useTicketStatusCounts({
     search: debouncedSearchQuery,
-    type: typeFilter.length === 1 ? typeFilter[0] : '',
+    types: typeFilter,
     author: authorFilter.length === 1 ? authorFilter[0] : '',
     labels: labelFilters,
-    assignee: assigneeFilter.length === 1 ? assigneeFilter[0] : '',
+    assignees: assigneeFilter,
   });
 
   const { data: labelsData } = useLabels();
@@ -149,31 +149,17 @@ const Tickets = () => {
   };
 
   // Bulk action handlers
-  const handleBulkClose = async () => {
+  const handleBulkMarkAs = async (status: 'open' | 'closed') => {
     try {
       await bulkUpdateMutation.mutateAsync({
         ticketIds: Array.from(selectedTickets),
-        locked: true,
+        locked: status === 'closed',
       });
-      toast({ title: 'Success', description: `Closed ${selectedTickets.size} tickets` });
+      toast({ title: 'Success', description: `Marked ${selectedTickets.size} tickets as ${status}` });
       setSelectedTickets(new Set());
       refetch();
     } catch (error) {
-      toast({ title: 'Error', description: 'Failed to close tickets', variant: 'destructive' });
-    }
-  };
-
-  const handleBulkReopen = async () => {
-    try {
-      await bulkUpdateMutation.mutateAsync({
-        ticketIds: Array.from(selectedTickets),
-        locked: false,
-      });
-      toast({ title: 'Success', description: `Reopened ${selectedTickets.size} tickets` });
-      setSelectedTickets(new Set());
-      refetch();
-    } catch (error) {
-      toast({ title: 'Error', description: 'Failed to reopen tickets', variant: 'destructive' });
+      toast({ title: 'Error', description: `Failed to mark tickets as ${status}`, variant: 'destructive' });
     }
   };
 
@@ -191,13 +177,13 @@ const Tickets = () => {
     }
   };
 
-  const handleBulkAssign = async (assignee: string) => {
+  const handleBulkAssign = async (assignees: string[]) => {
     try {
       await bulkUpdateMutation.mutateAsync({
         ticketIds: Array.from(selectedTickets),
-        assignTo: assignee,
+        assignTo: assignees.join(','),
       });
-      toast({ title: 'Success', description: `Assigned ${selectedTickets.size} tickets` });
+      toast({ title: 'Success', description: `Assigned ${selectedTickets.size} tickets to ${assignees.length} staff member(s)` });
       setSelectedTickets(new Set());
       refetch();
     } catch (error) {
@@ -408,6 +394,7 @@ const Tickets = () => {
             options={typeOptions}
             selected={typeFilter}
             onChange={setTypeFilter}
+            multiSelect
           />
 
           <FilterDropdown
@@ -424,6 +411,7 @@ const Tickets = () => {
             options={[{ value: 'none', label: 'Unassigned' }, ...staffMembers]}
             selected={assigneeFilter}
             onChange={setAssigneeFilter}
+            multiSelect
             searchable
           />
 
@@ -450,8 +438,7 @@ const Tickets = () => {
           <BulkActionBar
             selectedCount={selectedTickets.size}
             onClearSelection={() => setSelectedTickets(new Set())}
-            onClose={handleBulkClose}
-            onReopen={handleBulkReopen}
+            onMarkAs={handleBulkMarkAs}
             onAddLabels={handleBulkAddLabels}
             onAssign={handleBulkAssign}
             availableLabels={labels}

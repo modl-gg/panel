@@ -38,6 +38,9 @@ interface PunishmentSettingsProps {
   addPunishmentType: () => void;
   removePunishmentType: (id: number) => void;
   setSelectedPunishment: (punishment: PunishmentType) => void;
+  // Optional prop to show only a specific section
+  // 'thresholds' | 'types' | undefined (show all)
+  visibleSection?: string;
 }
 
 const PunishmentSettings = ({
@@ -50,11 +53,16 @@ const PunishmentSettings = ({
   setNewPunishmentCategory,
   addPunishmentType,
   removePunishmentType,
-  setSelectedPunishment
+  setSelectedPunishment,
+  visibleSection
 }: PunishmentSettingsProps) => {
   const [showCorePunishments, setShowCorePunishments] = useState(false);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [punishmentToDelete, setPunishmentToDelete] = useState<PunishmentType | null>(null);
+
+  // Determine which sections to show
+  const showThresholds = !visibleSection || visibleSection === 'thresholds';
+  const showTypes = !visibleSection || visibleSection === 'types';
 
   const handleDeleteClick = (type: PunishmentType) => {
     setPunishmentToDelete(type);
@@ -72,6 +80,7 @@ const PunishmentSettings = ({
   return (
     <div className="space-y-6 p-6">
       {/* Status Thresholds Section */}
+      {showThresholds && (
       <div>
         <h4 className="text-base font-medium mb-3 mt-2">Offender Status Thresholds</h4>
         <p className="text-sm text-muted-foreground mb-4">
@@ -188,9 +197,11 @@ const PunishmentSettings = ({
           </p>
         </div>
       </div>
+      )}
 
-      <Separator />
+      {showThresholds && showTypes && <Separator />}
 
+      {showTypes && (
       <div>
         <h3 className="text-lg font-medium mb-2">Punishment Types</h3>
         <p className="text-sm text-muted-foreground mb-6">
@@ -409,6 +420,7 @@ const PunishmentSettings = ({
           </p>
         </div>
       </div>
+      )}
     </div>
   );
 };

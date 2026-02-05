@@ -84,28 +84,32 @@ export function useTickets(options?: {
   limit?: number;
   search?: string;
   status?: string;
-  type?: string;
+  types?: string[];
   author?: string;
   labels?: string[];
-  assignee?: string;
+  assignees?: string[];
   sort?: string;
 }) {
-  const { page = 1, limit = 10, search = '', status = '', type = '', author = '', labels = [], assignee = '', sort = 'newest' } = options || {};
+  const { page = 1, limit = 10, search = '', status = '', types = [], author = '', labels = [], assignees = [], sort = 'newest' } = options || {};
 
   return useQuery({
-    queryKey: ['/v1/panel/tickets', { page, limit, search, status, type, author, labels, assignee, sort }],
+    queryKey: ['/v1/panel/tickets', { page, limit, search, status, types, author, labels, assignees, sort }],
     queryFn: async () => {
       const params = new URLSearchParams();
       params.append('page', page.toString());
       params.append('limit', limit.toString());
       if (search) params.append('search', search);
       if (status) params.append('status', status);
-      if (type) params.append('type', type);
+      if (types.length > 0) {
+        types.forEach(type => params.append('type', type));
+      }
       if (author) params.append('author', author);
       if (labels.length > 0) {
         labels.forEach(label => params.append('labels', label));
       }
-      if (assignee) params.append('assignee', assignee);
+      if (assignees.length > 0) {
+        assignees.forEach(assignee => params.append('assignee', assignee));
+      }
       if (sort) params.append('sort', sort);
 
       const res = await apiFetch(`/v1/panel/tickets?${params.toString()}`);
@@ -1180,24 +1184,28 @@ export function useTicketCounts(options?: {
 
 export function useTicketStatusCounts(options?: {
   search?: string;
-  type?: string;
+  types?: string[];
   author?: string;
   labels?: string[];
-  assignee?: string;
+  assignees?: string[];
 }) {
-  const { search = '', type = '', author = '', labels = [], assignee = '' } = options || {};
+  const { search = '', types = [], author = '', labels = [], assignees = [] } = options || {};
 
   return useQuery({
-    queryKey: ['/v1/panel/tickets/counts', { search, type, author, labels, assignee }],
+    queryKey: ['/v1/panel/tickets/counts', { search, types, author, labels, assignees }],
     queryFn: async () => {
       const params = new URLSearchParams();
       if (search) params.append('search', search);
-      if (type) params.append('type', type);
+      if (types.length > 0) {
+        types.forEach(type => params.append('type', type));
+      }
       if (author) params.append('author', author);
       if (labels.length > 0) {
         labels.forEach(label => params.append('labels', label));
       }
-      if (assignee) params.append('assignee', assignee);
+      if (assignees.length > 0) {
+        assignees.forEach(assignee => params.append('assignee', assignee));
+      }
 
       const res = await apiFetch(`/v1/panel/tickets/counts?${params.toString()}`);
       if (!res.ok) {

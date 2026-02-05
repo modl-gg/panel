@@ -752,15 +752,19 @@ const Settings = () => {
   const { canAccessSettingsTab, getAccessibleSettingsTabs } = usePermissions();
   const isMobile = useIsMobile();
   const mainContentClass = "ml-[32px] pl-8";
-  const [expandedCategory, setExpandedCategory] = useState<string | null>('account');
-  const [expandedSubCategories, setExpandedSubCategories] = useState<Set<string>>(new Set());
+  const [expandedCategory, setExpandedCategory] = useState<string | null>(null);
+  const [expandedSubCategory, setExpandedSubCategory] = useState<string | null>(null);
 
   // Update URL when category changes
-  const updateURL = (category: string, subCategories?: string[]) => {
+  const updateURL = (category: string | null, subCategory?: string | null) => {
     const url = new URL(window.location.href);
-    url.searchParams.set('category', category);
-    if (subCategories && subCategories.length > 0) {
-      url.searchParams.set('sub', subCategories.join(','));
+    if (category) {
+      url.searchParams.set('category', category);
+    } else {
+      url.searchParams.delete('category');
+    }
+    if (subCategory) {
+      url.searchParams.set('sub', subCategory);
     } else {
       url.searchParams.delete('sub');
     }
@@ -771,12 +775,13 @@ const Settings = () => {
   useEffect(() => {
     const urlParams = new URLSearchParams(window.location.search);
     const urlCategory = urlParams.get('category') || urlParams.get('tab'); // Support legacy tab param
-    const urlSubCategories = urlParams.get('sub') || urlParams.get('section');
+    const urlSubCategory = urlParams.get('sub') || urlParams.get('section');
 
     // Handle legacy session_id parameter
     if (urlParams.has('session_id') && user?.role === 'Super Admin') {
       setExpandedCategory('general');
-      updateURL('general');
+      setExpandedSubCategory('billing');
+      updateURL('general', 'billing');
       return;
     }
 
@@ -790,53 +795,27 @@ const Settings = () => {
       const mappedCategory = categoryMap[urlCategory] || urlCategory;
 
       // Check if user can access the requested category
-      if (canAccessSettingsTab(mappedCategory as any) || mappedCategory === 'account') {
+      if (canAccessSettingsTab(mappedCategory as any)) {
         setExpandedCategory(mappedCategory);
-        if (urlSubCategories) {
-          setExpandedSubCategories(new Set(urlSubCategories.split(',')));
+        if (urlSubCategory) {
+          // Only use the first sub-category if multiple were provided
+          setExpandedSubCategory(urlSubCategory.split(',')[0]);
         }
-      } else {
-        // User doesn't have permission, redirect to account
-        setExpandedCategory('account');
-        updateURL('account');
       }
     }
   }, [user, canAccessSettingsTab]);
 
-  // Handle category selection - clicking a card selects that category
-  const handleCategorySelect = (category: string) => {
-    setExpandedCategory(category);
-    setExpandedSubCategories(new Set());
-    updateURL(category);
-  };
-
-  // Handle sub-category toggle (multi-select for tickets)
-  const handleSubCategoryToggle = (category: string, subCategory: string) => {
-    // First, select the category if not already selected
-    if (expandedCategory !== category) {
-      setExpandedCategory(category);
-      setExpandedSubCategories(new Set([subCategory]));
-      updateURL(category, [subCategory]);
+  // Handle sub-category selection - only one can be selected at a time
+  const handleSubCategorySelect = (category: string, subCategory: string) => {
+    // If clicking the same sub-category, deselect it
+    if (expandedCategory === category && expandedSubCategory === subCategory) {
+      setExpandedSubCategory(null);
+      updateURL(category, null);
     } else {
-      // Toggle the sub-category in the set
-      setExpandedSubCategories(prev => {
-        const newSet = new Set(prev);
-        if (newSet.has(subCategory)) {
-          newSet.delete(subCategory);
-        } else {
-          newSet.add(subCategory);
-        }
-        updateURL(category, Array.from(newSet));
-        return newSet;
-      });
+      setExpandedCategory(category);
+      setExpandedSubCategory(subCategory);
+      updateURL(category, subCategory);
     }
-  };
-
-  // Select all sub-categories when clicking the main category card header
-  const handleSelectAllSubCategories = (category: string, subCategoryIds: string[]) => {
-    setExpandedCategory(category);
-    setExpandedSubCategories(new Set(subCategoryIds));
-    updateURL(category, subCategoryIds);
   };
   
   // Auto-save state
@@ -2948,28 +2927,29 @@ const Settings = () => {
   // Settings categories configuration
   const settingsCategories = [
     {
-      id: 'account',
-      title: 'Account',
-      description: 'Manage your profile, email, and security settings',
-      icon: UserIcon,
-      permission: null, // Everyone can access
-      subCategories: null,
-    },
-    {
       id: 'general',
       title: 'Server & Billing',
       description: 'Configure server settings, billing, API keys, and integrations',
       icon: SettingsIcon,
       permission: 'general',
-      subCategories: null,
+      subCategories: [
+        { id: 'billing', title: 'Billing', icon: CreditCard },
+        { id: 'usage', title: 'Usage', icon: Globe },
+        { id: 'server-config', title: 'Server Config', icon: SettingsIcon },
+        { id: 'domain', title: 'Domain', icon: Globe },
+        { id: 'webhooks', title: 'Webhooks', icon: MessageCircle },
+      ],
     },
     {
       id: 'punishment',
-      title: 'Punishment Types',
+      title: 'Punishments',
       description: 'Configure punishment categories, durations, and point thresholds',
       icon: Scale,
       permission: 'punishment',
-      subCategories: null,
+      subCategories: [
+        { id: 'thresholds', title: 'Thresholds', icon: Layers },
+        { id: 'types', title: 'Types', icon: Scale },
+      ],
     },
     {
       id: 'tickets',
@@ -3041,7 +3021,7 @@ const Settings = () => {
         </div>
 
         {/* Category Cards Grid */}
-        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
+        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4">
           {settingsCategories.map((category) => {
             // Check permission
             if (category.permission && !canAccessSettingsTab(category.permission as any)) {
@@ -3054,14 +3034,7 @@ const Settings = () => {
             return (
               <Card
                 key={category.id}
-                className={`cursor-pointer transition-all hover:bg-muted/50 ${isSelected ? 'ring-2 ring-primary bg-muted/30' : ''}`}
-                onClick={() => {
-                  if (category.subCategories) {
-                    handleSelectAllSubCategories(category.id, category.subCategories.map(s => s.id));
-                  } else {
-                    handleCategorySelect(category.id);
-                  }
-                }}
+                className={`transition-all ${isSelected ? 'ring-2 ring-primary bg-muted/30' : ''}`}
               >
                 <CardContent className="p-4">
                   <div className="flex flex-col items-center text-center">
@@ -3076,7 +3049,7 @@ const Settings = () => {
                       <div className="mt-3 w-full space-y-1">
                         {category.subCategories.map((sub) => {
                           const SubIcon = sub.icon;
-                          const isSubSelected = isSelected && expandedSubCategories.has(sub.id);
+                          const isSubSelected = isSelected && expandedSubCategory === sub.id;
                           return (
                             <div
                               key={sub.id}
@@ -3085,7 +3058,7 @@ const Settings = () => {
                               }`}
                               onClick={(e) => {
                                 e.stopPropagation();
-                                handleSubCategoryToggle(category.id, sub.id);
+                                handleSubCategorySelect(category.id, sub.id);
                               }}
                             >
                               <SubIcon className="h-3 w-3 flex-shrink-0" />
@@ -3103,75 +3076,76 @@ const Settings = () => {
         </div>
 
         {/* Expanded Content Section - Below all cards */}
-        {expandedCategory && currentCategory && (
-          <Card>
-            <CardContent className="p-6">
-              {/* Account Settings */}
-              {expandedCategory === 'account' && (
-                <AccountSettings
-                  profileUsername={profileUsername}
-                  setProfileUsername={setProfileUsername}
-                  currentEmail={currentEmail}
-                  setCurrentEmail={setCurrentEmail}
-                />
-              )}
+        <Card>
+          <CardContent className="p-6">
+            {/* Account Settings - Show by default when nothing is expanded */}
+            {!expandedCategory && (
+              <AccountSettings
+                profileUsername={profileUsername}
+                setProfileUsername={setProfileUsername}
+                currentEmail={currentEmail}
+                setCurrentEmail={setCurrentEmail}
+              />
+            )}
 
-              {/* Server & Billing Settings */}
-              {expandedCategory === 'general' && (
-                <GeneralSettings
-                  serverDisplayName={serverDisplayName}
-                  setServerDisplayName={setServerDisplayName}
-                  discordWebhookUrl={discordWebhookUrl}
-                  setDiscordWebhookUrl={setDiscordWebhookUrl}
-                  homepageIconUrl={homepageIconUrl}
-                  panelIconUrl={panelIconUrl}
-                  uploadingHomepageIcon={uploadingHomepageIcon}
-                  uploadingPanelIcon={uploadingPanelIcon}
-                  handleHomepageIconUpload={handleHomepageIconUpload}
-                  handlePanelIconUpload={handlePanelIconUpload}
-                  apiKey={apiKey}
-                  fullApiKey={fullApiKey}
-                  showApiKey={showApiKey}
-                  apiKeyCopied={apiKeyCopied}
-                  isGeneratingApiKey={isGeneratingApiKey}
-                  isRevokingApiKey={isRevokingApiKey}
-                  generateApiKey={generateApiKey}
-                  revokeApiKey={revokeApiKey}
-                  revealApiKey={revealApiKey}
-                  copyApiKey={copyApiKey}
-                  maskApiKey={maskApiKey}
-                  usageData={usageData}
-                  getBillingSummary={getBillingSummary}
-                  getUsageSummary={getUsageSummary}
-                  getServerConfigSummary={getServerConfigSummary}
-                  getDomainSummary={getDomainSummary}
-                  webhookSettings={settingsData?.settings?.webhookSettings}
-                  getWebhookSummary={getWebhookSummary}
-                  handleWebhookSave={handleWebhookSave}
-                  savingWebhookSettings={savingWebhookSettings}
-                />
-              )}
+            {/* Server & Billing Settings */}
+            {expandedCategory === 'general' && expandedSubCategory && (
+              <GeneralSettings
+                serverDisplayName={serverDisplayName}
+                setServerDisplayName={setServerDisplayName}
+                discordWebhookUrl={discordWebhookUrl}
+                setDiscordWebhookUrl={setDiscordWebhookUrl}
+                homepageIconUrl={homepageIconUrl}
+                panelIconUrl={panelIconUrl}
+                uploadingHomepageIcon={uploadingHomepageIcon}
+                uploadingPanelIcon={uploadingPanelIcon}
+                handleHomepageIconUpload={handleHomepageIconUpload}
+                handlePanelIconUpload={handlePanelIconUpload}
+                apiKey={apiKey}
+                fullApiKey={fullApiKey}
+                showApiKey={showApiKey}
+                apiKeyCopied={apiKeyCopied}
+                isGeneratingApiKey={isGeneratingApiKey}
+                isRevokingApiKey={isRevokingApiKey}
+                generateApiKey={generateApiKey}
+                revokeApiKey={revokeApiKey}
+                revealApiKey={revealApiKey}
+                copyApiKey={copyApiKey}
+                maskApiKey={maskApiKey}
+                usageData={usageData}
+                getBillingSummary={getBillingSummary}
+                getUsageSummary={getUsageSummary}
+                getServerConfigSummary={getServerConfigSummary}
+                getDomainSummary={getDomainSummary}
+                webhookSettings={settingsData?.settings?.webhookSettings}
+                getWebhookSummary={getWebhookSummary}
+                handleWebhookSave={handleWebhookSave}
+                savingWebhookSettings={savingWebhookSettings}
+                visibleSection={expandedSubCategory}
+              />
+            )}
 
-              {/* Punishment Types Settings */}
-              {expandedCategory === 'punishment' && (
-                <PunishmentSettings
-                  statusThresholds={statusThresholds}
-                  setStatusThresholds={setStatusThresholds}
-                  punishmentTypes={punishmentTypes}
-                  newPunishmentName={newPunishmentName}
-                  setNewPunishmentName={setNewPunishmentName}
-                  newPunishmentCategory={newPunishmentCategory}
-                  setNewPunishmentCategory={setNewPunishmentCategory}
-                  addPunishmentType={addPunishmentType}
-                  removePunishmentType={removePunishmentType}
-                  setSelectedPunishment={setSelectedPunishment}
-                />
-              )}
+            {/* Punishment Settings */}
+            {expandedCategory === 'punishment' && expandedSubCategory && (
+              <PunishmentSettings
+                statusThresholds={statusThresholds}
+                setStatusThresholds={setStatusThresholds}
+                punishmentTypes={punishmentTypes}
+                newPunishmentName={newPunishmentName}
+                setNewPunishmentName={setNewPunishmentName}
+                newPunishmentCategory={newPunishmentCategory}
+                setNewPunishmentCategory={setNewPunishmentCategory}
+                addPunishmentType={addPunishmentType}
+                removePunishmentType={removePunishmentType}
+                setSelectedPunishment={setSelectedPunishment}
+                visibleSection={expandedSubCategory}
+              />
+            )}
 
-              {/* Tickets Settings - Show selected sub-categories */}
-              {expandedCategory === 'tickets' && (
+            {/* Tickets Settings - Show selected sub-categories */}
+            {expandedCategory === 'tickets' && expandedSubCategory && (
                 <div className="space-y-6">
-                  {expandedSubCategories.has('quick-responses') && (
+                  {expandedSubCategory === 'quick-responses' && (
                     <div>
                       <h3 className="text-lg font-medium mb-4 flex items-center gap-2">
                         <MessageCircle className="h-5 w-5" />
@@ -3212,7 +3186,7 @@ const Settings = () => {
                       />
                     </div>
                   )}
-                  {expandedSubCategories.has('label-management') && (
+                  {expandedSubCategory === 'label-management' && (
                     <div>
                       <h3 className="text-lg font-medium mb-4 flex items-center gap-2">
                         <Tag className="h-5 w-5" />
@@ -3253,7 +3227,7 @@ const Settings = () => {
                       />
                     </div>
                   )}
-                  {expandedSubCategories.has('ticket-forms') && (
+                  {expandedSubCategory === 'ticket-forms' && (
                     <div>
                       <h3 className="text-lg font-medium mb-4 flex items-center gap-2">
                         <Layers className="h-5 w-5" />
@@ -3294,7 +3268,7 @@ const Settings = () => {
                       />
                     </div>
                   )}
-                  {expandedSubCategories.has('ai-moderation') && (
+                  {expandedSubCategory === 'ai-moderation' && (
                     <div>
                       <h3 className="text-lg font-medium mb-4 flex items-center gap-2">
                         <Bot className="h-5 w-5" />
@@ -3335,74 +3309,59 @@ const Settings = () => {
                       />
                     </div>
                   )}
-                  {expandedSubCategories.size === 0 && (
-                    <div className="text-center py-8 text-muted-foreground">
-                      <p>Select a sub-category above to configure ticket settings</p>
-                    </div>
-                  )}
                 </div>
               )}
 
-              {/* Staff & Roles Settings */}
-              {expandedCategory === 'staff' && (
-                <div className="space-y-6">
-                  {expandedSubCategories.has('staff-management') && (
-                    <div>
-                      <h3 className="text-lg font-medium mb-4 flex items-center gap-2">
-                        <UserIcon className="h-5 w-5" />
-                        Staff Management
-                      </h3>
-                      <StaffManagementPanel />
-                    </div>
-                  )}
-                  {expandedSubCategories.has('roles-permissions') && (
-                    <div>
-                      <h3 className="text-lg font-medium mb-4 flex items-center gap-2">
-                        <Shield className="h-5 w-5" />
-                        Roles & Permissions
-                      </h3>
-                      <StaffRolesCard />
-                    </div>
-                  )}
-                  {expandedSubCategories.size === 0 && (
-                    <div className="text-center py-8 text-muted-foreground">
-                      <p>Select a sub-category above to configure staff settings</p>
-                    </div>
-                  )}
-                </div>
-              )}
+            {/* Staff & Roles Settings */}
+            {expandedCategory === 'staff' && expandedSubCategory && (
+              <div className="space-y-6">
+                {expandedSubCategory === 'staff-management' && (
+                  <div>
+                    <h3 className="text-lg font-medium mb-4 flex items-center gap-2">
+                      <UserIcon className="h-5 w-5" />
+                      Staff Management
+                    </h3>
+                    <StaffManagementPanel />
+                  </div>
+                )}
+                {expandedSubCategory === 'roles-permissions' && (
+                  <div>
+                    <h3 className="text-lg font-medium mb-4 flex items-center gap-2">
+                      <Shield className="h-5 w-5" />
+                      Roles & Permissions
+                    </h3>
+                    <StaffRolesCard />
+                  </div>
+                )}
+              </div>
+            )}
 
-              {/* Knowledgebase & Homepage Settings */}
-              {expandedCategory === 'knowledgebase' && (
-                <div className="space-y-6">
-                  {expandedSubCategories.has('knowledgebase-articles') && (
-                    <div>
-                      <h3 className="text-lg font-medium mb-4 flex items-center gap-2">
-                        <BookOpen className="h-5 w-5" />
-                        Knowledgebase
-                      </h3>
-                      <KnowledgebaseSettings />
-                    </div>
-                  )}
-                  {expandedSubCategories.has('homepage-cards') && (
-                    <div>
-                      <h3 className="text-lg font-medium mb-4 flex items-center gap-2">
-                        <Home className="h-5 w-5" />
-                        Homepage Cards
-                      </h3>
-                      <HomepageCardSettings />
-                    </div>
-                  )}
-                  {expandedSubCategories.size === 0 && (
-                    <div className="text-center py-8 text-muted-foreground">
-                      <p>Select a sub-category above to configure knowledgebase settings</p>
-                    </div>
-                  )}
-                </div>
-              )}
-            </CardContent>
-          </Card>
-        )}
+            {/* Knowledgebase & Homepage Settings */}
+            {/* Knowledgebase & Homepage Settings */}
+            {expandedCategory === 'knowledgebase' && expandedSubCategory && (
+              <div className="space-y-6">
+                {expandedSubCategory === 'knowledgebase-articles' && (
+                  <div>
+                    <h3 className="text-lg font-medium mb-4 flex items-center gap-2">
+                      <BookOpen className="h-5 w-5" />
+                      Knowledgebase
+                    </h3>
+                    <KnowledgebaseSettings />
+                  </div>
+                )}
+                {expandedSubCategory === 'homepage-cards' && (
+                  <div>
+                    <h3 className="text-lg font-medium mb-4 flex items-center gap-2">
+                      <Home className="h-5 w-5" />
+                      Homepage Cards
+                    </h3>
+                    <HomepageCardSettings />
+                  </div>
+                )}
+              </div>
+            )}
+          </CardContent>
+        </Card>
 
         {/* Punishment Configuration Dialog */}
         {selectedPunishment && (
