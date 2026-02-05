@@ -8,6 +8,7 @@ interface User {
   email: string;
   username: string;
   role: 'Super Admin' | 'Admin' | 'Moderator' | 'Helper';
+  minecraftUsername?: string; // The staff's Minecraft username, used for punishment issuerName
 }
 
 type AuthContextType = {
@@ -50,7 +51,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             _id: userData.id || '',
             email: userData.email,
             username: userData.username,
-            role: userData.role
+            role: userData.role,
+            minecraftUsername: userData.minecraftUsername
           });
         }
       } catch (error) {
@@ -137,7 +139,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
       // Login successful - user info will be fetched by components that need it
       // The session cookie is set by the backend
-      setUser({ _id: '', email, username: email.split('@')[0], role: 'Helper' });
+      setUser({ _id: '', email, username: email.split('@')[0], role: 'Helper', minecraftUsername: undefined });
 
       toast({
         title: "Login Successful",

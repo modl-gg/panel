@@ -414,7 +414,7 @@ const PlayerWindow = ({ playerId, isOpen, onClose, initialPosition }: PlayerWind
       if (needsReasonAsFirstNote && playerInfo.reason?.trim()) {
         notes.push({
           text: playerInfo.reason.trim(),
-          issuerName: user?.username || 'Admin'
+          issuerName: user?.minecraftUsername || user?.username || 'Admin'
         });
       }
       
@@ -422,7 +422,7 @@ const PlayerWindow = ({ playerId, isOpen, onClose, initialPosition }: PlayerWind
       if (playerInfo.staffNotes?.trim()) {
         notes.push({
           text: playerInfo.staffNotes.trim(),
-          issuerName: user?.username || 'Admin'
+          issuerName: user?.minecraftUsername || user?.username || 'Admin'
         });
       }
       
@@ -451,7 +451,7 @@ const PlayerWindow = ({ playerId, isOpen, onClose, initialPosition }: PlayerWind
             const fileData = JSON.parse(trimmedEvidence);
             return {
               text: fileData.fileName,
-              issuerName: user?.username || 'Admin',
+              issuerName: user?.minecraftUsername || user?.username || 'Admin',
               type: 'file',
               fileUrl: fileData.url, // CreateEvidenceRequest expects 'fileUrl'
               fileName: fileData.fileName,
@@ -463,7 +463,7 @@ const PlayerWindow = ({ playerId, isOpen, onClose, initialPosition }: PlayerWind
             // Fallback to text evidence
             return {
               text: trimmedEvidence,
-              issuerName: user?.username || 'Admin',
+              issuerName: user?.minecraftUsername || user?.username || 'Admin',
               type: 'text'
             };
           }
@@ -475,7 +475,7 @@ const PlayerWindow = ({ playerId, isOpen, onClose, initialPosition }: PlayerWind
 
           return {
             text: fileName,
-            issuerName: user?.username || 'Admin',
+            issuerName: user?.minecraftUsername || user?.username || 'Admin',
             type: 'file',
             fileUrl: trimmedEvidence, // CreateEvidenceRequest expects 'fileUrl'
             fileName: fileName,
@@ -486,7 +486,7 @@ const PlayerWindow = ({ playerId, isOpen, onClose, initialPosition }: PlayerWind
           // Text evidence - convert to object format
           return {
             text: trimmedEvidence,
-            issuerName: user?.username || 'Admin',
+            issuerName: user?.minecraftUsername || user?.username || 'Admin',
             type: 'text'
           };
         }
@@ -508,8 +508,9 @@ const PlayerWindow = ({ playerId, isOpen, onClose, initialPosition }: PlayerWind
         return 'application/octet-stream';
       }
       // Prepare punishment data in the format expected by the server
+      // Use minecraftUsername for consistency with in-game punishments, fall back to panel username
       const punishmentData: { [key: string]: any } = {
-        issuerName: user?.username || 'Admin',
+        issuerName: user?.minecraftUsername || user?.username || 'Admin',
         typeOrdinal: typeOrdinal,
         notes: notes,
         evidence: evidence,
@@ -2275,7 +2276,7 @@ const PlayerWindow = ({ playerId, isOpen, onClose, initialPosition }: PlayerWind
                                       // File evidence - use 'url' field to match backend AddEvidenceRequest
                                       evidenceData = {
                                         text: playerInfo.uploadedEvidenceFile.fileName,
-                                        issuerName: user?.username || 'Admin',
+                                        issuerName: user?.minecraftUsername || user?.username || 'Admin',
                                         type: 'file',
                                         url: playerInfo.uploadedEvidenceFile.url,
                                         fileName: playerInfo.uploadedEvidenceFile.fileName,
@@ -2288,7 +2289,7 @@ const PlayerWindow = ({ playerId, isOpen, onClose, initialPosition }: PlayerWind
                                       const isUrl = trimmedEvidence.match(/^https?:\/\//);
                                       evidenceData = {
                                         text: trimmedEvidence,
-                                        issuerName: user?.username || 'Admin',
+                                        issuerName: user?.minecraftUsername || user?.username || 'Admin',
                                         type: isUrl ? 'url' : 'text',
                                         url: isUrl ? trimmedEvidence : null
                                       };

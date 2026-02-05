@@ -331,7 +331,7 @@ const ResizableWindow = ({
         style={{
           top: typeof position.y === 'number' ? `${position.y}px` : position.y,
           left: typeof position.x === 'number' ? `${position.x}px` : position.x,
-          zIndex: 40
+          zIndex: 60
         }}
       >
         <div 
@@ -410,7 +410,7 @@ const ResizableWindow = ({
         width: isMaximized ? '100%' : size.width,
         height: isMaximized ? '100%' : size.height, 
         transform: transformStyle,
-        zIndex: 40
+        zIndex: 60
       }}
     >
       {/* Header area */}
