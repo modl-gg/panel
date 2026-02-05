@@ -600,13 +600,9 @@ const StaffDetailModal = ({ staff, isOpen, onClose, initialPeriod = '30d' }: {
     }
   }, [isOpen, initialPeriod]);
 
-  // Handler to open player window - closes modal first to avoid focus trap
+  // Handler to open player window - modal stays open, player window appears on top
   const handleOpenPlayerWindow = (playerId: string, playerName: string) => {
-    onClose(); // Close the modal first
-    // Small delay to ensure modal is closed before opening player window
-    setTimeout(() => {
-      openPlayerWindow(playerId, playerName);
-    }, 100);
+    openPlayerWindow(playerId, playerName);
   };
 
   // Fetch detailed staff data including punishments, tickets, evidence
@@ -1492,6 +1488,55 @@ const AuditLog = () => {
     staleTime: 5 * 60 * 1000
   });
 
+  const { data: ticketAnalytics } = useQuery({
+    queryKey: ['ticket-analytics', analyticsPeriod],
+    queryFn: () => fetchTicketAnalytics(analyticsPeriod),
+    staleTime: 5 * 60 * 1000
+  });
+
+  // Combine all daily data for the metrics chart
+  const combinedMetricsData = useMemo(() => {
+    const dateMap = new Map<string, { date: string; tickets: number; punishments: number; players: number }>();
+
+    // Add ticket data
+    if (ticketAnalytics?.dailyTickets) {
+      ticketAnalytics.dailyTickets.forEach((item: any) => {
+        const existing = dateMap.get(item.date) || { date: item.date, tickets: 0, punishments: 0, players: 0 };
+        existing.tickets = item.count || 0;
+        dateMap.set(item.date, existing);
+      });
+    }
+
+    // Add punishment data
+    if (punishmentAnalytics?.dailyPunishments) {
+      punishmentAnalytics.dailyPunishments.forEach((item: any) => {
+        const existing = dateMap.get(item.date) || { date: item.date, tickets: 0, punishments: 0, players: 0 };
+        existing.punishments = item.count || 0;
+        dateMap.set(item.date, existing);
+      });
+    }
+
+    // Add player data
+    if (playerActivity?.newPlayersTrend) {
+      playerActivity.newPlayersTrend.forEach((item: any) => {
+        const existing = dateMap.get(item.date) || { date: item.date, tickets: 0, punishments: 0, players: 0 };
+        existing.players = item.count || 0;
+        dateMap.set(item.date, existing);
+      });
+    }
+
+    // Convert to array and sort by date
+    return Array.from(dateMap.values()).sort((a, b) => {
+      // Handle different date formats (e.g., "Jan 15" vs "2024-01-15")
+      const dateA = new Date(a.date);
+      const dateB = new Date(b.date);
+      if (!isNaN(dateA.getTime()) && !isNaN(dateB.getTime())) {
+        return dateA.getTime() - dateB.getTime();
+      }
+      return a.date.localeCompare(b.date);
+    });
+  }, [ticketAnalytics, punishmentAnalytics, playerActivity]);
+
   return (
     <PageContainer>
       <div className="flex flex-col space-y-6">
@@ -1540,7 +1585,7 @@ const AuditLog = () => {
           {/* Punishments Issued */}
           <StatCard
             title="Punishments Issued"
-            value={punishmentAnalytics?.total || 0}
+            value={punishmentAnalytics?.byType?.reduce((sum: number, t: any) => sum + t.count, 0) || 0}
             icon={Gavel}
             iconColor="text-red-600"
             isExpanded={expandedSection === 'punishments'}
@@ -1570,6 +1615,77 @@ const AuditLog = () => {
             onToggle={() => toggleSection('players')}
           />
         </div>
+
+        {/* Metrics Overview Chart - Show when nothing is expanded */}
+        {!expandedSection && combinedMetricsData.length > 0 && (
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-base">Activity Overview</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <ResponsiveContainer width="100%" height={300}>
+                <LineChart data={combinedMetricsData}>
+                  <CartesianGrid strokeDasharray="3 3" className="opacity-30" />
+                  <XAxis dataKey="date" className="text-muted-foreground" fontSize={12} />
+                  <YAxis className="text-muted-foreground" fontSize={12} />
+                  <Tooltip
+                    content={<CustomTooltip
+                      formatName={(name: string) => {
+                        switch (name) {
+                          case 'tickets': return 'New Tickets';
+                          case 'punishments': return 'Punishments';
+                          case 'players': return 'New Players';
+                          default: return name;
+                        }
+                      }}
+                    />}
+                  />
+                  <Line
+                    type="monotone"
+                    dataKey="tickets"
+                    stroke="#3b82f6"
+                    strokeWidth={2}
+                    dot={false}
+                    activeDot={false}
+                    name="tickets"
+                  />
+                  <Line
+                    type="monotone"
+                    dataKey="punishments"
+                    stroke="#ef4444"
+                    strokeWidth={2}
+                    dot={false}
+                    activeDot={false}
+                    name="punishments"
+                  />
+                  <Line
+                    type="monotone"
+                    dataKey="players"
+                    stroke="#10b981"
+                    strokeWidth={2}
+                    dot={false}
+                    activeDot={false}
+                    name="players"
+                  />
+                </LineChart>
+              </ResponsiveContainer>
+              <div className="flex justify-center gap-6 mt-4 text-sm">
+                <div className="flex items-center gap-2">
+                  <div className="w-3 h-3 rounded-full bg-blue-500" />
+                  <span className="text-muted-foreground">New Tickets</span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <div className="w-3 h-3 rounded-full bg-red-500" />
+                  <span className="text-muted-foreground">Punishments</span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <div className="w-3 h-3 rounded-full bg-green-500" />
+                  <span className="text-muted-foreground">New Players</span>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        )}
 
         {/* Expanded Content - Full Width */}
         {expandedSection && (

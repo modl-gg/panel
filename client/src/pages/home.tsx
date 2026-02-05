@@ -1,15 +1,14 @@
 import { useState } from 'react';
-import { 
-  Bell, 
-  RefreshCw, 
+import {
+  Bell,
+  RefreshCw,
   Sun,
   Moon
 } from 'lucide-react';
 import { Button } from '@modl-gg/shared-web/components/ui/button';
 import { useTheme } from 'next-themes';
-import { 
+import {
   useStats,
-  useDashboardMetrics,
   useRecentTickets,
   useRecentPunishments,
   useTicketSubscriptionUpdates,
@@ -18,20 +17,17 @@ import {
 } from '@/hooks/use-data';
 import { useToast } from '@modl-gg/shared-web/hooks/use-toast';
 import PageContainer from '@/components/layout/PageContainer';
-import { DashboardMetricsChart } from '@/components/dashboard/DashboardMetricsChart';
 import { RecentTicketsSection } from '@/components/dashboard/RecentTicketsSection';
 import { RecentPunishmentsSection } from '@/components/dashboard/RecentPunishmentsSection';
 import { TicketSubscriptionsSection } from '@/components/dashboard/TicketSubscriptionsSection';
 
 
 const Home = () => {
-  const [metricsPeriod, setMetricsPeriod] = useState('7d');
   const [isSpinning, setIsSpinning] = useState(false);
   const { toast } = useToast();
   const { theme, setTheme } = useTheme();
-  
+
   // Fetch all dashboard data
-  const { data: metricsData, isLoading: isLoadingMetrics, refetch: refetchMetrics } = useDashboardMetrics(metricsPeriod);
   const { data: recentTicketsData, isLoading: isLoadingTickets, refetch: refetchTickets } = useRecentTickets(3);
   const { data: recentPunishmentsData, isLoading: isLoadingPunishments, refetch: refetchPunishments } = useRecentPunishments(5);
   const { data: subscriptionUpdatesData, isLoading: isLoadingUpdates, refetch: refetchUpdates } = useTicketSubscriptionUpdates(10);
@@ -42,16 +38,15 @@ const Home = () => {
 
   const handleRefreshData = async () => {
     setIsSpinning(true);
-    
+
     try {
       await Promise.all([
-        refetchMetrics(),
         refetchTickets(),
         refetchPunishments(),
         refetchUpdates(),
         new Promise(resolve => setTimeout(resolve, 800))
       ]);
-      
+
       toast({
         title: "Dashboard Refreshed",
         description: "All dashboard data has been updated.",
@@ -102,16 +97,6 @@ const Home = () => {
             {theme === 'dark' ? <Sun className="h-5 w-5" /> : <Moon className="h-5 w-5" />}
           </Button>
         </div>
-      </div>
-      
-      {/* Dashboard Metrics Chart */}
-      <div className="mb-6">
-        <DashboardMetricsChart 
-          data={metricsData || []}
-          loading={isLoadingMetrics}
-          period={metricsPeriod}
-          onPeriodChange={setMetricsPeriod}
-        />
       </div>
       
       {/* Ticket Subscriptions - Full Width */}
