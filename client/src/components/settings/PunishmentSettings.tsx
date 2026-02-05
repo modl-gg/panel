@@ -78,15 +78,10 @@ const PunishmentSettings = ({
   };
 
   return (
-    <div className="space-y-6 p-6">
+    <div className="space-y-6 p-2">
       {/* Status Thresholds Section */}
       {showThresholds && (
       <div>
-        <h4 className="text-base font-medium mb-3 mt-2">Offender Status Thresholds</h4>
-        <p className="text-sm text-muted-foreground mb-4">
-          Configure the point thresholds for determining a player's offender status. Higher thresholds make it harder to reach medium and habitual status.
-        </p>
-
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
           <div className="space-y-4 border rounded-md p-4">
             <h5 className="font-medium flex items-center">
@@ -188,14 +183,6 @@ const PunishmentSettings = ({
             </div>
           </div>
         </div>
-
-        <div className="bg-muted/30 p-4 rounded-md mb-6">
-          <h5 className="text-sm font-medium mb-1">About Offender Status</h5>
-          <p className="text-xs text-muted-foreground">
-            Players accumulate points with each punishment. When they reach the threshold for medium or habitual status,
-            stricter durations will apply to future punishments. Points decay over time according to server settings.
-          </p>
-        </div>
       </div>
       )}
 
@@ -203,12 +190,6 @@ const PunishmentSettings = ({
 
       {showTypes && (
       <div>
-        <h3 className="text-lg font-medium mb-2">Punishment Types</h3>
-        <p className="text-sm text-muted-foreground mb-6">
-          Configure the punishment types available in your system. Each type is stored with an ordinal value for persistence.
-          Core administrative punishment types can be configured (staff/player descriptions and appeal forms) but their names, categories, durations, and points cannot be modified.
-        </p>
-
         {/* Administrative Punishment Types Section (Ordinals 0-5) */}
         <div>
           <div className="flex items-center justify-between mb-3">
@@ -408,16 +389,6 @@ const PunishmentSettings = ({
               Add Type
             </Button>
           </div>
-        </div>
-
-        <div className="bg-muted/30 p-4 rounded-md mt-6">
-          <h4 className="text-sm font-medium mb-2">About Punishment Types</h4>
-          <p className="text-xs text-muted-foreground">
-            Punishment types are used throughout the system for player moderation. The ordinal values (numbers)
-            are used for storage and should remain consistent. Administrative punishment types (ordinals 0-5: Kick, Manual Mute,
-            Manual Ban, Security Ban, Linked Ban, and Blacklist) appear in the Core Administrative section and cannot be modified or removed.
-            All other punishment types are customizable.
-          </p>
         </div>
       </div>
       )}

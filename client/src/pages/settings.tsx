@@ -3078,8 +3078,8 @@ const Settings = () => {
         {/* Expanded Content Section - Below all cards */}
         <Card>
           <CardContent className="p-6">
-            {/* Account Settings - Show by default when nothing is expanded */}
-            {!expandedCategory && (
+            {/* Account Settings - Show by default when no sub-category is expanded */}
+            {!expandedSubCategory && (
               <AccountSettings
                 profileUsername={profileUsername}
                 setProfileUsername={setProfileUsername}
