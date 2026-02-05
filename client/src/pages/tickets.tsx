@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useLocation } from 'wouter';
 import {
   CircleDot,
@@ -7,11 +7,11 @@ import {
   Search,
   ChevronLeft,
   ChevronRight,
-  Square,
-  CheckSquare,
   Eye,
   User,
-  SortAsc
+  SortAsc,
+  Plus,
+  Tag
 } from 'lucide-react';
 import { formatDate, formatTimeAgo } from '../utils/date-utils';
 import { Button } from '@modl-gg/shared-web/components/ui/button';
@@ -20,7 +20,7 @@ import { Input } from '@modl-gg/shared-web/components/ui/input';
 import { Checkbox } from '@modl-gg/shared-web/components/ui/checkbox';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@modl-gg/shared-web/components/ui/table';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@modl-gg/shared-web/components/ui/select';
-import { useTickets, useTicketStatusCounts, useBulkUpdateTickets, useLabels, useStaff } from '@/hooks/use-data';
+import { useTickets, useTicketStatusCounts, useBulkUpdateTickets, useLabels, useStaff, useUpdateTicket } from '@/hooks/use-data';
 import { useIsMobile } from '@/hooks/use-mobile';
 import PageContainer from '@/components/layout/PageContainer';
 import { FilterDropdown } from '@/components/tickets/FilterDropdown';
@@ -113,6 +113,22 @@ const Tickets = () => {
   const { data: labelsData } = useLabels();
   const { data: staffData } = useStaff();
   const bulkUpdateMutation = useBulkUpdateTickets();
+  const updateTicketMutation = useUpdateTicket();
+
+  // State for inline label management
+  const [labelMenuTicketId, setLabelMenuTicketId] = useState<string | null>(null);
+  const labelMenuRef = useRef<HTMLDivElement>(null);
+
+  // Close label menu when clicking outside
+  useEffect(() => {
+    function handleClickOutside(event: MouseEvent) {
+      if (labelMenuRef.current && !labelMenuRef.current.contains(event.target as Node)) {
+        setLabelMenuTicketId(null);
+      }
+    }
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
 
   const tickets: Ticket[] = ticketsResponse?.tickets || [];
   const pagination = ticketsResponse?.pagination || {
@@ -197,6 +213,51 @@ const Tickets = () => {
     setTimeout(() => setLocation(`/panel/tickets/${safeTicketId}`), 50);
   };
 
+  // Inline label handlers
+  const handleAddLabel = async (ticketId: string, labelName: string) => {
+    const ticket = tickets.find(t => t.id === ticketId);
+    if (!ticket) return;
+
+    const currentTags = ticket.tags || [];
+    if (currentTags.includes(labelName)) return;
+
+    try {
+      await updateTicketMutation.mutateAsync({
+        id: ticketId,
+        data: { tags: [...currentTags, labelName] }
+      });
+      refetch();
+    } catch (error) {
+      toast({ title: 'Error', description: 'Failed to add label', variant: 'destructive' });
+    }
+    setLabelMenuTicketId(null);
+  };
+
+  const handleRemoveLabel = async (ticketId: string, labelName: string) => {
+    const ticket = tickets.find(t => t.id === ticketId);
+    if (!ticket) return;
+
+    const currentTags = ticket.tags || [];
+    try {
+      await updateTicketMutation.mutateAsync({
+        id: ticketId,
+        data: { tags: currentTags.filter(t => t !== labelName) }
+      });
+      refetch();
+    } catch (error) {
+      toast({ title: 'Error', description: 'Failed to remove label', variant: 'destructive' });
+    }
+  };
+
+  // Toggle type filter
+  const toggleTypeFilter = (typeValue: string) => {
+    if (typeFilter.includes(typeValue)) {
+      setTypeFilter(typeFilter.filter(t => t !== typeValue));
+    } else {
+      setTypeFilter([...typeFilter, typeValue]);
+    }
+  };
+
   // Type filter options
   const typeOptions = [
     { value: 'support', label: 'Support' },
@@ -218,16 +279,19 @@ const Tickets = () => {
   const renderTicketRow = (ticket: Ticket) => {
     const isSelected = selectedTickets.has(ticket.id);
     const ticketLabels = ticket.tags || [];
+    const availableLabelsForTicket = labels.filter(l => !ticketLabels.includes(l.name));
+    const showLabelMenu = labelMenuTicketId === ticket.id;
 
     return (
       <TableRow
         key={ticket.id}
         className={`border-b border-border hover:bg-muted/50 cursor-pointer ${isSelected ? 'bg-primary/5' : ''}`}
       >
-        <TableCell className="w-10" onClick={(e) => e.stopPropagation()}>
+        <TableCell className="w-12 px-3" onClick={(e) => e.stopPropagation()}>
           <Checkbox
             checked={isSelected}
             onCheckedChange={() => handleSelectTicket(ticket.id)}
+            className="h-5 w-5"
           />
         </TableCell>
         <TableCell onClick={() => handleNavigateToTicket(ticket.id)}>
@@ -248,9 +312,40 @@ const Tickets = () => {
                       name={tagName}
                       color={label?.color || '#6b7280'}
                       size="sm"
+                      onRemove={() => handleRemoveLabel(ticket.id, tagName)}
                     />
                   );
                 })}
+                {/* Add label button */}
+                <div className="relative" onClick={(e) => e.stopPropagation()}>
+                  <button
+                    onClick={() => setLabelMenuTicketId(showLabelMenu ? null : ticket.id)}
+                    className="h-5 w-5 flex items-center justify-center rounded-full border border-dashed border-muted-foreground/30 text-muted-foreground hover:border-primary hover:text-primary transition-colors"
+                    title="Add label"
+                  >
+                    <Plus className="h-3 w-3" />
+                  </button>
+                  {showLabelMenu && availableLabelsForTicket.length > 0 && (
+                    <div
+                      ref={labelMenuRef}
+                      className="absolute top-full left-0 mt-1 w-48 bg-popover border border-border rounded-md shadow-lg z-50 p-1"
+                    >
+                      {availableLabelsForTicket.map((label) => (
+                        <button
+                          key={label.id}
+                          onClick={() => handleAddLabel(ticket.id, label.name)}
+                          className="w-full flex items-center gap-2 px-2 py-1.5 text-sm rounded hover:bg-muted transition-colors"
+                        >
+                          <span
+                            className="w-3 h-3 rounded-full flex-shrink-0"
+                            style={{ backgroundColor: label.color }}
+                          />
+                          <span className="truncate">{label.name}</span>
+                        </button>
+                      ))}
+                    </div>
+                  )}
+                </div>
               </div>
               <div className="text-xs text-muted-foreground mt-0.5">
                 #{ticket.id} opened {formatTimeAgo(ticket.date)} by {ticket.reportedByName || ticket.reportedBy}
@@ -292,6 +387,8 @@ const Tickets = () => {
   const renderMobileTicketCard = (ticket: Ticket) => {
     const isSelected = selectedTickets.has(ticket.id);
     const ticketLabels = ticket.tags || [];
+    const availableLabelsForTicket = labels.filter(l => !ticketLabels.includes(l.name));
+    const showLabelMenu = labelMenuTicketId === ticket.id;
 
     return (
       <Card
@@ -305,6 +402,7 @@ const Tickets = () => {
               <Checkbox
                 checked={isSelected}
                 onCheckedChange={() => handleSelectTicket(ticket.id)}
+                className="h-5 w-5"
               />
             </div>
             <div className="flex-1 min-w-0">
@@ -316,7 +414,7 @@ const Tickets = () => {
                 )}
                 <span className="font-medium text-sm truncate">{ticket.subject}</span>
               </div>
-              <div className="flex flex-wrap gap-1 mb-2">
+              <div className="flex flex-wrap gap-1 mb-2 items-center">
                 {ticketLabels.map((tagName) => {
                   const label = labels.find((l) => l.name === tagName);
                   return (
@@ -325,9 +423,40 @@ const Tickets = () => {
                       name={tagName}
                       color={label?.color || '#6b7280'}
                       size="sm"
+                      onRemove={() => handleRemoveLabel(ticket.id, tagName)}
                     />
                   );
                 })}
+                {/* Add label button */}
+                <div className="relative" onClick={(e) => e.stopPropagation()}>
+                  <button
+                    onClick={() => setLabelMenuTicketId(showLabelMenu ? null : ticket.id)}
+                    className="h-5 w-5 flex items-center justify-center rounded-full border border-dashed border-muted-foreground/30 text-muted-foreground hover:border-primary hover:text-primary transition-colors"
+                    title="Add label"
+                  >
+                    <Plus className="h-3 w-3" />
+                  </button>
+                  {showLabelMenu && availableLabelsForTicket.length > 0 && (
+                    <div
+                      ref={labelMenuRef}
+                      className="absolute top-full left-0 mt-1 w-48 bg-popover border border-border rounded-md shadow-lg z-50 p-1"
+                    >
+                      {availableLabelsForTicket.map((label) => (
+                        <button
+                          key={label.id}
+                          onClick={() => handleAddLabel(ticket.id, label.name)}
+                          className="w-full flex items-center gap-2 px-2 py-1.5 text-sm rounded hover:bg-muted transition-colors"
+                        >
+                          <span
+                            className="w-3 h-3 rounded-full flex-shrink-0"
+                            style={{ backgroundColor: label.color }}
+                          />
+                          <span className="truncate">{label.name}</span>
+                        </button>
+                      ))}
+                    </div>
+                  )}
+                </div>
               </div>
               <div className="text-xs text-muted-foreground">
                 #{ticket.id} - {ticket.reportedByName || ticket.reportedBy} - {formatTimeAgo(ticket.date)}
@@ -390,20 +519,11 @@ const Tickets = () => {
 
           {/* Filter dropdowns */}
           <FilterDropdown
-            label="Type"
-            options={typeOptions}
-            selected={typeFilter}
-            onChange={setTypeFilter}
-            multiSelect
-          />
-
-          <FilterDropdown
             label="Label"
             options={labels.map((l) => ({ value: l.name, label: l.name, color: l.color }))}
             selected={labelFilters}
             onChange={setLabelFilters}
             multiSelect
-            searchable
           />
 
           <FilterDropdown
@@ -412,10 +532,37 @@ const Tickets = () => {
             selected={assigneeFilter}
             onChange={setAssigneeFilter}
             multiSelect
-            searchable
           />
 
           <div className="flex-1" />
+
+          {/* Type filter buttons - hidden on mobile, shown on larger screens */}
+          <div className="hidden md:flex items-center gap-1">
+            {typeOptions.map((opt) => (
+              <Button
+                key={opt.value}
+                variant={typeFilter.includes(opt.value) ? 'secondary' : 'ghost'}
+                size="sm"
+                onClick={() => toggleTypeFilter(opt.value)}
+                className="h-8 px-2.5 text-xs"
+              >
+                {opt.label}
+              </Button>
+            ))}
+          </div>
+
+          {/* Type dropdown for mobile */}
+          <div className="md:hidden">
+            <FilterDropdown
+              label="Type"
+              options={typeOptions}
+              selected={typeFilter}
+              onChange={setTypeFilter}
+              multiSelect
+            />
+          </div>
+
+          <div className="h-6 w-px bg-border mx-1 hidden md:block" />
 
           {/* Sort */}
           <Select value={sortOption} onValueChange={setSortOption}>
@@ -465,6 +612,7 @@ const Tickets = () => {
                   <Checkbox
                     checked={selectedTickets.size === tickets.length && tickets.length > 0}
                     onCheckedChange={handleSelectAll}
+                    className="h-5 w-5"
                   />
                   <span className="text-sm text-muted-foreground">Select all</span>
                 </div>
@@ -474,10 +622,11 @@ const Tickets = () => {
               <Table>
                 <TableHeader>
                   <TableRow className="hover:bg-transparent">
-                    <TableHead className="w-10">
+                    <TableHead className="w-12 px-3">
                       <Checkbox
                         checked={selectedTickets.size === tickets.length && tickets.length > 0}
                         onCheckedChange={handleSelectAll}
+                        className="h-5 w-5"
                       />
                     </TableHead>
                     <TableHead>Ticket</TableHead>

@@ -800,21 +800,780 @@ const TicketSettings = ({
   const showTicketForms = !visibleSection || visibleSection === 'ticket-forms';
   const showAIModeration = !visibleSection || visibleSection === 'ai-moderation';
 
-  return (
-    <div className={visibleSection ? "space-y-4" : "space-y-6 p-6"}>
-      {!visibleSection && (
-        <div>
-          <h3 className="text-lg font-medium mb-4">Ticket Settings</h3>
-          <p className="text-sm text-muted-foreground mb-6">
-            Configure ticket tags, quick responses, and form settings.
-          </p>
+  // Helper to render Quick Responses content
+  const quickResponsesContent = (
+    <DndProvider backend={HTML5Backend}>
+      <p className="text-sm text-muted-foreground mb-6">
+        Configure pre-written responses for different ticket categories and actions.
+      </p>
+
+      <div className="space-y-6">
+      {quickResponsesState?.categories?.length > 0 ? quickResponsesState.categories.map((category) => (
+        <Card key={category.id} className="border-l-4 border-l-blue-500">
+          <CardHeader className="pb-3">
+            <div className="flex items-center justify-between">
+              <div>
+                <CardTitle className="text-base">{category.name}</CardTitle>
+                <p className="text-sm text-muted-foreground mt-1">
+                  {category.ticketTypes.join(', ')} • {category.actions.length} actions
+                </p>
+              </div>
+              <div className="flex items-center space-x-2">
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => {
+                    setEditingCategory(category);
+                    setShowCategoryDialog(true);
+                  }}
+                >
+                  <Edit3 className="h-4 w-4" />
+                </Button>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => {
+                    setSelectedCategoryId(category.id);
+                    setEditingAction(null);
+                    setShowActionDialog(true);
+                  }}
+                >
+                  <Plus className="h-4 w-4" />
+                </Button>
+              </div>
+            </div>
+          </CardHeader>
+          <CardContent className="space-y-3">
+            {category.actions.map((action, index) => (
+              <DraggableQuickResponseAction
+                key={action.id}
+                action={action}
+                index={index}
+                categoryId={category.id}
+                moveAction={moveAction}
+                onEdit={() => {
+                  setEditingAction(action);
+                  setSelectedCategoryId(category.id);
+                  setShowActionDialog(true);
+                }}
+                onDelete={() => {
+                  setQuickResponseToDelete({
+                    categoryId: category.id,
+                    actionId: action.id,
+                    actionName: action.name,
+                  });
+                  setQuickResponseDeleteDialogOpen(true);
+                }}
+              />
+            ))}
+          </CardContent>
+        </Card>
+      )) : (
+        <div className="text-center py-8 border-2 border-dashed border-muted rounded-lg">
+          <MessageCircle className="h-8 w-8 mx-auto mb-3 text-muted-foreground" />
+          <p className="text-sm text-muted-foreground mb-4">No quick response categories configured yet</p>
+          <Button
+            onClick={() => {
+              setEditingCategory(null);
+              setShowCategoryDialog(true);
+            }}
+          >
+            <Plus className="h-4 w-4 mr-2" />
+            Create Category
+          </Button>
         </div>
       )}
+      </div>
+
+      {quickResponsesState?.categories?.length > 0 && (
+        <div className="mt-4 pt-4 border-t">
+          <Button
+            onClick={() => {
+              setEditingCategory(null);
+              setShowCategoryDialog(true);
+            }}
+          >
+            <Plus className="h-4 w-4 mr-2" />
+            Add Category
+          </Button>
+        </div>
+      )}
+    </DndProvider>
+  );
+
+  // Helper to render Label Management content
+  const labelManagementContent = (
+    <div>
+      <p className="text-sm text-muted-foreground mb-4">
+        Create labels to categorize and organize tickets. Labels can be applied to any ticket type and will appear with their assigned colors.
+      </p>
+
+      <LabelManagementTable
+        labels={labels || []}
+        onLabelsChange={setLabels}
+      />
+    </div>
+  );
+
+  // Helper function to render all dialogs (shared between both return paths)
+  const renderDialogs = () => (
+    <>
+      {/* Add AI Punishment Type Dialog */}
+      {isAddAIPunishmentDialogOpen && (
+        <Dialog open={isAddAIPunishmentDialogOpen} onOpenChange={setIsAddAIPunishmentDialogOpen}>
+          <DialogContent className="max-w-lg">
+            <DialogHeader>
+              <DialogTitle>Enable AI Punishment Type</DialogTitle>
+              <DialogDescription>
+                {selectedPunishmentTypeId ? (() => {
+                  const selectedType = punishmentTypesState.find(t => t.id === selectedPunishmentTypeId);
+                  return selectedType ? `Configure AI description for "${selectedType.name}" punishment type.` : 'Configure AI description for the selected punishment type.';
+                })() : 'Select a punishment type to enable for AI analysis.'}
+              </DialogDescription>
+            </DialogHeader>
+
+            <div className="space-y-4">
+              {selectedPunishmentTypeId && (() => {
+                const selectedType = punishmentTypesState.find(t => t.id === selectedPunishmentTypeId);
+                return selectedType ? (
+                  <div className="bg-muted/30 p-3 rounded-lg">
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <h5 className="font-medium">{selectedType.name}</h5>
+                        <div className="flex items-center gap-2 mt-1">
+                          <Badge variant="outline" className="text-xs">
+                            {selectedType.category}
+                          </Badge>
+                          <Badge variant="secondary" className="text-xs">
+                            Ordinal: {selectedType.ordinal}
+                          </Badge>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                ) : null;
+              })()}
+
+              {!selectedPunishmentTypeId && (
+                <div className="space-y-2">
+                  <Label>Select Punishment Type</Label>
+                  <Select value={selectedPunishmentTypeId?.toString() || ''} onValueChange={(value) => setSelectedPunishmentTypeId(parseInt(value))}>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Choose a punishment type..." />
+                    </SelectTrigger>
+                    <SelectContent className="max-h-60 overflow-y-auto">
+                      {punishmentTypesState
+                        .filter(pt => !Object.values(aiModerationSettings?.aiPunishmentConfigs || {}).some((config: any) => config.name === pt.name))
+                        .map((punishmentType) => (
+                          <SelectItem key={punishmentType.id} value={punishmentType.id.toString()}>
+                            {punishmentType.name} ({punishmentType.category})
+                          </SelectItem>
+                        ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+              )}
+
+              {selectedPunishmentTypeId && (
+                <div className="space-y-2">
+                  <Label htmlFor="ai-punishment-desc">AI Description</Label>
+                  <Textarea
+                    id="ai-punishment-desc"
+                    className="min-h-[100px]"
+                    placeholder="Describe when this punishment type should be used."
+                    value={newAIPunishmentDescription}
+                    onChange={(e) => setNewAIPunishmentDescription(e.target.value)}
+                  />
+                </div>
+              )}
+            </div>
+
+            <DialogFooter>
+              <Button
+                variant="outline"
+                onClick={() => {
+                  setIsAddAIPunishmentDialogOpen(false);
+                  setSelectedPunishmentTypeId(null);
+                  setNewAIPunishmentDescription('');
+                }}
+              >
+                Cancel
+              </Button>
+              <Button
+                onClick={() => {
+                  if (selectedPunishmentTypeId && newAIPunishmentDescription.trim()) {
+                    const selectedType = punishmentTypesState.find(t => t.id === selectedPunishmentTypeId);
+                    if (selectedType) {
+                      const newId = Date.now().toString();
+                      setAiModerationSettings((prev: any) => ({
+                        ...prev,
+                        aiPunishmentConfigs: {
+                          ...prev.aiPunishmentConfigs,
+                          [newId]: {
+                            id: newId,
+                            name: selectedType.name,
+                            aiDescription: newAIPunishmentDescription.trim(),
+                            enabled: true
+                          }
+                        }
+                      }));
+                    }
+                    setIsAddAIPunishmentDialogOpen(false);
+                    setSelectedPunishmentTypeId(null);
+                    setNewAIPunishmentDescription('');
+                  }
+                }}
+                disabled={!selectedPunishmentTypeId || !newAIPunishmentDescription.trim()}
+              >
+                Enable for AI
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+      )}
+
+      {/* Tag Deletion Dialog */}
+      <AlertDialog open={tagDeleteDialogOpen} onOpenChange={setTagDeleteDialogOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete Tag</AlertDialogTitle>
+            <AlertDialogDescription>
+              Are you sure you want to delete "{tagToDelete?.name}"? This cannot be undone.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction onClick={confirmTagDelete} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
+              Delete
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      {/* Field Deletion Dialog */}
+      <AlertDialog open={fieldDeleteDialogOpen} onOpenChange={setFieldDeleteDialogOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete Form Field</AlertDialogTitle>
+            <AlertDialogDescription>
+              Are you sure you want to delete "{fieldToDelete?.label}"? This cannot be undone.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction onClick={confirmFieldDelete} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
+              Delete
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      {/* Section Deletion Dialog */}
+      <AlertDialog open={sectionDeleteDialogOpen} onOpenChange={setSectionDeleteDialogOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete Section</AlertDialogTitle>
+            <AlertDialogDescription>
+              Are you sure you want to delete "{sectionToDelete?.title}"? All fields in this section will also be deleted.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction onClick={confirmSectionDelete} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
+              Delete
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      {/* Quick Response Delete Dialog */}
+      <AlertDialog open={quickResponseDeleteDialogOpen} onOpenChange={setQuickResponseDeleteDialogOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete Quick Response</AlertDialogTitle>
+            <AlertDialogDescription>
+              Are you sure you want to delete "{quickResponseToDelete?.actionName}"? This cannot be undone.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={() => {
+                if (quickResponseToDelete) {
+                  const updatedConfig = {
+                    ...quickResponsesState,
+                    categories: quickResponsesState.categories.map(cat =>
+                      cat.id === quickResponseToDelete.categoryId
+                        ? { ...cat, actions: cat.actions.filter(a => a.id !== quickResponseToDelete.actionId) }
+                        : cat
+                    )
+                  };
+                  setQuickResponsesState(updatedConfig);
+                }
+                setQuickResponseDeleteDialogOpen(false);
+                setQuickResponseToDelete(null);
+              }}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              Delete
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      {/* AI Punishment Delete Dialog */}
+      <AlertDialog open={aiPunishmentDeleteDialogOpen} onOpenChange={setAiPunishmentDeleteDialogOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Remove AI Punishment Type</AlertDialogTitle>
+            <AlertDialogDescription>
+              Are you sure you want to remove "{aiPunishmentToDelete?.name}" from AI moderation?
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={() => {
+                if (aiPunishmentToDelete) {
+                  setAiModerationSettings((prev: any) => {
+                    const newConfigs = { ...prev.aiPunishmentConfigs };
+                    delete newConfigs[aiPunishmentToDelete.id];
+                    return { ...prev, aiPunishmentConfigs: newConfigs };
+                  });
+                }
+                setAiPunishmentDeleteDialogOpen(false);
+                setAiPunishmentToDelete(null);
+              }}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              Remove
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      {/* Quick Response Action Dialog */}
+      <Dialog open={showActionDialog} onOpenChange={setShowActionDialog}>
+        <DialogContent className="max-w-2xl">
+          <DialogHeader>
+            <DialogTitle>{editingAction ? 'Edit Quick Response' : 'Add Quick Response'}</DialogTitle>
+          </DialogHeader>
+          <QuickResponseActionForm
+            action={editingAction}
+            categoryId={selectedCategoryId}
+            quickResponsesState={quickResponsesState}
+            setQuickResponsesState={setQuickResponsesState}
+            punishmentTypes={punishmentTypesState}
+            onSave={() => {
+              setShowActionDialog(false);
+              setEditingAction(null);
+            }}
+            onCancel={() => {
+              setShowActionDialog(false);
+              setEditingAction(null);
+            }}
+          />
+        </DialogContent>
+      </Dialog>
+
+      {/* Quick Response Category Dialog */}
+      <Dialog open={showCategoryDialog} onOpenChange={setShowCategoryDialog}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>{editingCategory ? 'Edit Category' : 'Add Category'}</DialogTitle>
+          </DialogHeader>
+          <QuickResponseCategoryForm
+            category={editingCategory}
+            quickResponsesState={quickResponsesState}
+            setQuickResponsesState={setQuickResponsesState}
+            onSave={() => {
+              setShowCategoryDialog(false);
+              setEditingCategory(null);
+            }}
+            onCancel={() => {
+              setShowCategoryDialog(false);
+              setEditingCategory(null);
+            }}
+          />
+        </DialogContent>
+      </Dialog>
+
+      {/* Add/Edit Field Dialog */}
+      <Dialog open={isAddTicketFormFieldDialogOpen} onOpenChange={setIsAddTicketFormFieldDialogOpen}>
+        <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>{selectedTicketFormField ? 'Edit Form Field' : 'Add Form Field'}</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div className="space-y-2">
+              <Label>Field Label</Label>
+              <Input
+                value={newTicketFormFieldLabel}
+                onChange={(e) => setNewTicketFormFieldLabel(e.target.value)}
+                placeholder="Enter field label..."
+              />
+            </div>
+            <div className="space-y-2">
+              <Label>Field Type</Label>
+              <Select value={newTicketFormFieldType} onValueChange={(v: any) => setNewTicketFormFieldType(v)}>
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="text">Text</SelectItem>
+                  <SelectItem value="textarea">Textarea</SelectItem>
+                  <SelectItem value="dropdown">Dropdown</SelectItem>
+                  <SelectItem value="multiple_choice">Multiple Choice</SelectItem>
+                  <SelectItem value="checkbox">Checkbox</SelectItem>
+                  <SelectItem value="checkboxes">Checkboxes</SelectItem>
+                  <SelectItem value="file_upload">File Upload</SelectItem>
+                  <SelectItem value="description">Description</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-2">
+              <Label>Description (optional)</Label>
+              <Input
+                value={newTicketFormFieldDescription}
+                onChange={(e) => setNewTicketFormFieldDescription(e.target.value)}
+                placeholder="Help text for this field..."
+              />
+            </div>
+            <div className="flex items-center gap-2">
+              <Switch
+                checked={newTicketFormFieldRequired}
+                onCheckedChange={setNewTicketFormFieldRequired}
+              />
+              <Label>Required</Label>
+            </div>
+            {['dropdown', 'multiple_choice', 'checkboxes'].includes(newTicketFormFieldType) && (
+              <div className="space-y-2">
+                <Label>Options</Label>
+                <div className="space-y-2">
+                  {newTicketFormFieldOptions.map((opt, idx) => (
+                    <div key={idx} className="flex gap-2">
+                      <Input value={opt} onChange={(e) => {
+                        const newOpts = [...newTicketFormFieldOptions];
+                        newOpts[idx] = e.target.value;
+                        setNewTicketFormFieldOptions(newOpts);
+                      }} />
+                      <Button variant="ghost" size="sm" onClick={() => {
+                        setNewTicketFormFieldOptions(newTicketFormFieldOptions.filter((_, i) => i !== idx));
+                      }}>
+                        <X className="h-4 w-4" />
+                      </Button>
+                    </div>
+                  ))}
+                  <div className="flex gap-2">
+                    <Input
+                      value={newTicketFormOption}
+                      onChange={(e) => setNewTicketFormOption(e.target.value)}
+                      placeholder="Add option..."
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter' && newTicketFormOption.trim()) {
+                          setNewTicketFormFieldOptions([...newTicketFormFieldOptions, newTicketFormOption.trim()]);
+                          setNewTicketFormOption('');
+                        }
+                      }}
+                    />
+                    <Button size="sm" onClick={() => {
+                      if (newTicketFormOption.trim()) {
+                        setNewTicketFormFieldOptions([...newTicketFormFieldOptions, newTicketFormOption.trim()]);
+                        setNewTicketFormOption('');
+                      }
+                    }}>
+                      <Plus className="h-4 w-4" />
+                    </Button>
+                  </div>
+                </div>
+              </div>
+            )}
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setIsAddTicketFormFieldDialogOpen(false)}>Cancel</Button>
+            <Button onClick={() => {
+              addTicketFormField();
+            }}>
+              {selectedTicketFormField ? 'Update' : 'Add'}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Add Section Dialog */}
+      <Dialog open={isAddTicketFormSectionDialogOpen} onOpenChange={setIsAddTicketFormSectionDialogOpen}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>{selectedTicketFormSection ? 'Edit Section' : 'Add Section'}</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div className="space-y-2">
+              <Label>Section Title</Label>
+              <Input
+                value={newTicketFormSectionTitle}
+                onChange={(e) => setNewTicketFormSectionTitle(e.target.value)}
+                placeholder="Enter section title..."
+              />
+            </div>
+            <div className="space-y-2">
+              <Label>Description (optional)</Label>
+              <Input
+                value={newTicketFormSectionDescription}
+                onChange={(e) => setNewTicketFormSectionDescription(e.target.value)}
+                placeholder="Section description..."
+              />
+            </div>
+            <div className="flex items-center gap-2">
+              <Switch
+                checked={newTicketFormSectionHideByDefault}
+                onCheckedChange={setNewTicketFormSectionHideByDefault}
+              />
+              <Label>Hide by default</Label>
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => {
+              setIsAddTicketFormSectionDialogOpen(false);
+              setSelectedTicketFormSection(null);
+            }}>Cancel</Button>
+            <Button onClick={() => {
+              addTicketFormSection();
+            }}>
+              {selectedTicketFormSection ? 'Update' : 'Add'}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+    </>
+  );
+
+  // When a specific section is selected, render content directly without collapsibles
+  if (visibleSection) {
+    return (
+      <div className="space-y-4 p-2">
+        {visibleSection === 'quick-responses' && quickResponsesContent}
+        {visibleSection === 'label-management' && labelManagementContent}
+        {visibleSection === 'ticket-forms' && (
+          <DndProvider backend={HTML5Backend}>
+            <div className="space-y-4">
+              <p className="text-sm text-muted-foreground">
+                Configure custom forms for bug reports, support requests, and applications.
+              </p>
+
+              {/* Form Type Selector */}
+              <div className="space-y-3">
+                <Label className="text-sm font-medium">Form Type</Label>
+                <div className="flex gap-2">
+                  <Button
+                    variant={selectedTicketFormType === 'bug' ? 'default' : 'outline'}
+                    size="sm"
+                    onClick={() => setSelectedTicketFormType('bug')}
+                  >
+                    Bug Report
+                  </Button>
+                  <Button
+                    variant={selectedTicketFormType === 'support' ? 'default' : 'outline'}
+                    size="sm"
+                    onClick={() => setSelectedTicketFormType('support')}
+                  >
+                    Support Request
+                  </Button>
+                  <Button
+                    variant={selectedTicketFormType === 'application' ? 'default' : 'outline'}
+                    size="sm"
+                    onClick={() => setSelectedTicketFormType('application')}
+                  >
+                    Staff Application
+                  </Button>
+                </div>
+              </div>
+
+              {/* Form Sections */}
+              <div className="space-y-4">
+                <div className="flex items-center justify-between">
+                  <h5 className="text-sm font-medium">
+                    {selectedTicketFormType === 'bug' && 'Bug Report Form Structure'}
+                    {selectedTicketFormType === 'support' && 'Support Request Form Structure'}
+                    {selectedTicketFormType === 'application' && 'Application Form Structure'}
+                  </h5>
+                  <Button
+                    size="sm"
+                    onClick={() => setIsAddTicketFormSectionDialogOpen(true)}
+                  >
+                    <Plus className="h-4 w-4 mr-2" />
+                    Create Section
+                  </Button>
+                </div>
+
+                {/* Section List */}
+                <div className="space-y-3">
+                  {ticketForms[selectedTicketFormType]?.sections
+                    ?.sort((a, b) => a.order - b.order)
+                    .map((section, sectionIndex) => (
+                      <DraggableSectionCard
+                        key={section.id}
+                        section={section}
+                        index={sectionIndex}
+                        moveSection={moveSectionInForm}
+                        selectedTicketFormType={selectedTicketFormType}
+                        ticketForms={ticketForms}
+                        onEditSection={(section) => {
+                          setSelectedTicketFormSection(section);
+                          setNewTicketFormSectionTitle(section.title);
+                          setNewTicketFormSectionDescription(section.description || '');
+                          setNewTicketFormSectionHideByDefault(section.hideByDefault || false);
+                          setIsAddTicketFormSectionDialogOpen(true);
+                        }}
+                        onDeleteSection={(sectionId) => {
+                          const sectionToRemove = ticketForms[selectedTicketFormType]?.sections?.find(s => s.id === sectionId);
+                          if (sectionToRemove) {
+                            handleSectionDeleteClick(sectionId, sectionToRemove.title);
+                          }
+                        }}
+                        onEditField={(field) => {
+                          setSelectedTicketFormField(field);
+                          setNewTicketFormFieldLabel(field.label);
+                          setNewTicketFormFieldType(field.type);
+                          setNewTicketFormFieldDescription(field.description || '');
+                          setNewTicketFormFieldRequired(field.required);
+                          setNewTicketFormFieldOptions(field.options || []);
+                          setNewTicketFormFieldSectionId(field.sectionId || '');
+                          setNewTicketFormFieldGoToSection(field.goToSection || '');
+                          setNewTicketFormFieldOptionSectionMapping(field.optionSectionMapping || {});
+                          setIsAddTicketFormFieldDialogOpen(true);
+                        }}
+                        onDeleteField={(fieldId) => {
+                          const fieldToRemove = ticketForms[selectedTicketFormType]?.fields?.find(f => f.id === fieldId);
+                          if (fieldToRemove) {
+                            handleFieldDeleteClick(fieldId, fieldToRemove.label);
+                          }
+                        }}
+                        onAddField={() => {
+                          setSelectedTicketFormField(null);
+                          setNewTicketFormFieldLabel('');
+                          setNewTicketFormFieldType('text');
+                          setNewTicketFormFieldDescription('');
+                          setNewTicketFormFieldRequired(false);
+                          setNewTicketFormFieldOptions([]);
+                          setNewTicketFormFieldSectionId(section.id);
+                          setNewTicketFormFieldGoToSection('');
+                          setNewTicketFormFieldOptionSectionMapping({});
+                          setIsOptionNavigationExpanded(false);
+                          setIsAddTicketFormFieldDialogOpen(true);
+                        }}
+                        moveField={moveFieldInForm}
+                        moveFieldBetweenSections={moveFieldBetweenSections}
+                      />
+                    ))}
+
+                  {(!ticketForms[selectedTicketFormType]?.sections || ticketForms[selectedTicketFormType]?.sections?.length === 0) && (
+                    <div className="text-center py-8 border-2 border-dashed border-muted rounded-lg">
+                      <Layers className="h-8 w-8 mx-auto mb-3 text-muted-foreground" />
+                      <p className="text-sm text-muted-foreground mb-4">No sections created yet</p>
+                      <Button
+                        onClick={() => setIsAddTicketFormSectionDialogOpen(true)}
+                      >
+                        <Plus className="h-4 w-4 mr-2" />
+                        Create First Section
+                      </Button>
+                    </div>
+                  )}
+                </div>
+              </div>
+            </div>
+          </DndProvider>
+        )}
+        {visibleSection === 'ai-moderation' && isPremiumUser() && (
+          <div>
+            <p className="text-sm text-muted-foreground mb-4">
+              Configure AI-powered moderation to automatically analyze ticket content and suggest appropriate actions.
+            </p>
+
+            <div className="space-y-4">
+              <div className="flex items-center justify-between p-3 bg-muted/50 rounded-lg">
+                <div>
+                  <Label className="text-sm font-medium">Enable AI Moderation</Label>
+                  <p className="text-xs text-muted-foreground">Automatically analyze tickets and suggest actions</p>
+                </div>
+                <Switch
+                  checked={aiModerationSettings?.enabled || false}
+                  onCheckedChange={(checked) =>
+                    setAiModerationSettings({ ...aiModerationSettings, enabled: checked })
+                  }
+                />
+              </div>
+
+              {aiModerationSettings?.enabled && (
+                <>
+                  <div className="space-y-3">
+                    <Label className="text-sm font-medium">AI Punishment Types</Label>
+                    <p className="text-xs text-muted-foreground mb-2">
+                      Configure which punishment types AI can suggest when analyzing reported players.
+                    </p>
+
+                    {aiModerationSettings?.punishmentTypes?.length > 0 ? (
+                      <div className="space-y-2">
+                        {aiModerationSettings.punishmentTypes.map((pt: any) => {
+                          const linkedType = punishmentTypesState?.find((t: any) => t.id === pt.punishmentTypeId);
+                          return (
+                            <div key={pt.id} className="flex items-center justify-between p-2 bg-muted/30 rounded">
+                              <div>
+                                <span className="text-sm font-medium">{linkedType?.name || 'Unknown Type'}</span>
+                                <p className="text-xs text-muted-foreground">{pt.description}</p>
+                              </div>
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                onClick={() => {
+                                  setAiPunishmentToDelete({ id: pt.id, name: linkedType?.name || 'Unknown' });
+                                  setAiPunishmentDeleteDialogOpen(true);
+                                }}
+                              >
+                                <Trash2 className="h-4 w-4" />
+                              </Button>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    ) : (
+                      <div className="text-center py-4 border-2 border-dashed border-muted rounded-lg">
+                        <p className="text-sm text-muted-foreground mb-2">No AI punishment types configured</p>
+                      </div>
+                    )}
+
+                    <Button
+                      size="sm"
+                      onClick={() => setIsAddAIPunishmentDialogOpen(true)}
+                    >
+                      <Plus className="h-4 w-4 mr-2" />
+                      Add Punishment Type
+                    </Button>
+                  </div>
+                </>
+              )}
+            </div>
+          </div>
+        )}
+
+        {/* Dialogs need to be rendered even in direct mode */}
+        {renderDialogs()}
+      </div>
+    );
+  }
+
+  return (
+    <div className="space-y-6 p-6">
+      <div>
+        <h3 className="text-lg font-medium mb-4">Ticket Settings</h3>
+        <p className="text-sm text-muted-foreground mb-6">
+          Configure ticket tags, quick responses, and form settings.
+        </p>
+      </div>
 
       <div className="space-y-6">
         {/* Quick Responses Section */}
         {showQuickResponses && (
-        <Collapsible open={visibleSection ? true : isQuickResponsesExpanded} onOpenChange={visibleSection ? undefined : setIsQuickResponsesExpanded}>
+        <Collapsible open={isQuickResponsesExpanded} onOpenChange={setIsQuickResponsesExpanded}>
             <CollapsibleTrigger className="flex items-center justify-between w-full p-4 bg-muted/50 rounded-lg hover:bg-muted/70 transition-colors">
               <div className="flex items-center">
                 <MessageCircle className="h-4 w-4 mr-2" />
@@ -833,7 +1592,7 @@ const TicketSettings = ({
                 )}
               </div>
             </CollapsibleTrigger>
-            
+
             <CollapsibleContent className="pt-4">
               <div className="border rounded-lg p-4">
                 <DndProvider backend={HTML5Backend}>
@@ -894,7 +1653,7 @@ const TicketSettings = ({
                               setQuickResponseToDelete({
                                 categoryId: category.id,
                                 actionId: action.id,
-                                actionName: action.title
+                                actionName: action.name
                               });
                               setQuickResponseDeleteDialogOpen(true);
                             }}
@@ -1354,667 +2113,11 @@ const TicketSettings = ({
           )}
         </div>
 
-      {/* Add AI Punishment Type Dialog */}
-      {isAddAIPunishmentDialogOpen && (
-        <Dialog open={isAddAIPunishmentDialogOpen} onOpenChange={setIsAddAIPunishmentDialogOpen}>
-          <DialogContent className="max-w-lg">
-            <DialogHeader>
-              <DialogTitle>Enable AI Punishment Type</DialogTitle>
-              <DialogDescription>
-                {selectedPunishmentTypeId ? (() => {
-                  const selectedType = punishmentTypesState.find(t => t.id === selectedPunishmentTypeId);
-                  return selectedType ? `Configure AI description for "${selectedType.name}" punishment type.` : 'Configure AI description for the selected punishment type.';
-                })() : 'Select a punishment type to enable for AI analysis.'}
-              </DialogDescription>
-            </DialogHeader>
-
-            <div className="space-y-4">
-              {/* Show selected punishment type details */}
-              {selectedPunishmentTypeId && (() => {
-                const selectedType = punishmentTypesState.find(t => t.id === selectedPunishmentTypeId);
-                return selectedType ? (
-                  <div className="bg-muted/30 p-3 rounded-lg">
-                    <div className="flex items-center justify-between">
-                      <div>
-                        <h5 className="font-medium">{selectedType.name}</h5>
-                        <div className="flex items-center gap-2 mt-1">
-                          <Badge variant="outline" className="text-xs">
-                            {selectedType.category}
-                          </Badge>
-                          <Badge variant="secondary" className="text-xs">
-                            Ordinal: {selectedType.ordinal}
-                          </Badge>
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-                ) : null;
-              })()}
-
-              {/* Punishment Type Selection */}
-              {!selectedPunishmentTypeId && (
-                <div className="space-y-2">
-                  <Label>Select Punishment Type</Label>
-                  <Select value={selectedPunishmentTypeId?.toString() || ''} onValueChange={(value) => setSelectedPunishmentTypeId(parseInt(value))}>
-                    <SelectTrigger>
-                      <SelectValue placeholder="Choose a punishment type..." />
-                    </SelectTrigger>
-                    <SelectContent className="max-h-60 overflow-y-auto">
-                      {punishmentTypesState
-                        .filter(pt => !Object.values(aiModerationSettings.aiPunishmentConfigs || {}).some((config: any) => config.name === pt.name))
-                        .map((punishmentType) => (
-                          <SelectItem key={punishmentType.id} value={punishmentType.id.toString()}>
-                            {punishmentType.name} ({punishmentType.category})
-                          </SelectItem>
-                        ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-              )}
-
-              {/* AI Description */}
-              {selectedPunishmentTypeId && (
-                <div className="space-y-2">
-                  <Label htmlFor="ai-punishment-desc">AI Description</Label>
-                  <Textarea
-                    id="ai-punishment-desc"
-                    className="min-h-[100px]"
-                    placeholder="Describe when this punishment type should be used. Be specific about the behaviors or violations it covers."
-                    value={newAIPunishmentDescription}
-                    onChange={(e) => setNewAIPunishmentDescription(e.target.value)}
-                  />
-                  <p className="text-xs text-muted-foreground">
-                    This description helps the AI understand when to suggest this punishment type.
-                  </p>
-                </div>
-              )}
-            </div>
-
-            <DialogFooter>
-              <Button
-                variant="outline"
-                onClick={() => {
-                  setIsAddAIPunishmentDialogOpen(false);
-                  setSelectedPunishmentTypeId(null);
-                  setNewAIPunishmentDescription('');
-                }}
-              >
-                Cancel
-              </Button>
-              <Button
-                onClick={() => {
-                  if (selectedPunishmentTypeId && newAIPunishmentDescription.trim()) {
-                    const selectedType = punishmentTypesState.find(t => t.id === selectedPunishmentTypeId);
-                    if (selectedType) {
-                      const newId = Date.now().toString();
-                      setAiModerationSettings((prev: any) => ({
-                        ...prev,
-                        aiPunishmentConfigs: {
-                          ...prev.aiPunishmentConfigs,
-                          [newId]: {
-                            id: newId,
-                            name: selectedType.name,
-                            aiDescription: newAIPunishmentDescription.trim(),
-                            enabled: true
-                          }
-                        }
-                      }));
-                    }
-                    setIsAddAIPunishmentDialogOpen(false);
-                    setSelectedPunishmentTypeId(null);
-                    setNewAIPunishmentDescription('');
-                  }
-                }}
-                disabled={!selectedPunishmentTypeId || !newAIPunishmentDescription.trim()}
-              >
-                Enable for AI
-              </Button>
-            </DialogFooter>
-          </DialogContent>
-        </Dialog>
-      )}
-
-      {/* Edit AI Punishment Type Dialog */}
-      {selectedAIPunishmentType && (
-        <Dialog open={Boolean(selectedAIPunishmentType)} onOpenChange={() => setSelectedAIPunishmentType(null)}>
-          <DialogContent className="max-w-lg">
-            <DialogHeader>
-              <DialogTitle>Edit AI Punishment Configuration</DialogTitle>
-              <DialogDescription>
-                Modify the AI description for "{selectedAIPunishmentType.name}" punishment type.
-              </DialogDescription>
-            </DialogHeader>
-
-            <div className="space-y-4">
-              {/* Show punishment type details */}
-              <div className="bg-muted/30 p-3 rounded-lg">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <h5 className="font-medium">{selectedAIPunishmentType.name}</h5>
-                  </div>
-                </div>
-              </div>
-
-              {/* AI Description */}
-              <div className="space-y-2">
-                <Label htmlFor="edit-ai-punishment-desc">AI Description</Label>
-                <Textarea
-                  id="edit-ai-punishment-desc"
-                  className="min-h-[100px]"
-                  value={newAIPunishmentDescription}
-                  onChange={(e) => setNewAIPunishmentDescription(e.target.value)}
-                />
-                <p className="text-xs text-muted-foreground">
-                  This description helps the AI understand when to suggest this punishment type.
-                </p>
-              </div>
-            </div>
-
-            <DialogFooter>
-              <Button
-                variant="outline"
-                onClick={() => {
-                  setSelectedAIPunishmentType(null);
-                  setNewAIPunishmentDescription('');
-                }}
-              >
-                Cancel
-              </Button>
-              <Button
-                onClick={() => {
-                  if (selectedAIPunishmentType && newAIPunishmentDescription.trim()) {
-                    setAiModerationSettings((prev: any) => ({
-                      ...prev,
-                      aiPunishmentConfigs: {
-                        ...prev.aiPunishmentConfigs,
-                        [selectedAIPunishmentType.id]: {
-                          ...selectedAIPunishmentType,
-                          aiDescription: newAIPunishmentDescription.trim()
-                        }
-                      }
-                    }));
-                    setSelectedAIPunishmentType(null);
-                    setNewAIPunishmentDescription('');
-                  }
-                }}
-                disabled={!newAIPunishmentDescription.trim()}
-              >
-                Save Changes
-              </Button>
-            </DialogFooter>
-          </DialogContent>
-        </Dialog>
-      )}
-
-      {/* Quick Response Action Dialog */}
-      <Dialog open={showActionDialog} onOpenChange={setShowActionDialog}>
-        <DialogContent className="max-w-2xl">
-          <DialogHeader>
-            <DialogTitle>
-              {editingAction ? 'Edit Quick Response' : 'Add Quick Response'}
-            </DialogTitle>
-            <DialogDescription>
-              Configure a quick response action with optional punishment or appeal handling.
-            </DialogDescription>
-          </DialogHeader>
-          <QuickResponseActionForm 
-            action={editingAction}
-            categoryId={selectedCategoryId}
-            quickResponsesState={quickResponsesState}
-            setQuickResponsesState={setQuickResponsesState}
-            punishmentTypes={punishmentTypesState}
-            onSave={() => {
-              setShowActionDialog(false);
-              setEditingAction(null);
-            }}
-            onCancel={() => {
-              setShowActionDialog(false);
-              setEditingAction(null);
-            }}
-          />
-        </DialogContent>
-      </Dialog>
-
-      {/* Quick Response Category Dialog */}
-      <Dialog open={showCategoryDialog} onOpenChange={setShowCategoryDialog}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>
-              {editingCategory ? 'Edit Category' : 'Add Category'}
-            </DialogTitle>
-            <DialogDescription>
-              Configure category settings and ticket type associations.
-            </DialogDescription>
-          </DialogHeader>
-          <QuickResponseCategoryForm 
-            category={editingCategory}
-            quickResponsesState={quickResponsesState}
-            setQuickResponsesState={setQuickResponsesState}
-            onSave={() => {
-              setShowCategoryDialog(false);
-              setEditingCategory(null);
-            }}
-            onCancel={() => {
-              setShowCategoryDialog(false);
-              setEditingCategory(null);
-            }}
-          />
-        </DialogContent>
-      </Dialog>
-
-      {/* Add/Edit Ticket Form Field Dialog */}
-      <Dialog open={isAddTicketFormFieldDialogOpen} onOpenChange={setIsAddTicketFormFieldDialogOpen}>
-        <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto">
-          <DialogHeader>
-            <DialogTitle>
-              {selectedTicketFormField ? 'Edit Form Field' : 'Add Form Field'}
-            </DialogTitle>
-            <DialogDescription>
-              Configure a custom field for the {selectedTicketFormType} form.
-            </DialogDescription>
-          </DialogHeader>
-
-          <div className="space-y-4">
-            {/* Field Label */}
-            <div className="space-y-2">
-              <Label htmlFor="field-label">Field Label</Label>
-              <Input
-                id="field-label"
-                placeholder="Enter field label"
-                value={newTicketFormFieldLabel}
-                onChange={(e) => setNewTicketFormFieldLabel(e.target.value)}
-              />
-            </div>
-
-            {/* Field Type */}
-            <div className="space-y-2">
-              <Label htmlFor="field-type">Field Type</Label>
-              <Select value={newTicketFormFieldType} onValueChange={(value: 'text' | 'textarea' | 'dropdown' | 'multiple_choice' | 'checkbox' | 'file_upload' | 'checkboxes' | 'description') => setNewTicketFormFieldType(value)}>
-                <SelectTrigger>
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="description">Description (Display Only)</SelectItem>
-                  <SelectItem value="text">Text Input</SelectItem>
-                  <SelectItem value="textarea">Textarea</SelectItem>
-                  <SelectItem value="dropdown">Dropdown</SelectItem>
-                  <SelectItem value="multiple_choice">Multiple Choice</SelectItem>
-                  <SelectItem value="checkbox">Checkbox</SelectItem>
-                  <SelectItem value="checkboxes">Checkboxes</SelectItem>
-                  <SelectItem value="file_upload">File Upload</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-
-            {/* Field Description */}
-            <div className="space-y-2">
-              <Label htmlFor="field-description">Description (Optional)</Label>
-              <Input
-                id="field-description"
-                placeholder="Enter field description"
-                value={newTicketFormFieldDescription}
-                onChange={(e) => setNewTicketFormFieldDescription(e.target.value)}
-              />
-            </div>
-
-            {/* Required Toggle - Hide for description fields */}
-            {newTicketFormFieldType !== 'description' && (
-              <div className="flex items-center space-x-2">
-                <Switch
-                  id="field-required"
-                  checked={newTicketFormFieldRequired}
-                  onCheckedChange={setNewTicketFormFieldRequired}
-                />
-                <Label htmlFor="field-required">Required Field</Label>
-              </div>
-            )}
-
-            {/* Section Assignment */}
-            <div className="space-y-2">
-              <Label htmlFor="field-section">Section</Label>
-              <Select
-                value={newTicketFormFieldSectionId}
-                onValueChange={setNewTicketFormFieldSectionId}
-              >
-                <SelectTrigger>
-                  <SelectValue placeholder="Select section" />
-                </SelectTrigger>
-                <SelectContent>
-                  {ticketForms[selectedTicketFormType as keyof TicketFormsConfiguration]?.sections
-                    ?.sort((a, b) => a.order - b.order)
-                    .map(section => (
-                      <SelectItem key={section.id} value={section.id}>
-                        {section.title}
-                      </SelectItem>
-                    ))}
-                </SelectContent>
-              </Select>
-            </div>
-
-            {/* Dropdown/Multiple Choice Options */}
-            {(newTicketFormFieldType === 'dropdown' || newTicketFormFieldType === 'multiple_choice') && (
-              <div className="space-y-2">
-                <Label>{newTicketFormFieldType === 'dropdown' ? 'Dropdown' : 'Multiple Choice'} Options</Label>
-                <div className="space-y-2">
-                  {newTicketFormFieldOptions.map((option, index) => (
-                    <div key={index} className="flex items-center gap-2">
-                      <Input value={option} readOnly className="flex-1" />
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        onClick={() => removeTicketFormFieldOption(index)}
-                        className="h-9 w-9 text-muted-foreground hover:text-destructive"
-                      >
-                        <X className="h-4 w-4" />
-                      </Button>
-                    </div>
-                  ))}
-                  <div className="flex gap-2">
-                    <Input
-                      placeholder="Add option"
-                      value={newTicketFormOption}
-                      onChange={(e) => setNewTicketFormOption(e.target.value)}
-                      onKeyDown={(e) => {
-                        if (e.key === 'Enter') {
-                          e.preventDefault();
-                          addNewTicketFormFieldOption();
-                        }
-                      }}
-                    />
-                    <Button
-                      type="button"
-                      onClick={addNewTicketFormFieldOption}
-                      disabled={!newTicketFormOption.trim()}
-                    >
-                      <Plus className="h-4 w-4" />
-                    </Button>
-                  </div>
-                </div>
-              </div>
-            )}
-
-            {/* Per-Option Section Navigation for Dropdown/Multiple Choice Fields */}
-            {(newTicketFormFieldType === 'dropdown' || newTicketFormFieldType === 'multiple_choice') && newTicketFormFieldOptions.length > 0 && (
-              <div className="space-y-3">
-                <button
-                  type="button"
-                  onClick={() => setIsOptionNavigationExpanded(!isOptionNavigationExpanded)}
-                  className="flex items-center gap-2 hover:bg-muted/50 p-1 rounded -ml-1 transition-colors"
-                >
-                  {isOptionNavigationExpanded ? (
-                    <ChevronDown className="h-4 w-4" />
-                  ) : (
-                    <ChevronRight className="h-4 w-4" />
-                  )}
-                  <Label className="text-sm font-medium cursor-pointer">Option Navigation (Optional)</Label>
-                </button>
-                
-                {isOptionNavigationExpanded && (
-                  <div className="pl-6 space-y-3">
-                    <p className="text-xs text-muted-foreground">
-                      Configure which section to show when each option is selected.
-                    </p>
-                    {newTicketFormFieldOptions.map((option, index) => (
-                      <div key={index} className="flex items-center gap-3">
-                        <div className="flex-1">
-                          <Label className="text-sm font-medium">{option}</Label>
-                        </div>
-                        <div className="flex-1">
-                          <Select
-                            value={newTicketFormFieldOptionSectionMapping[option] || ''}
-                            onValueChange={(value) => 
-                              setNewTicketFormFieldOptionSectionMapping(prev => ({
-                                ...prev,
-                                [option]: value
-                              }))
-                            }
-                          >
-                            <SelectTrigger>
-                              <SelectValue placeholder="No navigation" />
-                            </SelectTrigger>
-                            <SelectContent>
-                              <SelectItem value="__none__">No navigation</SelectItem>
-                              {ticketForms[selectedTicketFormType as keyof TicketFormsConfiguration]?.sections
-                                ?.filter(section => section.id !== newTicketFormFieldSectionId || !newTicketFormFieldSectionId)
-                                ?.sort((a, b) => a.order - b.order)
-                                .map(section => (
-                                  <SelectItem key={section.id} value={section.id}>
-                                    {section.title}
-                                  </SelectItem>
-                                ))}
-                            </SelectContent>
-                          </Select>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                )}
-              </div>
-            )}
-
-          </div>
-
-          <DialogFooter>
-            <Button
-              variant="outline"
-              onClick={() => {
-                setIsAddTicketFormFieldDialogOpen(false);
-                setSelectedTicketFormField(null);
-                setNewTicketFormFieldLabel('');
-                setNewTicketFormFieldType('text');
-                setNewTicketFormFieldDescription('');
-                setNewTicketFormFieldRequired(false);
-                setNewTicketFormFieldOptions([]);
-                setNewTicketFormFieldSectionId('');
-                setNewTicketFormFieldGoToSection('');
-                setNewTicketFormFieldOptionSectionMapping({});
-                setIsOptionNavigationExpanded(false);
-              }}
-            >
-              Cancel
-            </Button>
-            <Button
-              onClick={addTicketFormField}
-              disabled={!newTicketFormFieldLabel.trim()}
-            >
-              {selectedTicketFormField ? 'Update Field' : 'Add Field'}
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
-
-      {/* Add Section Dialog */}
-      <Dialog open={isAddTicketFormSectionDialogOpen} onOpenChange={setIsAddTicketFormSectionDialogOpen}>
-        <DialogContent className="max-w-md">
-          <DialogHeader>
-            <DialogTitle>{selectedTicketFormSection ? 'Edit Section' : 'Add Section'}</DialogTitle>
-            <DialogDescription>
-              {selectedTicketFormSection ? 'Update the section details below.' : 'Create a new section for organizing form fields.'}
-            </DialogDescription>
-          </DialogHeader>
-
-          <div className="space-y-4">
-            {/* Section Title */}
-            <div className="space-y-2">
-              <Label htmlFor="section-title">Section Title</Label>
-              <Input
-                id="section-title"
-                placeholder="Enter section title"
-                value={newTicketFormSectionTitle}
-                onChange={(e) => setNewTicketFormSectionTitle(e.target.value)}
-              />
-            </div>
-
-            {/* Section Description */}
-            <div className="space-y-2">
-              <Label htmlFor="section-description">Description (Optional)</Label>
-              <Input
-                id="section-description"
-                placeholder="Enter section description"
-                value={newTicketFormSectionDescription}
-                onChange={(e) => setNewTicketFormSectionDescription(e.target.value)}
-              />
-            </div>
-
-            {/* Hide by Default Option */}
-            <div className="flex items-center space-x-2">
-              <Switch
-                id="hide-by-default"
-                checked={newTicketFormSectionHideByDefault}
-                onCheckedChange={setNewTicketFormSectionHideByDefault}
-              />
-              <Label htmlFor="hide-by-default">Hide by default</Label>
-              <p className="text-xs text-muted-foreground">
-                Section will be hidden unless revealed by option navigation
-              </p>
-            </div>
-          </div>
-
-          <DialogFooter>
-            <Button
-              variant="outline"
-              onClick={() => {
-                setIsAddTicketFormSectionDialogOpen(false);
-                setSelectedTicketFormSection(null);
-                setNewTicketFormSectionTitle('');
-                setNewTicketFormSectionDescription('');
-                setNewTicketFormSectionHideByDefault(false);
-              }}
-            >
-              Cancel
-            </Button>
-            <Button
-              onClick={addTicketFormSection}
-              disabled={!newTicketFormSectionTitle.trim()}
-            >
-              {selectedTicketFormSection ? 'Update Section' : 'Add Section'}
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
-
-      {/* Tag Deletion Confirmation Dialog */}
-      <AlertDialog open={tagDeleteDialogOpen} onOpenChange={setTagDeleteDialogOpen}>
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>Delete Tag</AlertDialogTitle>
-            <AlertDialogDescription>
-              Are you sure you want to delete the tag "{tagToDelete?.name}"? This action cannot be undone.
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel>Cancel</AlertDialogCancel>
-            <AlertDialogAction onClick={confirmTagDelete} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
-              Delete
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
-
-      {/* Field Deletion Confirmation Dialog */}
-      <AlertDialog open={fieldDeleteDialogOpen} onOpenChange={setFieldDeleteDialogOpen}>
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>Delete Form Field</AlertDialogTitle>
-            <AlertDialogDescription>
-              Are you sure you want to delete the field "{fieldToDelete?.label}"? This action cannot be undone.
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel>Cancel</AlertDialogCancel>
-            <AlertDialogAction onClick={confirmFieldDelete} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
-              Delete
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
-
-      {/* Section Deletion Confirmation Dialog */}
-      <AlertDialog open={sectionDeleteDialogOpen} onOpenChange={setSectionDeleteDialogOpen}>
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>Delete Form Section</AlertDialogTitle>
-            <AlertDialogDescription>
-              Are you sure you want to delete the section "{sectionToDelete?.title}"? All fields in this section will also be deleted. This action cannot be undone.
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel>Cancel</AlertDialogCancel>
-            <AlertDialogAction onClick={confirmSectionDelete} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
-              Delete
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
-
-      {/* Quick Response Deletion Confirmation Dialog */}
-      <AlertDialog open={quickResponseDeleteDialogOpen} onOpenChange={setQuickResponseDeleteDialogOpen}>
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>Delete Quick Response</AlertDialogTitle>
-            <AlertDialogDescription>
-              Are you sure you want to delete the quick response "{quickResponseToDelete?.actionName}"? This action cannot be undone.
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel>Cancel</AlertDialogCancel>
-            <AlertDialogAction
-              onClick={() => {
-                if (quickResponseToDelete) {
-                  const updatedConfig = {
-                    ...quickResponsesState,
-                    categories: quickResponsesState.categories.map(cat =>
-                      cat.id === quickResponseToDelete.categoryId
-                        ? { ...cat, actions: cat.actions.filter(a => a.id !== quickResponseToDelete.actionId) }
-                        : cat
-                    )
-                  };
-                  setQuickResponsesState(updatedConfig);
-                }
-                setQuickResponseDeleteDialogOpen(false);
-                setQuickResponseToDelete(null);
-              }}
-              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
-            >
-              Delete
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
-
-      {/* AI Punishment Type Deletion Confirmation Dialog */}
-      <AlertDialog open={aiPunishmentDeleteDialogOpen} onOpenChange={setAiPunishmentDeleteDialogOpen}>
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>Remove AI Punishment Type</AlertDialogTitle>
-            <AlertDialogDescription>
-              Are you sure you want to remove "{aiPunishmentToDelete?.name}" from AI moderation? The AI will no longer suggest this punishment type.
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel>Cancel</AlertDialogCancel>
-            <AlertDialogAction
-              onClick={() => {
-                if (aiPunishmentToDelete) {
-                  setAiModerationSettings((prev: any) => {
-                    const newConfigs = { ...prev.aiPunishmentConfigs };
-                    delete newConfigs[aiPunishmentToDelete.id];
-                    return { ...prev, aiPunishmentConfigs: newConfigs };
-                  });
-                }
-                setAiPunishmentDeleteDialogOpen(false);
-                setAiPunishmentToDelete(null);
-              }}
-              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
-            >
-              Remove
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
+        {renderDialogs()}
     </div>
   );
 };
+
 
 // Quick Response Action Form Component
 const QuickResponseActionForm = ({ 

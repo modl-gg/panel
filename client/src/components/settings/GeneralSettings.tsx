@@ -129,8 +129,8 @@ const GeneralSettings = ({
     }
   }, []);
 
-  // Server Config Content (reusable)
-  const ServerConfigContent = () => (
+  // Server Config Content - rendered as JSX, not a function component to avoid re-renders
+  const serverConfigContent = (
     <div className="space-y-6">
       {/* Server Display Name */}
       <div className="space-y-2">
@@ -283,9 +283,7 @@ const GeneralSettings = ({
           <UsageSettings />
         )}
 
-        {visibleSection === 'server-config' && (
-          <ServerConfigContent />
-        )}
+        {visibleSection === 'server-config' && serverConfigContent}
 
         {visibleSection === 'domain' && hasPermission('admin.settings.view') && (
           <DomainSettings />
@@ -362,7 +360,7 @@ const GeneralSettings = ({
             </div>
           </CollapsibleTrigger>
           <CollapsibleContent className="pt-4">
-            <ServerConfigContent />
+            {serverConfigContent}
           </CollapsibleContent>
         </Collapsible>
 
