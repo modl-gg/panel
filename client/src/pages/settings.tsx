@@ -3092,7 +3092,15 @@ const Settings = () => {
 
             {/* Server & Billing Settings */}
             {expandedCategory === 'general' && expandedSubCategory && (
-              <GeneralSettings
+              <div className="space-y-4">
+                <h3 className="text-lg font-medium flex items-center gap-2">
+                  {expandedSubCategory === 'usage' && <><Globe className="h-5 w-5" />Usage</>}
+                  {expandedSubCategory === 'server-config' && <><SettingsIcon className="h-5 w-5" />Server Config</>}
+                  {expandedSubCategory === 'billing' && <><CreditCard className="h-5 w-5" />Billing</>}
+                  {expandedSubCategory === 'domain' && <><Globe className="h-5 w-5" />Domain</>}
+                  {expandedSubCategory === 'webhooks' && <><Bell className="h-5 w-5" />Webhooks</>}
+                </h3>
+                <GeneralSettings
                 serverDisplayName={serverDisplayName}
                 setServerDisplayName={setServerDisplayName}
                 discordWebhookUrl={discordWebhookUrl}
@@ -3125,11 +3133,17 @@ const Settings = () => {
                 savingWebhookSettings={savingWebhookSettings}
                 visibleSection={expandedSubCategory}
               />
+              </div>
             )}
 
             {/* Punishment Settings */}
             {expandedCategory === 'punishment' && expandedSubCategory && (
-              <PunishmentSettings
+              <div className="space-y-4">
+                <h3 className="text-lg font-medium flex items-center gap-2">
+                  {expandedSubCategory === 'thresholds' && <><Layers className="h-5 w-5" />Thresholds</>}
+                  {expandedSubCategory === 'types' && <><Layers className="h-5 w-5" />Punishment Types</>}
+                </h3>
+                <PunishmentSettings
                 statusThresholds={statusThresholds}
                 setStatusThresholds={setStatusThresholds}
                 punishmentTypes={punishmentTypes}
@@ -3142,6 +3156,7 @@ const Settings = () => {
                 setSelectedPunishment={setSelectedPunishment}
                 visibleSection={expandedSubCategory}
               />
+              </div>
             )}
 
             {/* Tickets Settings - Show selected sub-categories */}
@@ -3316,51 +3331,18 @@ const Settings = () => {
 
             {/* Staff & Roles Settings */}
             {expandedCategory === 'staff' && expandedSubCategory && (
-              <div className="space-y-6">
-                {expandedSubCategory === 'staff-management' && (
-                  <div>
-                    <h3 className="text-lg font-medium mb-4 flex items-center gap-2">
-                      <UserIcon className="h-5 w-5" />
-                      Staff Management
-                    </h3>
-                    <StaffManagementPanel />
-                  </div>
-                )}
-                {expandedSubCategory === 'roles-permissions' && (
-                  <div>
-                    <h3 className="text-lg font-medium mb-4 flex items-center gap-2">
-                      <Shield className="h-5 w-5" />
-                      Roles & Permissions
-                    </h3>
-                    <StaffRolesCard />
-                  </div>
-                )}
-              </div>
+              <>
+                {expandedSubCategory === 'staff-management' && <StaffManagementPanel />}
+                {expandedSubCategory === 'roles-permissions' && <StaffRolesCard />}
+              </>
             )}
 
             {/* Knowledgebase & Homepage Settings */}
-            {/* Knowledgebase & Homepage Settings */}
             {expandedCategory === 'knowledgebase' && expandedSubCategory && (
-              <div className="space-y-6">
-                {expandedSubCategory === 'knowledgebase-articles' && (
-                  <div>
-                    <h3 className="text-lg font-medium mb-4 flex items-center gap-2">
-                      <BookOpen className="h-5 w-5" />
-                      Knowledgebase
-                    </h3>
-                    <KnowledgebaseSettings />
-                  </div>
-                )}
-                {expandedSubCategory === 'homepage-cards' && (
-                  <div>
-                    <h3 className="text-lg font-medium mb-4 flex items-center gap-2">
-                      <Home className="h-5 w-5" />
-                      Homepage Cards
-                    </h3>
-                    <HomepageCardSettings />
-                  </div>
-                )}
-              </div>
+              <>
+                {expandedSubCategory === 'knowledgebase-articles' && <KnowledgebaseSettings />}
+                {expandedSubCategory === 'homepage-cards' && <HomepageCardSettings />}
+              </>
             )}
           </CardContent>
         </Card>

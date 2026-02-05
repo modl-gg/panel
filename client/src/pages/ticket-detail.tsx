@@ -44,7 +44,8 @@ import {
 import { Button } from '@modl-gg/shared-web/components/ui/button';
 import { Badge } from '@modl-gg/shared-web/components/ui/badge';
 import { Checkbox } from '@modl-gg/shared-web/components/ui/checkbox';
-import { useTicket, usePanelTicket, useUpdateTicket, useSettings, useStaff, useModifyPunishment, useApplyPunishment, useQuickResponses, usePunishmentTypes } from '@/hooks/use-data';
+import { useTicket, usePanelTicket, useUpdateTicket, useSettings, useStaff, useModifyPunishment, useApplyPunishment, useQuickResponses, usePunishmentTypes, useLabels } from '@/hooks/use-data';
+import { LabelBadge } from '@/components/ui/label-badge';
 import { QuickResponsesConfiguration, defaultQuickResponsesConfig } from '@/types/quickResponses';
 import { useToast } from '@/hooks/use-toast';
 import PageContainer from '@/components/layout/PageContainer';
@@ -941,6 +942,9 @@ const TicketDetail = () => {
   // Fetch staff data to get assigned Minecraft accounts
   const { data: staffData } = useStaff();
 
+  // Fetch available labels from settings
+  const { data: availableLabels = [] } = useLabels();
+
 
 
 
@@ -1716,91 +1720,58 @@ const TicketDetail = () => {
                         {ticketDetails.status === 'Open' ? 'Open' : 'Closed'}
                       </Badge>
                       
-                      {/* Display the tags */}
-                      {ticketDetails.tags && ticketDetails.tags.map((tag, index) => (
-                        <Badge key={index} variant="outline" className="bg-blue-50 text-blue-700 border-blue-200 py-1">
-                          {tag}
-                          <Button 
-                            variant="ghost" 
-                            size="icon" 
-                            className="h-4 w-4 rounded-full hover:bg-blue-100 ml-1 p-0" 
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              handleRemoveTag(tag);
-                            }}
-                          >
-                            <X className="h-3 w-3" />
-                          </Button>
-                        </Badge>
-                      ))}
-                      
-                      {/* Label add button */}
-                      <Popover>
-                        <PopoverTrigger asChild>
-                          <Button variant="outline" size="sm" className="h-6 px-2 py-1 text-xs rounded-full gap-1 bg-background">
-                            <Tag className="h-3 w-3" />
-                            <Plus className="h-3 w-3" />
-                          </Button>
-                        </PopoverTrigger>
-                        <PopoverContent className="w-64 p-3" align="start">
-                          <div className="space-y-2">
-                            <h4 className="text-sm font-medium">Add Label</h4>
-                            <div className="flex items-center space-x-2">
-                              <input
-                                className="flex h-8 w-full rounded-md border border-input bg-background px-3 py-1 text-sm shadow-sm transition-colors file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50"
-                                placeholder="New label"
-                                value={ticketDetails.newTag || ''}
-                                onChange={(e) =>
-                                  setTicketDetails(prev => ({
-                                    ...prev,
-                                    newTag: e.target.value
-                                  }))
-                                }
-                                onKeyDown={(e) => {
-                                  if (e.key === 'Enter' && ticketDetails.newTag?.trim()) {
-                                    handleAddTag(ticketDetails.newTag);
-                                  }
-                                }}
-                              />
-                              <Button
-                                size="sm"
-                                onClick={() => {
-                                  if (ticketDetails.newTag?.trim()) {
-                                    handleAddTag(ticketDetails.newTag);
-                                  }
-                                }}
-                                disabled={!ticketDetails.newTag?.trim()}
-                              >
-                                Add
+                      {/* Display the tags using LabelBadge */}
+                      {ticketDetails.tags && ticketDetails.tags.map((tag, index) => {
+                        const labelConfig = availableLabels.find((l: any) => l.name === tag);
+                        return (
+                          <LabelBadge
+                            key={index}
+                            name={tag}
+                            color={labelConfig?.color || '#6366f1'}
+                            onRemove={() => handleRemoveTag(tag)}
+                          />
+                        );
+                      })}
+
+                      {/* Label add dropdown */}
+                      {(() => {
+                        const unusedLabels = availableLabels.filter((label: any) =>
+                          !ticketDetails.tags?.includes(label.name)
+                        );
+                        if (unusedLabels.length === 0) return null;
+                        return (
+                          <Popover>
+                            <PopoverTrigger asChild>
+                              <Button variant="outline" size="sm" className="h-6 px-2 py-1 text-xs rounded-full gap-1 bg-background">
+                                <Tag className="h-3 w-3" />
+                                <Plus className="h-3 w-3" />
                               </Button>
-                            </div>
-                            <div className="mt-2">
-                              <h5 className="text-xs text-muted-foreground mb-1">Suggested labels:</h5>
-                              <div className="flex flex-wrap gap-1">
-                                {getDefaultTagsForCategory(ticketDetails.category).map((tag, idx) => (
-                                  <Badge
-                                    key={idx}
-                                    variant="outline"
-                                    className="cursor-pointer bg-muted/20 hover:bg-muted/40"
-                                    onClick={() => {
-                                      if (!ticketDetails.tags?.includes(tag)) {
-                                        handleAddTag(tag);
-                                      }
-                                    }}
+                            </PopoverTrigger>
+                            <PopoverContent className="w-48 p-2" align="start">
+                              <div className="space-y-1">
+                                {unusedLabels.map((label: any) => (
+                                  <button
+                                    key={label.id}
+                                    className="w-full flex items-center gap-2 px-2 py-1.5 text-sm rounded hover:bg-muted transition-colors text-left"
+                                    onClick={() => handleAddTag(label.name)}
                                   >
-                                    {tag}
-                                  </Badge>
+                                    <span
+                                      className="w-3 h-3 rounded-full shrink-0"
+                                      style={{ backgroundColor: label.color }}
+                                    />
+                                    {label.name}
+                                  </button>
                                 ))}
                               </div>
-                            </div>
-                          </div>
-                        </PopoverContent>
-                      </Popover>
+                            </PopoverContent>
+                          </Popover>
+                        );
+                      })()}
                     </div>
                   </div>
                 </div>
-                
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-x-4 gap-y-2 mt-2 text-sm">
+
+                <div className="flex flex-wrap gap-x-6 gap-y-1 mt-2 text-sm">
                   <div>
                     <span className="text-muted-foreground">Opened by:</span>
                     <span className="ml-1">
