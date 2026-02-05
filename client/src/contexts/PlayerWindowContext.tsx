@@ -1,4 +1,5 @@
 import React, { createContext, useContext, useState, useCallback, ReactNode } from 'react';
+import { createPortal } from 'react-dom';
 import PlayerWindow from '@/components/windows/PlayerWindow';
 
 interface WindowPosition {
@@ -91,16 +92,21 @@ export function PlayerWindowProvider({ children }: { children: ReactNode }) {
   return (
     <PlayerWindowContext.Provider value={contextValue}>
       {children}
-      {/* Render all player windows */}
-      {windows.map(window => (
-        <PlayerWindow
-          key={window.id}
-          playerId={window.playerId}
-          isOpen={window.isOpen}
-          onClose={() => closePlayerWindow(window.id)}
-          initialPosition={window.position}
-        />
-      ))}
+      {/* Render all player windows via portal to ensure they appear above modals */}
+      {typeof document !== 'undefined' && createPortal(
+        <>
+          {windows.map(window => (
+            <PlayerWindow
+              key={window.id}
+              playerId={window.playerId}
+              isOpen={window.isOpen}
+              onClose={() => closePlayerWindow(window.id)}
+              initialPosition={window.position}
+            />
+          ))}
+        </>,
+        document.body
+      )}
     </PlayerWindowContext.Provider>
   );
 }
