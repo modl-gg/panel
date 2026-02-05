@@ -753,14 +753,14 @@ const Settings = () => {
   const isMobile = useIsMobile();
   const mainContentClass = "ml-[32px] pl-8";
   const [expandedCategory, setExpandedCategory] = useState<string | null>('account');
-  const [expandedSubCategory, setExpandedSubCategory] = useState<string | null>(null);
+  const [expandedSubCategories, setExpandedSubCategories] = useState<Set<string>>(new Set());
 
   // Update URL when category changes
-  const updateURL = (category: string, subCategory?: string) => {
+  const updateURL = (category: string, subCategories?: string[]) => {
     const url = new URL(window.location.href);
     url.searchParams.set('category', category);
-    if (subCategory) {
-      url.searchParams.set('sub', subCategory);
+    if (subCategories && subCategories.length > 0) {
+      url.searchParams.set('sub', subCategories.join(','));
     } else {
       url.searchParams.delete('sub');
     }
@@ -771,7 +771,7 @@ const Settings = () => {
   useEffect(() => {
     const urlParams = new URLSearchParams(window.location.search);
     const urlCategory = urlParams.get('category') || urlParams.get('tab'); // Support legacy tab param
-    const urlSubCategory = urlParams.get('sub') || urlParams.get('section');
+    const urlSubCategories = urlParams.get('sub') || urlParams.get('section');
 
     // Handle legacy session_id parameter
     if (urlParams.has('session_id') && user?.role === 'Super Admin') {
@@ -792,8 +792,8 @@ const Settings = () => {
       // Check if user can access the requested category
       if (canAccessSettingsTab(mappedCategory as any) || mappedCategory === 'account') {
         setExpandedCategory(mappedCategory);
-        if (urlSubCategory) {
-          setExpandedSubCategory(urlSubCategory);
+        if (urlSubCategories) {
+          setExpandedSubCategories(new Set(urlSubCategories.split(',')));
         }
       } else {
         // User doesn't have permission, redirect to account
@@ -803,31 +803,40 @@ const Settings = () => {
     }
   }, [user, canAccessSettingsTab]);
 
-  // Handle category expansion - only one category open at a time
-  const handleCategoryToggle = (category: string) => {
-    if (expandedCategory === category) {
-      // Don't collapse if clicking the same category
-      return;
-    }
+  // Handle category selection - clicking a card selects that category
+  const handleCategorySelect = (category: string) => {
     setExpandedCategory(category);
-    setExpandedSubCategory(null);
+    setExpandedSubCategories(new Set());
     updateURL(category);
   };
 
-  // Handle sub-category expansion within a category
+  // Handle sub-category toggle (multi-select for tickets)
   const handleSubCategoryToggle = (category: string, subCategory: string) => {
+    // First, select the category if not already selected
     if (expandedCategory !== category) {
       setExpandedCategory(category);
+      setExpandedSubCategories(new Set([subCategory]));
+      updateURL(category, [subCategory]);
+    } else {
+      // Toggle the sub-category in the set
+      setExpandedSubCategories(prev => {
+        const newSet = new Set(prev);
+        if (newSet.has(subCategory)) {
+          newSet.delete(subCategory);
+        } else {
+          newSet.add(subCategory);
+        }
+        updateURL(category, Array.from(newSet));
+        return newSet;
+      });
     }
-    setExpandedSubCategory(expandedSubCategory === subCategory ? null : subCategory);
-    updateURL(category, expandedSubCategory === subCategory ? undefined : subCategory);
   };
 
-  // Expand all sub-categories when clicking the main category card
-  const handleExpandAllSubCategories = (category: string) => {
+  // Select all sub-categories when clicking the main category card header
+  const handleSelectAllSubCategories = (category: string, subCategoryIds: string[]) => {
     setExpandedCategory(category);
-    setExpandedSubCategory('all');
-    updateURL(category, 'all');
+    setExpandedSubCategories(new Set(subCategoryIds));
+    updateURL(category, subCategoryIds);
   };
   
   // Auto-save state
@@ -2999,6 +3008,9 @@ const Settings = () => {
     },
   ];
 
+  // Get the currently expanded category object
+  const currentCategory = settingsCategories.find(c => c.id === expandedCategory);
+
   return (
     <PageContainer>
       <div className="flex flex-col space-y-6">
@@ -3028,273 +3040,369 @@ const Settings = () => {
           </div>
         </div>
 
-        <div className="space-y-4">
+        {/* Category Cards Grid */}
+        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
           {settingsCategories.map((category) => {
             // Check permission
             if (category.permission && !canAccessSettingsTab(category.permission as any)) {
               return null;
             }
 
-            const isExpanded = expandedCategory === category.id;
+            const isSelected = expandedCategory === category.id;
             const Icon = category.icon;
 
             return (
-              <Card key={category.id} className={isExpanded ? 'ring-2 ring-primary' : ''}>
-                {/* Category Header */}
-                <div
-                  className="p-4 cursor-pointer hover:bg-muted/50 transition-colors"
-                  onClick={() => category.subCategories ? handleExpandAllSubCategories(category.id) : handleCategoryToggle(category.id)}
-                >
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-4">
-                      <div className="p-2 rounded-lg bg-muted">
-                        <Icon className="h-5 w-5 text-muted-foreground" />
-                      </div>
-                      <div>
-                        <h3 className="font-medium">{category.title}</h3>
-                        <p className="text-sm text-muted-foreground">{category.description}</p>
-                      </div>
+              <Card
+                key={category.id}
+                className={`cursor-pointer transition-all hover:bg-muted/50 ${isSelected ? 'ring-2 ring-primary bg-muted/30' : ''}`}
+                onClick={() => {
+                  if (category.subCategories) {
+                    handleSelectAllSubCategories(category.id, category.subCategories.map(s => s.id));
+                  } else {
+                    handleCategorySelect(category.id);
+                  }
+                }}
+              >
+                <CardContent className="p-4">
+                  <div className="flex flex-col items-center text-center">
+                    <div className={`p-3 rounded-lg mb-3 ${isSelected ? 'bg-primary/10' : 'bg-muted'}`}>
+                      <Icon className={`h-6 w-6 ${isSelected ? 'text-primary' : 'text-muted-foreground'}`} />
                     </div>
-                    <div className="flex items-center gap-2">
-                      {isExpanded ? (
-                        <ChevronDown className="h-5 w-5 text-muted-foreground" />
-                      ) : (
-                        <ChevronRight className="h-5 w-5 text-muted-foreground" />
-                      )}
-                    </div>
+                    <h3 className={`font-medium text-sm mb-1 ${isSelected ? 'text-primary' : ''}`}>{category.title}</h3>
+                    <p className="text-xs text-muted-foreground line-clamp-2">{category.description}</p>
+
+                    {/* Sub-categories list */}
+                    {category.subCategories && (
+                      <div className="mt-3 w-full space-y-1">
+                        {category.subCategories.map((sub) => {
+                          const SubIcon = sub.icon;
+                          const isSubSelected = isSelected && expandedSubCategories.has(sub.id);
+                          return (
+                            <div
+                              key={sub.id}
+                              className={`flex items-center gap-2 p-1.5 rounded text-xs cursor-pointer transition-colors ${
+                                isSubSelected ? 'bg-primary/10 text-primary' : 'hover:bg-muted text-muted-foreground'
+                              }`}
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                handleSubCategoryToggle(category.id, sub.id);
+                              }}
+                            >
+                              <SubIcon className="h-3 w-3 flex-shrink-0" />
+                              <span className="truncate">{sub.title}</span>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    )}
                   </div>
-
-                  {/* Sub-categories list (when collapsed) */}
-                  {category.subCategories && !isExpanded && (
-                    <div className="mt-3 flex flex-wrap gap-2">
-                      {category.subCategories.map((sub) => {
-                        const SubIcon = sub.icon;
-                        return (
-                          <Button
-                            key={sub.id}
-                            variant="outline"
-                            size="sm"
-                            className="text-xs"
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              handleSubCategoryToggle(category.id, sub.id);
-                            }}
-                          >
-                            <SubIcon className="h-3 w-3 mr-1" />
-                            {sub.title}
-                          </Button>
-                        );
-                      })}
-                    </div>
-                  )}
-                </div>
-
-                {/* Expanded Content */}
-                {isExpanded && (
-                  <CardContent className="pt-0">
-                    {/* Account Settings */}
-                    {category.id === 'account' && (
-                      <AccountSettings
-                        profileUsername={profileUsername}
-                        setProfileUsername={setProfileUsername}
-                        currentEmail={currentEmail}
-                        setCurrentEmail={setCurrentEmail}
-                      />
-                    )}
-
-                    {/* Server & Billing Settings */}
-                    {category.id === 'general' && (
-                      <GeneralSettings
-                        serverDisplayName={serverDisplayName}
-                        setServerDisplayName={setServerDisplayName}
-                        discordWebhookUrl={discordWebhookUrl}
-                        setDiscordWebhookUrl={setDiscordWebhookUrl}
-                        homepageIconUrl={homepageIconUrl}
-                        panelIconUrl={panelIconUrl}
-                        uploadingHomepageIcon={uploadingHomepageIcon}
-                        uploadingPanelIcon={uploadingPanelIcon}
-                        handleHomepageIconUpload={handleHomepageIconUpload}
-                        handlePanelIconUpload={handlePanelIconUpload}
-                        apiKey={apiKey}
-                        fullApiKey={fullApiKey}
-                        showApiKey={showApiKey}
-                        apiKeyCopied={apiKeyCopied}
-                        isGeneratingApiKey={isGeneratingApiKey}
-                        isRevokingApiKey={isRevokingApiKey}
-                        generateApiKey={generateApiKey}
-                        revokeApiKey={revokeApiKey}
-                        revealApiKey={revealApiKey}
-                        copyApiKey={copyApiKey}
-                        maskApiKey={maskApiKey}
-                        usageData={usageData}
-                        getBillingSummary={getBillingSummary}
-                        getUsageSummary={getUsageSummary}
-                        getServerConfigSummary={getServerConfigSummary}
-                        getDomainSummary={getDomainSummary}
-                        webhookSettings={settingsData?.settings?.webhookSettings}
-                        getWebhookSummary={getWebhookSummary}
-                        handleWebhookSave={handleWebhookSave}
-                        savingWebhookSettings={savingWebhookSettings}
-                      />
-                    )}
-
-                    {/* Punishment Types Settings */}
-                    {category.id === 'punishment' && (
-                      <PunishmentSettings
-                        statusThresholds={statusThresholds}
-                        setStatusThresholds={setStatusThresholds}
-                        punishmentTypes={punishmentTypes}
-                        newPunishmentName={newPunishmentName}
-                        setNewPunishmentName={setNewPunishmentName}
-                        newPunishmentCategory={newPunishmentCategory}
-                        setNewPunishmentCategory={setNewPunishmentCategory}
-                        addPunishmentType={addPunishmentType}
-                        removePunishmentType={removePunishmentType}
-                        setSelectedPunishment={setSelectedPunishment}
-                      />
-                    )}
-
-                    {/* Tickets Settings with Sub-categories */}
-                    {category.id === 'tickets' && category.subCategories && (
-                      <div className="space-y-4">
-                        {category.subCategories.map((sub) => {
-                          const SubIcon = sub.icon;
-                          const isSubExpanded = expandedSubCategory === 'all' || expandedSubCategory === sub.id;
-
-                          return (
-                            <div key={sub.id} className="border rounded-lg">
-                              <div
-                                className="p-3 cursor-pointer hover:bg-muted/50 transition-colors flex items-center justify-between"
-                                onClick={() => handleSubCategoryToggle(category.id, sub.id)}
-                              >
-                                <div className="flex items-center gap-3">
-                                  <SubIcon className="h-4 w-4 text-muted-foreground" />
-                                  <span className="font-medium text-sm">{sub.title}</span>
-                                </div>
-                                {isSubExpanded ? (
-                                  <ChevronDown className="h-4 w-4 text-muted-foreground" />
-                                ) : (
-                                  <ChevronRight className="h-4 w-4 text-muted-foreground" />
-                                )}
-                              </div>
-                              {isSubExpanded && (
-                                <div className="p-4 pt-0">
-                                  <TicketSettings
-                                    quickResponsesState={quickResponsesState}
-                                    setQuickResponsesState={setQuickResponsesState}
-                                    labels={labels}
-                                    setLabels={setLabelsState}
-                                    bugReportTags={bugReportTags}
-                                    setBugReportTags={setBugReportTagsState}
-                                    playerReportTags={playerReportTags}
-                                    setPlayerReportTags={setPlayerReportTagsState}
-                                    appealTags={appealTags}
-                                    setAppealTags={setAppealTagsState}
-                                    newBugTag={newBugTag}
-                                    setNewBugTag={setNewBugTag}
-                                    newPlayerTag={newPlayerTag}
-                                    setNewPlayerTag={setNewPlayerTag}
-                                    newAppealTag={newAppealTag}
-                                    setNewAppealTag={setNewAppealTag}
-                                    ticketForms={ticketForms}
-                                    setTicketForms={setTicketFormsState}
-                                    selectedTicketFormType={selectedTicketFormType}
-                                    setSelectedTicketFormType={setSelectedTicketFormType}
-                                    aiModerationSettings={aiModerationSettings}
-                                    setAiModerationSettings={setAiModerationSettings}
-                                    punishmentTypesState={punishmentTypes}
-                                    onEditSection={onEditSection}
-                                    onDeleteSection={onDeleteSection}
-                                    onEditField={onEditField}
-                                    onDeleteField={onDeleteField}
-                                    onAddField={onAddField}
-                                    moveField={moveField}
-                                    moveFieldBetweenSections={moveFieldBetweenSections}
-                                    visibleSection={sub.id}
-                                  />
-                                </div>
-                              )}
-                            </div>
-                          );
-                        })}
-                      </div>
-                    )}
-
-                    {/* Staff & Roles Settings with Sub-categories */}
-                    {category.id === 'staff' && category.subCategories && (
-                      <div className="space-y-4">
-                        {category.subCategories.map((sub) => {
-                          const SubIcon = sub.icon;
-                          const isSubExpanded = expandedSubCategory === 'all' || expandedSubCategory === sub.id;
-
-                          return (
-                            <div key={sub.id} className="border rounded-lg">
-                              <div
-                                className="p-3 cursor-pointer hover:bg-muted/50 transition-colors flex items-center justify-between"
-                                onClick={() => handleSubCategoryToggle(category.id, sub.id)}
-                              >
-                                <div className="flex items-center gap-3">
-                                  <SubIcon className="h-4 w-4 text-muted-foreground" />
-                                  <span className="font-medium text-sm">{sub.title}</span>
-                                </div>
-                                {isSubExpanded ? (
-                                  <ChevronDown className="h-4 w-4 text-muted-foreground" />
-                                ) : (
-                                  <ChevronRight className="h-4 w-4 text-muted-foreground" />
-                                )}
-                              </div>
-                              {isSubExpanded && (
-                                <div className="p-4 pt-0">
-                                  {sub.id === 'staff-management' && <StaffManagementPanel />}
-                                  {sub.id === 'roles-permissions' && <StaffRolesCard />}
-                                </div>
-                              )}
-                            </div>
-                          );
-                        })}
-                      </div>
-                    )}
-
-                    {/* Knowledgebase & Homepage Settings with Sub-categories */}
-                    {category.id === 'knowledgebase' && category.subCategories && (
-                      <div className="space-y-4">
-                        {category.subCategories.map((sub) => {
-                          const SubIcon = sub.icon;
-                          const isSubExpanded = expandedSubCategory === 'all' || expandedSubCategory === sub.id;
-
-                          return (
-                            <div key={sub.id} className="border rounded-lg">
-                              <div
-                                className="p-3 cursor-pointer hover:bg-muted/50 transition-colors flex items-center justify-between"
-                                onClick={() => handleSubCategoryToggle(category.id, sub.id)}
-                              >
-                                <div className="flex items-center gap-3">
-                                  <SubIcon className="h-4 w-4 text-muted-foreground" />
-                                  <span className="font-medium text-sm">{sub.title}</span>
-                                </div>
-                                {isSubExpanded ? (
-                                  <ChevronDown className="h-4 w-4 text-muted-foreground" />
-                                ) : (
-                                  <ChevronRight className="h-4 w-4 text-muted-foreground" />
-                                )}
-                              </div>
-                              {isSubExpanded && (
-                                <div className="p-4 pt-0">
-                                  {sub.id === 'knowledgebase-articles' && <KnowledgebaseSettings />}
-                                  {sub.id === 'homepage-cards' && <HomepageCardSettings />}
-                                </div>
-                              )}
-                            </div>
-                          );
-                        })}
-                      </div>
-                    )}
-                  </CardContent>
-                )}
+                </CardContent>
               </Card>
             );
           })}
         </div>
+
+        {/* Expanded Content Section - Below all cards */}
+        {expandedCategory && currentCategory && (
+          <Card>
+            <CardContent className="p-6">
+              {/* Account Settings */}
+              {expandedCategory === 'account' && (
+                <AccountSettings
+                  profileUsername={profileUsername}
+                  setProfileUsername={setProfileUsername}
+                  currentEmail={currentEmail}
+                  setCurrentEmail={setCurrentEmail}
+                />
+              )}
+
+              {/* Server & Billing Settings */}
+              {expandedCategory === 'general' && (
+                <GeneralSettings
+                  serverDisplayName={serverDisplayName}
+                  setServerDisplayName={setServerDisplayName}
+                  discordWebhookUrl={discordWebhookUrl}
+                  setDiscordWebhookUrl={setDiscordWebhookUrl}
+                  homepageIconUrl={homepageIconUrl}
+                  panelIconUrl={panelIconUrl}
+                  uploadingHomepageIcon={uploadingHomepageIcon}
+                  uploadingPanelIcon={uploadingPanelIcon}
+                  handleHomepageIconUpload={handleHomepageIconUpload}
+                  handlePanelIconUpload={handlePanelIconUpload}
+                  apiKey={apiKey}
+                  fullApiKey={fullApiKey}
+                  showApiKey={showApiKey}
+                  apiKeyCopied={apiKeyCopied}
+                  isGeneratingApiKey={isGeneratingApiKey}
+                  isRevokingApiKey={isRevokingApiKey}
+                  generateApiKey={generateApiKey}
+                  revokeApiKey={revokeApiKey}
+                  revealApiKey={revealApiKey}
+                  copyApiKey={copyApiKey}
+                  maskApiKey={maskApiKey}
+                  usageData={usageData}
+                  getBillingSummary={getBillingSummary}
+                  getUsageSummary={getUsageSummary}
+                  getServerConfigSummary={getServerConfigSummary}
+                  getDomainSummary={getDomainSummary}
+                  webhookSettings={settingsData?.settings?.webhookSettings}
+                  getWebhookSummary={getWebhookSummary}
+                  handleWebhookSave={handleWebhookSave}
+                  savingWebhookSettings={savingWebhookSettings}
+                />
+              )}
+
+              {/* Punishment Types Settings */}
+              {expandedCategory === 'punishment' && (
+                <PunishmentSettings
+                  statusThresholds={statusThresholds}
+                  setStatusThresholds={setStatusThresholds}
+                  punishmentTypes={punishmentTypes}
+                  newPunishmentName={newPunishmentName}
+                  setNewPunishmentName={setNewPunishmentName}
+                  newPunishmentCategory={newPunishmentCategory}
+                  setNewPunishmentCategory={setNewPunishmentCategory}
+                  addPunishmentType={addPunishmentType}
+                  removePunishmentType={removePunishmentType}
+                  setSelectedPunishment={setSelectedPunishment}
+                />
+              )}
+
+              {/* Tickets Settings - Show selected sub-categories */}
+              {expandedCategory === 'tickets' && (
+                <div className="space-y-6">
+                  {expandedSubCategories.has('quick-responses') && (
+                    <div>
+                      <h3 className="text-lg font-medium mb-4 flex items-center gap-2">
+                        <MessageCircle className="h-5 w-5" />
+                        Quick Responses
+                      </h3>
+                      <TicketSettings
+                        quickResponsesState={quickResponsesState}
+                        setQuickResponsesState={setQuickResponsesState}
+                        labels={labels}
+                        setLabels={setLabelsState}
+                        bugReportTags={bugReportTags}
+                        setBugReportTags={setBugReportTagsState}
+                        playerReportTags={playerReportTags}
+                        setPlayerReportTags={setPlayerReportTagsState}
+                        appealTags={appealTags}
+                        setAppealTags={setAppealTagsState}
+                        newBugTag={newBugTag}
+                        setNewBugTag={setNewBugTag}
+                        newPlayerTag={newPlayerTag}
+                        setNewPlayerTag={setNewPlayerTag}
+                        newAppealTag={newAppealTag}
+                        setNewAppealTag={setNewAppealTag}
+                        ticketForms={ticketForms}
+                        setTicketForms={setTicketFormsState}
+                        selectedTicketFormType={selectedTicketFormType}
+                        setSelectedTicketFormType={setSelectedTicketFormType}
+                        aiModerationSettings={aiModerationSettings}
+                        setAiModerationSettings={setAiModerationSettings}
+                        punishmentTypesState={punishmentTypes}
+                        onEditSection={onEditSection}
+                        onDeleteSection={onDeleteSection}
+                        onEditField={onEditField}
+                        onDeleteField={onDeleteField}
+                        onAddField={onAddField}
+                        moveField={moveField}
+                        moveFieldBetweenSections={moveFieldBetweenSections}
+                        visibleSection="quick-responses"
+                      />
+                    </div>
+                  )}
+                  {expandedSubCategories.has('label-management') && (
+                    <div>
+                      <h3 className="text-lg font-medium mb-4 flex items-center gap-2">
+                        <Tag className="h-5 w-5" />
+                        Label Management
+                      </h3>
+                      <TicketSettings
+                        quickResponsesState={quickResponsesState}
+                        setQuickResponsesState={setQuickResponsesState}
+                        labels={labels}
+                        setLabels={setLabelsState}
+                        bugReportTags={bugReportTags}
+                        setBugReportTags={setBugReportTagsState}
+                        playerReportTags={playerReportTags}
+                        setPlayerReportTags={setPlayerReportTagsState}
+                        appealTags={appealTags}
+                        setAppealTags={setAppealTagsState}
+                        newBugTag={newBugTag}
+                        setNewBugTag={setNewBugTag}
+                        newPlayerTag={newPlayerTag}
+                        setNewPlayerTag={setNewPlayerTag}
+                        newAppealTag={newAppealTag}
+                        setNewAppealTag={setNewAppealTag}
+                        ticketForms={ticketForms}
+                        setTicketForms={setTicketFormsState}
+                        selectedTicketFormType={selectedTicketFormType}
+                        setSelectedTicketFormType={setSelectedTicketFormType}
+                        aiModerationSettings={aiModerationSettings}
+                        setAiModerationSettings={setAiModerationSettings}
+                        punishmentTypesState={punishmentTypes}
+                        onEditSection={onEditSection}
+                        onDeleteSection={onDeleteSection}
+                        onEditField={onEditField}
+                        onDeleteField={onDeleteField}
+                        onAddField={onAddField}
+                        moveField={moveField}
+                        moveFieldBetweenSections={moveFieldBetweenSections}
+                        visibleSection="label-management"
+                      />
+                    </div>
+                  )}
+                  {expandedSubCategories.has('ticket-forms') && (
+                    <div>
+                      <h3 className="text-lg font-medium mb-4 flex items-center gap-2">
+                        <Layers className="h-5 w-5" />
+                        Ticket Forms
+                      </h3>
+                      <TicketSettings
+                        quickResponsesState={quickResponsesState}
+                        setQuickResponsesState={setQuickResponsesState}
+                        labels={labels}
+                        setLabels={setLabelsState}
+                        bugReportTags={bugReportTags}
+                        setBugReportTags={setBugReportTagsState}
+                        playerReportTags={playerReportTags}
+                        setPlayerReportTags={setPlayerReportTagsState}
+                        appealTags={appealTags}
+                        setAppealTags={setAppealTagsState}
+                        newBugTag={newBugTag}
+                        setNewBugTag={setNewBugTag}
+                        newPlayerTag={newPlayerTag}
+                        setNewPlayerTag={setNewPlayerTag}
+                        newAppealTag={newAppealTag}
+                        setNewAppealTag={setNewAppealTag}
+                        ticketForms={ticketForms}
+                        setTicketForms={setTicketFormsState}
+                        selectedTicketFormType={selectedTicketFormType}
+                        setSelectedTicketFormType={setSelectedTicketFormType}
+                        aiModerationSettings={aiModerationSettings}
+                        setAiModerationSettings={setAiModerationSettings}
+                        punishmentTypesState={punishmentTypes}
+                        onEditSection={onEditSection}
+                        onDeleteSection={onDeleteSection}
+                        onEditField={onEditField}
+                        onDeleteField={onDeleteField}
+                        onAddField={onAddField}
+                        moveField={moveField}
+                        moveFieldBetweenSections={moveFieldBetweenSections}
+                        visibleSection="ticket-forms"
+                      />
+                    </div>
+                  )}
+                  {expandedSubCategories.has('ai-moderation') && (
+                    <div>
+                      <h3 className="text-lg font-medium mb-4 flex items-center gap-2">
+                        <Bot className="h-5 w-5" />
+                        AI Moderation
+                      </h3>
+                      <TicketSettings
+                        quickResponsesState={quickResponsesState}
+                        setQuickResponsesState={setQuickResponsesState}
+                        labels={labels}
+                        setLabels={setLabelsState}
+                        bugReportTags={bugReportTags}
+                        setBugReportTags={setBugReportTagsState}
+                        playerReportTags={playerReportTags}
+                        setPlayerReportTags={setPlayerReportTagsState}
+                        appealTags={appealTags}
+                        setAppealTags={setAppealTagsState}
+                        newBugTag={newBugTag}
+                        setNewBugTag={setNewBugTag}
+                        newPlayerTag={newPlayerTag}
+                        setNewPlayerTag={setNewPlayerTag}
+                        newAppealTag={newAppealTag}
+                        setNewAppealTag={setNewAppealTag}
+                        ticketForms={ticketForms}
+                        setTicketForms={setTicketFormsState}
+                        selectedTicketFormType={selectedTicketFormType}
+                        setSelectedTicketFormType={setSelectedTicketFormType}
+                        aiModerationSettings={aiModerationSettings}
+                        setAiModerationSettings={setAiModerationSettings}
+                        punishmentTypesState={punishmentTypes}
+                        onEditSection={onEditSection}
+                        onDeleteSection={onDeleteSection}
+                        onEditField={onEditField}
+                        onDeleteField={onDeleteField}
+                        onAddField={onAddField}
+                        moveField={moveField}
+                        moveFieldBetweenSections={moveFieldBetweenSections}
+                        visibleSection="ai-moderation"
+                      />
+                    </div>
+                  )}
+                  {expandedSubCategories.size === 0 && (
+                    <div className="text-center py-8 text-muted-foreground">
+                      <p>Select a sub-category above to configure ticket settings</p>
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {/* Staff & Roles Settings */}
+              {expandedCategory === 'staff' && (
+                <div className="space-y-6">
+                  {expandedSubCategories.has('staff-management') && (
+                    <div>
+                      <h3 className="text-lg font-medium mb-4 flex items-center gap-2">
+                        <UserIcon className="h-5 w-5" />
+                        Staff Management
+                      </h3>
+                      <StaffManagementPanel />
+                    </div>
+                  )}
+                  {expandedSubCategories.has('roles-permissions') && (
+                    <div>
+                      <h3 className="text-lg font-medium mb-4 flex items-center gap-2">
+                        <Shield className="h-5 w-5" />
+                        Roles & Permissions
+                      </h3>
+                      <StaffRolesCard />
+                    </div>
+                  )}
+                  {expandedSubCategories.size === 0 && (
+                    <div className="text-center py-8 text-muted-foreground">
+                      <p>Select a sub-category above to configure staff settings</p>
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {/* Knowledgebase & Homepage Settings */}
+              {expandedCategory === 'knowledgebase' && (
+                <div className="space-y-6">
+                  {expandedSubCategories.has('knowledgebase-articles') && (
+                    <div>
+                      <h3 className="text-lg font-medium mb-4 flex items-center gap-2">
+                        <BookOpen className="h-5 w-5" />
+                        Knowledgebase
+                      </h3>
+                      <KnowledgebaseSettings />
+                    </div>
+                  )}
+                  {expandedSubCategories.has('homepage-cards') && (
+                    <div>
+                      <h3 className="text-lg font-medium mb-4 flex items-center gap-2">
+                        <Home className="h-5 w-5" />
+                        Homepage Cards
+                      </h3>
+                      <HomepageCardSettings />
+                    </div>
+                  )}
+                  {expandedSubCategories.size === 0 && (
+                    <div className="text-center py-8 text-muted-foreground">
+                      <p>Select a sub-category above to configure knowledgebase settings</p>
+                    </div>
+                  )}
+                </div>
+              )}
+            </CardContent>
+          </Card>
+        )}
 
         {/* Punishment Configuration Dialog */}
         {selectedPunishment && (
