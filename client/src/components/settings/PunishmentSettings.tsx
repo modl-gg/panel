@@ -82,6 +82,9 @@ const PunishmentSettings = ({
       {/* Status Thresholds Section */}
       {showThresholds && (
       <div>
+        <p className="text-sm text-muted-foreground mb-4">
+          Configure the point thresholds for determining a player's offender status. Higher thresholds make it harder to reach medium and habitual status.
+        </p>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
           <div className="space-y-4 border rounded-md p-4">
             <h5 className="font-medium flex items-center">
@@ -190,6 +193,9 @@ const PunishmentSettings = ({
 
       {showTypes && (
       <div>
+        <p className="text-sm text-muted-foreground mb-4">
+          Configure the punishment types available in your system. Core administrative types can be configured but not modified or removed.
+        </p>
         {/* Administrative Punishment Types Section (Ordinals 0-5) */}
         <div>
           <div className="flex items-center justify-between mb-3">

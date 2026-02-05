@@ -3034,14 +3034,14 @@ const Settings = () => {
             return (
               <Card
                 key={category.id}
-                className={`transition-all ${isSelected ? 'ring-2 ring-primary bg-muted/30' : ''}`}
+                className={`transition-all ${isSelected ? 'bg-muted/50' : ''}`}
               >
                 <CardContent className="p-4">
                   <div className="flex flex-col items-center text-center">
-                    <div className={`p-3 rounded-lg mb-3 ${isSelected ? 'bg-primary/10' : 'bg-muted'}`}>
-                      <Icon className={`h-6 w-6 ${isSelected ? 'text-primary' : 'text-muted-foreground'}`} />
+                    <div className={`p-3 rounded-lg mb-3 bg-muted`}>
+                      <Icon className="h-6 w-6 text-muted-foreground" />
                     </div>
-                    <h3 className={`font-medium text-sm mb-1 ${isSelected ? 'text-primary' : ''}`}>{category.title}</h3>
+                    <h3 className="font-medium text-sm mb-1">{category.title}</h3>
                     <p className="text-xs text-muted-foreground line-clamp-2">{category.description}</p>
 
                     {/* Sub-categories list */}
@@ -3054,7 +3054,7 @@ const Settings = () => {
                             <div
                               key={sub.id}
                               className={`flex items-center gap-2 p-1.5 rounded text-xs cursor-pointer transition-colors ${
-                                isSubSelected ? 'bg-primary/10 text-primary' : 'hover:bg-muted text-muted-foreground'
+                                isSubSelected ? 'bg-muted-foreground/20 font-medium' : 'hover:bg-muted text-muted-foreground'
                               }`}
                               onClick={(e) => {
                                 e.stopPropagation();
