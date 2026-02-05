@@ -3077,6 +3077,8 @@ const Settings = () => {
         </div>
 
         {/* Expanded Content Section - Below all cards */}
+        {/* Only show Card wrapper for sections that don't have their own Card */}
+        {expandedCategory !== 'staff' && expandedCategory !== 'knowledgebase' && (
         <Card>
           <CardContent className="p-6">
             {/* Account Settings - Show by default when no sub-category is expanded */}
@@ -3329,23 +3331,25 @@ const Settings = () => {
                 </div>
               )}
 
-            {/* Staff & Roles Settings */}
-            {expandedCategory === 'staff' && expandedSubCategory && (
-              <>
-                {expandedSubCategory === 'staff-management' && <StaffManagementPanel />}
-                {expandedSubCategory === 'roles-permissions' && <StaffRolesCard />}
-              </>
-            )}
-
-            {/* Knowledgebase & Homepage Settings */}
-            {expandedCategory === 'knowledgebase' && expandedSubCategory && (
-              <>
-                {expandedSubCategory === 'knowledgebase-articles' && <KnowledgebaseSettings />}
-                {expandedSubCategory === 'homepage-cards' && <HomepageCardSettings />}
-              </>
-            )}
           </CardContent>
         </Card>
+        )}
+
+        {/* Staff & Roles Settings - These have their own Card wrappers */}
+        {expandedCategory === 'staff' && expandedSubCategory && (
+          <>
+            {expandedSubCategory === 'staff-management' && <StaffManagementPanel />}
+            {expandedSubCategory === 'roles-permissions' && <StaffRolesCard />}
+          </>
+        )}
+
+        {/* Knowledgebase & Homepage Settings - These have their own Card wrappers */}
+        {expandedCategory === 'knowledgebase' && expandedSubCategory && (
+          <>
+            {expandedSubCategory === 'knowledgebase-articles' && <KnowledgebaseSettings />}
+            {expandedSubCategory === 'homepage-cards' && <HomepageCardSettings />}
+          </>
+        )}
 
         {/* Punishment Configuration Dialog */}
         {selectedPunishment && (
