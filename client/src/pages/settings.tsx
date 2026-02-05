@@ -2993,7 +2993,7 @@ const Settings = () => {
 
   return (
     <PageContainer>
-      <div className="flex flex-col space-y-6">
+      <div className="flex flex-col space-y-4">
         <div className="flex justify-between items-center">
           <h2 className="text-xl font-semibold">Settings</h2>
           <div className="flex space-x-2 items-center">

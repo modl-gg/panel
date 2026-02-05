@@ -35,68 +35,69 @@ const AccountSettings = ({
       </div>
 
       <div className="space-y-5">
-        <div>
-          <div className="flex items-center gap-3">
-            <Label htmlFor="username" className="w-36 text-sm">Panel Display Name</Label>
+        <div className="flex gap-3">
+          <Label htmlFor="username" className="w-36 text-sm pt-2.5 shrink-0">Panel Display Name</Label>
+          <div className="flex-1 max-w-xs">
             <Input
               id="username"
               type="text"
               value={profileUsername}
               onChange={(e) => setProfileUsername(e.target.value)}
               placeholder="Enter display name"
-              className="max-w-xs"
             />
+            <p className="text-xs text-muted-foreground mt-1.5">
+              Your display name shown in ticket conversations and interactions.
+            </p>
           </div>
-          <p className="text-xs text-muted-foreground mt-1.5 ml-[9.5rem]">
-            Your display name shown in ticket conversations and interactions.
-          </p>
         </div>
 
         {minecraftUsername && (
-          <div>
-            <div className="flex items-center gap-3">
-              <Label htmlFor="minecraft-username" className="w-36 text-sm">Minecraft Username</Label>
+          <div className="flex gap-3">
+            <Label htmlFor="minecraft-username" className="w-36 text-sm pt-2.5 shrink-0">Minecraft Username</Label>
+            <div className="flex-1 max-w-xs">
               <Input
                 id="minecraft-username"
                 type="text"
                 value={minecraftUsername}
                 disabled
-                className="max-w-xs bg-muted text-muted-foreground"
+                className="bg-muted text-muted-foreground"
               />
+              <p className="text-xs text-muted-foreground mt-1.5">
+                Your linked Minecraft account. Contact an admin to change this.
+              </p>
             </div>
-            <p className="text-xs text-muted-foreground mt-1.5 ml-[9.5rem]">
-              Your linked Minecraft account. Contact an admin to change this.
-            </p>
           </div>
         )}
 
-        <div>
-          <div className="flex items-center gap-3">
-            <Label htmlFor="email-address" className="w-36 text-sm">Email</Label>
-            <Input
-              id="email-address"
-              type="email"
-              value={currentEmail}
-              onChange={(e) => setCurrentEmail(e.target.value)}
-              placeholder="Enter email"
-              className="max-w-xs"
-            />
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => {
-                toast({
-                  title: "Work In Progress",
-                  description: "This feature is currently not available.",
-                });
-              }}
-            >
-              Update
-            </Button>
+        <div className="flex gap-3">
+          <Label htmlFor="email-address" className="w-36 text-sm pt-2.5 shrink-0">Email</Label>
+          <div className="flex-1">
+            <div className="flex items-center gap-3">
+              <Input
+                id="email-address"
+                type="email"
+                value={currentEmail}
+                onChange={(e) => setCurrentEmail(e.target.value)}
+                placeholder="Enter email"
+                className="max-w-xs"
+              />
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => {
+                  toast({
+                    title: "Work In Progress",
+                    description: "This feature is currently not available.",
+                  });
+                }}
+              >
+                Update
+              </Button>
+            </div>
+            <p className="text-xs text-muted-foreground mt-1.5">
+              Used for login and receiving ticket notifications.
+            </p>
           </div>
-          <p className="text-xs text-muted-foreground mt-1.5 ml-[9.5rem]">
-            Used for login and receiving ticket notifications.
-          </p>
         </div>
       </div>
     </div>

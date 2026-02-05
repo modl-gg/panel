@@ -67,51 +67,52 @@ const Home = () => {
 
   return (
     <PageContainer>
-      <div className="flex justify-between items-center mb-6">
-        <h2 className="text-xl font-semibold">Dashboard</h2>
-        <div className="flex items-center space-x-2">
-          <Button 
-            variant="ghost" 
-            size="icon" 
-            className="text-muted-foreground"
-            onClick={handleRefreshData}
-            disabled={isSpinning}
-          >
-            <RefreshCw className={`h-5 w-5 ${isSpinning ? 'animate-spin' : ''}`} />
-          </Button>
-          <Button 
-            variant="ghost" 
-            size="icon" 
-            className="text-muted-foreground"
-            onClick={() => setTheme(theme === 'dark' ? 'light' : 'dark')}
-          >
-            {theme === 'dark' ? <Sun className="h-5 w-5" /> : <Moon className="h-5 w-5" />}
-          </Button>
+      <div className="flex flex-col space-y-4">
+        {/* Header */}
+        <div className="flex justify-between items-center">
+          <h2 className="text-xl font-semibold">Dashboard</h2>
+          <div className="flex items-center space-x-2">
+            <Button
+              variant="ghost"
+              size="icon"
+              className="text-muted-foreground"
+              onClick={handleRefreshData}
+              disabled={isSpinning}
+            >
+              <RefreshCw className={`h-5 w-5 ${isSpinning ? 'animate-spin' : ''}`} />
+            </Button>
+            <Button
+              variant="ghost"
+              size="icon"
+              className="text-muted-foreground"
+              onClick={() => setTheme(theme === 'dark' ? 'light' : 'dark')}
+            >
+              {theme === 'dark' ? <Sun className="h-5 w-5" /> : <Moon className="h-5 w-5" />}
+            </Button>
+          </div>
         </div>
-      </div>
-      
-      {/* Assigned Ticket Updates - Full Width */}
-      <div className="mb-6">
+
+        {/* Assigned Ticket Updates - Full Width */}
         <AssignedTicketUpdatesSection
           updates={assignedUpdatesData || []}
           loading={isLoadingUpdates}
           onMarkAsRead={handleMarkAsRead}
         />
-      </div>
-      
-      {/* Dashboard Grid */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        {/* Recent Tickets */}
-        <RecentTicketsSection 
-          tickets={recentTicketsData || []}
-          loading={isLoadingTickets}
-        />
-        
-        {/* Recent Punishments */}
-        <RecentPunishmentsSection 
-          punishments={recentPunishmentsData || []}
-          loading={isLoadingPunishments}
-        />
+
+        {/* Dashboard Grid */}
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+          {/* Recent Tickets */}
+          <RecentTicketsSection
+            tickets={recentTicketsData || []}
+            loading={isLoadingTickets}
+          />
+
+          {/* Recent Punishments */}
+          <RecentPunishmentsSection
+            punishments={recentPunishmentsData || []}
+            loading={isLoadingPunishments}
+          />
+        </div>
       </div>
     </PageContainer>
   );

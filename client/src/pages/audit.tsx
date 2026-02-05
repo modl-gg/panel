@@ -1556,9 +1556,9 @@ const AuditLog = () => {
 
   return (
     <PageContainer>
-      <div className="flex flex-col space-y-6">
+      <div className="flex flex-col space-y-4">
         {/* Header */}
-        <div className="flex flex-col space-y-4 md:flex-row md:justify-between md:items-center">
+        <div className="flex flex-col gap-4 md:flex-row md:justify-between md:items-center">
           <h2 className="text-xl font-semibold">Analytics & Audit</h2>
           <div className="flex flex-col space-y-2 md:flex-row md:space-y-0 md:space-x-2 md:items-center">
             <Select value={analyticsPeriod} onValueChange={setAnalyticsPeriod}>
