@@ -1,25 +1,18 @@
-import { useState, useMemo, useCallback, useEffect } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import {
-  Filter,
-  Search,
-  Download,
   Calendar,
   ChevronDown,
   ChevronUp,
   Shield,
   AlertCircle,
-  Info,
   AlertTriangle,
   Activity,
   User,
-  Bot,
-  Settings,
   FileText,
   TrendingUp,
   TrendingDown,
   RefreshCw,
   Eye,
-  BarChart3,
   Users,
   Clock,
   Undo2,
@@ -29,19 +22,14 @@ import { getApiUrl, getCurrentDomain, apiFetch } from '@/lib/api';
 import { Button } from '@modl-gg/shared-web/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@modl-gg/shared-web/components/ui/card';
 import { Badge } from '@modl-gg/shared-web/components/ui/badge';
-import { Input } from '@modl-gg/shared-web/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@modl-gg/shared-web/components/ui/select';
-import { Checkbox } from '@modl-gg/shared-web/components/ui/checkbox';
-import { Separator } from '@modl-gg/shared-web/components/ui/separator';
 import { Popover, PopoverContent, PopoverTrigger } from '@modl-gg/shared-web/components/ui/popover';
 import { Calendar as CalendarComponent } from '@modl-gg/shared-web/components/ui/calendar';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@modl-gg/shared-web/components/ui/dialog';
-import { ScrollArea } from '@modl-gg/shared-web/components/ui/scroll-area';
-import { format, subDays, startOfDay, endOfDay } from 'date-fns';
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@modl-gg/shared-web/components/ui/dialog';
+import { format, subDays } from 'date-fns';
 import { useLogs } from '@/hooks/use-data';
 import { useQuery } from '@tanstack/react-query';
 import PageContainer from '@/components/layout/PageContainer';
-import { useIsMobile } from '@/hooks/use-mobile';
 import { useToast } from '@modl-gg/shared-web/hooks/use-toast';
 import { PermissionWrapper } from '@/components/PermissionWrapper';
 import { PERMISSIONS } from '@/hooks/use-permissions';
@@ -50,24 +38,6 @@ import { cn } from '@modl-gg/shared-web/lib/utils';
 import { usePlayerWindow } from '@/contexts/PlayerWindowContext';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell, LineChart, Line, Area, AreaChart } from 'recharts';
 import { getEvidenceDisplayText, getEvidenceClickUrl, getEvidenceShortName, isEvidenceClickable } from '@/utils/evidence-utils';
-
-interface DatabaseLog {
-  _id: string;
-  created: string;
-  description: string;
-  level: 'info' | 'warning' | 'error' | 'moderation';
-  source: string;
-  metadata?: Record<string, any>;
-}
-
-interface TransformedLog extends DatabaseLog {
-  actionType: string;
-  color: string;
-  userType: string;
-  icon: React.ReactNode;
-  formattedTime: string;
-  relativeTime: string;
-}
 
 interface StaffMember {
   id: string;
@@ -1425,8 +1395,8 @@ const TicketAnalyticsSection = ({ analyticsPeriod }: { analyticsPeriod: string }
   );
 };
 
-// Expandable stat card component
-const ExpandableStatCard = ({
+// Stat card component that toggles expansion
+const StatCard = ({
   title,
   value,
   subtitle,
@@ -1436,7 +1406,6 @@ const ExpandableStatCard = ({
   trendValue,
   isExpanded,
   onToggle,
-  children
 }: {
   title: string;
   value: number | string;
@@ -1447,23 +1416,22 @@ const ExpandableStatCard = ({
   trendValue?: number;
   isExpanded: boolean;
   onToggle: () => void;
-  children: React.ReactNode;
 }) => {
   return (
-    <Card className="overflow-hidden">
-      <CardContent
-        className={cn(
-          "p-4 cursor-pointer transition-colors hover:bg-muted/50",
-          isExpanded && "border-b"
-        )}
-        onClick={onToggle}
-      >
+    <Card
+      className={cn(
+        "cursor-pointer transition-all hover:bg-muted/50",
+        isExpanded && "ring-2 ring-primary"
+      )}
+      onClick={onToggle}
+    >
+      <CardContent className="p-4">
         <div className="flex items-center justify-between">
           <div className="flex-1">
             <div className="flex items-center gap-2">
               <p className="text-sm text-muted-foreground">{title}</p>
               {isExpanded ? (
-                <ChevronUp className="h-4 w-4 text-muted-foreground" />
+                <ChevronUp className="h-4 w-4 text-primary" />
               ) : (
                 <ChevronDown className="h-4 w-4 text-muted-foreground" />
               )}
@@ -1486,268 +1454,43 @@ const ExpandableStatCard = ({
           <Icon className={cn("h-8 w-8", iconColor)} />
         </div>
       </CardContent>
-      {isExpanded && (
-        <CardContent className="p-4 pt-0 border-t">
-          <div className="pt-4 space-y-6">
-            {children}
-          </div>
-        </CardContent>
-      )}
     </Card>
   );
 };
 
 const AuditLog = () => {
-  const { toast } = useToast();
-  const isMobile = useIsMobile();
   const [expandedSection, setExpandedSection] = useState<string | null>(null);
-  const [searchQuery, setSearchQuery] = useState("");
-  const [actionFilter, setActionFilter] = useState("all");
-  const [severityFilter, setSeverityFilter] = useState("all");
-  const [dateRange, setDateRange] = useState<{from: Date | undefined, to: Date | undefined}>({
-    from: undefined,
-    to: undefined
-  });
-  const [expandedLogs, setExpandedLogs] = useState<Set<string>>(new Set());
-  const [currentPage, setCurrentPage] = useState(1);
-  const [isExporting, setIsExporting] = useState(false);
+  const [analyticsPeriod, setAnalyticsPeriod] = useState('30d');
 
   const toggleSection = (section: string) => {
     setExpandedSection(prev => prev === section ? null : section);
   };
-  
-  const itemsPerPage = 20;
-  
-  const { data: logsData, isLoading, error, refetch, isRefetching } = useLogs();
-  
-  const transformedLogs = useMemo(() => {
-    return (logsData as DatabaseLog[] || []).map((log): TransformedLog => {
-      const details = getActionDetails(log.level, log.source, log.description);
-      const logDate = new Date(log.created);
-      
-      return {
-        ...log,
-        ...details,
-        formattedTime: format(logDate, 'MMM d, yyyy HH:mm:ss'),
-        relativeTime: formatRelativeTime(logDate)
-      };
-    });
-  }, [logsData]);
-  
-  const filteredLogs = useMemo(() => {
-    return transformedLogs.filter(log => {
-      if (searchQuery && !log.description.toLowerCase().includes(searchQuery.toLowerCase()) && 
-          !log.source.toLowerCase().includes(searchQuery.toLowerCase())) {
-        return false;
-      }
-      
-      if (actionFilter !== "all" && log.actionType !== actionFilter) {
-        return false;
-      }
-      
-      if (severityFilter !== "all" && log.level !== severityFilter) {
-        return false;
-      }
-      
-      if (dateRange.from || dateRange.to) {
-        const logDate = new Date(log.created);
-        if (dateRange.from && logDate < startOfDay(dateRange.from)) return false;
-        if (dateRange.to && logDate > endOfDay(dateRange.to)) return false;
-      }
-      
-      return true;
-    });
-  }, [transformedLogs, searchQuery, actionFilter, severityFilter, dateRange]);
-  
-  const paginatedLogs = useMemo(() => {
-    const startIndex = (currentPage - 1) * itemsPerPage;
-    return filteredLogs.slice(startIndex, startIndex + itemsPerPage);
-  }, [filteredLogs, currentPage]);
-  
-  const totalPages = Math.ceil(filteredLogs.length / itemsPerPage);
-  
-  // Analytics data
-  const analyticsData = useMemo(() => {
-    const last24h = subDays(new Date(), 1);
-    const last7d = subDays(new Date(), 7);
-    
-    const logs24h = transformedLogs.filter(log => new Date(log.created) >= last24h);
-    const logs7d = transformedLogs.filter(log => new Date(log.created) >= last7d);
-    
-    // Activity trends for the past 7 days
-    const dailyActivity = Array.from({ length: 7 }, (_, i) => {
-      const date = subDays(new Date(), 6 - i);
-      const dayLogs = transformedLogs.filter(log => {
-        const logDate = new Date(log.created);
-        return logDate >= startOfDay(date) && logDate <= endOfDay(date);
-      });
-      
-      return {
-        date: format(date, 'MMM dd'),
-        total: dayLogs.length,
-        moderation: dayLogs.filter(log => log.actionType === 'moderation').length,
-        tickets: dayLogs.filter(log => log.actionType === 'ticket').length,
-        errors: dayLogs.filter(log => log.level === 'error').length
-      };
-    });
-    
-    // Action type distribution
-    const actionDistribution = [
-      { name: 'Moderation', value: transformedLogs.filter(log => log.actionType === 'moderation').length, color: '#ff6b6b' },
-      { name: 'Tickets', value: transformedLogs.filter(log => log.actionType === 'ticket').length, color: '#4ecdc4' },
-      { name: 'System', value: transformedLogs.filter(log => log.actionType === 'system').length, color: '#45b7d1' },
-      { name: 'User Actions', value: transformedLogs.filter(log => log.actionType === 'user').length, color: '#96ceb4' },
-      { name: 'Settings', value: transformedLogs.filter(log => log.actionType === 'settings').length, color: '#ffeaa7' },
-      { name: 'Errors', value: transformedLogs.filter(log => log.actionType === 'error').length, color: '#fd79a8' }
-    ].filter(item => item.value > 0);
-    
-    return {
-      total24h: logs24h.length,
-      total7d: logs7d.length,
-      errors: logs24h.filter(log => log.level === 'error').length,
-      warnings: logs24h.filter(log => log.level === 'warning').length,
-      moderations: logs24h.filter(log => log.actionType === 'moderation').length,
-      tickets: logs24h.filter(log => log.actionType === 'ticket').length,
-      dailyActivity,
-      actionDistribution
-    };
-  }, [transformedLogs]);
-  
-  // Comprehensive analytics data
-  const [analyticsPeriod, setAnalyticsPeriod] = useState('30d');
-  
+
+  const { refetch, isRefetching } = useLogs();
+
   const { data: analyticsOverview } = useQuery({
     queryKey: ['analytics-overview'],
     queryFn: fetchAnalyticsOverview,
     staleTime: 5 * 60 * 1000
   });
-  
+
   const { data: staffPerformanceData = [] } = useQuery({
     queryKey: ['staff-performance', analyticsPeriod],
     queryFn: () => fetchStaffPerformance(analyticsPeriod),
     staleTime: 5 * 60 * 1000
   });
-  
-  const { data: ticketAnalytics } = useQuery({
-    queryKey: ['ticket-analytics', analyticsPeriod],
-    queryFn: () => fetchTicketAnalytics(analyticsPeriod),
-    staleTime: 5 * 60 * 1000
-  });
-  
+
   const { data: punishmentAnalytics } = useQuery({
     queryKey: ['punishment-analytics', analyticsPeriod],
     queryFn: () => fetchPunishmentAnalytics(analyticsPeriod),
     staleTime: 5 * 60 * 1000
   });
-  
+
   const { data: playerActivity } = useQuery({
     queryKey: ['player-activity', analyticsPeriod],
     queryFn: () => fetchPlayerActivity(analyticsPeriod),
     staleTime: 5 * 60 * 1000
   });
-  
-  const { data: auditLogsAnalytics } = useQuery({
-    queryKey: ['audit-logs-analytics', '7d'],
-    queryFn: () => fetchAuditLogsAnalytics('7d'),
-    staleTime: 5 * 60 * 1000
-  });
-  
-  const toggleLogExpansion = useCallback((logId: string) => {
-    setExpandedLogs(prev => {
-      const next = new Set(prev);
-      if (next.has(logId)) {
-        next.delete(logId);
-      } else {
-        next.add(logId);
-      }
-      return next;
-    });
-  }, []);
-  
-  const handleExport = useCallback(async (format: 'csv' | 'json') => {
-    setIsExporting(true);
-    try {
-      let content: string;
-      let filename: string;
-      let mimeType: string;
-      
-      if (format === 'csv') {
-        const headers = ['Time', 'Level', 'Source', 'Description', 'Type'];
-        const rows = filteredLogs.map(log => [
-          log.formattedTime,
-          log.level,
-          log.source,
-          log.description.replace(/"/g, '""'),
-          log.actionType
-        ]);
-        
-        content = [
-          headers.join(','),
-          ...rows.map(row => row.map(cell => `"${cell}"`).join(','))
-        ].join('\n');
-        
-        filename = `audit-logs-${new Date().toISOString().split('T')[0]}.csv`;
-        mimeType = 'text/csv';
-      } else {
-        content = JSON.stringify(filteredLogs.map(log => ({
-          time: log.created,
-          level: log.level,
-          source: log.source,
-          description: log.description,
-          type: log.actionType,
-          metadata: log.metadata
-        })), null, 2);
-        
-        filename = `audit-logs-${new Date().toISOString().split('T')[0]}.json`;
-        mimeType = 'application/json';
-      }
-      
-      const blob = new Blob([content], { type: mimeType });
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.href = url;
-      a.download = filename;
-      document.body.appendChild(a);
-      a.click();
-      document.body.removeChild(a);
-      URL.revokeObjectURL(url);
-      
-      toast({
-        title: "Export successful",
-        description: `Audit logs exported as ${format.toUpperCase()}`
-      });
-    } catch (error) {
-      toast({
-        title: "Export failed",
-        description: "Failed to export audit logs",
-        variant: "destructive"
-      });
-    } finally {
-      setIsExporting(false);
-    }
-  }, [filteredLogs, toast]);
-  
-  const setPresetDateRange = useCallback((preset: string) => {
-    const now = new Date();
-    switch (preset) {
-      case 'today':
-        setDateRange({ from: startOfDay(now), to: endOfDay(now) });
-        break;
-      case 'yesterday':
-        const yesterday = subDays(now, 1);
-        setDateRange({ from: startOfDay(yesterday), to: endOfDay(yesterday) });
-        break;
-      case 'last7days':
-        setDateRange({ from: subDays(now, 7), to: now });
-        break;
-      case 'last30days':
-        setDateRange({ from: subDays(now, 30), to: now });
-        break;
-      case 'all':
-        setDateRange({ from: undefined, to: undefined });
-        break;
-    }
-  }, []);
 
   return (
     <PageContainer>
@@ -1780,10 +1523,10 @@ const AuditLog = () => {
           </div>
         </div>
 
-        {/* Expandable Stats Cards */}
+        {/* Stats Cards */}
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
           {/* Tickets Opened */}
-          <ExpandableStatCard
+          <StatCard
             title="Tickets Opened"
             value={analyticsOverview?.overview.totalTickets || 0}
             icon={FileText}
@@ -1792,106 +1535,20 @@ const AuditLog = () => {
             trendValue={analyticsOverview?.overview.ticketChange}
             isExpanded={expandedSection === 'tickets'}
             onToggle={() => toggleSection('tickets')}
-          >
-            <TicketAnalyticsSection analyticsPeriod={analyticsPeriod} />
-          </ExpandableStatCard>
+          />
 
           {/* Punishments Issued */}
-          <ExpandableStatCard
+          <StatCard
             title="Punishments Issued"
             value={punishmentAnalytics?.total || 0}
             icon={Gavel}
             iconColor="text-red-600"
             isExpanded={expandedSection === 'punishments'}
             onToggle={() => toggleSection('punishments')}
-          >
-            <div className="space-y-6">
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <Card>
-                  <CardHeader>
-                    <CardTitle className="text-base">Punishments by Type</CardTitle>
-                  </CardHeader>
-                  <CardContent>
-                    {!punishmentAnalytics?.byType || punishmentAnalytics.byType.length === 0 ? (
-                      <div className="flex items-center justify-center h-[250px] text-muted-foreground">
-                        <div className="text-center">
-                          <Shield className="h-8 w-8 mx-auto mb-2 opacity-50" />
-                          <p className="text-sm">No punishment type data available</p>
-                        </div>
-                      </div>
-                    ) : (
-                      <ResponsiveContainer width="100%" height={250}>
-                        <BarChart data={punishmentAnalytics.byType}>
-                          <CartesianGrid strokeDasharray="3 3" className="opacity-30" />
-                          <XAxis dataKey="type" className="text-muted-foreground" fontSize={12} />
-                          <YAxis className="text-muted-foreground" fontSize={12} />
-                          <Tooltip cursor={false} content={<CustomTooltip formatName={(name: any) => name === "count" ? "Count" : name} />} />
-                          <Bar dataKey="count" fill="#ef4444" style={{ filter: 'none' }} />
-                        </BarChart>
-                      </ResponsiveContainer>
-                    )}
-                  </CardContent>
-                </Card>
-
-                <Card>
-                  <CardHeader>
-                    <CardTitle className="text-base">Daily Punishment Trend</CardTitle>
-                  </CardHeader>
-                  <CardContent>
-                    {!punishmentAnalytics?.dailyPunishments || punishmentAnalytics.dailyPunishments.length === 0 ? (
-                      <div className="flex items-center justify-center h-[250px] text-muted-foreground">
-                        <div className="text-center">
-                          <TrendingUp className="h-8 w-8 mx-auto mb-2 opacity-50" />
-                          <p className="text-sm">No punishment trend data available</p>
-                        </div>
-                      </div>
-                    ) : (
-                      <ResponsiveContainer width="100%" height={250}>
-                        <LineChart data={punishmentAnalytics.dailyPunishments}>
-                          <CartesianGrid strokeDasharray="3 3" className="opacity-30" />
-                          <XAxis dataKey="date" className="text-muted-foreground" fontSize={12} />
-                          <YAxis className="text-muted-foreground" fontSize={12} />
-                          <Tooltip content={<CustomTooltip formatName={(name: any) => name === "count" ? "Count" : name} />} />
-                          <Line type="monotone" dataKey="count" stroke="#ef4444" strokeWidth={2} dot={{r:0}} activeDot={false} />
-                        </LineChart>
-                      </ResponsiveContainer>
-                    )}
-                  </CardContent>
-                </Card>
-              </div>
-
-              <Card>
-                <CardHeader>
-                  <CardTitle className="text-base">Top Punishers (Staff)</CardTitle>
-                </CardHeader>
-                <CardContent>
-                  {!punishmentAnalytics?.byStaff || punishmentAnalytics.byStaff.length === 0 ? (
-                    <div className="flex items-center justify-center h-[200px] text-muted-foreground">
-                      <div className="text-center">
-                        <Shield className="h-8 w-8 mx-auto mb-2 opacity-50" />
-                        <p className="text-sm">No staff punishment data available</p>
-                      </div>
-                    </div>
-                  ) : (
-                    <div className="space-y-2">
-                      {punishmentAnalytics.byStaff.map((staff: any, index: number) => (
-                        <div key={staff.username || `punisher-${index}`} className="flex items-center justify-between p-2 border rounded">
-                          <div className="flex items-center gap-2">
-                            <Shield className="h-4 w-4 text-blue-600" />
-                            <span className="font-medium">{staff.username}</span>
-                          </div>
-                          <Badge variant="secondary">{staff.count}</Badge>
-                        </div>
-                      ))}
-                    </div>
-                  )}
-                </CardContent>
-              </Card>
-            </div>
-          </ExpandableStatCard>
+          />
 
           {/* Staff Members */}
-          <ExpandableStatCard
+          <StatCard
             title="Staff Members"
             value={analyticsOverview?.overview.totalStaff || 0}
             subtitle={`Active: ${staffPerformanceData.filter((s: any) => new Date(s.lastActive) > subDays(new Date(), 7)).length}`}
@@ -1899,101 +1556,10 @@ const AuditLog = () => {
             iconColor="text-purple-600"
             isExpanded={expandedSection === 'staff'}
             onToggle={() => toggleSection('staff')}
-          >
-            <div className="space-y-6">
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <Card>
-                  <CardHeader>
-                    <CardTitle className="text-base">Actions by Staff Member</CardTitle>
-                  </CardHeader>
-                  <CardContent>
-                    {!staffPerformanceData || staffPerformanceData.length === 0 ? (
-                      <div className="flex items-center justify-center h-[250px] text-muted-foreground">
-                        <div className="text-center">
-                          <Users className="h-8 w-8 mx-auto mb-2 opacity-50" />
-                          <p className="text-sm">No staff performance data available</p>
-                        </div>
-                      </div>
-                    ) : (
-                      <ResponsiveContainer width="100%" height={250}>
-                        <BarChart data={staffPerformanceData}>
-                          <CartesianGrid strokeDasharray="3 3" className="opacity-30" />
-                          <XAxis dataKey="username" className="text-muted-foreground" fontSize={12} />
-                          <YAxis className="text-muted-foreground" fontSize={12} />
-                          <Tooltip cursor={false} content={<CustomTooltip formatName={(name: any) => name === "totalActions" ? "Total Actions" : name} />} />
-                          <Bar dataKey="totalActions" fill="#8884d8" style={{ filter: 'none' }} />
-                        </BarChart>
-                      </ResponsiveContainer>
-                    )}
-                  </CardContent>
-                </Card>
-
-                <Card>
-                  <CardHeader>
-                    <CardTitle className="text-base">Ticket Responses</CardTitle>
-                  </CardHeader>
-                  <CardContent>
-                    {!staffPerformanceData || staffPerformanceData.length === 0 ? (
-                      <div className="flex items-center justify-center h-[250px] text-muted-foreground">
-                        <div className="text-center">
-                          <FileText className="h-8 w-8 mx-auto mb-2 opacity-50" />
-                          <p className="text-sm">No staff ticket response data available</p>
-                        </div>
-                      </div>
-                    ) : (
-                      <ResponsiveContainer width="100%" height={250}>
-                        <BarChart data={staffPerformanceData}>
-                          <CartesianGrid strokeDasharray="3 3" className="opacity-30" />
-                          <XAxis dataKey="username" className="text-muted-foreground" fontSize={12} />
-                          <YAxis className="text-muted-foreground" fontSize={12} />
-                          <Tooltip cursor={false} content={<CustomTooltip formatName={(name: any) => name === "ticketResponses" ? "Ticket Responses" : name} />} />
-                          <Bar dataKey="ticketResponses" fill="#82ca9d" style={{ filter: 'none' }} />
-                        </BarChart>
-                      </ResponsiveContainer>
-                    )}
-                  </CardContent>
-                </Card>
-              </div>
-
-              <Card>
-                <CardHeader>
-                  <CardTitle className="text-base">Staff Activity Details</CardTitle>
-                </CardHeader>
-                <CardContent>
-                  {!staffPerformanceData || staffPerformanceData.length === 0 ? (
-                    <div className="flex items-center justify-center h-[200px] text-muted-foreground">
-                      <div className="text-center">
-                        <Shield className="h-8 w-8 mx-auto mb-2 opacity-50" />
-                        <p className="text-sm">No staff activity data available</p>
-                      </div>
-                    </div>
-                  ) : (
-                    <div className="overflow-x-auto">
-                      <table className="w-full text-sm">
-                        <thead>
-                          <tr className="border-b">
-                            <th className="text-left p-2">Username</th>
-                            <th className="text-left p-2">Role</th>
-                            <th className="text-left p-2">Ticket Responses</th>
-                            <th className="text-left p-2">Punishments Issued</th>
-                            <th className="text-left p-2">Total Actions</th>
-                          </tr>
-                        </thead>
-                        <tbody>
-                          {staffPerformanceData.map((staff: any) => (
-                            <StaffDetailRow key={staff.id} staff={staff} period={analyticsPeriod} />
-                          ))}
-                        </tbody>
-                      </table>
-                    </div>
-                  )}
-                </CardContent>
-              </Card>
-            </div>
-          </ExpandableStatCard>
+          />
 
           {/* Players Joined */}
-          <ExpandableStatCard
+          <StatCard
             title="Players Joined"
             value={analyticsOverview?.overview.totalPlayers || 0}
             icon={User}
@@ -2002,573 +1568,309 @@ const AuditLog = () => {
             trendValue={analyticsOverview?.overview.playerChange}
             isExpanded={expandedSection === 'players'}
             onToggle={() => toggleSection('players')}
-          >
-            <div className="space-y-6">
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <Card>
-                  <CardHeader>
-                    <CardTitle className="text-base">Player Login Activity</CardTitle>
-                  </CardHeader>
-                  <CardContent>
-                    {!playerActivity?.loginTrend || playerActivity.loginTrend.length === 0 ? (
-                      // Fallback to newPlayersTrend if loginTrend is not available
-                      !playerActivity?.newPlayersTrend || playerActivity.newPlayersTrend.length === 0 ? (
-                        <div className="flex items-center justify-center h-[250px] text-muted-foreground">
+          />
+        </div>
+
+        {/* Expanded Content - Full Width */}
+        {expandedSection && (
+          <Card>
+            <CardContent className="p-6">
+              {expandedSection === 'tickets' && (
+                <TicketAnalyticsSection analyticsPeriod={analyticsPeriod} />
+              )}
+
+              {expandedSection === 'punishments' && (
+                <div className="space-y-6">
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <Card>
+                      <CardHeader>
+                        <CardTitle className="text-base">Punishments by Type</CardTitle>
+                      </CardHeader>
+                      <CardContent>
+                        {!punishmentAnalytics?.byType || punishmentAnalytics.byType.length === 0 ? (
+                          <div className="flex items-center justify-center h-[250px] text-muted-foreground">
+                            <div className="text-center">
+                              <Shield className="h-8 w-8 mx-auto mb-2 opacity-50" />
+                              <p className="text-sm">No punishment type data available</p>
+                            </div>
+                          </div>
+                        ) : (
+                          <ResponsiveContainer width="100%" height={250}>
+                            <BarChart data={punishmentAnalytics.byType}>
+                              <CartesianGrid strokeDasharray="3 3" className="opacity-30" />
+                              <XAxis dataKey="type" className="text-muted-foreground" fontSize={12} />
+                              <YAxis className="text-muted-foreground" fontSize={12} />
+                              <Tooltip cursor={false} content={<CustomTooltip formatName={(name: any) => name === "count" ? "Count" : name} />} />
+                              <Bar dataKey="count" fill="#ef4444" style={{ filter: 'none' }} />
+                            </BarChart>
+                          </ResponsiveContainer>
+                        )}
+                      </CardContent>
+                    </Card>
+
+                    <Card>
+                      <CardHeader>
+                        <CardTitle className="text-base">Daily Punishment Trend</CardTitle>
+                      </CardHeader>
+                      <CardContent>
+                        {!punishmentAnalytics?.dailyPunishments || punishmentAnalytics.dailyPunishments.length === 0 ? (
+                          <div className="flex items-center justify-center h-[250px] text-muted-foreground">
+                            <div className="text-center">
+                              <TrendingUp className="h-8 w-8 mx-auto mb-2 opacity-50" />
+                              <p className="text-sm">No punishment trend data available</p>
+                            </div>
+                          </div>
+                        ) : (
+                          <ResponsiveContainer width="100%" height={250}>
+                            <LineChart data={punishmentAnalytics.dailyPunishments}>
+                              <CartesianGrid strokeDasharray="3 3" className="opacity-30" />
+                              <XAxis dataKey="date" className="text-muted-foreground" fontSize={12} />
+                              <YAxis className="text-muted-foreground" fontSize={12} />
+                              <Tooltip content={<CustomTooltip formatName={(name: any) => name === "count" ? "Count" : name} />} />
+                              <Line type="monotone" dataKey="count" stroke="#ef4444" strokeWidth={2} dot={{r:0}} activeDot={false} />
+                            </LineChart>
+                          </ResponsiveContainer>
+                        )}
+                      </CardContent>
+                    </Card>
+                  </div>
+
+                  <Card>
+                    <CardHeader>
+                      <CardTitle className="text-base">Top Punishers (Staff)</CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                      {!punishmentAnalytics?.byStaff || punishmentAnalytics.byStaff.length === 0 ? (
+                        <div className="flex items-center justify-center h-[200px] text-muted-foreground">
                           <div className="text-center">
-                            <Activity className="h-8 w-8 mx-auto mb-2 opacity-50" />
-                            <p className="text-sm">No player activity data available</p>
+                            <Shield className="h-8 w-8 mx-auto mb-2 opacity-50" />
+                            <p className="text-sm">No staff punishment data available</p>
                           </div>
                         </div>
                       ) : (
-                        <ResponsiveContainer width="100%" height={250}>
-                          <AreaChart data={playerActivity.newPlayersTrend}>
-                            <CartesianGrid strokeDasharray="3 3" className="opacity-30" />
-                            <XAxis dataKey="date" className="text-muted-foreground" fontSize={12} />
-                            <YAxis className="text-muted-foreground" fontSize={12} />
-                            <Tooltip content={<CustomTooltip formatName={(name: any) => name === "count" ? "New Players" : name} />} />
-                            <Area type="monotone" dataKey="count" stroke="#10b981" fill="#10b981" fillOpacity={0.3} dot={false} activeDot={false} name="New Players" />
-                          </AreaChart>
-                        </ResponsiveContainer>
-                      )
-                    ) : (
-                      <ResponsiveContainer width="100%" height={250}>
-                        <AreaChart data={playerActivity.loginTrend}>
-                          <CartesianGrid strokeDasharray="3 3" className="opacity-30" />
-                          <XAxis dataKey="date" className="text-muted-foreground" fontSize={12} />
-                          <YAxis className="text-muted-foreground" fontSize={12} />
-                          <Tooltip content={<CustomTooltip />} />
-                          <Area type="monotone" dataKey="logins" stroke="#10b981" fill="#10b981" fillOpacity={0.3} dot={false} activeDot={false} name="Logins" />
-                          <Area type="monotone" dataKey="uniquePlayers" stroke="#3b82f6" fill="#3b82f6" fillOpacity={0.3} dot={false} activeDot={false} name="Unique Players" />
-                        </AreaChart>
-                      </ResponsiveContainer>
-                    )}
-                  </CardContent>
-                </Card>
-
-                <Card>
-                  <CardHeader>
-                    <CardTitle className="text-base">Logins by Country</CardTitle>
-                  </CardHeader>
-                  <CardContent>
-                    {!playerActivity?.loginsByCountry || playerActivity.loginsByCountry.length === 0 ? (
-                      <div className="flex items-center justify-center h-[250px] text-muted-foreground">
-                        <div className="text-center">
-                          <User className="h-8 w-8 mx-auto mb-2 opacity-50" />
-                          <p className="text-sm">No login data available</p>
-                        </div>
-                      </div>
-                    ) : (
-                      <div className="space-y-2 py-4">
-                        {playerActivity.loginsByCountry.slice(0, 8).map((country: any, index: number) => (
-                          <div key={index} className="flex items-center justify-between">
-                            <span>{country.country}</span>
-                            <div className="flex items-center gap-2">
-                              <div className="w-20 bg-gray-200 dark:bg-gray-700 rounded-full h-2">
-                                <div
-                                  className="bg-blue-600 h-2 rounded-full"
-                                  style={{
-                                    width: `${(country.count / Math.max(...playerActivity.loginsByCountry.map((c: any) => c.count))) * 100}%`
-                                  }}
-                                />
+                        <div className="space-y-2">
+                          {punishmentAnalytics.byStaff.map((staff: any, index: number) => (
+                            <div key={staff.username || `punisher-${index}`} className="flex items-center justify-between p-2 border rounded">
+                              <div className="flex items-center gap-2">
+                                <Shield className="h-4 w-4 text-blue-600" />
+                                <span className="font-medium">{staff.username}</span>
                               </div>
-                              <span className="text-sm font-medium">{country.count}</span>
+                              <Badge variant="secondary">{staff.count}</Badge>
                             </div>
-                          </div>
-                        ))}
-                      </div>
-                    )}
-                  </CardContent>
-                </Card>
-              </div>
-
-              <Card>
-                <CardHeader>
-                  <CardTitle className="text-base">Security Alerts</CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <div className="p-4 border rounded bg-orange-50 dark:bg-orange-950/20">
-                      <div className="flex items-center gap-2">
-                        <AlertTriangle className="h-5 w-5 text-orange-600 dark:text-orange-400" />
-                        <span className="font-medium">Proxy Connections</span>
-                      </div>
-                      <p className="text-2xl font-bold text-orange-600 dark:text-orange-400">
-                        {playerActivity?.suspiciousActivity?.proxyCount || 0}
-                      </p>
-                      <p className="text-sm text-muted-foreground">In selected period</p>
-                    </div>
-
-                    <div className="p-4 border rounded bg-red-50 dark:bg-red-950/20">
-                      <div className="flex items-center gap-2">
-                        <AlertCircle className="h-5 w-5 text-red-600 dark:text-red-400" />
-                        <span className="font-medium">Hosting IPs</span>
-                      </div>
-                      <p className="text-2xl font-bold text-red-600 dark:text-red-400">
-                        {playerActivity?.suspiciousActivity?.hostingCount || 0}
-                      </p>
-                      <p className="text-sm text-muted-foreground">In selected period</p>
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
-            </div>
-          </ExpandableStatCard>
-        </div>
-
-        {/* Audit Logs Section */}
-        <Card>
-          <CardHeader>
-            <CardTitle className="text-base flex items-center gap-2">
-              <Activity className="h-5 w-5" />
-              System Audit Logs
-            </CardTitle>
-          </CardHeader>
-          <CardContent className="p-0">
-            {/* Audit Statistics */}
-            <div className="p-4 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-              <Card>
-                <CardContent className="p-4">
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <p className="text-sm text-muted-foreground">Total (24h)</p>
-                      <p className="text-2xl font-bold">{analyticsData.total24h}</p>
-                    </div>
-                    <Activity className="h-8 w-8 text-muted-foreground" />
-                  </div>
-                </CardContent>
-              </Card>
-
-              <Card>
-                <CardContent className="p-4">
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <p className="text-sm text-muted-foreground">Errors</p>
-                      <p className="text-2xl font-bold text-destructive">{analyticsData.errors}</p>
-                    </div>
-                    <AlertCircle className="h-8 w-8 text-destructive" />
-                  </div>
-                </CardContent>
-              </Card>
-
-              <Card>
-                <CardContent className="p-4">
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <p className="text-sm text-muted-foreground">Warnings</p>
-                      <p className="text-2xl font-bold text-warning">{analyticsData.warnings}</p>
-                    </div>
-                    <AlertTriangle className="h-8 w-8 text-warning" />
-                  </div>
-                </CardContent>
-              </Card>
-
-              <Card>
-                <CardContent className="p-4">
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <p className="text-sm text-muted-foreground">Mod Actions</p>
-                      <p className="text-2xl font-bold">{analyticsData.moderations}</p>
-                    </div>
-                    <Shield className="h-8 w-8 text-primary" />
-                  </div>
-                </CardContent>
-              </Card>
-            </div>
-
-            {/* Audit Log Analytics Charts */}
-            <div className="p-4 grid grid-cols-1 lg:grid-cols-2 gap-6">
-              <Card>
-                <CardHeader>
-                  <CardTitle className="text-base">Logs by Level</CardTitle>
-                </CardHeader>
-                <CardContent>
-                  {!auditLogsAnalytics?.byLevel || auditLogsAnalytics.byLevel.length === 0 ? (
-                    <div className="flex items-center justify-center h-[200px] text-muted-foreground">
-                      <div className="text-center">
-                        <BarChart3 className="h-8 w-8 mx-auto mb-2 opacity-50" />
-                        <p className="text-sm">No log level data available</p>
-                      </div>
-                    </div>
-                  ) : (
-                    <ResponsiveContainer width="100%" height={200}>
-                      <PieChart>
-                        <Pie
-                          data={auditLogsAnalytics.byLevel}
-                          cx="50%"
-                          cy="50%"
-                          outerRadius={60}
-                          fill="#8884d8"
-                          dataKey="count"
-                          label={({ level, percent }) => `${level} ${((percent || 0) * 100).toFixed(0)}%`}
-                        >
-                          {auditLogsAnalytics.byLevel.map((entry: any, index: number) => (
-                            <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
                           ))}
-                        </Pie>
-                        <Tooltip content={<CustomTooltip />} />
-                      </PieChart>
-                    </ResponsiveContainer>
-                  )}
-                </CardContent>
-              </Card>
-
-              <Card>
-                <CardHeader>
-                  <CardTitle className="text-base">Hourly Activity (24h)</CardTitle>
-                </CardHeader>
-                <CardContent>
-                  {!auditLogsAnalytics?.hourlyTrend || auditLogsAnalytics.hourlyTrend.length === 0 ? (
-                    <div className="flex items-center justify-center h-[200px] text-muted-foreground">
-                      <div className="text-center">
-                        <Clock className="h-8 w-8 mx-auto mb-2 opacity-50" />
-                        <p className="text-sm">No hourly activity data available</p>
-                      </div>
-                    </div>
-                  ) : (
-                    <ResponsiveContainer width="100%" height={200}>
-                      <BarChart data={auditLogsAnalytics.hourlyTrend}>
-                        <CartesianGrid strokeDasharray="3 3" className="opacity-30" />
-                        <XAxis dataKey="hour" className="text-muted-foreground" fontSize={12} />
-                        <YAxis className="text-muted-foreground" fontSize={12} />
-                        <Tooltip content={<CustomTooltip />} />
-                        <Bar dataKey="count" fill="#8884d8" style={{ filter: 'none' }} />
-                      </BarChart>
-                    </ResponsiveContainer>
-                  )}
-                </CardContent>
-              </Card>
-            </div>
-
-            {/* Filters */}
-            <div className="p-4 border-t">
-              <Card>
-                <CardHeader className="pb-3">
-                  <CardTitle className="text-base font-medium flex items-center">
-                    <Filter className="h-4 w-4 mr-2" />
-                    Advanced Filters
-                  </CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-                    <div className="relative">
-                      <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                      <Input
-                        placeholder="Search logs..."
-                        value={searchQuery}
-                        onChange={(e) => setSearchQuery(e.target.value)}
-                        className="pl-9"
-                      />
-                    </div>
-
-                    <Select value={actionFilter} onValueChange={setActionFilter}>
-                      <SelectTrigger>
-                        <SelectValue placeholder="All Actions" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="all">All Actions</SelectItem>
-                        <SelectItem value="moderation">Moderation</SelectItem>
-                        <SelectItem value="user">User Actions</SelectItem>
-                        <SelectItem value="system">System</SelectItem>
-                        <SelectItem value="error">Errors</SelectItem>
-                        <SelectItem value="ticket">Tickets</SelectItem>
-                        <SelectItem value="settings">Settings</SelectItem>
-                      </SelectContent>
-                    </Select>
-
-                    <Select value={severityFilter} onValueChange={setSeverityFilter}>
-                      <SelectTrigger>
-                        <SelectValue placeholder="All Levels" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="all">All Levels</SelectItem>
-                        <SelectItem value="error">Error</SelectItem>
-                        <SelectItem value="warning">Warning</SelectItem>
-                        <SelectItem value="info">Info</SelectItem>
-                        <SelectItem value="moderation">Moderation</SelectItem>
-                      </SelectContent>
-                    </Select>
-
-                    <Popover>
-                      <PopoverTrigger asChild>
-                        <Button variant="outline" className="justify-start text-left font-normal">
-                          <Calendar className="mr-2 h-4 w-4" />
-                          {dateRange.from ? (
-                            dateRange.to ? (
-                              <>
-                                {format(dateRange.from, "MMM d")} - {format(dateRange.to, "MMM d")}
-                              </>
-                            ) : (
-                              format(dateRange.from, "MMM d, yyyy")
-                            )
-                          ) : (
-                            <span>Pick a date range</span>
-                          )}
-                        </Button>
-                      </PopoverTrigger>
-                      <PopoverContent className="w-auto p-0" align="start">
-                        <div className="p-3 space-y-2">
-                          <div className="flex flex-col gap-1">
-                            <Button
-                              variant="ghost"
-                              size="sm"
-                              className="justify-start"
-                              onClick={() => setPresetDateRange('today')}
-                            >
-                              Today
-                            </Button>
-                            <Button
-                              variant="ghost"
-                              size="sm"
-                              className="justify-start"
-                              onClick={() => setPresetDateRange('yesterday')}
-                            >
-                              Yesterday
-                            </Button>
-                            <Button
-                              variant="ghost"
-                              size="sm"
-                              className="justify-start"
-                              onClick={() => setPresetDateRange('last7days')}
-                            >
-                              Last 7 days
-                            </Button>
-                            <Button
-                              variant="ghost"
-                              size="sm"
-                              className="justify-start"
-                              onClick={() => setPresetDateRange('last30days')}
-                            >
-                              Last 30 days
-                            </Button>
-                            <Button
-                              variant="ghost"
-                              size="sm"
-                              className="justify-start"
-                              onClick={() => setPresetDateRange('all')}
-                            >
-                              All time
-                            </Button>
-                          </div>
-                          <Separator />
-                          <CalendarComponent
-                            mode="range"
-                            selected={{
-                              from: dateRange.from,
-                              to: dateRange.to
-                            }}
-                            onSelect={(range: any) => setDateRange(range || { from: undefined, to: undefined })}
-                            numberOfMonths={2}
-                          />
                         </div>
-                      </PopoverContent>
-                    </Popover>
-                  </div>
-                </CardContent>
-              </Card>
-            </div>
-
-            {/* Activity Log */}
-            <div className="p-4 border-t">
-              <div className="flex items-center justify-between mb-4">
-                <CardTitle className="text-base font-medium">
-                  Activity Log
-                  {filteredLogs.length > 0 && (
-                    <span className="ml-2 text-sm text-muted-foreground">
-                      ({filteredLogs.length} entries)
-                    </span>
-                  )}
-                </CardTitle>
-                <Popover>
-                  <PopoverTrigger asChild>
-                    <Button variant="outline" size="sm" disabled={isExporting || filteredLogs.length <= 0}>
-                      <Download className="h-4 w-4 mr-2" />
-                      Export
-                    </Button>
-                  </PopoverTrigger>
-                  <PopoverContent className="w-40 p-2">
-                    <div className="flex flex-col gap-1">
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        className="justify-start"
-                        onClick={() => handleExport('csv')}
-                      >
-                        Export as CSV
-                      </Button>
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        className="justify-start"
-                        onClick={() => handleExport('json')}
-                      >
-                        Export as JSON
-                      </Button>
-                    </div>
-                  </PopoverContent>
-                </Popover>
-              </div>
-
-              {isLoading && (
-                <div className="p-8 text-center">
-                  <RefreshCw className="h-8 w-8 animate-spin mx-auto mb-4 text-muted-foreground" />
-                  <p className="text-muted-foreground">Loading audit logs...</p>
-                </div>
-              )}
-
-              {error && (
-                <div className="p-8 text-center">
-                  <AlertCircle className="h-8 w-8 mx-auto mb-4 text-destructive" />
-                  <p className="text-destructive">Error loading logs: {error.message}</p>
-                </div>
-              )}
-
-              {!isLoading && !error && filteredLogs.length === 0 && (
-                <div className="p-8 text-center">
-                  <Info className="h-8 w-8 mx-auto mb-4 text-muted-foreground" />
-                  <p className="text-muted-foreground">No audit logs found matching your filters.</p>
-                </div>
-              )}
-
-              {!isLoading && !error && paginatedLogs.length > 0 && (
-                <div className="divide-y border rounded-lg">
-                  {paginatedLogs.map((log) => (
-                    <div
-                      key={log._id}
-                      className={cn(
-                        "p-4 hover:bg-muted/50 transition-colors",
-                        expandedLogs.has(log._id) && "bg-muted/30"
                       )}
-                    >
-                      <div className="flex items-start justify-between gap-4">
-                        <div className="flex items-start gap-3 flex-1 min-w-0">
-                          <div className={cn(
-                            "p-2 rounded-full flex-shrink-0",
-                            log.level === 'error' && "bg-destructive/10 text-destructive",
-                            log.level === 'warning' && "bg-warning/10 text-warning",
-                            log.level === 'moderation' && "bg-primary/10 text-primary",
-                            log.level === 'info' && "bg-secondary/10 text-secondary"
-                          )}>
-                            {log.icon}
-                          </div>
+                    </CardContent>
+                  </Card>
+                </div>
+              )}
 
-                          <div className="flex-1 min-w-0">
-                            <div className="flex items-center gap-2 flex-wrap">
-                              <span className="font-medium">{log.source}</span>
-                              <Badge
-                                variant={log.level === 'error' ? 'destructive' :
-                                        log.level === 'warning' ? 'secondary' :
-                                        'outline'}
-                                className="text-xs"
-                              >
-                                {log.userType}
-                              </Badge>
-                              <Badge variant="outline" className="text-xs">
-                                {log.level}
-                              </Badge>
+              {expandedSection === 'staff' && (
+                <div className="space-y-6">
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <Card>
+                      <CardHeader>
+                        <CardTitle className="text-base">Actions by Staff Member</CardTitle>
+                      </CardHeader>
+                      <CardContent>
+                        {!staffPerformanceData || staffPerformanceData.length === 0 ? (
+                          <div className="flex items-center justify-center h-[250px] text-muted-foreground">
+                            <div className="text-center">
+                              <Users className="h-8 w-8 mx-auto mb-2 opacity-50" />
+                              <p className="text-sm">No staff performance data available</p>
                             </div>
+                          </div>
+                        ) : (
+                          <ResponsiveContainer width="100%" height={250}>
+                            <BarChart data={staffPerformanceData}>
+                              <CartesianGrid strokeDasharray="3 3" className="opacity-30" />
+                              <XAxis dataKey="username" className="text-muted-foreground" fontSize={12} />
+                              <YAxis className="text-muted-foreground" fontSize={12} />
+                              <Tooltip cursor={false} content={<CustomTooltip formatName={(name: any) => name === "totalActions" ? "Total Actions" : name} />} />
+                              <Bar dataKey="totalActions" fill="#8884d8" style={{ filter: 'none' }} />
+                            </BarChart>
+                          </ResponsiveContainer>
+                        )}
+                      </CardContent>
+                    </Card>
 
-                            <p className="text-sm text-muted-foreground mt-1 break-words">
-                              {log.description}
-                            </p>
+                    <Card>
+                      <CardHeader>
+                        <CardTitle className="text-base">Ticket Responses</CardTitle>
+                      </CardHeader>
+                      <CardContent>
+                        {!staffPerformanceData || staffPerformanceData.length === 0 ? (
+                          <div className="flex items-center justify-center h-[250px] text-muted-foreground">
+                            <div className="text-center">
+                              <FileText className="h-8 w-8 mx-auto mb-2 opacity-50" />
+                              <p className="text-sm">No staff ticket response data available</p>
+                            </div>
+                          </div>
+                        ) : (
+                          <ResponsiveContainer width="100%" height={250}>
+                            <BarChart data={staffPerformanceData}>
+                              <CartesianGrid strokeDasharray="3 3" className="opacity-30" />
+                              <XAxis dataKey="username" className="text-muted-foreground" fontSize={12} />
+                              <YAxis className="text-muted-foreground" fontSize={12} />
+                              <Tooltip cursor={false} content={<CustomTooltip formatName={(name: any) => name === "ticketResponses" ? "Ticket Responses" : name} />} />
+                              <Bar dataKey="ticketResponses" fill="#82ca9d" style={{ filter: 'none' }} />
+                            </BarChart>
+                          </ResponsiveContainer>
+                        )}
+                      </CardContent>
+                    </Card>
+                  </div>
 
-                            {log.metadata && Object.keys(log.metadata).length > 0 && (
-                              <Button
-                                variant="ghost"
-                                size="sm"
-                                className="mt-2 h-auto p-0 text-xs text-muted-foreground hover:text-foreground"
-                                onClick={() => toggleLogExpansion(log._id)}
-                              >
-                                {expandedLogs.has(log._id) ? (
-                                  <>
-                                    <ChevronUp className="h-3 w-3 mr-1" />
-                                    Hide details
-                                  </>
-                                ) : (
-                                  <>
-                                    <ChevronDown className="h-3 w-3 mr-1" />
-                                    Show details
-                                  </>
-                                )}
-                              </Button>
-                            )}
-
-                            {expandedLogs.has(log._id) && log.metadata && (
-                              <div className="mt-3 p-3 bg-muted rounded-md">
-                                <pre className="text-xs overflow-x-auto">
-                                  {JSON.stringify(log.metadata, null, 2)}
-                                </pre>
-                              </div>
-                            )}
+                  <Card>
+                    <CardHeader>
+                      <CardTitle className="text-base">Staff Activity Details</CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                      {!staffPerformanceData || staffPerformanceData.length === 0 ? (
+                        <div className="flex items-center justify-center h-[200px] text-muted-foreground">
+                          <div className="text-center">
+                            <Shield className="h-8 w-8 mx-auto mb-2 opacity-50" />
+                            <p className="text-sm">No staff activity data available</p>
                           </div>
                         </div>
+                      ) : (
+                        <div className="overflow-x-auto">
+                          <table className="w-full text-sm">
+                            <thead>
+                              <tr className="border-b">
+                                <th className="text-left p-2">Username</th>
+                                <th className="text-left p-2">Role</th>
+                                <th className="text-left p-2">Ticket Responses</th>
+                                <th className="text-left p-2">Punishments Issued</th>
+                                <th className="text-left p-2">Total Actions</th>
+                              </tr>
+                            </thead>
+                            <tbody>
+                              {staffPerformanceData.map((staff: any) => (
+                                <StaffDetailRow key={staff.id} staff={staff} period={analyticsPeriod} />
+                              ))}
+                            </tbody>
+                          </table>
+                        </div>
+                      )}
+                    </CardContent>
+                  </Card>
+                </div>
+              )}
 
-                        <div className="text-right flex-shrink-0">
-                          <p className="text-xs text-muted-foreground">{log.relativeTime}</p>
-                          <p className="text-xs text-muted-foreground mt-1">{log.formattedTime}</p>
+              {expandedSection === 'players' && (
+                <div className="space-y-6">
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <Card>
+                      <CardHeader>
+                        <CardTitle className="text-base">Player Login Activity</CardTitle>
+                      </CardHeader>
+                      <CardContent>
+                        {!playerActivity?.loginTrend || playerActivity.loginTrend.length === 0 ? (
+                          !playerActivity?.newPlayersTrend || playerActivity.newPlayersTrend.length === 0 ? (
+                            <div className="flex items-center justify-center h-[250px] text-muted-foreground">
+                              <div className="text-center">
+                                <Activity className="h-8 w-8 mx-auto mb-2 opacity-50" />
+                                <p className="text-sm">No player activity data available</p>
+                              </div>
+                            </div>
+                          ) : (
+                            <ResponsiveContainer width="100%" height={250}>
+                              <AreaChart data={playerActivity.newPlayersTrend}>
+                                <CartesianGrid strokeDasharray="3 3" className="opacity-30" />
+                                <XAxis dataKey="date" className="text-muted-foreground" fontSize={12} />
+                                <YAxis className="text-muted-foreground" fontSize={12} />
+                                <Tooltip content={<CustomTooltip formatName={(name: any) => name === "count" ? "New Players" : name} />} />
+                                <Area type="monotone" dataKey="count" stroke="#10b981" fill="#10b981" fillOpacity={0.3} dot={false} activeDot={false} name="New Players" />
+                              </AreaChart>
+                            </ResponsiveContainer>
+                          )
+                        ) : (
+                          <ResponsiveContainer width="100%" height={250}>
+                            <AreaChart data={playerActivity.loginTrend}>
+                              <CartesianGrid strokeDasharray="3 3" className="opacity-30" />
+                              <XAxis dataKey="date" className="text-muted-foreground" fontSize={12} />
+                              <YAxis className="text-muted-foreground" fontSize={12} />
+                              <Tooltip content={<CustomTooltip />} />
+                              <Area type="monotone" dataKey="logins" stroke="#10b981" fill="#10b981" fillOpacity={0.3} dot={false} activeDot={false} name="Logins" />
+                              <Area type="monotone" dataKey="uniquePlayers" stroke="#3b82f6" fill="#3b82f6" fillOpacity={0.3} dot={false} activeDot={false} name="Unique Players" />
+                            </AreaChart>
+                          </ResponsiveContainer>
+                        )}
+                      </CardContent>
+                    </Card>
+
+                    <Card>
+                      <CardHeader>
+                        <CardTitle className="text-base">Logins by Country</CardTitle>
+                      </CardHeader>
+                      <CardContent>
+                        {!playerActivity?.loginsByCountry || playerActivity.loginsByCountry.length === 0 ? (
+                          <div className="flex items-center justify-center h-[250px] text-muted-foreground">
+                            <div className="text-center">
+                              <User className="h-8 w-8 mx-auto mb-2 opacity-50" />
+                              <p className="text-sm">No login data available</p>
+                            </div>
+                          </div>
+                        ) : (
+                          <div className="space-y-2 py-4">
+                            {playerActivity.loginsByCountry.slice(0, 8).map((country: any, index: number) => (
+                              <div key={index} className="flex items-center justify-between">
+                                <span>{country.country}</span>
+                                <div className="flex items-center gap-2">
+                                  <div className="w-20 bg-gray-200 dark:bg-gray-700 rounded-full h-2">
+                                    <div
+                                      className="bg-blue-600 h-2 rounded-full"
+                                      style={{
+                                        width: `${(country.count / Math.max(...playerActivity.loginsByCountry.map((c: any) => c.count))) * 100}%`
+                                      }}
+                                    />
+                                  </div>
+                                  <span className="text-sm font-medium">{country.count}</span>
+                                </div>
+                              </div>
+                            ))}
+                          </div>
+                        )}
+                      </CardContent>
+                    </Card>
+                  </div>
+
+                  <Card>
+                    <CardHeader>
+                      <CardTitle className="text-base">Security Alerts</CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div className="p-4 border rounded bg-orange-50 dark:bg-orange-950/20">
+                          <div className="flex items-center gap-2">
+                            <AlertTriangle className="h-5 w-5 text-orange-600 dark:text-orange-400" />
+                            <span className="font-medium">Proxy Connections</span>
+                          </div>
+                          <p className="text-2xl font-bold text-orange-600 dark:text-orange-400">
+                            {playerActivity?.suspiciousActivity?.proxyCount || 0}
+                          </p>
+                          <p className="text-sm text-muted-foreground">In selected period</p>
+                        </div>
+
+                        <div className="p-4 border rounded bg-red-50 dark:bg-red-950/20">
+                          <div className="flex items-center gap-2">
+                            <AlertCircle className="h-5 w-5 text-red-600 dark:text-red-400" />
+                            <span className="font-medium">Hosting IPs</span>
+                          </div>
+                          <p className="text-2xl font-bold text-red-600 dark:text-red-400">
+                            {playerActivity?.suspiciousActivity?.hostingCount || 0}
+                          </p>
+                          <p className="text-sm text-muted-foreground">In selected period</p>
                         </div>
                       </div>
-                    </div>
-                  ))}
+                    </CardContent>
+                  </Card>
                 </div>
               )}
-
-              {/* Pagination */}
-              {totalPages > 1 && (
-                <div className="pt-4 mt-4 border-t">
-                  <div className="flex items-center justify-between">
-                    <p className="text-sm text-muted-foreground">
-                      Showing {((currentPage - 1) * itemsPerPage) + 1} to {Math.min(currentPage * itemsPerPage, filteredLogs.length)} of {filteredLogs.length} entries
-                    </p>
-                    <div className="flex items-center gap-2">
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() => setCurrentPage(Math.max(1, currentPage - 1))}
-                        disabled={currentPage === 1}
-                      >
-                        Previous
-                      </Button>
-                      <div className="flex items-center gap-1">
-                        {Array.from({ length: Math.min(5, totalPages) }, (_, i) => {
-                          let pageNum;
-                          if (totalPages <= 5) {
-                            pageNum = i + 1;
-                          } else if (currentPage <= 3) {
-                            pageNum = i + 1;
-                          } else if (currentPage >= totalPages - 2) {
-                            pageNum = totalPages - 4 + i;
-                          } else {
-                            pageNum = currentPage - 2 + i;
-                          }
-
-                          return (
-                            <Button
-                              key={pageNum}
-                              variant={currentPage === pageNum ? "default" : "outline"}
-                              size="sm"
-                              className="w-8 h-8 p-0"
-                              onClick={() => setCurrentPage(pageNum)}
-                            >
-                              {pageNum}
-                            </Button>
-                          );
-                        })}
-                      </div>
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() => setCurrentPage(Math.min(totalPages, currentPage + 1))}
-                        disabled={currentPage === totalPages}
-                      >
-                        Next
-                      </Button>
-                    </div>
-                  </div>
-                </div>
-              )}
-            </div>
-          </CardContent>
-        </Card>
+            </CardContent>
+          </Card>
+        )}
       </div>
     </PageContainer>
   );
