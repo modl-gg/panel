@@ -1496,44 +1496,54 @@ const TicketSettings = ({
                   <p className="text-xs text-muted-foreground">Automatically analyze tickets and suggest actions</p>
                 </div>
                 <Switch
-                  checked={aiModerationSettings?.enabled || false}
+                  checked={aiModerationSettings.enableAIReview !== false}
                   onCheckedChange={(checked) =>
-                    setAiModerationSettings({ ...aiModerationSettings, enabled: checked })
+                    setAiModerationSettings((prev: any) => ({ ...prev, enableAIReview: checked }))
                   }
                 />
               </div>
 
-              {aiModerationSettings?.enabled && (
+              {aiModerationSettings.enableAIReview && (
                 <>
+                  <div className="flex items-center justify-between p-3 bg-muted/50 rounded-lg">
+                    <div>
+                      <Label className="text-sm font-medium">Enable Automated Actions</Label>
+                      <p className="text-xs text-muted-foreground">Automatically apply suggested punishments for clear violations</p>
+                    </div>
+                    <Switch
+                      checked={aiModerationSettings.enableAutomatedActions}
+                      onCheckedChange={(checked) =>
+                        setAiModerationSettings((prev: any) => ({ ...prev, enableAutomatedActions: checked }))
+                      }
+                    />
+                  </div>
+
                   <div className="space-y-3">
                     <Label className="text-sm font-medium">AI Punishment Types</Label>
                     <p className="text-xs text-muted-foreground mb-2">
                       Configure which punishment types AI can suggest when analyzing reported players.
                     </p>
 
-                    {aiModerationSettings?.punishmentTypes?.length > 0 ? (
+                    {aiModerationSettings.aiPunishmentConfigs && Object.keys(aiModerationSettings.aiPunishmentConfigs).length > 0 ? (
                       <div className="space-y-2">
-                        {aiModerationSettings.punishmentTypes.map((pt: any) => {
-                          const linkedType = punishmentTypesState?.find((t: any) => t.id === pt.punishmentTypeId);
-                          return (
-                            <div key={pt.id} className="flex items-center justify-between p-2 bg-muted/30 rounded">
-                              <div>
-                                <span className="text-sm font-medium">{linkedType?.name || 'Unknown Type'}</span>
-                                <p className="text-xs text-muted-foreground">{pt.description}</p>
-                              </div>
-                              <Button
-                                variant="ghost"
-                                size="sm"
-                                onClick={() => {
-                                  setAiPunishmentToDelete({ id: pt.id, name: linkedType?.name || 'Unknown' });
-                                  setAiPunishmentDeleteDialogOpen(true);
-                                }}
-                              >
-                                <Trash2 className="h-4 w-4" />
-                              </Button>
+                        {Object.entries(aiModerationSettings.aiPunishmentConfigs).map(([key, config]: [string, any]) => (
+                          <div key={key} className="flex items-center justify-between p-2 bg-muted/30 rounded">
+                            <div>
+                              <span className="text-sm font-medium">{config.name || 'Unknown Type'}</span>
+                              <p className="text-xs text-muted-foreground">{config.aiDescription}</p>
                             </div>
-                          );
-                        })}
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => {
+                                setAiPunishmentToDelete({ id: key, name: config.name || 'Unknown' });
+                                setAiPunishmentDeleteDialogOpen(true);
+                              }}
+                            >
+                              <Trash2 className="h-4 w-4" />
+                            </Button>
+                          </div>
+                        ))}
                       </div>
                     ) : (
                       <div className="text-center py-4 border-2 border-dashed border-muted rounded-lg">
