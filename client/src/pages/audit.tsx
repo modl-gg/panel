@@ -276,14 +276,14 @@ const StaffPerformanceModal = () => {
     staleTime: 5 * 60 * 1000
   });
   return (
-    <Dialog>
+    <Dialog modal={false}>
       <DialogTrigger asChild>
         <Button variant="outline" size="sm">
           <Users className="h-4 w-4 mr-2" />
           Staff Performance
         </Button>
       </DialogTrigger>
-      <DialogContent className="max-w-6xl max-h-[80vh] overflow-hidden">
+      <DialogContent className="max-w-6xl max-h-[80vh] overflow-hidden" overlayClassName="pointer-events-none" onInteractOutside={(e) => e.preventDefault()}>
         <DialogHeader>
           <DialogTitle className="flex items-center justify-between">
             Staff Performance Analytics
