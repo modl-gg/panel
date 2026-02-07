@@ -142,6 +142,7 @@ interface AIAnalysis {
     severity: 'low' | 'regular' | 'severe';
   } | null;
   wasAppliedAutomatically: boolean;
+  dismissed: boolean;
   createdAt: Date;
 }
 
@@ -1180,7 +1181,7 @@ const TicketDetail = () => {
         // Set default action to "Comment" to highlight the Comment button
         selectedAction: 'Comment',
         // Extract AI analysis from ticket data if present
-        aiAnalysis: ticketData.data?.aiAnalysis
+        aiAnalysis: ticketData.aiAnalysis
       });
     }
   }, [ticketData]);
