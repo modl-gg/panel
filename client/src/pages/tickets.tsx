@@ -67,7 +67,7 @@ const Tickets = () => {
   const [authorFilter, setAuthorFilter] = useState<string[]>([]);
   const [labelFilters, setLabelFilters] = useState<string[]>([]);
   const [assigneeFilter, setAssigneeFilter] = useState<string[]>([]);
-  const [typeFilter, setTypeFilter] = useState<string[]>(['support', 'bug', 'player', 'chat', 'appeal', 'staff']);
+  const [typeFilter, setTypeFilter] = useState<string[]>([]);
   const [sortOption, setSortOption] = useState('newest');
   const [currentPage, setCurrentPage] = useState(1);
 
@@ -518,14 +518,14 @@ const Tickets = () => {
           <div className="flex-1" />
 
           {/* Type filter buttons - hidden on mobile, shown on larger screens */}
-          <div className="hidden md:flex items-center gap-1">
-            {typeOptions.map((opt) => (
+          <div className="hidden md:flex items-center gap-0 border border-border rounded-md overflow-hidden">
+            {typeOptions.map((opt, index) => (
               <Button
                 key={opt.value}
                 variant={typeFilter.includes(opt.value) ? 'secondary' : 'ghost'}
                 size="sm"
                 onClick={() => toggleTypeFilter(opt.value)}
-                className="h-8 px-2.5 text-xs"
+                className={`h-8 px-2.5 text-xs rounded-none ${index < typeOptions.length - 1 ? 'border-r border-border' : ''}`}
               >
                 {opt.label}
               </Button>

@@ -926,10 +926,10 @@ const TicketDetail = () => {
     // Ticket data received
   }, [ticketData]);
 
-  // Auto-scroll to bottom of message list when messages change
+  // Scroll to top of message list when messages load
   useEffect(() => {
     if (messageListRef.current) {
-      messageListRef.current.scrollTop = messageListRef.current.scrollHeight;
+      messageListRef.current.scrollTop = 0;
     }
   }, [ticketDetails.messages]);
   
@@ -1355,7 +1355,7 @@ const TicketDetail = () => {
 
       // Get current staff member's avatar from staffData
       const currentStaff = staffData?.find((staff: any) => staff.username === user?.username || staff.email === user?.email);
-      const staffAvatar = currentStaff?.avatar || currentStaff?.minecraftAvatar;
+      const staffAvatar = currentStaff?.assignedMinecraftUuid ? getAvatarUrl(currentStaff.assignedMinecraftUuid, 32, true) : null;
 
       const newMessage = {
         id: `msg-${Date.now()}`,
@@ -1773,9 +1773,16 @@ const TicketDetail = () => {
                 </div>
 
                 <div className="flex flex-wrap gap-x-6 gap-y-1 mt-2 text-sm">
-                  <div>
+                  <div className="flex items-center">
                     <span className="text-muted-foreground">Opened by:</span>
-                    <span className="ml-1">
+                    <span className="ml-1 inline-flex items-center gap-1.5">
+                      {ticketData?.creatorUuid && (
+                        <img
+                          src={getAvatarUrl(ticketData.creatorUuid, 16, true)}
+                          alt=""
+                          className="h-4 w-4 rounded-sm"
+                        />
+                      )}
                       {ticketDetails.reportedBy?.includes('(Web User)') ? (
                         <span className="text-sm">{ticketDetails.reportedBy}</span>
                       ) : (
@@ -1795,9 +1802,16 @@ const TicketDetail = () => {
                   </div>
                   {/* Show reported player for player and chat reports */}
                   {(ticketDetails.category === 'Player Report' || ticketDetails.category === 'Chat Report') && ticketDetails.relatedPlayer && (
-                    <div>
+                    <div className="flex items-center">
                       <span className="text-muted-foreground">Reported:</span>
-                      <span className="ml-1">
+                      <span className="ml-1 inline-flex items-center gap-1.5">
+                        {ticketDetails.relatedPlayerId && (
+                          <img
+                            src={getAvatarUrl(ticketDetails.relatedPlayerId, 16, true)}
+                            alt=""
+                            className="h-4 w-4 rounded-sm"
+                          />
+                        )}
                         <ClickablePlayer
                           playerText={ticketDetails.relatedPlayerId || ticketDetails.relatedPlayer}
                           showIcon={true}
