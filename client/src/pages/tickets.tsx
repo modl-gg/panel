@@ -27,6 +27,7 @@ import { BulkActionBar } from '@/components/tickets/BulkActionBar';
 import { LabelBadge } from '@/components/ui/label-badge';
 import { Popover, PopoverContent, PopoverTrigger } from '@modl-gg/shared-web/components/ui/popover';
 import { useToast } from '@modl-gg/shared-web/hooks/use-toast';
+import { cn } from '@modl-gg/shared-web/lib/utils';
 
 interface Ticket {
   _id?: string;
@@ -116,14 +117,21 @@ const Tickets = () => {
   const updateTicketMutation = useUpdateTicket();
 
 
-  const tickets: Ticket[] = ticketsResponse?.tickets || [];
-  const pagination = ticketsResponse?.pagination || {
+  const noTypesSelected = typeFilter.length === 0;
+  const tickets: Ticket[] = noTypesSelected ? [] : (ticketsResponse?.tickets || []);
+  const pagination = noTypesSelected ? {
     current: 1,
     total: 1,
     totalTickets: 0,
     hasNext: false,
     hasPrev: false,
-  };
+  } : (ticketsResponse?.pagination || {
+    current: 1,
+    total: 1,
+    totalTickets: 0,
+    hasNext: false,
+    hasPrev: false,
+  });
 
   const labels: Label[] = labelsData || [];
   const staffMembers = (staffData || []).map((s: any) => ({
@@ -522,10 +530,13 @@ const Tickets = () => {
             {typeOptions.map((opt) => (
               <Button
                 key={opt.value}
-                variant={typeFilter.includes(opt.value) ? 'secondary' : 'ghost'}
+                variant="ghost"
                 size="sm"
                 onClick={() => toggleTypeFilter(opt.value)}
-                className="h-8 px-2.5 text-xs"
+                className={cn(
+                  "h-8 px-2.5 text-xs bg-gray-500/20",
+                  typeFilter.includes(opt.value) && "ring-1 ring-foreground/30"
+                )}
               >
                 {opt.label}
               </Button>
