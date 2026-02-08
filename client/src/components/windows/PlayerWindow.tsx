@@ -1,15 +1,15 @@
 import { useState, useEffect, useCallback } from 'react';
-import { 
-  Eye, TriangleAlert, Ban, Search, LockOpen, History, 
+import {
+  Eye, TriangleAlert, Ban, Search, LockOpen, History,
   Link2, StickyNote, Ticket, UserRound, Shield, FileText, Upload, Loader2,
-  ChevronDown, ChevronRight, Settings, Plus
+  ChevronDown, ChevronRight, Settings, Plus, X
 } from 'lucide-react';
 import { useLocation } from 'wouter';
 import { Button } from '@modl-gg/shared-web/components/ui/button';
 import { Badge } from '@modl-gg/shared-web/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@modl-gg/shared-web/components/ui/tabs';
 import ResizableWindow from '@/components/layout/ResizableWindow';
-import { usePlayer, useApplyPunishment, useSettings, usePunishmentTypes, usePlayerTickets, usePlayerAllTickets, useModifyPunishment, useAddPunishmentNote, useLinkedAccounts, useFindLinkedAccounts } from '@/hooks/use-data';
+import { usePlayer, useApplyPunishment, useSettings, usePunishmentTypes, usePlayerTickets, usePlayerAllTickets, useModifyPunishment, useAddPunishmentNote, useModifyPunishmentTickets, useLinkedAccounts, useFindLinkedAccounts, useLinkedBansForPunishment } from '@/hooks/use-data';
 import { ClickablePlayer } from '@/components/ui/clickable-player';
 import { useAuth } from '@/hooks/use-auth';
 import { toast } from '@/hooks/use-toast';
@@ -104,6 +104,12 @@ interface PlayerInfo {
     value: number;
     unit: 'seconds' | 'minutes' | 'hours' | 'days' | 'weeks' | 'months';
   };
+  // Ticket modification fields
+  isModifyingTickets?: boolean;
+  modifyTicketsTarget?: string | null;
+  modifyTicketsAssociated?: boolean;
+  modifyTicketsAdd?: string[];
+  modifyTicketsRemove?: string[];
   // Punishment creation fields
   selectedPunishmentCategory?: string;
   selectedSeverity?: 'Lenient' | 'Regular' | 'Aggravated';
@@ -168,6 +174,35 @@ interface PunishmentType {
   singleSeverityPoints?: number; // Points for single severity punishments
 }
 
+// Inline component for linked ban display
+const LinkedBansDisplay = ({ punishmentId, onPlayerClick }: { punishmentId: string; onPlayerClick: (uuid: string) => void }) => {
+  const { data: linkedBans, isLoading } = useLinkedBansForPunishment(punishmentId);
+
+  if (isLoading) return <p className="text-xs text-muted-foreground">Loading linked bans...</p>;
+  if (!linkedBans || linkedBans.length === 0) return null;
+
+  return (
+    <div>
+      <p className="text-xs font-medium text-muted-foreground mb-1">Linked Bans:</p>
+      <div className="flex flex-wrap gap-1">
+        {linkedBans.map((lb: any) => (
+          <Button
+            key={lb.punishmentId}
+            variant="outline"
+            size="sm"
+            className="h-6 px-2 text-xs"
+            onClick={() => onPlayerClick(lb.playerUuid)}
+          >
+            <Link2 className="h-3 w-3 mr-1" />
+            {lb.playerName}
+            {lb.active && <Badge variant="destructive" className="ml-1 h-4 text-[10px] px-1">Active</Badge>}
+          </Button>
+        ))}
+      </div>
+    </div>
+  );
+};
+
 const PlayerWindow = ({ playerId, isOpen, onClose, initialPosition }: PlayerWindowProps) => {
   const [activeTab, setActiveTab] = useState('history');
   const [banSearchResults, setBanSearchResults] = useState<{id: string; player: string}[]>([]);
@@ -189,6 +224,7 @@ const PlayerWindow = ({ playerId, isOpen, onClose, initialPosition }: PlayerWind
   const applyPunishment = useApplyPunishment();
   const modifyPunishment = useModifyPunishment();
   const addPunishmentNote = useAddPunishmentNote();
+  const modifyPunishmentTickets = useModifyPunishmentTickets();
   // Get punishment ordinal from actual punishment types data
   const getPunishmentOrdinal = (punishmentName: string): number => {
     // First try to find it in the punishment types from settings
@@ -431,10 +467,12 @@ const PlayerWindow = ({ playerId, isOpen, onClose, initialPosition }: PlayerWind
       if (playerInfo.attachedReports) {
         playerInfo.attachedReports.forEach(report => {
           if (report && report !== 'ticket-new') {
-            // Extract ticket ID from format like "ticket-123"
+            // Extract ticket ID from format like "ticket-123" or use raw ID
             const ticketMatch = report.match(/ticket-(\w+)/);
             if (ticketMatch) {
               attachedTicketIds.push(ticketMatch[1]);
+            } else if (report.trim()) {
+              attachedTicketIds.push(report.trim());
             }
           }
         });
@@ -2025,7 +2063,18 @@ const PlayerWindow = ({ playerId, isOpen, onClose, initialPosition }: PlayerWind
                               ))}
                             </div>
                           </div>                        )}
-                        
+
+                        {/* Linked Bans Display */}
+                        {warning.data?.altBlocking && (
+                          <LinkedBansDisplay punishmentId={warning.id} onPlayerClick={(uuid: string) => {
+                            // Open a new PlayerWindow for the linked player
+                            if (typeof window !== 'undefined') {
+                              // Navigate to player detail page
+                              setLocation(`/panel/player/${uuid}`);
+                            }
+                          }} />
+                        )}
+
                         {/* Modification History */}
                         {effectiveState.hasModifications && (
                           <div>
@@ -2141,6 +2190,25 @@ const PlayerWindow = ({ playerId, isOpen, onClose, initialPosition }: PlayerWind
                           >
                             <Settings className="h-3 w-3 mr-1" />
                             Modify                          </Button>
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            className="text-xs h-7"
+                            onClick={() => {
+                              const id = warning.id || `warning-${index}`;
+                              setPlayerInfo(prev => ({
+                                ...prev,
+                                isModifyingTickets: true,
+                                modifyTicketsTarget: id,
+                                modifyTicketsAssociated: true,
+                                modifyTicketsAdd: [],
+                                modifyTicketsRemove: [],
+                              }));
+                            }}
+                          >
+                            <Ticket className="h-3 w-3 mr-1" />
+                            Tickets
+                          </Button>
                         </div>
                         )}                        {/* Add Note Form */}
                         {warning.id && playerInfo.isAddingPunishmentNote && playerInfo.punishmentNoteTarget === (warning.id || `warning-${index}`) && (
@@ -2508,6 +2576,183 @@ const PlayerWindow = ({ playerId, isOpen, onClose, initialPosition }: PlayerWind
                             </div>
                           </div>
                         )}
+
+                        {/* Modify Tickets Form */}
+                        {warning.id && playerInfo.isModifyingTickets && playerInfo.modifyTicketsTarget === (warning.id || `warning-${index}`) && (
+                          <div className="mt-3 p-3 bg-muted/20 rounded-lg border">
+                            <p className="text-xs font-medium mb-2">Modify Linked Tickets</p>
+
+                            {/* Currently attached tickets */}
+                            <div className="mb-3">
+                              <label className="text-xs text-muted-foreground mb-1 block">Attached Tickets</label>
+                              {(() => {
+                                const currentIds = warning.attachedTicketIds || [];
+                                const pendingAdd = playerInfo.modifyTicketsAdd || [];
+                                const pendingRemove = playerInfo.modifyTicketsRemove || [];
+                                const effectiveIds = [...currentIds.filter(id => !pendingRemove.includes(id)), ...pendingAdd];
+
+                                if (effectiveIds.length === 0) {
+                                  return <p className="text-xs text-muted-foreground italic">No tickets attached</p>;
+                                }
+
+                                return (
+                                  <div className="space-y-1">
+                                    {effectiveIds.map((ticketId) => {
+                                      const ticket = (playerTickets || []).find((t: any) => (t.id || t._id) === ticketId);
+                                      const isNewlyAdded = pendingAdd.includes(ticketId);
+                                      return (
+                                        <div key={ticketId} className={`flex items-center justify-between text-xs px-2 py-1 rounded ${isNewlyAdded ? 'bg-green-500/10 border border-green-500/20' : 'bg-muted/30'}`}>
+                                          <span className="truncate mr-2">
+                                            <Ticket className="h-3 w-3 inline mr-1" />
+                                            {ticketId.slice(-8)}
+                                            {ticket && ` - ${(ticket as any).category || (ticket as any).type || ''}`}
+                                            {ticket && (
+                                              <Badge variant="outline" className="ml-1 text-[10px] py-0 px-1">
+                                                {(ticket as any).locked ? 'Closed' : 'Open'}
+                                              </Badge>
+                                            )}
+                                          </span>
+                                          <button
+                                            className="text-destructive hover:text-destructive/80 flex-shrink-0"
+                                            onClick={() => {
+                                              if (isNewlyAdded) {
+                                                setPlayerInfo(prev => ({
+                                                  ...prev,
+                                                  modifyTicketsAdd: (prev.modifyTicketsAdd || []).filter(id => id !== ticketId)
+                                                }));
+                                              } else {
+                                                setPlayerInfo(prev => ({
+                                                  ...prev,
+                                                  modifyTicketsRemove: [...(prev.modifyTicketsRemove || []), ticketId]
+                                                }));
+                                              }
+                                            }}
+                                          >
+                                            <X className="h-3 w-3" />
+                                          </button>
+                                        </div>
+                                      );
+                                    })}
+                                  </div>
+                                );
+                              })()}
+                            </div>
+
+                            {/* Available tickets to add */}
+                            <div className="mb-3">
+                              <label className="text-xs text-muted-foreground mb-1 block">Add Tickets</label>
+                              {(() => {
+                                const currentIds = warning.attachedTicketIds || [];
+                                const pendingAdd = playerInfo.modifyTicketsAdd || [];
+                                const pendingRemove = playerInfo.modifyTicketsRemove || [];
+                                const effectiveIds = [...currentIds.filter(id => !pendingRemove.includes(id)), ...pendingAdd];
+                                const available = (playerTickets || []).filter((t: any) => !effectiveIds.includes(t.id || t._id));
+
+                                if (available.length === 0) {
+                                  return <p className="text-xs text-muted-foreground italic">No more tickets available</p>;
+                                }
+
+                                return (
+                                  <div className="space-y-1 max-h-32 overflow-y-auto">
+                                    {available.map((ticket: any) => {
+                                      const ticketId = ticket.id || ticket._id;
+                                      return (
+                                        <div key={ticketId} className="flex items-center justify-between text-xs px-2 py-1 rounded bg-muted/30 hover:bg-muted/50 cursor-pointer"
+                                          onClick={() => {
+                                            setPlayerInfo(prev => ({
+                                              ...prev,
+                                              modifyTicketsAdd: [...(prev.modifyTicketsAdd || []), ticketId]
+                                            }));
+                                          }}
+                                        >
+                                          <span className="truncate mr-2">
+                                            <Ticket className="h-3 w-3 inline mr-1" />
+                                            {ticketId.slice(-8)}
+                                            {` - ${ticket.category || ticket.type || ''}`}
+                                            <Badge variant="outline" className="ml-1 text-[10px] py-0 px-1">
+                                              {ticket.locked ? 'Closed' : 'Open'}
+                                            </Badge>
+                                          </span>
+                                          <Plus className="h-3 w-3 text-green-500 flex-shrink-0" />
+                                        </div>
+                                      );
+                                    })}
+                                  </div>
+                                );
+                              })()}
+                            </div>
+
+                            {/* Toggle for modifying associated tickets */}
+                            <label className="flex items-center gap-2 text-xs mb-3 cursor-pointer">
+                              <input
+                                type="checkbox"
+                                checked={playerInfo.modifyTicketsAssociated ?? true}
+                                onChange={(e) => setPlayerInfo(prev => ({...prev, modifyTicketsAssociated: e.target.checked}))}
+                                className="rounded border-border"
+                              />
+                              <span>Modify associated tickets (close added / reopen removed)</span>
+                            </label>
+
+                            <div className="flex justify-end gap-2">
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                onClick={() => setPlayerInfo(prev => ({
+                                  ...prev,
+                                  isModifyingTickets: false,
+                                  modifyTicketsTarget: null,
+                                  modifyTicketsAdd: [],
+                                  modifyTicketsRemove: [],
+                                }))}
+                              >
+                                Cancel
+                              </Button>
+                              <Button
+                                size="sm"
+                                disabled={
+                                  ((playerInfo.modifyTicketsAdd || []).length === 0 && (playerInfo.modifyTicketsRemove || []).length === 0) ||
+                                  modifyPunishmentTickets.isPending
+                                }
+                                onClick={async () => {
+                                  try {
+                                    await modifyPunishmentTickets.mutateAsync({
+                                      uuid: playerId,
+                                      punishmentId: warning.id!,
+                                      addTicketIds: playerInfo.modifyTicketsAdd || [],
+                                      removeTicketIds: playerInfo.modifyTicketsRemove || [],
+                                      modifyAssociatedTickets: playerInfo.modifyTicketsAssociated ?? true
+                                    });
+                                    toast({
+                                      title: 'Tickets Updated',
+                                      description: 'Punishment ticket associations have been updated'
+                                    });
+                                    refetch();
+                                    setPlayerInfo(prev => ({
+                                      ...prev,
+                                      isModifyingTickets: false,
+                                      modifyTicketsTarget: null,
+                                      modifyTicketsAdd: [],
+                                      modifyTicketsRemove: [],
+                                    }));
+                                  } catch (error) {
+                                    console.error('Error modifying punishment tickets:', error);
+                                    toast({
+                                      title: 'Failed to modify tickets',
+                                      description: error instanceof Error ? error.message : "An unknown error occurred",
+                                      variant: "destructive"
+                                    });
+                                  }
+                                }}
+                              >
+                                {modifyPunishmentTickets.isPending ? (
+                                  <><Loader2 className="h-3 w-3 mr-1 animate-spin" />Applying...</>
+                                ) : (
+                                  'Apply Changes'
+                                )}
+                              </Button>
+                            </div>
+                          </div>
+                        )}
                       </div>
                     )}
                   </div>
@@ -2822,6 +3067,13 @@ const PlayerWindow = ({ playerId, isOpen, onClose, initialPosition }: PlayerWind
               punishmentTypesByCategory={punishmentTypesByCategory}
               isLoading={isLoadingSettings || isLoadingPunishmentTypes}
               compact={false}
+              availableTickets={(playerTickets || []).map((t: any) => ({
+                id: t.id || t._id,
+                subject: t.subject || '',
+                type: t.type || t.category || '',
+                status: t.locked ? 'Closed' : 'Open',
+                locked: t.locked
+              }))}
             />
           </TabsContent>
         </Tabs>

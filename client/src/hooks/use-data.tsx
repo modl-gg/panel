@@ -871,6 +871,71 @@ export function useAddPunishmentNote() {
   });
 }
 
+export function useModifyPunishmentTickets() {
+  const { user } = useAuth();
+
+  return useMutation({
+    mutationFn: async ({
+      uuid,
+      punishmentId,
+      addTicketIds,
+      removeTicketIds,
+      modifyAssociatedTickets
+    }: {
+      uuid: string,
+      punishmentId: string,
+      addTicketIds?: string[],
+      removeTicketIds?: string[],
+      modifyAssociatedTickets: boolean
+    }) => {
+      const res = await apiFetch(`/v1/panel/players/${uuid}/punishments/${punishmentId}/tickets`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          addTicketIds,
+          removeTicketIds,
+          modifyAssociatedTickets,
+          issuerName: user?.username || 'Unknown User'
+        })
+      });
+
+      if (!res.ok) {
+        const errorText = await res.text();
+        console.error('Modify punishment tickets API error:', errorText);
+        throw new Error(`Failed to modify punishment tickets: ${res.status} ${res.statusText}`);
+      }
+
+      return res.json();
+    },
+    onSuccess: (data, variables) => {
+      queryClient.invalidateQueries({ queryKey: ['/v1/panel/players', variables.uuid] });
+      queryClient.invalidateQueries({ queryKey: ['/v1/panel/tickets'] });
+    },
+    onError: (error) => {
+      console.error('Error modifying punishment tickets:', error);
+    }
+  });
+}
+
+export function useLinkedBansForPunishment(punishmentId: string | null) {
+  return useQuery({
+    queryKey: ['/v1/panel/players/punishments', punishmentId, 'linked-bans'],
+    queryFn: async () => {
+      if (!punishmentId) return [];
+      const res = await apiFetch(`/v1/panel/players/punishments/${punishmentId}/linked-bans`);
+      if (!res.ok) {
+        if (res.status === 404) return [];
+        throw new Error('Failed to fetch linked bans');
+      }
+      return res.json();
+    },
+    enabled: !!punishmentId,
+    staleTime: 30000,
+  });
+}
+
 export function useRoles() {
   return useQuery({
     queryKey: ['/v1/panel/roles'],

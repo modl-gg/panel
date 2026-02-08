@@ -41,6 +41,7 @@ interface PlayerPunishmentProps {
   };
   isLoading?: boolean;
   compact?: boolean;
+  availableTickets?: Array<{id: string; subject: string; type: string; status: string; locked?: boolean}>;
 }
 
 // Constants
@@ -82,7 +83,8 @@ const PlayerPunishment: React.FC<PlayerPunishmentProps> = ({
   onApply,
   punishmentTypesByCategory = DEFAULT_PUNISHMENT_TYPES,
   isLoading = false,
-  compact = false
+  compact = false,
+  availableTickets = []
 }) => {
   const { toast } = useToast();
   const [isApplying, setIsApplying] = useState(false);
@@ -603,6 +605,44 @@ const PlayerPunishment: React.FC<PlayerPunishmentProps> = ({
     );
   };
 
+  const renderTicketSelection = () => {
+    // Only show open tickets
+    const openTickets = availableTickets.filter(t => !t.locked);
+    if (openTickets.length === 0) return null;
+
+    return (
+      <div className="space-y-2">
+        <label className="text-sm font-medium">Link Tickets</label>
+        <p className="text-xs text-muted-foreground">Select tickets to close when this punishment is applied</p>
+        <div className="space-y-1 max-h-32 overflow-y-auto">
+          {openTickets.map(ticket => {
+            const isSelected = (data.attachReports || []).includes(ticket.id);
+            return (
+              <div key={ticket.id} className="flex items-center space-x-2">
+                <Checkbox
+                  id={`ticket-${ticket.id}`}
+                  checked={isSelected}
+                  onCheckedChange={(checked) => {
+                    const current = data.attachReports || [];
+                    if (checked) {
+                      updateData({ attachReports: [...current, ticket.id] });
+                    } else {
+                      updateData({ attachReports: current.filter(id => id !== ticket.id) });
+                    }
+                  }}
+                />
+                <label htmlFor={`ticket-${ticket.id}`} className="text-xs cursor-pointer flex-1">
+                  <span className="font-medium">{ticket.id}</span>
+                  <span className="text-muted-foreground ml-1">- {ticket.subject || ticket.type}</span>
+                </label>
+              </div>
+            );
+          })}
+        </div>
+      </div>
+    );
+  };
+
   const reasonRequiredPunishments = ['Kick', 'Manual Mute', 'Manual Ban'];
 
   const renderTextFields = () => {
@@ -795,6 +835,7 @@ const PlayerPunishment: React.FC<PlayerPunishmentProps> = ({
         {renderDurationControls()}
         {renderSpecialOptions()}
         {renderTextFields()}
+        {renderTicketSelection()}
       </div>
 
       <Button
