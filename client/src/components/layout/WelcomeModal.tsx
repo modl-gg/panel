@@ -29,6 +29,8 @@ import {
             <br />
             <p>👨‍👨‍👦‍👦 You can invite team members, customize your experience, and setup 2FA in the settings page.</p>
             <br />
+            <p>📖 Check out our <a href={import.meta.env.VITE_DOCS_URL} target="_blank" rel="noopener noreferrer" className="text-primary hover:underline">documentation</a> for guides and setup instructions.</p>
+            <br />
             <p>🐛 We are still beta testing so please report all bugs to us at {MODL.Discord.SHORT_URL} or {MODL.Email.SUPPORT}</p>
           </div>
           <DialogFooter>

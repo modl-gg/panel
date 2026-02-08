@@ -67,7 +67,7 @@ const Tickets = () => {
   const [authorFilter, setAuthorFilter] = useState<string[]>([]);
   const [labelFilters, setLabelFilters] = useState<string[]>([]);
   const [assigneeFilter, setAssigneeFilter] = useState<string[]>([]);
-  const [typeFilter, setTypeFilter] = useState<string[]>([]);
+  const [typeFilter, setTypeFilter] = useState<string[]>(['support', 'bug', 'player', 'chat', 'appeal', 'staff']);
   const [sortOption, setSortOption] = useState('newest');
   const [currentPage, setCurrentPage] = useState(1);
 

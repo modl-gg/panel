@@ -3119,6 +3119,8 @@ const Settings = () => {
                 uploadingPanelIcon={uploadingPanelIcon}
                 handleHomepageIconUpload={handleHomepageIconUpload}
                 handlePanelIconUpload={handlePanelIconUpload}
+                handleRemoveHomepageIcon={() => setHomepageIconUrl('')}
+                handleRemovePanelIcon={() => setPanelIconUrl('')}
                 apiKey={apiKey}
                 fullApiKey={fullApiKey}
                 showApiKey={showApiKey}

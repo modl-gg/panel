@@ -30,6 +30,8 @@ interface GeneralSettingsProps {
   uploadingPanelIcon: boolean;
   handleHomepageIconUpload: (file: File) => void;
   handlePanelIconUpload: (file: File) => void;
+  handleRemoveHomepageIcon: () => void;
+  handleRemovePanelIcon: () => void;
 
   // API Key Management
   apiKey: string;
@@ -73,6 +75,8 @@ const GeneralSettings = ({
   uploadingPanelIcon,
   handleHomepageIconUpload,
   handlePanelIconUpload,
+  handleRemoveHomepageIcon,
+  handleRemovePanelIcon,
   apiKey,
   fullApiKey,
   showApiKey,
@@ -159,7 +163,7 @@ const GeneralSettings = ({
                   <Globe className="h-8 w-8 text-muted-foreground" />
                 )}
               </div>
-              <div className="space-y-2">
+              <div className="flex items-center gap-2">
                 <input
                   type="file"
                   accept="image/*"
@@ -179,6 +183,16 @@ const GeneralSettings = ({
                   <Upload className="h-4 w-4 mr-2" />
                   {uploadingHomepageIcon ? 'Uploading...' : 'Upload'}
                 </Button>
+                {homepageIconUrl && (
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={handleRemoveHomepageIcon}
+                  >
+                    <Trash2 className="h-4 w-4 mr-2" />
+                    Remove
+                  </Button>
+                )}
               </div>
             </div>
           </div>
@@ -193,7 +207,7 @@ const GeneralSettings = ({
                   <SettingsIcon className="h-8 w-8 text-muted-foreground" />
                 )}
               </div>
-              <div className="space-y-2">
+              <div className="flex items-center gap-2">
                 <input
                   type="file"
                   accept="image/*"
@@ -213,6 +227,16 @@ const GeneralSettings = ({
                   <Upload className="h-4 w-4 mr-2" />
                   {uploadingPanelIcon ? 'Uploading...' : 'Upload'}
                 </Button>
+                {panelIconUrl && (
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={handleRemovePanelIcon}
+                  >
+                    <Trash2 className="h-4 w-4 mr-2" />
+                    Remove
+                  </Button>
+                )}
               </div>
             </div>
           </div>
