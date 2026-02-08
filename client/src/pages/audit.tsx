@@ -593,15 +593,24 @@ const StaffDetailModal = ({ staff, isOpen, onClose, initialPeriod = '30d' }: {
   const { toast } = useToast();
   const { openPlayerWindow, windows } = usePlayerWindow();
 
-  // Check if any player windows are open
-  const hasOpenPlayerWindows = windows.some(w => w.isOpen);
-
   // Sync selectedPeriod with initialPeriod when modal opens
   useEffect(() => {
     if (isOpen) {
       setSelectedPeriod(initialPeriod);
     }
   }, [isOpen, initialPeriod]);
+
+  // Prevent modal's inert attribute from blocking player windows
+  useEffect(() => {
+    if (!isOpen) return;
+    const el = document.querySelector('[data-player-windows]');
+    if (!el) return;
+    const removeInert = () => el.removeAttribute('inert');
+    removeInert();
+    const observer = new MutationObserver(() => removeInert());
+    observer.observe(el, { attributes: true, attributeFilter: ['inert'] });
+    return () => observer.disconnect();
+  }, [isOpen]);
 
   // Handler to open player window - modal stays open, player window appears on top
   const handleOpenPlayerWindow = (playerId: string, playerName: string) => {
@@ -677,11 +686,9 @@ const StaffDetailModal = ({ staff, isOpen, onClose, initialPeriod = '30d' }: {
   };
 
   return (
-    <Dialog open={isOpen} onOpenChange={onClose} modal={false}>
+    <Dialog open={isOpen} onOpenChange={onClose}>
       <DialogContent
         className="max-w-6xl max-h-[90vh] overflow-y-auto"
-        onInteractOutside={(e) => e.preventDefault()}
-        onPointerDownOutside={(e) => e.preventDefault()}
       >
         <DialogHeader>
           <DialogTitle className="flex items-center gap-3">
@@ -970,7 +977,7 @@ const StaffDetailModal = ({ staff, isOpen, onClose, initialPeriod = '30d' }: {
                             return { status: 'Inactive', variant: 'secondary' as const, color: 'text-gray-600' };
                           }
                           
-                          return { status: 'Active', variant: 'default' as const, color: 'text-blue-600' };
+                          return { status: 'Active', variant: 'outline' as const, color: 'text-blue-600' };
                         };
 
                         const statusInfo = getPunishmentStatus(punishment);

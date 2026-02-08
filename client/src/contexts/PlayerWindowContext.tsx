@@ -94,7 +94,7 @@ export function PlayerWindowProvider({ children }: { children: ReactNode }) {
       {children}
       {/* Render all player windows via portal to ensure they appear above modals */}
       {typeof document !== 'undefined' && createPortal(
-        <>
+        <div data-player-windows>
           {windows.map(window => (
             <PlayerWindow
               key={window.id}
@@ -104,7 +104,7 @@ export function PlayerWindowProvider({ children }: { children: ReactNode }) {
               initialPosition={window.position}
             />
           ))}
-        </>,
+        </div>,
         document.body
       )}
     </PlayerWindowContext.Provider>
