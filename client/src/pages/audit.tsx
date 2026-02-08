@@ -677,21 +677,12 @@ const StaffDetailModal = ({ staff, isOpen, onClose, initialPeriod = '30d' }: {
   };
 
   return (
-    <Dialog open={isOpen} onOpenChange={onClose}>
+    <Dialog open={isOpen} onOpenChange={onClose} modal={false}>
       <DialogContent
         className="max-w-6xl max-h-[90vh] overflow-y-auto"
-        onInteractOutside={(e) => {
-          // Prevent closing when clicking on player windows
-          if (hasOpenPlayerWindows) {
-            e.preventDefault();
-          }
-        }}
-        onPointerDownOutside={(e) => {
-          // Also prevent pointer down outside when player windows are open
-          if (hasOpenPlayerWindows) {
-            e.preventDefault();
-          }
-        }}
+        overlayClassName="pointer-events-none"
+        onInteractOutside={(e) => e.preventDefault()}
+        onPointerDownOutside={(e) => e.preventDefault()}
       >
         <DialogHeader>
           <DialogTitle className="flex items-center gap-3">
