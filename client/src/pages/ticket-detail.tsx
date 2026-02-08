@@ -2778,7 +2778,7 @@ const PunishmentDetailsCard = ({ punishmentId }: { punishmentId: string }) => {
         
         // Fetch punishment details from the player API
         const { getApiUrl, getCurrentDomain } = await import('@/lib/api');
-        const response = await fetch(getApiUrl(`/v1/panel/players/punishment/${punishmentId}`), {
+        const response = await fetch(getApiUrl(`/v1/panel/players/punishments/${punishmentId}`), {
           credentials: 'include',
           headers: { 'X-Server-Domain': getCurrentDomain() }
         });

@@ -253,8 +253,8 @@ const HomePage: React.FC = () => {
         <Link href={user ? "/panel" : "/panel/auth"}>
           <Button variant="secondary" size="sm" className="bg-card/80 hover:bg-card/90 text-foreground border-muted text-xs sm:text-sm">
             <LogIn className="h-4 w-4 mr-1 sm:mr-2" />
-            <span className="hidden sm:inline">{user ? "Go To Panel" : "Sign In"}</span>
-            <span className="sm:hidden">{user ? "Panel" : "Sign In"}</span>
+            <span className="hidden sm:inline">{user ? "Go To Panel" : "Staff Login"}</span>
+            <span className="sm:hidden">{user ? "Panel" : "Staff Login"}</span>
           </Button>
         </Link>
       </div>
