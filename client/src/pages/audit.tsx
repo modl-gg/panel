@@ -680,7 +680,6 @@ const StaffDetailModal = ({ staff, isOpen, onClose, initialPeriod = '30d' }: {
     <Dialog open={isOpen} onOpenChange={onClose} modal={false}>
       <DialogContent
         className="max-w-6xl max-h-[90vh] overflow-y-auto"
-        overlayClassName="pointer-events-none"
         onInteractOutside={(e) => e.preventDefault()}
         onPointerDownOutside={(e) => e.preventDefault()}
       >
