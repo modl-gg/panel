@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback, useRef } from "react";
 import { useParams } from "wouter";
-import { getApiUrl } from "@/lib/api";
+import { getApiUrl, getCurrentDomain } from "@/lib/api";
 import { Loader2, Upload, X, CheckCircle, AlertCircle, FileIcon } from "lucide-react";
 
 interface TokenInfo {
@@ -25,8 +25,10 @@ function apiFetch(url: string, options: RequestInit = {}): Promise<Response> {
   const fullUrl = getApiUrl(url);
   return fetch(fullUrl, {
     ...options,
+    credentials: "include",
     headers: {
       ...options.headers,
+      "X-Server-Domain": getCurrentDomain(),
     },
   });
 }
