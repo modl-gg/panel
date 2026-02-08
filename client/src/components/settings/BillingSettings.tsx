@@ -72,7 +72,7 @@ const plans: Plan[] = [
       { text: 'Up to 5 staff members', included: true, icon: <Users className="h-4 w-4" /> },
       { text: '100k API requests per month', included: true, icon: <Zap className="h-4 w-4" /> },
       { text: 'Community support', included: true, icon: <Headphones className="h-4 w-4" /> },
-      { text: '2GB CDN storage', included: true, icon: <HardDrive className="h-4 w-4" /> },
+      { text: '500MB CDN storage', included: true, icon: <HardDrive className="h-4 w-4" /> },
       { text: 'AI moderation', included: false, icon: <Brain className="h-4 w-4" /> }
     ],
     buttonText: 'Current Plan',
@@ -89,7 +89,7 @@ const plans: Plan[] = [
       { text: 'Advanced ticket system', included: true, icon: <Shield className="h-4 w-4" /> },
       { text: 'Unlimited staff members', included: true, icon: <Users className="h-4 w-4" /> },
       { text: '500k API requests per month', included: true, icon: <Zap className="h-4 w-4" /> },
-      { text: '200GB CDN storage', included: true, icon: <HardDrive className="h-4 w-4" /> },
+      { text: '200GB CDN storage ($0.08/GB/month past 200GB)', included: true, icon: <HardDrive className="h-4 w-4" /> },
       { text: 'AI moderation', included: true, icon: <Brain className="h-4 w-4" /> },
       { text: 'Priority support', included: true, icon: <Crown className="h-4 w-4" /> }
     ],
@@ -472,8 +472,45 @@ const BillingSettings = () => {
   };
 
   const PremiumBillingView = () => {
-    const { subscriptionStatus, currentPeriodEnd } = billingStatus || {};
+    const { subscriptionStatus, currentPeriodEnd, maxStorageLimitBytes } = billingStatus || {};
+    const [storageLimitGB, setStorageLimitGB] = useState<number>(
+      maxStorageLimitBytes ? Math.round(maxStorageLimitBytes / (1024 * 1024 * 1024)) : 200
+    );
+    const [savingStorageLimit, setSavingStorageLimit] = useState(false);
 
+    useEffect(() => {
+      if (maxStorageLimitBytes) {
+        setStorageLimitGB(Math.round(maxStorageLimitBytes / (1024 * 1024 * 1024)));
+      }
+    }, [maxStorageLimitBytes]);
+
+    const handleSaveStorageLimit = async () => {
+      setSavingStorageLimit(true);
+      try {
+        const response = await apiFetch('/v1/panel/billing/storage-limit', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ maxStorageLimitBytes: storageLimitGB * 1024 * 1024 * 1024 }),
+        });
+        if (!response.ok) {
+          const data = await response.json();
+          throw new Error(data.error || 'Failed to update storage limit');
+        }
+        toast({
+          title: 'Storage Limit Updated',
+          description: `Maximum storage limit set to ${storageLimitGB} GB.`,
+        });
+        queryClient.invalidateQueries({ queryKey: ['/v1/panel/billing/status'] });
+      } catch (error: any) {
+        toast({
+          title: 'Error',
+          description: error.message || 'Failed to update storage limit.',
+          variant: 'destructive',
+        });
+      } finally {
+        setSavingStorageLimit(false);
+      }
+    };
 
     return (
       <div className="space-y-6">
@@ -599,6 +636,47 @@ const BillingSettings = () => {
               )}
             </div>
 
+          </CardContent>
+        </Card>
+
+        {/* Storage Limit Configuration */}
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <HardDrive className="h-5 w-5" />
+              Storage Limit
+            </CardTitle>
+            <CardDescription>
+              Configure the maximum storage limit for your server. The base 200GB is included with your premium plan.
+              Usage above 200GB is billed at $0.08/GB/month.
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div className="flex items-end gap-3">
+              <div className="flex-1">
+                <Label htmlFor="storage-limit">Maximum Storage (GB)</Label>
+                <input
+                  id="storage-limit"
+                  type="number"
+                  min={1}
+                  max={10240}
+                  value={storageLimitGB}
+                  onChange={(e) => setStorageLimitGB(Math.max(1, Math.min(10240, parseInt(e.target.value) || 1)))}
+                  className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 mt-1.5"
+                />
+              </div>
+              <Button
+                onClick={handleSaveStorageLimit}
+                disabled={savingStorageLimit}
+              >
+                {savingStorageLimit ? 'Saving...' : 'Save'}
+              </Button>
+            </div>
+            {storageLimitGB > 200 && (
+              <p className="text-sm text-muted-foreground">
+                Estimated overage cost: <strong>${((storageLimitGB - 200) * 0.08).toFixed(2)}/month</strong> if fully used (at $0.08/GB/month for storage above 200GB).
+              </p>
+            )}
           </CardContent>
         </Card>
       </div>

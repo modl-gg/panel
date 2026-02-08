@@ -72,9 +72,19 @@ export default function UploadEvidencePage() {
     }
   }
 
+  const MAX_FILE_SIZE = 1 * 1024 * 1024 * 1024; // 1 GB
+
   const handleFiles = useCallback(
     async (newFiles: File[]) => {
       if (!token || submitted) return;
+
+      // Client-side file size validation
+      const oversizedFiles = newFiles.filter((f) => f.size > MAX_FILE_SIZE);
+      if (oversizedFiles.length > 0) {
+        const names = oversizedFiles.map((f) => f.name).join(", ");
+        setError(`File(s) exceed the 1GB limit: ${names}`);
+        return;
+      }
 
       const uploadEntries: UploadedFile[] = newFiles.map((file) => ({
         file,
@@ -367,7 +377,7 @@ export default function UploadEvidencePage() {
             Drag and drop files here, or click to browse
           </p>
           <p className="text-xs text-muted-foreground">
-            Images, videos, PDFs up to 100MB
+            Images, videos, PDFs up to 1GB
           </p>
           <input
             ref={fileInputRef}

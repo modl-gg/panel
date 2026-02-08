@@ -221,7 +221,7 @@ const fetchStorageData = async () => {
         } : undefined,
         pricing: {
           storage: {
-            overagePricePerGB: usageData.cdn?.overageRate ?? 0.05,
+            overagePricePerGB: usageData.cdn?.overageRate ?? 0.08,
             currency: 'USD',
             period: 'month'
           },
@@ -518,7 +518,7 @@ const fetchStorageData = async () => {
               <h3 className="font-medium text-amber-800 dark:text-amber-200">Storage Overage Alert</h3>
               <p className="text-sm text-amber-700 dark:text-amber-300 mt-1">
                 You're using <strong>{storageUsage.quota.overageUsedFormatted}</strong> over your {storageUsage.quota.baseLimitFormatted} base storage limit. 
-                This will cost <strong>${storageUsage.quota.overageCost}</strong> this month at $0.05/GB.
+                This will cost <strong>${storageUsage.quota.overageCost}</strong> this month at $0.08/GB.
               </p>
               <p className="text-xs text-amber-600 dark:text-amber-400 mt-2">
                 Consider cleaning up unused files or increasing your storage limit to avoid future charges.
@@ -602,6 +602,15 @@ const fetchStorageData = async () => {
                           <span>Overage Limit:</span>
                           <span>{storageUsage.quota.overageLimitFormatted}</span>
                         </div>
+                        <p className="text-xs text-muted-foreground pt-1">
+                          To configure your maximum storage limit, go to{' '}
+                          <a
+                            href="?category=general&sub=billing"
+                            className="text-primary hover:underline"
+                          >
+                            Billing Settings
+                          </a>.
+                        </p>
                       </div>
                     )}
                   </>
@@ -705,7 +714,7 @@ const fetchStorageData = async () => {
                     <span className="font-semibold">${storageUsage.quota.overageCost}</span>
                   </div>
                   <div className="text-xs text-muted-foreground">
-                    $0.05/GB/month
+                    $0.08/GB/month
                   </div>
                 </div>
               </CardContent>
