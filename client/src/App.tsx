@@ -215,10 +215,10 @@ function AppContent() {
       return;
     }
 
-    if (!hasSeenModal && isOnPanelHomePage && !isFromProvisioning && !isOnExcludedPage && !isOnPlayerTicketPage && !isOnAcceptInvitationPage) {
+    if (!hasSeenModal && isOnPanelHomePage && !isFromProvisioning && !isOnExcludedPage && !isOnPlayerTicketPage && !isOnAcceptInvitationPage && user?.role === 'Super Admin') {
       setWelcomeModalOpen(true);
     }
-  }, [location]);
+  }, [location, user]);
 
   const handleCloseWelcomeModal = () => {
     localStorage.setItem("hasSeenWelcomeModal", "true");

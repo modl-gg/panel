@@ -1309,7 +1309,7 @@ const Settings = () => {
         setShowApiKey(true);
         toast({
           title: "API Key Generated",
-          description: "Your new API key has been generated. Make sure to copy it as it won't be shown again.",
+          description: "Your new API key has been generated.",
         });
       } else {
         throw new Error('Failed to generate API key');
