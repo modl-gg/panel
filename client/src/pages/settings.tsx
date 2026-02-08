@@ -813,8 +813,9 @@ const Settings = () => {
   const handleSubCategorySelect = (category: string, subCategory: string) => {
     // If clicking the same sub-category, deselect it
     if (expandedCategory === category && expandedSubCategory === subCategory) {
+      setExpandedCategory(null);
       setExpandedSubCategory(null);
-      updateURL(category, null);
+      updateURL(null, null);
     } else {
       setExpandedCategory(category);
       setExpandedSubCategory(subCategory);
@@ -2993,7 +2994,7 @@ const Settings = () => {
   ];
 
   // Get the currently expanded category object
-  const currentCategory = settingsCategories.find(c => c.id === expandedCategory);
+
 
   return (
     <PageContainer>
@@ -3085,25 +3086,6 @@ const Settings = () => {
         {expandedCategory !== 'staff' && expandedCategory !== 'knowledgebase' && (
         <Card>
           <CardContent className="p-6">
-            {/* Breadcrumb navigation */}
-            {expandedSubCategory && (
-              <div className="flex items-center gap-1.5 mb-4 text-sm">
-                <span
-                  className="text-muted-foreground hover:text-foreground cursor-pointer transition-colors"
-                  onClick={() => {
-                    setExpandedSubCategory(null);
-                    updateURL(expandedCategory, null);
-                  }}
-                >
-                  Profile Settings
-                </span>
-                <ChevronRight className="h-3.5 w-3.5 text-muted-foreground" />
-                <span className="font-medium">
-                  {currentCategory?.subCategories?.find(s => s.id === expandedSubCategory)?.title || expandedSubCategory}
-                </span>
-              </div>
-            )}
-
             {/* Account Settings - Show by default when no sub-category is expanded */}
             {!expandedSubCategory && (
               <AccountSettings

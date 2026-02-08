@@ -984,14 +984,14 @@ const StaffDetailModal = ({ staff, isOpen, onClose, initialPeriod = '30d' }: {
                           );
                           
                           if (hasPardon || punishment.rolledBack) {
-                            return { status: 'Pardoned', variant: 'outline' as const, color: 'text-green-600' };
+                            return { status: 'Pardoned', variant: 'outline' as const, color: 'bg-green-100 dark:bg-green-900 text-green-800 dark:text-green-200 border-green-300 dark:border-green-700' };
                           }
-                          
+
                           if (punishment.active === false) {
-                            return { status: 'Inactive', variant: 'secondary' as const, color: 'text-gray-600' };
+                            return { status: 'Inactive', variant: 'outline' as const, color: 'bg-gray-100 dark:bg-gray-800 text-gray-800 dark:text-gray-200 border-gray-300 dark:border-gray-700' };
                           }
-                          
-                          return { status: 'Active', variant: 'outline' as const, color: 'text-blue-600' };
+
+                          return { status: 'Active', variant: 'outline' as const, color: 'bg-red-100 dark:bg-red-900 text-red-800 dark:text-red-200 border-red-300 dark:border-red-700' };
                         };
 
                         const statusInfo = getPunishmentStatus(punishment);
