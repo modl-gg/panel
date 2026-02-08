@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect } from 'react';
 import { useLocation } from 'wouter';
 import {
   CircleDot,
@@ -10,8 +10,7 @@ import {
   Eye,
   User,
   SortAsc,
-  Plus,
-  Tag
+  Plus
 } from 'lucide-react';
 import { formatDate, formatTimeAgo } from '../utils/date-utils';
 import { Button } from '@modl-gg/shared-web/components/ui/button';
@@ -26,6 +25,7 @@ import PageContainer from '@/components/layout/PageContainer';
 import { FilterDropdown } from '@/components/tickets/FilterDropdown';
 import { BulkActionBar } from '@/components/tickets/BulkActionBar';
 import { LabelBadge } from '@/components/ui/label-badge';
+import { Popover, PopoverContent, PopoverTrigger } from '@modl-gg/shared-web/components/ui/popover';
 import { useToast } from '@modl-gg/shared-web/hooks/use-toast';
 
 interface Ticket {
@@ -115,20 +115,6 @@ const Tickets = () => {
   const bulkUpdateMutation = useBulkUpdateTickets();
   const updateTicketMutation = useUpdateTicket();
 
-  // State for inline label management
-  const [labelMenuTicketId, setLabelMenuTicketId] = useState<string | null>(null);
-  const labelMenuRef = useRef<HTMLDivElement>(null);
-
-  // Close label menu when clicking outside
-  useEffect(() => {
-    function handleClickOutside(event: MouseEvent) {
-      if (labelMenuRef.current && !labelMenuRef.current.contains(event.target as Node)) {
-        setLabelMenuTicketId(null);
-      }
-    }
-    document.addEventListener('mousedown', handleClickOutside);
-    return () => document.removeEventListener('mousedown', handleClickOutside);
-  }, []);
 
   const tickets: Ticket[] = ticketsResponse?.tickets || [];
   const pagination = ticketsResponse?.pagination || {
@@ -230,7 +216,6 @@ const Tickets = () => {
     } catch (error) {
       toast({ title: 'Error', description: 'Failed to add label', variant: 'destructive' });
     }
-    setLabelMenuTicketId(null);
   };
 
   const handleRemoveLabel = async (ticketId: string, labelName: string) => {
@@ -280,7 +265,6 @@ const Tickets = () => {
     const isSelected = selectedTickets.has(ticket.id);
     const ticketLabels = ticket.tags || [];
     const availableLabelsForTicket = labels.filter(l => !ticketLabels.includes(l.name));
-    const showLabelMenu = labelMenuTicketId === ticket.id;
 
     return (
       <TableRow
@@ -316,36 +300,35 @@ const Tickets = () => {
                     />
                   );
                 })}
-                {/* Add label button */}
-                <div className="relative" onClick={(e) => e.stopPropagation()}>
-                  <button
-                    onClick={() => setLabelMenuTicketId(showLabelMenu ? null : ticket.id)}
-                    className="h-5 w-5 flex items-center justify-center rounded-full border border-dashed border-muted-foreground/30 text-muted-foreground hover:border-primary hover:text-primary transition-colors"
-                    title="Add label"
-                  >
-                    <Plus className="h-3 w-3" />
-                  </button>
-                  {showLabelMenu && availableLabelsForTicket.length > 0 && (
-                    <div
-                      ref={labelMenuRef}
-                      className="absolute top-full left-0 mt-1 w-48 bg-popover border border-border rounded-md shadow-lg z-50 p-1"
-                    >
-                      {availableLabelsForTicket.map((label) => (
+                {availableLabelsForTicket.length > 0 && (
+                  <div onClick={(e) => e.stopPropagation()}>
+                    <Popover>
+                      <PopoverTrigger asChild>
                         <button
-                          key={label.id}
-                          onClick={() => handleAddLabel(ticket.id, label.name)}
-                          className="w-full flex items-center gap-2 px-2 py-1.5 text-sm rounded hover:bg-muted transition-colors"
+                          className="h-5 w-5 flex items-center justify-center rounded-full border border-dashed border-muted-foreground/30 text-muted-foreground hover:border-primary hover:text-primary transition-colors"
+                          title="Add label"
                         >
-                          <span
-                            className="w-3 h-3 rounded-full flex-shrink-0"
-                            style={{ backgroundColor: label.color }}
-                          />
-                          <span className="truncate">{label.name}</span>
+                          <Plus className="h-3 w-3" />
                         </button>
-                      ))}
-                    </div>
-                  )}
-                </div>
+                      </PopoverTrigger>
+                      <PopoverContent className="w-48 p-1" align="start">
+                        {availableLabelsForTicket.map((label) => (
+                          <button
+                            key={label.id}
+                            onClick={() => handleAddLabel(ticket.id, label.name)}
+                            className="w-full flex items-center gap-2 px-2 py-1.5 text-sm rounded hover:bg-muted transition-colors text-left"
+                          >
+                            <span
+                              className="w-3 h-3 rounded-full flex-shrink-0"
+                              style={{ backgroundColor: label.color }}
+                            />
+                            <span className="truncate">{label.name}</span>
+                          </button>
+                        ))}
+                      </PopoverContent>
+                    </Popover>
+                  </div>
+                )}
               </div>
               <div className="text-xs text-muted-foreground mt-0.5">
                 #{ticket.id} opened {formatTimeAgo(ticket.date)} by {ticket.reportedByName || ticket.reportedBy}
@@ -388,7 +371,6 @@ const Tickets = () => {
     const isSelected = selectedTickets.has(ticket.id);
     const ticketLabels = ticket.tags || [];
     const availableLabelsForTicket = labels.filter(l => !ticketLabels.includes(l.name));
-    const showLabelMenu = labelMenuTicketId === ticket.id;
 
     return (
       <Card
@@ -427,36 +409,35 @@ const Tickets = () => {
                     />
                   );
                 })}
-                {/* Add label button */}
-                <div className="relative" onClick={(e) => e.stopPropagation()}>
-                  <button
-                    onClick={() => setLabelMenuTicketId(showLabelMenu ? null : ticket.id)}
-                    className="h-5 w-5 flex items-center justify-center rounded-full border border-dashed border-muted-foreground/30 text-muted-foreground hover:border-primary hover:text-primary transition-colors"
-                    title="Add label"
-                  >
-                    <Plus className="h-3 w-3" />
-                  </button>
-                  {showLabelMenu && availableLabelsForTicket.length > 0 && (
-                    <div
-                      ref={labelMenuRef}
-                      className="absolute top-full left-0 mt-1 w-48 bg-popover border border-border rounded-md shadow-lg z-50 p-1"
-                    >
-                      {availableLabelsForTicket.map((label) => (
+                {availableLabelsForTicket.length > 0 && (
+                  <div onClick={(e) => e.stopPropagation()}>
+                    <Popover>
+                      <PopoverTrigger asChild>
                         <button
-                          key={label.id}
-                          onClick={() => handleAddLabel(ticket.id, label.name)}
-                          className="w-full flex items-center gap-2 px-2 py-1.5 text-sm rounded hover:bg-muted transition-colors"
+                          className="h-5 w-5 flex items-center justify-center rounded-full border border-dashed border-muted-foreground/30 text-muted-foreground hover:border-primary hover:text-primary transition-colors"
+                          title="Add label"
                         >
-                          <span
-                            className="w-3 h-3 rounded-full flex-shrink-0"
-                            style={{ backgroundColor: label.color }}
-                          />
-                          <span className="truncate">{label.name}</span>
+                          <Plus className="h-3 w-3" />
                         </button>
-                      ))}
-                    </div>
-                  )}
-                </div>
+                      </PopoverTrigger>
+                      <PopoverContent className="w-48 p-1" align="start">
+                        {availableLabelsForTicket.map((label) => (
+                          <button
+                            key={label.id}
+                            onClick={() => handleAddLabel(ticket.id, label.name)}
+                            className="w-full flex items-center gap-2 px-2 py-1.5 text-sm rounded hover:bg-muted transition-colors text-left"
+                          >
+                            <span
+                              className="w-3 h-3 rounded-full flex-shrink-0"
+                              style={{ backgroundColor: label.color }}
+                            />
+                            <span className="truncate">{label.name}</span>
+                          </button>
+                        ))}
+                      </PopoverContent>
+                    </Popover>
+                  </div>
+                )}
               </div>
               <div className="text-xs text-muted-foreground">
                 #{ticket.id} - {ticket.reportedByName || ticket.reportedBy} - {formatTimeAgo(ticket.date)}

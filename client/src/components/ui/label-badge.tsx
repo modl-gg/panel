@@ -36,7 +36,7 @@ export function LabelBadge({ name, color, onRemove, className, size = 'sm' }: La
         color: textColor,
       }}
     >
-      <span className="leading-none">{name}</span>
+      <span className="leading-tight translate-y-[0.5px]">{name}</span>
       {onRemove && (
         <button
           onClick={(e) => {
