@@ -1525,23 +1525,49 @@ const TicketSettings = ({
                     </p>
 
                     {aiModerationSettings.aiPunishmentConfigs && Object.keys(aiModerationSettings.aiPunishmentConfigs).length > 0 ? (
-                      <div className="space-y-2">
-                        {Object.entries(aiModerationSettings.aiPunishmentConfigs).map(([key, config]: [string, any]) => (
-                          <div key={key} className="flex items-center justify-between p-2 bg-muted/30 rounded">
-                            <div>
-                              <span className="text-sm font-medium">{config.name || 'Unknown Type'}</span>
-                              <p className="text-xs text-muted-foreground">{config.aiDescription}</p>
+                      <div className="space-y-3">
+                        {Object.values(aiModerationSettings.aiPunishmentConfigs).map((config: any) => (
+                          <div key={config.id} className="flex items-start justify-between p-4 border rounded-lg bg-card">
+                            <div className="flex-1 space-y-2">
+                              <div className="flex items-center gap-3">
+                                <Switch
+                                  checked={config.enabled}
+                                  onCheckedChange={(checked) => {
+                                    setAiModerationSettings((prev: any) => ({
+                                      ...prev,
+                                      aiPunishmentConfigs: {
+                                        ...prev.aiPunishmentConfigs,
+                                        [config.id]: { ...config, enabled: checked }
+                                      }
+                                    }));
+                                  }}
+                                />
+                                <h5 className="font-medium">{config.name || 'Unknown Type'}</h5>
+                              </div>
+                              <p className="text-sm text-muted-foreground ml-10">{config.aiDescription}</p>
                             </div>
-                            <Button
-                              variant="ghost"
-                              size="sm"
-                              onClick={() => {
-                                setAiPunishmentToDelete({ id: key, name: config.name || 'Unknown' });
-                                setAiPunishmentDeleteDialogOpen(true);
-                              }}
-                            >
-                              <Trash2 className="h-4 w-4" />
-                            </Button>
+                            <div className="flex gap-2 ml-4">
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                onClick={() => {
+                                  setSelectedAIPunishmentType(config);
+                                  setNewAIPunishmentDescription(config.aiDescription);
+                                }}
+                              >
+                                Edit
+                              </Button>
+                              <Button
+                                variant="destructive"
+                                size="sm"
+                                onClick={() => {
+                                  setAiPunishmentToDelete({ id: config.id, name: config.name || 'Unknown' });
+                                  setAiPunishmentDeleteDialogOpen(true);
+                                }}
+                              >
+                                Remove
+                              </Button>
+                            </div>
                           </div>
                         ))}
                       </div>
