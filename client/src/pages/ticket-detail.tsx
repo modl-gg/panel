@@ -2319,6 +2319,7 @@ const TicketDetail = () => {
                                     setTicketDetails(prev => ({
                                       ...prev,
                                       duration: {
+                                        unit: 'days' as const,
                                         ...prev.duration,
                                         value
                                       }
