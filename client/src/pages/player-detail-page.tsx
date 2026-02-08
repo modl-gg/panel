@@ -2113,10 +2113,14 @@ const PlayerDetailPage = () => {
                                 const pendingAdd = playerInfo.modifyTicketsAdd || [];
                                 const pendingRemove = playerInfo.modifyTicketsRemove || [];
                                 const effectiveIds = [...currentIds.filter(id => !pendingRemove.includes(id)), ...pendingAdd];
-                                const available = (playerTickets || []).filter((t: any) => !effectiveIds.includes(t.id || t._id));
+                                const available = (playerTickets || []).filter((t: any) =>
+                                  !effectiveIds.includes(t.id || t._id) &&
+                                  t.reportedPlayerUuid === playerId &&
+                                  !t.locked
+                                );
 
                                 if (available.length === 0) {
-                                  return <p className="text-xs text-muted-foreground italic">No more tickets available</p>;
+                                  return <p className="text-xs text-muted-foreground italic">No open reports available for this player</p>;
                                 }
 
                                 return (
@@ -2136,9 +2140,6 @@ const PlayerDetailPage = () => {
                                             <Ticket className="h-3 w-3 inline mr-1" />
                                             {ticketId.slice(-8)}
                                             {` - ${ticket.category || ticket.type || ''}`}
-                                            <Badge variant="outline" className="ml-1 text-[10px] py-0 px-1">
-                                              {ticket.locked ? 'Closed' : 'Open'}
-                                            </Badge>
                                           </span>
                                           <Plus className="h-3 w-3 text-green-500 flex-shrink-0" />
                                         </div>
