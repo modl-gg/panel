@@ -7,12 +7,14 @@ import {
   AlertCircle,
   AlertTriangle,
   Activity,
+  Bot,
   User,
   FileText,
   TrendingUp,
   TrendingDown,
   RefreshCw,
   Eye,
+  Settings,
   Users,
   Clock,
   Undo2,
@@ -25,7 +27,7 @@ import { Badge } from '@modl-gg/shared-web/components/ui/badge';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@modl-gg/shared-web/components/ui/select';
 import { Popover, PopoverContent, PopoverTrigger } from '@modl-gg/shared-web/components/ui/popover';
 import { Calendar as CalendarComponent } from '@modl-gg/shared-web/components/ui/calendar';
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@modl-gg/shared-web/components/ui/dialog';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@modl-gg/shared-web/components/ui/dialog';
 import { format, subDays } from 'date-fns';
 import { useLogs } from '@/hooks/use-data';
 import { useQuery } from '@tanstack/react-query';
@@ -283,7 +285,11 @@ const StaffPerformanceModal = () => {
           Staff Performance
         </Button>
       </DialogTrigger>
-      <DialogContent className="max-w-6xl max-h-[80vh] overflow-hidden" overlayClassName="pointer-events-none" onInteractOutside={(e) => e.preventDefault()}>
+      <DialogContent
+        className="max-w-6xl max-h-[80vh] overflow-hidden"
+        {...({ overlayClassName: "pointer-events-none" } as any)}
+        onInteractOutside={(e) => e.preventDefault()}
+      >
         <DialogHeader>
           <DialogTitle className="flex items-center justify-between">
             Staff Performance Analytics
@@ -600,18 +606,6 @@ const StaffDetailModal = ({ staff, isOpen, onClose, initialPeriod = '30d' }: {
     }
   }, [isOpen, initialPeriod]);
 
-  // Prevent modal's inert attribute from blocking player windows
-  useEffect(() => {
-    if (!isOpen) return;
-    const el = document.querySelector('[data-player-windows]');
-    if (!el) return;
-    const removeInert = () => el.removeAttribute('inert');
-    removeInert();
-    const observer = new MutationObserver(() => removeInert());
-    observer.observe(el, { attributes: true, attributeFilter: ['inert'] });
-    return () => observer.disconnect();
-  }, [isOpen]);
-
   // Handler to open player window - modal stays open, player window appears on top
   const handleOpenPlayerWindow = (playerId: string, playerName: string) => {
     openPlayerWindow(playerId, playerName);
@@ -686,9 +680,21 @@ const StaffDetailModal = ({ staff, isOpen, onClose, initialPeriod = '30d' }: {
   };
 
   return (
-    <Dialog open={isOpen} onOpenChange={onClose}>
+    <Dialog
+      open={isOpen}
+      modal={false}
+      onOpenChange={(open) => {
+        if (!open) onClose();
+      }}
+    >
       <DialogContent
         className="max-w-6xl max-h-[90vh] overflow-y-auto"
+        onInteractOutside={(e) => {
+          const target = e.target as HTMLElement | null;
+          if (target?.closest?.('[data-player-windows]')) {
+            e.preventDefault();
+          }
+        }}
       >
         <DialogHeader>
           <DialogTitle className="flex items-center gap-3">
