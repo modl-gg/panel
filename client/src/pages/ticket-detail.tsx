@@ -1896,8 +1896,8 @@ const TicketDetail = () => {
               </Card>
             )}
 
-            {/* AI Analysis Section - Only show for Chat Report tickets with AI analysis that hasn't been applied or dismissed */}
-            {ticketDetails.category === 'Chat Report' && ticketDetails.aiAnalysis && !ticketDetails.aiAnalysis.dismissed && !ticketDetails.aiAnalysis.wasAppliedAutomatically && (
+            {/* AI Analysis Section - Show for any ticket with AI analysis that hasn't been applied or dismissed */}
+            {ticketDetails.aiAnalysis && !ticketDetails.aiAnalysis.dismissed && !ticketDetails.aiAnalysis.wasAppliedAutomatically && (
               <div className="bg-blue-50 dark:bg-blue-950 border border-blue-200 dark:border-blue-800 rounded-lg p-4 mb-4" data-testid="ai-analysis">
                 <div className="flex items-start gap-3">
                   <div className="p-2 bg-blue-100 dark:bg-blue-900 rounded-full">
@@ -1991,7 +1991,7 @@ const TicketDetail = () => {
             )}
 
             {/* Show AI status when suggestion has been applied or dismissed */}
-            {ticketDetails.category === 'Chat Report' && ticketDetails.aiAnalysis && (ticketDetails.aiAnalysis.wasAppliedAutomatically || ticketDetails.aiAnalysis.dismissed) && (
+            {ticketDetails.aiAnalysis && (ticketDetails.aiAnalysis.wasAppliedAutomatically || ticketDetails.aiAnalysis.dismissed) && (
               <div className="bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-lg p-3 mb-4">
                 <div className="flex items-center gap-2 text-sm">
                   <ShieldCheck className="h-4 w-4 text-green-600 dark:text-green-400" />

@@ -799,8 +799,8 @@ const Settings = () => {
         setExpandedCategory(mappedCategory);
         if (urlSubCategory) {
           const subCat = urlSubCategory.split(',')[0];
-          if (subCat === 'billing' && user?.role !== 'Super Admin') {
-            // Non-super-admins cannot access billing
+          if ((subCat === 'billing' || subCat === 'server-config') && user?.role !== 'Super Admin') {
+            // Non-super-admins cannot access billing or server config
           } else {
             setExpandedSubCategory(subCat);
           }
@@ -2940,7 +2940,7 @@ const Settings = () => {
       subCategories: [
         ...(user?.role === 'Super Admin' ? [{ id: 'billing', title: 'Billing', icon: CreditCard }] : []),
         { id: 'usage', title: 'Usage', icon: Globe },
-        { id: 'server-config', title: 'Server Config', icon: SettingsIcon },
+        ...(user?.role === 'Super Admin' ? [{ id: 'server-config', title: 'Server Config', icon: SettingsIcon }] : []),
         { id: 'domain', title: 'Domain', icon: Globe },
         { id: 'webhooks', title: 'Webhooks', icon: MessageCircle },
       ],
