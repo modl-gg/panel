@@ -37,6 +37,7 @@ const MaintenancePage = lazy(() => import("./pages/MaintenancePage"));
 const RateLimitPage = lazy(() => import("@/pages/RateLimitPage"));
 const SetupPage = lazy(() => import("@/pages/SetupPage"));
 const ServerNotFoundPage = lazy(() => import("@/pages/ServerNotFoundPage"));
+const UploadEvidencePage = lazy(() => import("@/pages/upload-evidence-page"));
 
 // Knowledgebase Pages
 const KnowledgebasePage = lazy(() => import("@/pages/KnowledgebasePage"));
@@ -64,8 +65,9 @@ function Router() {
   const isProvisioningPage = location === '/provisioning-in-progress';
   const isAcceptInvitationPage = location.startsWith('/accept-invitation');
   const isVerifyEmailPage = location.startsWith('/verify-email');
+  const isUploadEvidencePage = location.startsWith('/upload-evidence');
 
-  if (!isAdminPanelRoute && !isAuthPage && !isAppealsPage && !isPlayerTicketPage && !isSubmitTicketPage && !isProvisioningPage && !isAcceptInvitationPage && !isVerifyEmailPage) {
+  if (!isAdminPanelRoute && !isAuthPage && !isAppealsPage && !isPlayerTicketPage && !isSubmitTicketPage && !isProvisioningPage && !isAcceptInvitationPage && !isVerifyEmailPage && !isUploadEvidencePage) {
     return (
       <main className="h-full bg-background"> {/* Basic wrapper for public pages */}
         <Suspense fallback={<PageLoader />}>
@@ -83,7 +85,7 @@ function Router() {
   
   // Don't show navigation on auth page, appeals page, player ticket page, or provisioning page
   // Note: isAuthPage now covers /auth and /panel/auth
-  if (isAuthPage || isAppealsPage || isPlayerTicketPage || isSubmitTicketPage || isProvisioningPage || isAcceptInvitationPage || isVerifyEmailPage) {
+  if (isAuthPage || isAppealsPage || isPlayerTicketPage || isSubmitTicketPage || isProvisioningPage || isAcceptInvitationPage || isVerifyEmailPage || isUploadEvidencePage) {
     return (
       <main className="h-full bg-background">
         <Suspense fallback={<PageLoader />}>
@@ -97,6 +99,7 @@ function Router() {
             <Route path="/provisioning-in-progress" component={ProvisioningInProgressPage} />
             <Route path="/accept-invitation" component={AcceptInvitationPage} />
             <Route path="/verify-email" component={SetupPage} />
+            <Route path="/upload-evidence/:token" component={UploadEvidencePage} />
           </Switch>
         </Suspense>
       </main>
