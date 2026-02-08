@@ -27,7 +27,7 @@ import { Badge } from '@modl-gg/shared-web/components/ui/badge';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@modl-gg/shared-web/components/ui/select';
 import { Popover, PopoverContent, PopoverTrigger } from '@modl-gg/shared-web/components/ui/popover';
 import { Calendar as CalendarComponent } from '@modl-gg/shared-web/components/ui/calendar';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@modl-gg/shared-web/components/ui/dialog';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogPortal } from '@modl-gg/shared-web/components/ui/dialog';
 import { format, subDays } from 'date-fns';
 import { useLogs } from '@/hooks/use-data';
 import { useQuery } from '@tanstack/react-query';
@@ -687,6 +687,14 @@ const StaffDetailModal = ({ staff, isOpen, onClose, initialPeriod = '30d' }: {
         if (!open) onClose();
       }}
     >
+      {isOpen && (
+        <DialogPortal>
+          <div
+            aria-hidden="true"
+            className="fixed inset-0 z-40 bg-black/80"
+          />
+        </DialogPortal>
+      )}
       <DialogContent
         className="max-w-6xl max-h-[90vh] overflow-y-auto"
         onInteractOutside={(e) => {
