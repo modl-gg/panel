@@ -39,7 +39,7 @@ export function getApiBaseUrl(): string {
 }
 
 export function getAvatarUrl(uuid: string, size: number = 32, overlay: boolean = true): string {
-  return `${API_BASE_URL}/v1/public/players/avatar/${uuid}?size=${size}&overlay=${overlay}`;
+  return `https://mc-heads.net/avatar/${uuid}/${size}`;
 }
 
 type RequestMethod = 'GET' | 'POST' | 'PUT' | 'PATCH' | 'DELETE';
