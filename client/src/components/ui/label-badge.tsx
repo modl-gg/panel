@@ -36,14 +36,14 @@ export function LabelBadge({ name, color, onRemove, className, size = 'sm' }: La
         color: textColor,
       }}
     >
-      <span className="leading-tight translate-y-[0.5px]">{name}</span>
+      <span className="leading-none">{name}</span>
       {onRemove && (
         <button
           onClick={(e) => {
             e.stopPropagation();
             onRemove();
           }}
-          className="ml-0.5 hover:opacity-70 transition-opacity"
+          className="ml-0.5 hover:opacity-70 transition-opacity flex items-center"
           style={{ color: textColor }}
         >
           <X className={size === 'sm' ? 'h-3 w-3' : 'h-3.5 w-3.5'} />
