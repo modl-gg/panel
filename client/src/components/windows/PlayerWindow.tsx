@@ -2571,7 +2571,7 @@ const PlayerWindow = ({ playerId, isOpen, onClose, initialPosition }: PlayerWind
           <TabsContent value="notes" className="space-y-2 mx-1 mt-3">
             <h4 className="font-medium">Staff Notes</h4>
             <p className="text-xs text-muted-foreground mb-3">
-              Staff notes are administrative comments and are not warnings or punishments.
+              Staff notes are administrative comments about this player.
             </p>
             <div className="bg-muted/30 p-3 rounded-lg">
               <ul className="space-y-2">

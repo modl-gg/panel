@@ -108,6 +108,8 @@ const UsageSettings = () => {
   const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('desc');
   const [showStorageSettings, setShowStorageSettings] = useState(false);
   const [newOverageLimit, setNewOverageLimit] = useState<number>(0);
+  const [currentPage, setCurrentPage] = useState(1);
+  const [itemsPerPage, setItemsPerPage] = useState(25);
 
   useEffect(() => {
     fetchStorageData();
@@ -401,6 +403,23 @@ const fetchStorageData = async () => {
       }
       return sortOrder === 'asc' ? comparison : -comparison;
     });
+
+  const totalPages = Math.max(1, Math.ceil(filteredAndSortedFiles.length / itemsPerPage));
+  const safePage = Math.min(currentPage, totalPages);
+  const paginatedFiles = filteredAndSortedFiles.slice(
+    (safePage - 1) * itemsPerPage,
+    safePage * itemsPerPage
+  );
+
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [searchTerm, filterType, sortBy, sortOrder]);
+
+  useEffect(() => {
+    if (currentPage > totalPages) {
+      setCurrentPage(totalPages);
+    }
+  }, [totalPages, currentPage]);
 
   const handleSelectFile = (fileId: string) => {
     const newSelected = new Set(selectedFiles);
@@ -872,7 +891,7 @@ const fetchStorageData = async () => {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {filteredAndSortedFiles.map((file) => (
+                {paginatedFiles.map((file) => (
                   <TableRow key={file.id}>
                     <TableCell>
                       <Checkbox
@@ -926,6 +945,49 @@ const fetchStorageData = async () => {
               </TableBody>
             </Table>
           </div>
+
+          {/* Pagination Controls */}
+          {filteredAndSortedFiles.length > 0 && (
+            <div className="flex items-center justify-between mt-4">
+              <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                <span>
+                  Showing {(safePage - 1) * itemsPerPage + 1}-{Math.min(safePage * itemsPerPage, filteredAndSortedFiles.length)} of {filteredAndSortedFiles.length} files
+                </span>
+                <Select value={String(itemsPerPage)} onValueChange={(value) => { setItemsPerPage(Number(value)); setCurrentPage(1); }}>
+                  <SelectTrigger className="w-[80px] h-8">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="10">10</SelectItem>
+                    <SelectItem value="25">25</SelectItem>
+                    <SelectItem value="50">50</SelectItem>
+                  </SelectContent>
+                </Select>
+                <span>per page</span>
+              </div>
+              <div className="flex items-center gap-2">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
+                  disabled={safePage <= 1}
+                >
+                  Previous
+                </Button>
+                <span className="text-sm text-muted-foreground">
+                  Page {safePage} of {totalPages}
+                </span>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
+                  disabled={safePage >= totalPages}
+                >
+                  Next
+                </Button>
+              </div>
+            </div>
+          )}
 
           {filteredAndSortedFiles.length === 0 && (
             <div className="text-center py-12">

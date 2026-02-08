@@ -370,12 +370,17 @@ const DomainSettings: React.FC = () => {
                     variant="outline"
                     size="sm"
                     onClick={handleVerifyDomain}
-                    disabled={isVerifying || accessingFromCustomDomain}
+                    disabled={isVerifying || accessingFromCustomDomain || domainStatus?.status === 'active'}
                   >
                     {isVerifying ? (
                       <>
                         <RefreshCw className="h-4 w-4 mr-2 animate-spin" />
                         Verifying...
+                      </>
+                    ) : domainStatus?.status === 'active' ? (
+                      <>
+                        <CheckCircle className="h-4 w-4 mr-2" />
+                        Verified
                       </>
                     ) : (
                       <>

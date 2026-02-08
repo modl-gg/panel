@@ -158,8 +158,20 @@ function LabelManagementTable({ labels, onLabelsChange }: LabelManagementTablePr
     setNewLabelDescription('');
   };
 
-  const handleDeleteLabel = (labelId: string) => {
-    onLabelsChange(labels.filter((l) => l.id !== labelId));
+  const [labelDeleteDialogOpen, setLabelDeleteDialogOpen] = useState(false);
+  const [labelToDelete, setLabelToDelete] = useState<{id: string; name: string} | null>(null);
+
+  const handleDeleteLabel = (labelId: string, labelName: string) => {
+    setLabelToDelete({ id: labelId, name: labelName });
+    setLabelDeleteDialogOpen(true);
+  };
+
+  const confirmLabelDelete = () => {
+    if (labelToDelete) {
+      onLabelsChange(labels.filter((l) => l.id !== labelToDelete.id));
+    }
+    setLabelDeleteDialogOpen(false);
+    setLabelToDelete(null);
   };
 
   const handleStartEdit = (label: Label) => {
@@ -272,7 +284,7 @@ function LabelManagementTable({ labels, onLabelsChange }: LabelManagementTablePr
                             size="sm"
                             variant="ghost"
                             className="text-destructive hover:text-destructive"
-                            onClick={() => handleDeleteLabel(label.id)}
+                            onClick={() => handleDeleteLabel(label.id, label.name)}
                           >
                             <Trash2 className="h-3.5 w-3.5" />
                           </Button>
@@ -340,6 +352,24 @@ function LabelManagementTable({ labels, onLabelsChange }: LabelManagementTablePr
           />
         ))}
       </div>
+
+      {/* Label Deletion Dialog */}
+      <AlertDialog open={labelDeleteDialogOpen} onOpenChange={setLabelDeleteDialogOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete Label</AlertDialogTitle>
+            <AlertDialogDescription>
+              Are you sure you want to delete "{labelToDelete?.name}"? This cannot be undone.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction onClick={confirmLabelDelete} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
+              Delete
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }

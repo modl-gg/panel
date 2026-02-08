@@ -860,12 +860,12 @@ const TicketDetail = () => {
         ticketTypes = ['support'];
     }
 
-    // Find the category that handles any of these ticket types
-    const responseCategory = quickResponses.categories?.find(cat =>
-      cat.ticketTypes?.some(type => type && ticketTypes.includes(type.toLowerCase()))
-    );
+    // Find ALL categories that match (not just the first) to include general actions
+    const matchingCategories = (quickResponses.categories || [])
+      .filter(cat => cat.ticketTypes?.some(type => type && ticketTypes.includes(type.toLowerCase())))
+      .sort((a, b) => (a.order ?? 0) - (b.order ?? 0));
 
-    return responseCategory?.actions || [];
+    return matchingCategories.flatMap(cat => cat.actions || []);
   };
 
   // Function to check if selected action should show punishment interface

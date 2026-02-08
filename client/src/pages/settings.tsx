@@ -798,8 +798,12 @@ const Settings = () => {
       if (canAccessSettingsTab(mappedCategory as any)) {
         setExpandedCategory(mappedCategory);
         if (urlSubCategory) {
-          // Only use the first sub-category if multiple were provided
-          setExpandedSubCategory(urlSubCategory.split(',')[0]);
+          const subCat = urlSubCategory.split(',')[0];
+          if (subCat === 'billing' && user?.role !== 'Super Admin') {
+            // Non-super-admins cannot access billing
+          } else {
+            setExpandedSubCategory(subCat);
+          }
         }
       }
     }
@@ -2933,7 +2937,7 @@ const Settings = () => {
       icon: SettingsIcon,
       permission: 'general',
       subCategories: [
-        { id: 'billing', title: 'Billing', icon: CreditCard },
+        ...(user?.role === 'Super Admin' ? [{ id: 'billing', title: 'Billing', icon: CreditCard }] : []),
         { id: 'usage', title: 'Usage', icon: Globe },
         { id: 'server-config', title: 'Server Config', icon: SettingsIcon },
         { id: 'domain', title: 'Domain', icon: Globe },
@@ -3081,6 +3085,25 @@ const Settings = () => {
         {expandedCategory !== 'staff' && expandedCategory !== 'knowledgebase' && (
         <Card>
           <CardContent className="p-6">
+            {/* Breadcrumb navigation */}
+            {expandedSubCategory && (
+              <div className="flex items-center gap-1.5 mb-4 text-sm">
+                <span
+                  className="text-muted-foreground hover:text-foreground cursor-pointer transition-colors"
+                  onClick={() => {
+                    setExpandedSubCategory(null);
+                    updateURL(expandedCategory, null);
+                  }}
+                >
+                  Profile Settings
+                </span>
+                <ChevronRight className="h-3.5 w-3.5 text-muted-foreground" />
+                <span className="font-medium">
+                  {currentCategory?.subCategories?.find(s => s.id === expandedSubCategory)?.title || expandedSubCategory}
+                </span>
+              </div>
+            )}
+
             {/* Account Settings - Show by default when no sub-category is expanded */}
             {!expandedSubCategory && (
               <AccountSettings
@@ -3089,6 +3112,7 @@ const Settings = () => {
                 currentEmail={currentEmail}
                 setCurrentEmail={setCurrentEmail}
                 minecraftUsername={user?.minecraftUsername}
+                userRole={user?.role}
               />
             )}
 

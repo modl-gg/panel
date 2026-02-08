@@ -12,6 +12,7 @@ interface AccountSettingsProps {
   currentEmail: string;
   setCurrentEmail: (value: string) => void;
   minecraftUsername?: string;
+  userRole?: string;
 }
 
 const AccountSettings = ({
@@ -19,7 +20,8 @@ const AccountSettings = ({
   setProfileUsername,
   currentEmail,
   setCurrentEmail,
-  minecraftUsername
+  minecraftUsername,
+  userRole
 }: AccountSettingsProps) => {
   const { toast } = useToast();
   const { logout } = useAuth();
@@ -63,7 +65,7 @@ const AccountSettings = ({
                 className="bg-muted text-muted-foreground"
               />
               <p className="text-xs text-muted-foreground mt-1.5">
-                Your linked Minecraft account. Contact an admin to change this.
+                Your linked Minecraft account. {userRole === 'Super Admin' || userRole === 'Admin' ? 'Change this in Staff Management settings.' : 'Contact an admin to change this.'}
               </p>
             </div>
           </div>
