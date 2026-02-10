@@ -138,7 +138,15 @@ const PlayerLookupWindow = ({
           uuid: player.minecraftUuid,
           firstJoined,
           lastOnline: 'Recent', // This data isn't available in our current schema
-          playtime: 'Not tracked', // This data isn't available in our current schema 
+          playtime: (() => {
+            const totalSeconds = player.data?.totalPlaytimeSeconds || player.totalPlaytimeSeconds || 0;
+            if (totalSeconds > 0) {
+              const hours = Math.floor(totalSeconds / 3600);
+              const minutes = Math.floor((totalSeconds % 3600) / 60);
+              return hours > 0 ? `${hours}h ${minutes}m` : `${minutes}m`;
+            }
+            return 'Not tracked';
+          })(),
           ip: lastIP,
           previousNames,
           warnings

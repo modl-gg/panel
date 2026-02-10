@@ -287,6 +287,7 @@ const SubmitTicketPage = () => {
           creatorEmail: formData['email'],
           formData: labeledFormData,
           creatorIdentifier: creatorIdentifier,
+          createdServer: 'Web',
         }),
       });
 

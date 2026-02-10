@@ -406,6 +406,7 @@ const PlayerWindow = ({ playerId, isOpen, onClose, initialPosition }: PlayerWind
       }
         // Prepare data map for additional punishment data
       const data: { [key: string]: any } = {
+        issuedServer: 'Panel',
         silent: playerInfo.silentPunishment || false,
       };
         // Set duration in data for all punishments that have a calculated duration
@@ -1005,7 +1006,15 @@ const PlayerWindow = ({ playerId, isOpen, onClose, initialPosition }: PlayerWind
               formatDateWithTime(getPlayerData(player, 'lastDisconnect')) : 
               'Unknown'),
           lastServer: player.lastServer || 'Unknown',
-          playtime: player.playtime ? `${player.playtime} hours` : 'Not tracked',
+          playtime: (() => {
+            const totalSeconds = getPlayerData(player, 'totalPlaytimeSeconds') || player.totalPlaytimeSeconds || 0;
+            if (totalSeconds > 0) {
+              const hours = Math.floor(totalSeconds / 3600);
+              const minutes = Math.floor((totalSeconds % 3600) / 60);
+              return hours > 0 ? `${hours}h ${minutes}m` : `${minutes}m`;
+            }
+            return 'Not tracked';
+          })(),
           social: calculatedStatus.social,
           gameplay: calculatedStatus.gameplay,
           punished: status !== 'Active',
@@ -1840,6 +1849,9 @@ const PlayerWindow = ({ playerId, isOpen, onClose, initialPosition }: PlayerWind
                     <div className="flex items-center justify-between mt-1">
                       <p className="text-xs text-muted-foreground">
                         By: {warning.by}
+                        {warning.data?.issuedServer && (
+                          <span className="ml-1">on {warning.data.issuedServer}</span>
+                        )}
                         {(() => {
                           // Get the original punishment type and action
                           const punishmentType = findPunishmentTypeForWarning(warning);

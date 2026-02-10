@@ -173,6 +173,7 @@ export interface TicketDetails {
   isPermanent?: boolean;
   tags?: string[];
   newTag?: string;
+  createdServer?: string;
   aiAnalysis?: AIAnalysis;
   punishmentData?: PlayerPunishmentData; // New field for punishment interface data
 }
@@ -1177,6 +1178,7 @@ const TicketDetail = () => {
         }))),
         notes: ticketData.notes || [],
         tags,
+        createdServer: ticketData.createdServer || undefined,
         locked: ticketData.locked === true,
         // Set default action to "Comment" to highlight the Comment button
         selectedAction: 'Comment',
@@ -1799,6 +1801,11 @@ const TicketDetail = () => {
                   <div>
                     <span className="text-muted-foreground">Date:</span>
                     <span className="ml-1">{formatDate(ticketDetails.date)}</span>
+                    {ticketDetails.createdServer && (
+                      <span className="ml-2 text-muted-foreground">
+                        (from {ticketDetails.createdServer})
+                      </span>
+                    )}
                   </div>
                   {/* Show reported player for player and chat reports */}
                   {(ticketDetails.category === 'Player Report' || ticketDetails.category === 'Chat Report') && ticketDetails.relatedPlayer && (

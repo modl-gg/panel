@@ -669,7 +669,15 @@ const PlayerDetailPage = () => {
               formatDateWithTime(getPlayerData(player, 'lastDisconnect')) : 
               'Unknown'),
           lastServer: player.lastServer || 'Unknown',
-          playtime: player.playtime ? `${player.playtime} hours` : 'Not tracked',
+          playtime: (() => {
+            const totalSeconds = getPlayerData(player, 'totalPlaytimeSeconds') || player.totalPlaytimeSeconds || 0;
+            if (totalSeconds > 0) {
+              const hours = Math.floor(totalSeconds / 3600);
+              const minutes = Math.floor((totalSeconds % 3600) / 60);
+              return hours > 0 ? `${hours}h ${minutes}m` : `${minutes}m`;
+            }
+            return 'Not tracked';
+          })(),
           social: calculatedStatus.social,
           gameplay: calculatedStatus.gameplay,
           punished: status !== 'Active',
@@ -796,8 +804,8 @@ const PlayerDetailPage = () => {
       // Determine severity and status based on punishment type
       let severity = null;
       let status = null;
-      let data: { [key: string]: any } = {};
-      
+      let data: { [key: string]: any } = { issuedServer: 'Panel' };
+
       // For non-administrative punishments that use severity/status
       if (!['Kick', 'Manual Mute', 'Manual Ban', 'Security Ban', 'Linked Ban', 'Blacklist'].includes(playerInfo.selectedPunishmentCategory)) {
         if (playerInfo.selectedSeverity) {
@@ -1312,6 +1320,9 @@ const PlayerDetailPage = () => {
                           {/* Show expiry/duration information */}
                           <div className="text-xs text-muted-foreground">
                             {warning.date} by {warning.by}
+                            {warning.data?.issuedServer && (
+                              <span className="ml-1">on {warning.data.issuedServer}</span>
+                            )}
                             {warning.expires && (
                               <span className="ml-2">
                                 • Expires: {formatDateWithTime(warning.expires)}
