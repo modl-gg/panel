@@ -1,7 +1,8 @@
-import { useState } from 'react';
-import { 
-  Bell, 
-  RefreshCw, 
+import { useState, useMemo } from 'react';
+import {
+  AlertTriangle,
+  Bell,
+  RefreshCw,
   Sun,
   Moon
 } from 'lucide-react';
@@ -76,9 +77,43 @@ const Home = () => {
     return markAsReadMutation.mutateAsync(updateId);
   };
 
+  const maintenanceBanner = useMemo(() => {
+    const start = new Date('2026-02-12T03:00:00Z'); // 10 PM ET = 03:00 UTC next day
+    const end = new Date('2026-02-12T05:00:00Z');   // 12 AM ET = 05:00 UTC
+
+    const fmt = new Intl.DateTimeFormat(undefined, {
+      month: 'numeric',
+      day: 'numeric',
+      year: 'numeric',
+      hour: 'numeric',
+      minute: '2-digit',
+      timeZoneName: 'short',
+    });
+
+    const startStr = fmt.format(start);
+    const endStr = fmt.format(end);
+
+    return `[IMPORTANT] As we prepare for a major upgrade on ${startStr} to ${endStr}, you are required to upgrade your Minecraft plugin to version 1.1.2 to avoid downtime.`;
+  }, []);
+
   return (
     <PageContainer>
-      <div className="flex justify-between items-center mb-6">
+      <div className="bg-red-600 text-white text-xs font-medium px-3 py-1.5 -mx-4 -mt-4 md:-mx-6 md:-mt-6 md:rounded-t-xl flex items-center gap-2">
+        <AlertTriangle className="h-3.5 w-3.5 flex-shrink-0" />
+        <span>
+          {maintenanceBanner}{' '}
+          <a
+            href="https://github.com/modl-gg/minecraft/releases/tag/1.1.2"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="underline font-semibold"
+          >
+            Download here
+          </a>
+        </span>
+      </div>
+
+      <div className="flex justify-between items-center mb-6 mt-4">
         <h2 className="text-xl font-semibold">Dashboard</h2>
         <div className="flex items-center space-x-2">
           <Button variant="ghost" size="icon" className="text-muted-foreground">
