@@ -485,6 +485,14 @@ const BillingSettings = () => {
     }, [maxStorageLimitBytes]);
 
     const handleSaveStorageLimit = async () => {
+      if (storageLimitGB > 10000) {
+        toast({
+          title: 'Error',
+          description: 'If you need in excess of 10TB of storage, please contact support.',
+          variant: 'destructive',
+        });
+        return;
+      }
       setSavingStorageLimit(true);
       try {
         const response = await apiFetch('/v1/panel/billing/storage-limit', {
@@ -659,20 +667,24 @@ const BillingSettings = () => {
                   id="storage-limit"
                   type="number"
                   min={1}
-                  max={10240}
                   value={storageLimitGB}
-                  onChange={(e) => setStorageLimitGB(Math.max(1, Math.min(10240, parseInt(e.target.value) || 1)))}
+                  onChange={(e) => setStorageLimitGB(Math.max(1, parseInt(e.target.value) || 1))}
                   className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 mt-1.5"
                 />
               </div>
               <Button
                 onClick={handleSaveStorageLimit}
-                disabled={savingStorageLimit}
+                disabled={savingStorageLimit || storageLimitGB > 10000}
               >
                 {savingStorageLimit ? 'Saving...' : 'Save'}
               </Button>
             </div>
-            {storageLimitGB > 200 && (
+            {storageLimitGB > 10000 && (
+              <p className="text-sm text-destructive">
+                If you need in excess of 10TB of storage, please contact support.
+              </p>
+            )}
+            {storageLimitGB > 200 && storageLimitGB <= 10000 && (
               <p className="text-sm text-muted-foreground">
                 Estimated overage cost: <strong>${((storageLimitGB - 200) * 0.08).toFixed(2)}/month</strong> if fully used (at $0.08/GB/month for storage above 200GB).
               </p>
