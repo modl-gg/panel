@@ -34,7 +34,12 @@
     "refresh": "Actualizar",
     "viewAll": "Ver todo",
     "showMore": "Mostrar más",
-    "showLess": "Mostrar menos"
+    "showLess": "Mostrar menos",
+    "selectAll": "Seleccionar todo",
+    "showing": "Mostrando",
+    "of": "de",
+    "replies": "respuestas",
+    "noResults": "No se encontraron resultados."
   },
   "table": {
     "player": "Jugador",
@@ -45,7 +50,10 @@
     "status": "Estado",
     "duration": "Duración",
     "server": "Servidor",
-    "actions": "Acciones"
+    "actions": "Acciones",
+    "ticket": "Ticket",
+    "assignee": "Asignado",
+    "lastReply": "Última respuesta"
   },
   "status": {
     "active": "Activo",
@@ -69,6 +77,35 @@
     "minecraftChangeContact": "Contacta a un administrador para cambiar esto.",
     "languageDescription": "Idioma para la interfaz del panel y formato de fechas."
   },
+  "dashboard": {
+    "title": "Panel de control",
+    "refreshed": "Panel actualizado",
+    "refreshedDesc": "Todos los datos del panel han sido actualizados.",
+    "refreshError": "No se pudo actualizar el panel. Por favor, inténtalo de nuevo."
+  },
+  "tickets": {
+    "title": "Tickets",
+    "searchTickets": "Buscar tickets...",
+    "loadingTickets": "Cargando tickets...",
+    "noTickets": "No hay tickets que coincidan con tus filtros actuales.",
+    "label": "Etiqueta",
+    "assignee": "Asignado",
+    "unassigned": "Sin asignar",
+    "newest": "Más recientes",
+    "oldest": "Más antiguos",
+    "recentlyUpdated": "Actualizados recientemente",
+    "leastRecentlyUpdated": "Menos actualizados recientemente",
+    "support": "Soporte",
+    "bugReport": "Reporte de errores",
+    "playerReport": "Reporte de jugador",
+    "chatReport": "Reporte de chat",
+    "banAppeal": "Apelación de ban",
+    "staffApplication": "Solicitud de staff",
+    "showingTickets": "Mostrando {{from}}-{{to}} de {{total}} tickets"
+  },
+  "audit": {
+    "title": "Análisis y auditoría"
+  },
   "toast": {
     "loginSuccess": "Inicio de sesión exitoso",
     "loginSuccessDesc": "¡Bienvenido! Redirigiendo al panel...",
@@ -88,7 +125,8 @@
     "saveFailed": "Error al guardar",
     "permissionDenied": "Permiso denegado",
     "workInProgress": "En progreso",
-    "workInProgressDesc": "Esta función no está disponible actualmente."
+    "workInProgressDesc": "Esta función no está disponible actualmente.",
+    "success": "Éxito"
   },
   "search": {
     "searchPlayers": "Buscar jugadores...",

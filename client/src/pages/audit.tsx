@@ -1,4 +1,5 @@
 import { useState, useMemo, useEffect } from 'react';
+import { useTranslation } from 'react-i18next';
 import {
   Calendar,
   ChevronDown,
@@ -1485,6 +1486,7 @@ const StatCard = ({
 const AuditLog = () => {
   const [expandedSection, setExpandedSection] = useState<string | null>(null);
   const [analyticsPeriod, setAnalyticsPeriod] = useState('30d');
+  const { t } = useTranslation();
 
   const toggleSection = (section: string) => {
     setExpandedSection(prev => prev === section ? null : section);
@@ -1570,7 +1572,7 @@ const AuditLog = () => {
       <div className="flex flex-col space-y-4">
         {/* Header */}
         <div className="flex flex-col gap-4 md:flex-row md:justify-between md:items-center">
-          <h2 className="text-xl font-semibold">Analytics & Audit</h2>
+          <h2 className="text-xl font-semibold">{t('audit.title')}</h2>
           <div className="flex flex-col space-y-2 md:flex-row md:space-y-0 md:space-x-2 md:items-center">
             <Select value={analyticsPeriod} onValueChange={setAnalyticsPeriod}>
               <SelectTrigger className="w-full md:w-32">

@@ -34,7 +34,12 @@
     "refresh": "Refresh",
     "viewAll": "View All",
     "showMore": "Show More",
-    "showLess": "Show Less"
+    "showLess": "Show Less",
+    "selectAll": "Select all",
+    "showing": "Showing",
+    "of": "of",
+    "replies": "replies",
+    "noResults": "No results found."
   },
   "table": {
     "player": "Player",
@@ -45,7 +50,10 @@
     "status": "Status",
     "duration": "Duration",
     "server": "Server",
-    "actions": "Actions"
+    "actions": "Actions",
+    "ticket": "Ticket",
+    "assignee": "Assignee",
+    "lastReply": "Last Reply"
   },
   "status": {
     "active": "Active",
@@ -69,6 +77,35 @@
     "minecraftChangeContact": "Contact an admin to change this.",
     "languageDescription": "Language for the panel interface and date formatting."
   },
+  "dashboard": {
+    "title": "Dashboard",
+    "refreshed": "Dashboard Refreshed",
+    "refreshedDesc": "All dashboard data has been updated.",
+    "refreshError": "Failed to refresh dashboard. Please try again."
+  },
+  "tickets": {
+    "title": "Tickets",
+    "searchTickets": "Search tickets...",
+    "loadingTickets": "Loading tickets...",
+    "noTickets": "No tickets match your current filters.",
+    "label": "Label",
+    "assignee": "Assignee",
+    "unassigned": "Unassigned",
+    "newest": "Newest",
+    "oldest": "Oldest",
+    "recentlyUpdated": "Recently Updated",
+    "leastRecentlyUpdated": "Least Recently Updated",
+    "support": "Support",
+    "bugReport": "Bug Report",
+    "playerReport": "Player Report",
+    "chatReport": "Chat Report",
+    "banAppeal": "Ban Appeal",
+    "staffApplication": "Staff Application",
+    "showingTickets": "Showing {{from}}-{{to}} of {{total}} tickets"
+  },
+  "audit": {
+    "title": "Analytics & Audit"
+  },
   "toast": {
     "loginSuccess": "Login Successful",
     "loginSuccessDesc": "Welcome! Redirecting to dashboard...",
@@ -88,7 +125,8 @@
     "saveFailed": "Save Failed",
     "permissionDenied": "Permission Denied",
     "workInProgress": "Work In Progress",
-    "workInProgressDesc": "This feature is currently not available."
+    "workInProgressDesc": "This feature is currently not available.",
+    "success": "Success"
   },
   "search": {
     "searchPlayers": "Search players...",

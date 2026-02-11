@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useLocation } from 'wouter';
+import { useTranslation } from 'react-i18next';
 import {
   CircleDot,
   CheckCircle2,
@@ -59,6 +60,7 @@ const Tickets = () => {
   const [, setLocation] = useLocation();
   const isMobile = useIsMobile();
   const { toast } = useToast();
+  const { t } = useTranslation();
 
   // State for filters
   const [statusFilter, setStatusFilter] = useState<'open' | 'closed'>('open');
@@ -157,11 +159,11 @@ const Tickets = () => {
         ticketIds: Array.from(selectedTickets),
         locked: status === 'closed',
       });
-      toast({ title: 'Success', description: `Marked ${selectedTickets.size} tickets as ${status}` });
+      toast({ title: t('toast.success'), description: `Marked ${selectedTickets.size} tickets as ${status}` });
       setSelectedTickets(new Set());
       refetch();
     } catch (error) {
-      toast({ title: 'Error', description: `Failed to mark tickets as ${status}`, variant: 'destructive' });
+      toast({ title: t('toast.error'), description: `Failed to mark tickets as ${status}`, variant: 'destructive' });
     }
   };
 
@@ -171,11 +173,11 @@ const Tickets = () => {
         ticketIds: Array.from(selectedTickets),
         addLabels: labelsToAdd,
       });
-      toast({ title: 'Success', description: `Added labels to ${selectedTickets.size} tickets` });
+      toast({ title: t('toast.success'), description: `Added labels to ${selectedTickets.size} tickets` });
       setSelectedTickets(new Set());
       refetch();
     } catch (error) {
-      toast({ title: 'Error', description: 'Failed to add labels', variant: 'destructive' });
+      toast({ title: t('toast.error'), description: 'Failed to add labels', variant: 'destructive' });
     }
   };
 
@@ -185,11 +187,11 @@ const Tickets = () => {
         ticketIds: Array.from(selectedTickets),
         assignTo: assignees.join(','),
       });
-      toast({ title: 'Success', description: `Assigned ${selectedTickets.size} tickets to ${assignees.length} staff member(s)` });
+      toast({ title: t('toast.success'), description: `Assigned ${selectedTickets.size} tickets to ${assignees.length} staff member(s)` });
       setSelectedTickets(new Set());
       refetch();
     } catch (error) {
-      toast({ title: 'Error', description: 'Failed to assign tickets', variant: 'destructive' });
+      toast({ title: t('toast.error'), description: 'Failed to assign tickets', variant: 'destructive' });
     }
   };
 
@@ -214,7 +216,7 @@ const Tickets = () => {
       });
       refetch();
     } catch (error) {
-      toast({ title: 'Error', description: 'Failed to add label', variant: 'destructive' });
+      toast({ title: t('toast.error'), description: 'Failed to add label', variant: 'destructive' });
     }
   };
 
@@ -230,7 +232,7 @@ const Tickets = () => {
       });
       refetch();
     } catch (error) {
-      toast({ title: 'Error', description: 'Failed to remove label', variant: 'destructive' });
+      toast({ title: t('toast.error'), description: 'Failed to remove label', variant: 'destructive' });
     }
   };
 
@@ -245,20 +247,20 @@ const Tickets = () => {
 
   // Type filter options
   const typeOptions = [
-    { value: 'support', label: 'Support' },
-    { value: 'bug', label: 'Bug Report' },
-    { value: 'player', label: 'Player Report' },
-    { value: 'chat', label: 'Chat Report' },
-    { value: 'appeal', label: 'Ban Appeal' },
-    { value: 'staff', label: 'Staff Application' },
+    { value: 'support', label: t('tickets.support') },
+    { value: 'bug', label: t('tickets.bugReport') },
+    { value: 'player', label: t('tickets.playerReport') },
+    { value: 'chat', label: t('tickets.chatReport') },
+    { value: 'appeal', label: t('tickets.banAppeal') },
+    { value: 'staff', label: t('tickets.staffApplication') },
   ];
 
   // Sort options
   const sortOptions = [
-    { value: 'newest', label: 'Newest' },
-    { value: 'oldest', label: 'Oldest' },
-    { value: 'recently-updated', label: 'Recently Updated' },
-    { value: 'least-recently-updated', label: 'Least Recently Updated' },
+    { value: 'newest', label: t('tickets.newest') },
+    { value: 'oldest', label: t('tickets.oldest') },
+    { value: 'recently-updated', label: t('tickets.recentlyUpdated') },
+    { value: 'least-recently-updated', label: t('tickets.leastRecentlyUpdated') },
   ];
 
   const renderTicketRow = (ticket: Ticket) => {
@@ -345,7 +347,7 @@ const Tickets = () => {
           )}
         </TableCell>
         <TableCell className="text-right text-sm text-muted-foreground whitespace-nowrap">
-          {ticket.replyCount || 0} replies
+          {ticket.replyCount || 0} {t('common.replies')}
         </TableCell>
         <TableCell className="text-right text-sm text-muted-foreground whitespace-nowrap">
           {ticket.lastReply ? formatTimeAgo(ticket.lastReply.created) : '-'}
@@ -460,11 +462,11 @@ const Tickets = () => {
       <div className="flex flex-col space-y-4">
         {/* Header */}
         <div className="flex flex-col gap-4 md:flex-row md:justify-between md:items-center">
-          <h2 className="text-xl font-semibold">Tickets</h2>
+          <h2 className="text-xl font-semibold">{t('tickets.title')}</h2>
           <div className="relative w-full md:w-80">
             <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
             <Input
-              placeholder="Search tickets..."
+              placeholder={t('tickets.searchTickets')}
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               className="pl-10"
@@ -483,7 +485,7 @@ const Tickets = () => {
               className="h-8"
             >
               <CircleDot className="h-4 w-4 mr-1.5 text-green-500" />
-              {statusCounts?.open ?? 0} Open
+              {statusCounts?.open ?? 0} {t('status.open')}
             </Button>
             <Button
               variant={statusFilter === 'closed' ? 'secondary' : 'ghost'}
@@ -492,7 +494,7 @@ const Tickets = () => {
               className="h-8"
             >
               <CheckCircle2 className="h-4 w-4 mr-1.5 text-purple-500" />
-              {statusCounts?.closed ?? 0} Closed
+              {statusCounts?.closed ?? 0} {t('status.closed')}
             </Button>
           </div>
 
@@ -500,7 +502,7 @@ const Tickets = () => {
 
           {/* Filter dropdowns */}
           <FilterDropdown
-            label="Label"
+            label={t('tickets.label')}
             options={labels.map((l) => ({ value: l.name, label: l.name, color: l.color }))}
             selected={labelFilters}
             onChange={setLabelFilters}
@@ -508,8 +510,8 @@ const Tickets = () => {
           />
 
           <FilterDropdown
-            label="Assignee"
-            options={[{ value: 'none', label: 'Unassigned' }, ...staffMembers]}
+            label={t('tickets.assignee')}
+            options={[{ value: 'none', label: t('tickets.unassigned') }, ...staffMembers]}
             selected={assigneeFilter}
             onChange={setAssigneeFilter}
             multiSelect
@@ -535,7 +537,7 @@ const Tickets = () => {
           {/* Type dropdown for mobile */}
           <div className="md:hidden">
             <FilterDropdown
-              label="Type"
+              label={t('table.type')}
               options={typeOptions}
               selected={typeFilter}
               onChange={setTypeFilter}
@@ -581,11 +583,11 @@ const Tickets = () => {
             {isLoading ? (
               <div className="flex justify-center items-center py-12">
                 <Loader2 className="h-6 w-6 animate-spin text-primary mr-2" />
-                <span className="text-muted-foreground">Loading tickets...</span>
+                <span className="text-muted-foreground">{t('tickets.loadingTickets')}</span>
               </div>
             ) : tickets.length === 0 ? (
               <div className="text-center py-12 text-muted-foreground">
-                No tickets match your current filters.
+                {t('tickets.noTickets')}
               </div>
             ) : isMobile ? (
               <div className="p-4">
@@ -595,7 +597,7 @@ const Tickets = () => {
                     onCheckedChange={handleSelectAll}
                     className="h-5 w-5"
                   />
-                  <span className="text-sm text-muted-foreground">Select all</span>
+                  <span className="text-sm text-muted-foreground">{t('common.selectAll')}</span>
                 </div>
                 {tickets.map(renderMobileTicketCard)}
               </div>
@@ -610,10 +612,10 @@ const Tickets = () => {
                         className="h-5 w-5"
                       />
                     </TableHead>
-                    <TableHead>Ticket</TableHead>
-                    <TableHead className="text-right">Assignee</TableHead>
-                    <TableHead className="text-right">Replies</TableHead>
-                    <TableHead className="text-right">Last Reply</TableHead>
+                    <TableHead>{t('table.ticket')}</TableHead>
+                    <TableHead className="text-right">{t('table.assignee')}</TableHead>
+                    <TableHead className="text-right">{t('common.replies')}</TableHead>
+                    <TableHead className="text-right">{t('table.lastReply')}</TableHead>
                     <TableHead className="w-10"></TableHead>
                   </TableRow>
                 </TableHeader>
@@ -629,7 +631,7 @@ const Tickets = () => {
         {tickets.length > 0 && (
           <div className="flex flex-col space-y-2 md:flex-row md:space-y-0 md:justify-between md:items-center">
             <div className="text-sm text-muted-foreground text-center md:text-left">
-              Showing {((pagination.current - 1) * 25) + 1}-{Math.min(pagination.current * 25, pagination.totalTickets)} of {pagination.totalTickets} tickets
+              {t('tickets.showingTickets', { from: ((pagination.current - 1) * 25) + 1, to: Math.min(pagination.current * 25, pagination.totalTickets), total: pagination.totalTickets })}
             </div>
             <div className="flex justify-center space-x-1">
               <Button

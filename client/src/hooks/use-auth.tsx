@@ -96,22 +96,22 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         }
 
         toast({
-          title: response.status === 429 ? "Rate Limit Exceeded" : "Error",
+          title: response.status === 429 ? i18n.t('toast.rateLimitExceeded') : i18n.t('toast.error'),
           description: description,
           variant: "destructive",
         });
         return undefined;
       }
       toast({
-        title: "Verification Email Sent",
-        description: "Please check your email for the verification code.",
+        title: i18n.t('toast.verificationSent'),
+        description: i18n.t('toast.verificationSentDesc'),
       });
       return "sent";
     } catch (error) {
       console.error("Error requesting email verification:", error);
       toast({
-        title: "Network Error",
-        description: "Could not connect to the server to send verification code.",
+        title: i18n.t('toast.networkError'),
+        description: i18n.t('toast.networkErrorDesc'),
         variant: "destructive",
       });
       return undefined;
@@ -140,7 +140,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         }
 
         toast({
-          title: response.status === 429 ? "Rate Limit Exceeded" : "Login Failed",
+          title: response.status === 429 ? i18n.t('toast.rateLimitExceeded') : i18n.t('toast.loginFailed'),
           description: description,
           variant: "destructive",
         });
@@ -153,8 +153,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setUser({ _id: '', email, username: email.split('@')[0], role: 'Helper', minecraftUsername: undefined });
 
       toast({
-        title: "Login Successful",
-        description: "Welcome! Redirecting to dashboard...",
+        title: i18n.t('toast.loginSuccess'),
+        description: i18n.t('toast.loginSuccessDesc'),
       });
 
       setIsLoading(false);
@@ -163,8 +163,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     } catch (error) {
       console.error("Login error:", error);
       toast({
-        title: "Login Error",
-        description: "An unexpected error occurred. Please try again.",
+        title: i18n.t('toast.loginError'),
+        description: i18n.t('toast.loginErrorDesc'),
         variant: "destructive",
       });
       setIsLoading(false);
@@ -179,21 +179,21 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       if (!response.ok) {
         const errorData = await response.json().catch(() => ({ message: "Failed to logout on server." }));
         toast({
-          title: "Logout Error",
-          description: errorData.message || "Server logout failed. Client session cleared.",
+          title: i18n.t('toast.logoutError'),
+          description: errorData.message || i18n.t('toast.logoutErrorDesc'),
           variant: "destructive",
         });
       } else {
         toast({
-          title: "Logged out",
-          description: "You have been successfully logged out.",
+          title: i18n.t('toast.logoutSuccess'),
+          description: i18n.t('toast.logoutSuccessDesc'),
         });
       }
     } catch (error) {
       console.error("Logout error:", error);
       toast({
-        title: "Logout Error",
-        description: "An unexpected error occurred during logout. Client session cleared.",
+        title: i18n.t('toast.logoutError'),
+        description: i18n.t('toast.logoutErrorDesc'),
         variant: "destructive",
       });
     } finally {

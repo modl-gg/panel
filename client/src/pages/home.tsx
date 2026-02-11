@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import {
   Bell,
   RefreshCw,
@@ -25,6 +26,7 @@ const Home = () => {
   const [isSpinning, setIsSpinning] = useState(false);
   const { toast } = useToast();
   const { theme, setTheme } = useTheme();
+  const { t } = useTranslation();
 
   // Fetch all dashboard data
   const { data: recentTicketsData, isLoading: isLoadingTickets, refetch: refetchTickets } = useRecentTickets(3);
@@ -46,14 +48,14 @@ const Home = () => {
       ]);
 
       toast({
-        title: "Dashboard Refreshed",
-        description: "All dashboard data has been updated.",
+        title: t('dashboard.refreshed'),
+        description: t('dashboard.refreshedDesc'),
       });
     } catch (error) {
       console.error('Error refreshing dashboard:', error);
       toast({
-        title: "Error",
-        description: "Failed to refresh dashboard. Please try again.",
+        title: t('toast.error'),
+        description: t('dashboard.refreshError'),
         variant: "destructive",
       });
     } finally {
@@ -70,7 +72,7 @@ const Home = () => {
       <div className="flex flex-col space-y-4">
         {/* Header */}
         <div className="flex justify-between items-center">
-          <h2 className="text-xl font-semibold">Dashboard</h2>
+          <h2 className="text-xl font-semibold">{t('dashboard.title')}</h2>
           <div className="flex items-center space-x-2">
             <Button
               variant="ghost"

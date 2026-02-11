@@ -34,7 +34,12 @@
     "refresh": "Aktualisieren",
     "viewAll": "Alle anzeigen",
     "showMore": "Mehr anzeigen",
-    "showLess": "Weniger anzeigen"
+    "showLess": "Weniger anzeigen",
+    "selectAll": "Alle auswählen",
+    "showing": "Zeige",
+    "of": "von",
+    "replies": "Antworten",
+    "noResults": "Keine Ergebnisse gefunden."
   },
   "table": {
     "player": "Spieler",
@@ -45,7 +50,10 @@
     "status": "Status",
     "duration": "Dauer",
     "server": "Server",
-    "actions": "Aktionen"
+    "actions": "Aktionen",
+    "ticket": "Ticket",
+    "assignee": "Zugewiesen",
+    "lastReply": "Letzte Antwort"
   },
   "status": {
     "active": "Aktiv",
@@ -69,6 +77,35 @@
     "minecraftChangeContact": "Kontaktiere einen Admin, um dies zu ändern.",
     "languageDescription": "Sprache für die Panel-Oberfläche und Datumsformatierung."
   },
+  "dashboard": {
+    "title": "Dashboard",
+    "refreshed": "Dashboard aktualisiert",
+    "refreshedDesc": "Alle Dashboard-Daten wurden aktualisiert.",
+    "refreshError": "Dashboard konnte nicht aktualisiert werden. Bitte erneut versuchen."
+  },
+  "tickets": {
+    "title": "Tickets",
+    "searchTickets": "Tickets suchen...",
+    "loadingTickets": "Tickets werden geladen...",
+    "noTickets": "Keine Tickets entsprechen deinen aktuellen Filtern.",
+    "label": "Label",
+    "assignee": "Zugewiesen",
+    "unassigned": "Nicht zugewiesen",
+    "newest": "Neueste",
+    "oldest": "Älteste",
+    "recentlyUpdated": "Kürzlich aktualisiert",
+    "leastRecentlyUpdated": "Am längsten nicht aktualisiert",
+    "support": "Support",
+    "bugReport": "Fehlerbericht",
+    "playerReport": "Spielerbericht",
+    "chatReport": "Chat-Bericht",
+    "banAppeal": "Ban-Einspruch",
+    "staffApplication": "Staff-Bewerbung",
+    "showingTickets": "Zeige {{from}}-{{to}} von {{total}} Tickets"
+  },
+  "audit": {
+    "title": "Analysen & Protokoll"
+  },
   "toast": {
     "loginSuccess": "Anmeldung erfolgreich",
     "loginSuccessDesc": "Willkommen! Weiterleitung zum Dashboard...",
@@ -88,7 +125,8 @@
     "saveFailed": "Speichern fehlgeschlagen",
     "permissionDenied": "Zugriff verweigert",
     "workInProgress": "In Arbeit",
-    "workInProgressDesc": "Diese Funktion ist derzeit nicht verfügbar."
+    "workInProgressDesc": "Diese Funktion ist derzeit nicht verfügbar.",
+    "success": "Erfolg"
   },
   "search": {
     "searchPlayers": "Spieler suchen...",
