@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { HardDrive, Search, Filter, Trash2, Download, FolderOpen, Calendar, AlertCircle, Settings, CreditCard, TrendingUp, Brain, Zap } from 'lucide-react';
+import { HardDrive, Search, Filter, Trash2, Download, FolderOpen, Calendar, AlertCircle, Settings, CreditCard, Brain, Zap } from 'lucide-react';
 import { getApiUrl, getCurrentDomain, apiFetch } from '@/lib/api';
 import { Button } from '@modl-gg/shared-web/components/ui/button';
 import { Input } from '@modl-gg/shared-web/components/ui/input';
@@ -251,7 +251,7 @@ const fetchStorageData = async () => {
         // Determine file type based on the folder in the path
         let fileType = 'other';
         if (file.key?.includes('/evidence/')) fileType = 'evidence';
-        else if (file.key?.includes('/ticket/')) fileType = 'ticket';
+        else if (file.key?.includes('/tickets/') || file.key?.includes('/ticket/')) fileType = 'ticket';
         else if (file.key?.includes('/logs/')) fileType = 'logs';
         else if (file.key?.includes('/backup/')) fileType = 'backup';
         
@@ -620,12 +620,28 @@ const fetchStorageData = async () => {
                       <span>Used: {formatFileSize(storageUsage.totalUsed)}</span>
                       <span>Total: {formatFileSize(storageUsage.totalQuota)}</span>
                     </div>
-                    <Progress 
+                    <Progress
                       value={(storageUsage.totalUsed / storageUsage.totalQuota) * 100}
                       className="h-2"
                     />
                   </div>
                 )}
+
+                {/* Storage Breakdown */}
+                <div className="border-t pt-4 mt-4">
+                  <div className="text-xs font-medium text-muted-foreground mb-2">Storage Breakdown</div>
+                  <div className="space-y-2">
+                    {Object.entries(storageUsage.byType).map(([type, size]) => (
+                      <div key={type} className="flex items-center justify-between text-sm">
+                        <div className="flex items-center space-x-2">
+                          {getTypeIcon(type)}
+                          <span className="capitalize">{type}</span>
+                        </div>
+                        <span>{formatFileSize(size)}</span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
               </div>
             </CardContent>
           </Card>
@@ -755,31 +771,6 @@ const fetchStorageData = async () => {
             </CardContent>
           </Card>
         </div>
-      )}
-
-      {/* Storage Breakdown */}
-      {storageUsage && (
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center">
-              <TrendingUp className="h-5 w-5 mr-2" />
-              Storage Breakdown
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="space-y-2">
-              {Object.entries(storageUsage.byType).map(([type, size]) => (
-                <div key={type} className="flex items-center justify-between text-sm">
-                  <div className="flex items-center space-x-2">
-                    {getTypeIcon(type)}
-                    <span className="capitalize">{type}</span>
-                  </div>
-                  <span>{formatFileSize(size)}</span>
-                </div>
-              ))}
-            </div>
-          </CardContent>
-        </Card>
       )}
 
       {/* File Management Controls */}

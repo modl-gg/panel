@@ -72,7 +72,7 @@ const plans: Plan[] = [
       { text: 'Up to 5 staff members', included: true, icon: <Users className="h-4 w-4" /> },
       { text: '100k API requests per month', included: true, icon: <Zap className="h-4 w-4" /> },
       { text: 'Community support', included: true, icon: <Headphones className="h-4 w-4" /> },
-      { text: '500MB CDN storage', included: true, icon: <HardDrive className="h-4 w-4" /> },
+      { text: '1GB CDN storage', included: true, icon: <HardDrive className="h-4 w-4" /> },
       { text: 'AI moderation', included: false, icon: <Brain className="h-4 w-4" /> }
     ],
     buttonText: 'Current Plan',

@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
-import { Scale, Shield, Globe, Tag, Plus, X, Fingerprint, KeyRound, Lock, QrCode, Copy, Check, Mail, Trash2, GamepadIcon, MessageCircle, Save, CheckCircle, User as UserIcon, CreditCard, BookOpen, Settings as SettingsIcon, Upload, Key, Eye, EyeOff, RefreshCw, ChevronDown, ChevronRight, Layers, GripVertical, Edit3, Users, Bot, FileText, Home, Bell } from 'lucide-react';
+import { Scale, Shield, Globe, Tag, Plus, X, Fingerprint, KeyRound, Lock, QrCode, Copy, Check, Mail, Trash2, GamepadIcon, MessageCircle, Save, CheckCircle, User as UserIcon, CreditCard, BookOpen, Settings as SettingsIcon, Upload, Key, Eye, EyeOff, RefreshCw, ChevronDown, ChevronRight, Layers, GripVertical, Edit3, Users, Bot, FileText, Home, Bell, Crown } from 'lucide-react';
 import { getApiUrl, getCurrentDomain, apiFetch, apiUpload } from '@/lib/api';
 import { Button } from '@modl-gg/shared-web/components/ui/button';
 import { Card, CardContent, CardHeader } from '@modl-gg/shared-web/components/ui/card';
@@ -754,6 +754,19 @@ const Settings = () => {
   const mainContentClass = "ml-[32px] pl-8";
   const [expandedCategory, setExpandedCategory] = useState<string | null>(null);
   const [expandedSubCategory, setExpandedSubCategory] = useState<string | null>(null);
+  const { data: billingStatusTop } = useBillingStatus();
+
+  const isPremiumUser = () => {
+    if (!billingStatusTop) return false;
+    const { subscriptionStatus, currentPeriodEnd, plan } = billingStatusTop;
+    if (subscriptionStatus === 'canceled') {
+      if (!currentPeriodEnd) return false;
+      return new Date(currentPeriodEnd) > new Date() && plan === 'premium';
+    }
+    return (['active', 'trialing'].includes(subscriptionStatus) && plan === 'premium') ||
+           (['past_due', 'unpaid', 'incomplete'].includes(subscriptionStatus) && plan === 'premium' &&
+            currentPeriodEnd && new Date(currentPeriodEnd) > new Date());
+  };
 
   // Update URL when category changes
   const updateURL = (category: string | null, subCategory?: string | null) => {
@@ -3056,19 +3069,30 @@ const Settings = () => {
                         {category.subCategories.map((sub) => {
                           const SubIcon = sub.icon;
                           const isSubSelected = isSelected && expandedSubCategory === sub.id;
+                          const isLocked = sub.id === 'ai-moderation' && !isPremiumUser();
                           return (
                             <div
                               key={sub.id}
-                              className={`flex items-center gap-2 p-1.5 rounded text-xs cursor-pointer transition-colors ${
-                                isSubSelected ? 'bg-muted-foreground/20 font-medium' : 'hover:bg-muted text-muted-foreground'
+                              className={`flex items-center gap-2 p-1.5 rounded text-xs transition-colors ${
+                                isLocked
+                                  ? 'opacity-50 cursor-not-allowed'
+                                  : isSubSelected
+                                    ? 'bg-muted-foreground/20 font-medium cursor-pointer'
+                                    : 'hover:bg-muted text-muted-foreground cursor-pointer'
                               }`}
                               onClick={(e) => {
                                 e.stopPropagation();
-                                handleSubCategorySelect(category.id, sub.id);
+                                if (!isLocked) handleSubCategorySelect(category.id, sub.id);
                               }}
                             >
                               <SubIcon className="h-3 w-3 flex-shrink-0" />
                               <span className="truncate">{sub.title}</span>
+                              {isLocked && (
+                                <Badge variant="outline" className="ml-auto px-1 py-0 text-[9px] leading-tight border-orange-500/50 text-orange-500">
+                                  <Crown className="h-2.5 w-2.5 mr-0.5" />
+                                  Premium
+                                </Badge>
+                              )}
                             </div>
                           );
                         })}
