@@ -347,7 +347,7 @@ const Tickets = () => {
           )}
         </TableCell>
         <TableCell className="text-right text-sm text-muted-foreground whitespace-nowrap">
-          {ticket.replyCount || 0} {t('common.replies')}
+          {ticket.replyCount || 0} {t('common.replies').toLowerCase()}
         </TableCell>
         <TableCell className="text-right text-sm text-muted-foreground whitespace-nowrap">
           {ticket.lastReply ? formatTimeAgo(ticket.lastReply.created) : '-'}
