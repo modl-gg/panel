@@ -60,7 +60,7 @@ interface GeneralSettingsProps {
   savingWebhookSettings?: boolean;
 
   // Optional prop to show only a specific section
-  // 'billing' | 'usage' | 'server-config' | 'domain' | 'webhooks' | undefined (show all)
+  // 'billing' | 'usage' | 'server-config' | 'domain' | 'webhooks' | 'migration' | undefined (show all)
   visibleSection?: string;
 }
 
@@ -320,6 +320,10 @@ const GeneralSettings = ({
             isLoading={savingWebhookSettings}
             panelIconUrl={panelIconUrl}
           />
+        )}
+
+        {visibleSection === 'migration' && user?.role === 'Super Admin' && (
+          <MigrationTool />
         )}
       </div>
     );

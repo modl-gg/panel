@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
-import { Scale, Shield, Globe, Tag, Plus, X, Fingerprint, KeyRound, Lock, QrCode, Copy, Check, Mail, Trash2, GamepadIcon, MessageCircle, Save, CheckCircle, User as UserIcon, CreditCard, BookOpen, Settings as SettingsIcon, Upload, Key, Eye, EyeOff, RefreshCw, ChevronDown, ChevronRight, Layers, GripVertical, Edit3, Users, Bot, FileText, Home, Bell, Crown } from 'lucide-react';
+import { Scale, Shield, Globe, Tag, Plus, X, Fingerprint, KeyRound, Lock, QrCode, Copy, Check, Mail, Trash2, GamepadIcon, MessageCircle, Save, CheckCircle, User as UserIcon, CreditCard, BookOpen, Settings as SettingsIcon, Upload, Key, Eye, EyeOff, RefreshCw, ChevronDown, ChevronRight, Layers, GripVertical, Edit3, Users, Bot, FileText, Home, Bell, Crown, Database } from 'lucide-react';
 import { getApiUrl, getCurrentDomain, apiFetch, apiUpload } from '@/lib/api';
 import { setDateLocale } from '@/utils/date-utils';
 import i18n from '@/lib/i18n';
@@ -3011,6 +3011,7 @@ const Settings = () => {
         ...(user?.role === 'Super Admin' ? [{ id: 'server-config', title: 'Server Config', icon: SettingsIcon }] : []),
         { id: 'domain', title: 'Domain', icon: Globe },
         { id: 'webhooks', title: 'Webhooks', icon: MessageCircle },
+        ...(user?.role === 'Super Admin' ? [{ id: 'migration', title: 'Migration Tool', icon: Database }] : []),
       ],
     },
     {
@@ -3188,6 +3189,7 @@ const Settings = () => {
                   {expandedSubCategory === 'billing' && <><CreditCard className="h-5 w-5" />Billing</>}
                   {expandedSubCategory === 'domain' && <><Globe className="h-5 w-5" />Domain</>}
                   {expandedSubCategory === 'webhooks' && <><Bell className="h-5 w-5" />Webhooks</>}
+                  {expandedSubCategory === 'migration' && <><Database className="h-5 w-5" />Migration Tool</>}
                 </h3>
                 <GeneralSettings
                 serverDisplayName={serverDisplayName}

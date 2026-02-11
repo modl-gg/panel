@@ -1170,7 +1170,7 @@ const PlayerDetailPage = () => {
                     <span className="ml-1">{playerInfo.playtime}</span>
                   </div>
                   <div>
-                    <span className="text-muted-foreground">Last Server:</span>
+                    <span className="text-muted-foreground">{playerInfo.status === 'Online' ? 'Current Server:' : 'Last Server:'}</span>
                     <span className="ml-1">{playerInfo.lastServer}</span>
                   </div>
                 </div>
