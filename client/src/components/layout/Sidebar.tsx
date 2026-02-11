@@ -2,6 +2,7 @@ import { useLocation } from "wouter";
 import { cn } from "@/lib/utils";
 import { useSidebar } from "@/hooks/use-sidebar";
 import { useState, useEffect, useRef } from "react";
+import { useTranslation } from "react-i18next";
 import {
   Home,
   Search,
@@ -30,6 +31,7 @@ import { usePlayerSearch } from "@/hooks/use-data";
 import { useQuery } from '@tanstack/react-query';
 
 const Sidebar = () => {
+  const { t } = useTranslation();
   const { isSearchActive, setIsSearchActive } = useSidebar();
   const { openLookupWindow: openDashboardLookupWindow } = useDashboard();
   const [location, navigate] = useLocation();
@@ -212,7 +214,7 @@ const Sidebar = () => {
   // Define nav items
   const allNavItems = [
     {
-      name: "Home",
+      name: t('nav.home'),
       path: "/panel",
       icon: <Home className="h-5 w-5" />,
       onClick: () => {
@@ -221,7 +223,7 @@ const Sidebar = () => {
       },
     },
     {
-      name: "Lookup",
+      name: t('nav.lookup'),
       path: "/panel/lookup", // This path is for active state, click handled separately
       icon: <Search className="h-5 w-5" />,
       onClick: () => {
@@ -234,7 +236,7 @@ const Sidebar = () => {
       },
     },
     {
-      name: "Tickets",
+      name: t('nav.tickets'),
       path: "/panel/tickets",
       icon: <Ticket className="h-5 w-5" />,
       onClick: () => {
@@ -243,7 +245,7 @@ const Sidebar = () => {
       },
     },
     {
-      name: "Audit",
+      name: t('nav.audit'),
       path: "/panel/audit",
       icon: <FileText className="h-5 w-5" />,
       permission: PERMISSIONS.ADMIN_AUDIT_VIEW,
@@ -253,7 +255,7 @@ const Sidebar = () => {
       },
     },
     {
-      name: "Settings",
+      name: t('nav.settings'),
       path: "/panel/settings",
       icon: <Settings className="h-5 w-5" />,
       onClick: () => {
@@ -371,7 +373,7 @@ const Sidebar = () => {
                               </div>
                             </Button>
                           </TooltipTrigger>
-                          <TooltipContent side="right">Lookup</TooltipContent>
+                          <TooltipContent side="right">{t('nav.lookup')}</TooltipContent>
                         </Tooltip>
                       </li>
                     );
@@ -445,7 +447,7 @@ const Sidebar = () => {
           >
             <div className="p-3 pt-4 w-[240px] h-full flex flex-col">
               <Input
-                placeholder="Search players..."
+                placeholder={t('search.searchPlayers')}
                 className="w-full h-9 bg-background/90 border border-sidebar-border rounded-md text-sm px-3 mb-2"
                 value={searchQuery}
                 onChange={(e: React.ChangeEvent<HTMLInputElement>) => setSearchQuery(e.target.value)}

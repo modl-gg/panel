@@ -1,6 +1,8 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { Scale, Shield, Globe, Tag, Plus, X, Fingerprint, KeyRound, Lock, QrCode, Copy, Check, Mail, Trash2, GamepadIcon, MessageCircle, Save, CheckCircle, User as UserIcon, CreditCard, BookOpen, Settings as SettingsIcon, Upload, Key, Eye, EyeOff, RefreshCw, ChevronDown, ChevronRight, Layers, GripVertical, Edit3, Users, Bot, FileText, Home, Bell, Crown } from 'lucide-react';
 import { getApiUrl, getCurrentDomain, apiFetch, apiUpload } from '@/lib/api';
+import { setDateLocale } from '@/utils/date-utils';
+import i18n from '@/lib/i18n';
 import { Button } from '@modl-gg/shared-web/components/ui/button';
 import { Card, CardContent, CardHeader } from '@modl-gg/shared-web/components/ui/card';
 import { useSidebar } from '@/hooks/use-sidebar';
@@ -845,9 +847,11 @@ const Settings = () => {
   const justLoadedFromServerRef = useRef(true);
   const pendingChangesRef = useRef(false);
   const initialLoadCompletedRef = useRef(false);
+  const dirtyCategoriesRef = useRef<Set<string>>(new Set());
   
   // Refs to capture latest profile values for auto-save
   const profileUsernameRef = useRef('');
+  const languageRef = useRef('en');
 
   // Database connection state
   const [dbConnectionStatus, setDbConnectionStatus] = useState(false);
@@ -1006,6 +1010,7 @@ const Settings = () => {
   const [isRevokingApiKey, setIsRevokingApiKey] = useState(false);
   const [apiKeyCopied, setApiKeyCopied] = useState(false);    // Profile settings state
   const [profileUsernameState, setProfileUsernameState] = useState('');
+  const [languageState, setLanguageState] = useState('en');
   
   // AI Moderation settings state
   const [aiModerationSettings, setAiModerationSettings] = useState<IAIModerationSettings>({
@@ -1202,9 +1207,11 @@ const Settings = () => {
     if (user) {
       justLoadedFromServerRef.current = true; // Prevent auto-save during initial load
       setProfileUsernameState(user.username || '');
-      
+      setLanguageState(user.language || 'en');
+
       // Initialize the refs with the current values
       profileUsernameRef.current = user.username || '';
+      languageRef.current = user.language || 'en';
       
       // Mark profile data as loaded after a short delay
       setTimeout(() => {
@@ -1798,49 +1805,79 @@ const Settings = () => {
     }, 500);
   }, []);
 
-  // Save settings to backend
+  // Save settings to backend - only saves dirty categories
   const saveSettings = useCallback(async () => {
     if (justLoadedFromServerRef.current || !initialLoadCompletedRef.current) {
       return; // Skip saving during initial load
     }
+
+    const dirty = new Set(dirtyCategoriesRef.current);
+    dirtyCategoriesRef.current.clear();
+
+    if (dirty.size === 0) return;
 
     setIsSaving(true);
     pendingChangesRef.current = false;
 
     try {
       const csrfFetch = apiFetch;
+      let hasError = false;
 
-      // Save general settings (now includes tags)
-      const generalSettingsPayload = {
-        serverDisplayName,
-        discordWebhookUrl,
-        homepageIconUrl,
-        panelIconUrl,
-        labels,
-        bugReportTags,
-        playerReportTags,
-        appealTags,
-      };
+      // Save general settings only if dirty
+      if (dirty.has('general')) {
+        const generalSettingsPayload = {
+          serverDisplayName,
+          discordWebhookUrl,
+          homepageIconUrl,
+          panelIconUrl,
+          labels,
+          bugReportTags,
+          playerReportTags,
+          appealTags,
+        };
 
-      const response = await csrfFetch('/v1/panel/settings/general', {
-        method: 'PUT',
-        headers: {
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify(generalSettingsPayload)
-      });
+        const response = await csrfFetch('/v1/panel/settings/general', {
+          method: 'PUT',
+          headers: {
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify(generalSettingsPayload)
+        });
 
-      // Save quick responses to dedicated endpoint
-      await csrfFetch('/v1/panel/settings/quick-responses', {
-        method: 'PUT',
-        headers: {
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify(quickResponsesState)
-      });
+        if (!response.ok) {
+          hasError = true;
+          const errorData = await response.json().catch(() => ({ error: 'Unknown error' }));
+          console.error('General settings save failed:', response.status, errorData);
 
-      // Save ticket forms to dedicated endpoint
-      if (ticketForms) {
+          if (response.status === 403) {
+            toast({
+              title: "Permission Denied",
+              description: errorData.error || errorData.message || 'You do not have permission to modify these settings.',
+              variant: "destructive"
+            });
+          } else {
+            toast({
+              title: "Error",
+              description: `Failed to save settings: ${errorData.error || response.statusText}`,
+              variant: "destructive"
+            });
+          }
+        }
+      }
+
+      // Save quick responses only if dirty
+      if (dirty.has('quick-responses')) {
+        await csrfFetch('/v1/panel/settings/quick-responses', {
+          method: 'PUT',
+          headers: {
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify(quickResponsesState)
+        });
+      }
+
+      // Save ticket forms only if dirty
+      if (dirty.has('ticket-forms') && ticketForms) {
         await csrfFetch('/v1/panel/settings/ticket-forms', {
           method: 'PUT',
           headers: {
@@ -1850,25 +1887,8 @@ const Settings = () => {
         });
       }
 
-      if (response.ok) {
+      if (!hasError) {
         setLastSaved(new Date());
-      } else {
-        const errorData = await response.json().catch(() => ({ error: 'Unknown error' }));
-        console.error('Settings save failed:', response.status, errorData);
-
-        if (response.status === 403) {
-          toast({
-            title: "Permission Denied",
-            description: errorData.error || errorData.message || 'You do not have permission to modify these settings.',
-            variant: "destructive"
-          });
-        } else {
-          toast({
-            title: "Error",
-            description: `Failed to save settings: ${errorData.error || response.statusText}`,
-            variant: "destructive"
-          });
-        }
       }
     } catch (error) {
       console.error("Error saving settings:", error);
@@ -1881,8 +1901,8 @@ const Settings = () => {
       setIsSaving(false);
     }
   }, [
-    punishmentTypes, statusThresholds, serverDisplayName, discordWebhookUrl, homepageIconUrl, panelIconUrl,
-    labels, bugReportTags, playerReportTags, appealTags, ticketForms, quickResponsesState, mongodbUri, has2FA, hasPasskey, toast
+    serverDisplayName, discordWebhookUrl, homepageIconUrl, panelIconUrl,
+    labels, bugReportTags, playerReportTags, appealTags, ticketForms, quickResponsesState, toast
   ]);
 
   // Effect: Load settings from React Query into local component state
@@ -1967,6 +1987,25 @@ const Settings = () => {
     }
   }, [quickResponsesData, isLoadingQuickResponses]);
 
+  // Track which settings categories are dirty
+  useEffect(() => {
+    if (!justLoadedFromServerRef.current && initialLoadCompletedRef.current) {
+      dirtyCategoriesRef.current.add('general');
+    }
+  }, [serverDisplayName, discordWebhookUrl, homepageIconUrl, panelIconUrl, labels, bugReportTags, playerReportTags, appealTags]);
+
+  useEffect(() => {
+    if (!justLoadedFromServerRef.current && initialLoadCompletedRef.current) {
+      dirtyCategoriesRef.current.add('quick-responses');
+    }
+  }, [quickResponsesState]);
+
+  useEffect(() => {
+    if (!justLoadedFromServerRef.current && initialLoadCompletedRef.current) {
+      dirtyCategoriesRef.current.add('ticket-forms');
+    }
+  }, [ticketForms]);
+
   // Debounced auto-save effect - only trigger when settings change after initial load
   useEffect(() => {
     // Don't auto-save during initial load
@@ -1995,9 +2034,9 @@ const Settings = () => {
         clearTimeout(saveTimeoutRef.current);
       }
     };  }, [
-    punishmentTypes, statusThresholds, serverDisplayName, discordWebhookUrl, homepageIconUrl, panelIconUrl,
-    labels, bugReportTags, playerReportTags, appealTags, ticketForms, quickResponsesState, mongodbUri, has2FA, hasPasskey,
-    // profileUsername removed - it has its own separate save function
+    serverDisplayName, discordWebhookUrl, homepageIconUrl, panelIconUrl,
+    labels, bugReportTags, playerReportTags, appealTags, ticketForms, quickResponsesState,
+    // punishmentTypes, statusThresholds, mongodbUri, has2FA, hasPasskey removed - they have their own save mechanisms
     isLoadingSettings, isFetchingSettings, saveSettings
   ]);
 
@@ -2102,9 +2141,22 @@ const Settings = () => {
     const newValue = typeof value === 'function' ? value(profileUsernameState) : value;
     setProfileUsernameState(newValue);
     profileUsernameRef.current = newValue; // Keep ref in sync
-    
+
     // Profile username changed
       // Trigger auto-save for profile updates, but skip during initial load
+    if (!justLoadedFromServerRef.current && initialLoadCompletedRef.current) {
+      triggerProfileAutoSave();
+    }
+  };
+
+  const setLanguage = (value: string) => {
+    setLanguageState(value);
+    languageRef.current = value;
+    setDateLocale(value);
+    i18n.changeLanguage(value);
+    if (user) {
+      user.language = value;
+    }
     if (!justLoadedFromServerRef.current && initialLoadCompletedRef.current) {
       triggerProfileAutoSave();
     }
@@ -2121,7 +2173,8 @@ const Settings = () => {
         },
         credentials: 'include',
         body: JSON.stringify({
-          username: profileUsernameState
+          username: profileUsernameState,
+          language: languageState
         })
       });
 
@@ -2165,7 +2218,7 @@ const Settings = () => {
         description: "Failed to save profile. Please try again.",        variant: "destructive",
       });
     }
-  }, [profileUsernameState, user, toast, setLastSaved]);
+  }, [profileUsernameState, languageState, user, toast, setLastSaved]);
   
   // Auto-save function for profile settings
   const triggerProfileAutoSave = useCallback(() => {
@@ -2176,12 +2229,13 @@ const Settings = () => {
     profileSaveTimeoutRef.current = setTimeout(async () => {
       // Use refs to get the latest values at execution time
       const currentUsername = profileUsernameRef.current;
-      
+      const currentLanguage = languageRef.current;
+
       // Skip save if username is empty
       if (!currentUsername.trim()) {
         return;
       }
-      
+
       try {
         const csrfFetch = apiFetch;
         const response = await csrfFetch('/v1/panel/auth/profile', {
@@ -2190,7 +2244,8 @@ const Settings = () => {
             'Content-Type': 'application/json',
           },
           body: JSON.stringify({
-            username: currentUsername
+            username: currentUsername,
+            language: currentLanguage
           })
         });
 
@@ -3119,6 +3174,8 @@ const Settings = () => {
                 setCurrentEmail={setCurrentEmail}
                 minecraftUsername={user?.minecraftUsername}
                 userRole={user?.role}
+                language={languageState}
+                setLanguage={setLanguage}
               />
             )}
 
@@ -4222,15 +4279,41 @@ const Settings = () => {
                   Cancel
                 </Button>
                 <Button
-                  onClick={() => {
+                  onClick={async () => {
                     if (selectedPunishment) {
-                      setPunishmentTypes(prev =>
-                        prev.map(pt => pt.id === selectedPunishment.id ? selectedPunishment : pt)
-                      );
-                      toast({
-                        title: "Punishment Type Updated",
-                        description: `The punishment type "${selectedPunishment.name}" has been updated`
-                      });
+                      try {
+                        const response = await apiFetch(`/v1/panel/settings/punishment-types/${selectedPunishment.ordinal}`, {
+                          method: 'PUT',
+                          headers: { 'Content-Type': 'application/json' },
+                          body: JSON.stringify(selectedPunishment),
+                        });
+
+                        if (response.ok) {
+                          const savedType = await response.json();
+                          setPunishmentTypes(prev =>
+                            prev.map(pt => pt.id === selectedPunishment.id ? savedType : pt)
+                          );
+                          queryClient.invalidateQueries({ queryKey: ['/v1/panel/settings/punishment-types'] });
+                          toast({
+                            title: "Punishment Type Updated",
+                            description: `The punishment type "${selectedPunishment.name}" has been updated`
+                          });
+                        } else {
+                          const errorData = await response.json().catch(() => ({ error: 'Unknown error' }));
+                          toast({
+                            title: "Error",
+                            description: errorData.error || 'Failed to update punishment type',
+                            variant: "destructive"
+                          });
+                        }
+                      } catch (error) {
+                        console.error('Failed to update punishment type:', error);
+                        toast({
+                          title: "Error",
+                          description: 'Failed to update punishment type',
+                          variant: "destructive"
+                        });
+                      }
                     }
                     setSelectedPunishment(null);
                   }}

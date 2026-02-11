@@ -227,14 +227,16 @@ const PunishmentSettings = ({
                       <span>{type.name} ({type.category})</span>
                     </div>
                     <div className="flex items-center gap-2">
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => setSelectedPunishment(type)}
-                        className="text-xs px-2 h-7 text-muted-foreground"
-                      >
-                        Configure
-                      </Button>
+                      {type.ordinal !== 0 && type.ordinal !== 5 && (
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => setSelectedPunishment(type)}
+                          className="text-xs px-2 h-7 text-muted-foreground"
+                        >
+                          Configure
+                        </Button>
+                      )}
                     </div>
                   </div>
                 ))

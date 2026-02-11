@@ -2,6 +2,8 @@ import { createContext, ReactNode, useContext, useState, useEffect } from "react
 import { useLocation } from "wouter";
 import { useToast } from "@modl-gg/shared-web/hooks/use-toast";
 import { getApiUrl, getCurrentDomain } from "@/lib/api";
+import { setDateLocale } from "@/utils/date-utils";
+import i18n from "@/lib/i18n";
 
 interface User {
   _id: string;
@@ -9,6 +11,7 @@ interface User {
   username: string;
   role: 'Super Admin' | 'Admin' | 'Moderator' | 'Helper';
   minecraftUsername?: string; // The staff's Minecraft username, used for punishment issuerName
+  language?: string;
 }
 
 type AuthContextType = {
@@ -52,7 +55,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             email: userData.email,
             username: userData.username,
             role: userData.role,
-            minecraftUsername: userData.minecraftUsername
+            minecraftUsername: userData.minecraftUsername,
+            language: userData.language || 'en'
           });
         }
       } catch (error) {
@@ -65,6 +69,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
     checkSession();
   }, []);
+
+  // Sync date locale and i18n language when user language changes
+  useEffect(() => {
+    const lang = user?.language || 'en';
+    setDateLocale(lang);
+    i18n.changeLanguage(lang);
+  }, [user?.language]);
 
   const requestEmailVerification = async (email: string): Promise<string | undefined> => {
     try {

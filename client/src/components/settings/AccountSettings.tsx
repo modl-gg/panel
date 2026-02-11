@@ -3,8 +3,10 @@ import { LogOut } from 'lucide-react';
 import { Button } from '@modl-gg/shared-web/components/ui/button';
 import { Input } from '@modl-gg/shared-web/components/ui/input';
 import { Label } from '@modl-gg/shared-web/components/ui/label';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@modl-gg/shared-web/components/ui/select';
 import { useToast } from '@modl-gg/shared-web/hooks/use-toast';
 import { useAuth } from '@/hooks/use-auth';
+import { useTranslation } from 'react-i18next';
 
 interface AccountSettingsProps {
   profileUsername: string;
@@ -13,6 +15,8 @@ interface AccountSettingsProps {
   setCurrentEmail: (value: string) => void;
   minecraftUsername?: string;
   userRole?: string;
+  language: string;
+  setLanguage: (value: string) => void;
 }
 
 const AccountSettings = ({
@@ -21,24 +25,27 @@ const AccountSettings = ({
   currentEmail,
   setCurrentEmail,
   minecraftUsername,
-  userRole
+  userRole,
+  language,
+  setLanguage
 }: AccountSettingsProps) => {
   const { toast } = useToast();
   const { logout } = useAuth();
+  const { t } = useTranslation();
 
   return (
     <div className="space-y-4 p-2">
       <div className="flex items-center justify-between mb-4">
-        <h3 className="text-base font-large">Profile Settings</h3>
+        <h3 className="text-base font-large">{t('settings.profileSettings')}</h3>
         <Button variant="destructive" size="sm" onClick={logout}>
           <LogOut className="h-4 w-4 mr-2" />
-          Sign Out
+          {t('common.signOut')}
         </Button>
       </div>
 
       <div className="space-y-5">
         <div className="flex gap-3">
-          <Label htmlFor="username" className="w-36 text-sm pt-2.5 shrink-0">Panel Display Name</Label>
+          <Label htmlFor="username" className="w-36 text-sm pt-2.5 shrink-0">{t('settings.panelDisplayName')}</Label>
           <div className="flex-1 max-w-xs">
             <Input
               id="username"
@@ -48,14 +55,14 @@ const AccountSettings = ({
               placeholder="Enter display name"
             />
             <p className="text-xs text-muted-foreground mt-1.5">
-              Your display name shown in ticket conversations and interactions.
+              {t('settings.displayNameDescription')}
             </p>
           </div>
         </div>
 
         {minecraftUsername && (
           <div className="flex gap-3">
-            <Label htmlFor="minecraft-username" className="w-36 text-sm pt-2.5 shrink-0">Minecraft Username</Label>
+            <Label htmlFor="minecraft-username" className="w-36 text-sm pt-2.5 shrink-0">{t('settings.minecraftUsername')}</Label>
             <div className="flex-1 max-w-xs">
               <Input
                 id="minecraft-username"
@@ -65,14 +72,14 @@ const AccountSettings = ({
                 className="bg-muted text-muted-foreground"
               />
               <p className="text-xs text-muted-foreground mt-1.5">
-                Your linked Minecraft account. {userRole === 'Super Admin' || userRole === 'Admin' ? 'Change this in Staff Management settings.' : 'Contact an admin to change this.'}
+                Your linked Minecraft account. {userRole === 'Super Admin' || userRole === 'Admin' ? t('settings.minecraftChangeAdmin') : t('settings.minecraftChangeContact')}
               </p>
             </div>
           </div>
         )}
 
         <div className="flex gap-3">
-          <Label htmlFor="email-address" className="w-36 text-sm pt-2.5 shrink-0">Email</Label>
+          <Label htmlFor="email-address" className="w-36 text-sm pt-2.5 shrink-0">{t('settings.email')}</Label>
           <div className="flex-1">
             <div className="flex items-center gap-3">
               <Input
@@ -88,16 +95,35 @@ const AccountSettings = ({
                 size="sm"
                 onClick={() => {
                   toast({
-                    title: "Work In Progress",
-                    description: "This feature is currently not available.",
+                    title: t('toast.workInProgress'),
+                    description: t('toast.workInProgressDesc'),
                   });
                 }}
               >
-                Update
+                {t('common.update')}
               </Button>
             </div>
             <p className="text-xs text-muted-foreground mt-1.5">
-              Used for login and receiving ticket notifications.
+              {t('settings.emailDescription')}
+            </p>
+          </div>
+        </div>
+
+        <div className="flex gap-3">
+          <Label htmlFor="language" className="w-36 text-sm pt-2.5 shrink-0">{t('settings.language')}</Label>
+          <div className="flex-1 max-w-xs">
+            <Select value={language} onValueChange={setLanguage}>
+              <SelectTrigger id="language">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="en">English</SelectItem>
+                <SelectItem value="de">Deutsch</SelectItem>
+                <SelectItem value="es">Español</SelectItem>
+              </SelectContent>
+            </Select>
+            <p className="text-xs text-muted-foreground mt-1.5">
+              {t('settings.languageDescription')}
             </p>
           </div>
         </div>
