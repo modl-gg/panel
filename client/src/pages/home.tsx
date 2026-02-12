@@ -67,6 +67,25 @@ const Home = () => {
     return markAsReadMutation.mutateAsync(updateId);
   };
 
+  const maintenanceBanner = useMemo(() => {
+    const start = new Date('2026-02-12T03:00:00Z'); // 10 PM ET = 03:00 UTC next day
+    const end = new Date('2026-02-12T05:00:00Z');   // 12 AM ET = 05:00 UTC
+
+    const fmt = new Intl.DateTimeFormat(undefined, {
+      month: 'numeric',
+      day: 'numeric',
+      year: 'numeric',
+      hour: 'numeric',
+      minute: '2-digit',
+      timeZoneName: 'short',
+    });
+
+    const startStr = fmt.format(start);
+    const endStr = fmt.format(end);
+
+    return `[IMPORTANT] As we prepare for a major upgrade on ${startStr} to ${endStr}, you are required to upgrade your Minecraft plugin to version 1.1.2 to avoid downtime.`;
+  }, []);
+
   return (
     <PageContainer>
       <div className="flex flex-col space-y-4">
