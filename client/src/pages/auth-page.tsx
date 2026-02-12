@@ -3,7 +3,7 @@ import { useLocation } from 'wouter';
 import { z } from 'zod';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
-import { KeyRound, Mail } from 'lucide-react';
+import { KeyRound, Loader2, Mail } from 'lucide-react';
 import { useAuth } from '@/hooks/use-auth';
 import { usePublicSettings } from '@/hooks/use-public-settings';
 import { MODL } from '@modl-gg/shared-web';
@@ -48,6 +48,7 @@ const AuthPage = () => {
       code: "",
     },
   });
+  const isSubmitting = loginForm.formState.isSubmitting;
 
   const { login, user, requestEmailVerification } = useAuth();
 
@@ -135,6 +136,7 @@ const AuthPage = () => {
                                   {...field}
                                   placeholder="name@example.com"
                                   className="pl-10"
+                                  disabled={isSubmitting}
                                 />
                               </div>
                             </FormControl>
@@ -143,8 +145,15 @@ const AuthPage = () => {
                         )}
                       />
 
-                      <Button type="submit" className="w-full mt-6">
-                        Send Verification Code
+                      <Button type="submit" className="w-full mt-6" disabled={isSubmitting}>
+                        {isSubmitting ? (
+                          <>
+                            <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                            Sending...
+                          </>
+                        ) : (
+                          'Send Verification Code'
+                        )}
                       </Button>
                     </>
                   ) : (
@@ -160,6 +169,7 @@ const AuthPage = () => {
                             loginForm.setValue('code', '');
                           }}
                           className="h-7 px-2 text-xs"
+                          disabled={isSubmitting}
                         >
                           Change
                         </Button>
@@ -181,6 +191,7 @@ const AuthPage = () => {
                                   inputMode="numeric"
                                   pattern="[0-9]*"
                                   maxLength={6}
+                                  disabled={isSubmitting}
                                 />
                               </div>
                             </FormControl>
@@ -192,8 +203,15 @@ const AuthPage = () => {
                         )}
                       />
 
-                      <Button type="submit" className="w-full mt-6">
-                        Verify & Login
+                      <Button type="submit" className="w-full mt-6" disabled={isSubmitting}>
+                        {isSubmitting ? (
+                          <>
+                            <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                            Verifying...
+                          </>
+                        ) : (
+                          'Verify & Login'
+                        )}
                       </Button>
                     </>
                   )}
