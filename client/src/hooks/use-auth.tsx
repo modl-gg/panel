@@ -37,31 +37,43 @@ async function authFetch(url: string, options: RequestInit = {}): Promise<Respon
   });
 }
 
+function mapUserFromMeResponse(userData: any): User {
+  return {
+    _id: userData.id || '',
+    email: userData.email,
+    username: userData.username,
+    role: userData.role,
+    minecraftUsername: userData.minecraftUsername,
+    language: userData.language || 'en',
+  };
+}
+
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [, navigate] = useLocation();
   const { toast } = useToast();
   const [user, setUser] = useState<User | null>(null);
   const [isLoading, setIsLoading] = useState<boolean>(true);
 
+  const fetchAuthenticatedUser = async (): Promise<User | null> => {
+    const response = await authFetch('/v1/panel/auth/me');
+    if (!response.ok) {
+      return null;
+    }
+
+    const userData = await response.json();
+    return mapUserFromMeResponse(userData);
+  };
+
   // Check for existing session on mount
   useEffect(() => {
     const checkSession = async () => {
       try {
-        const response = await authFetch('/v1/panel/auth/me');
-        if (response.ok) {
-          const userData = await response.json();
-          setUser({
-            _id: userData.id || '',
-            email: userData.email,
-            username: userData.username,
-            role: userData.role,
-            minecraftUsername: userData.minecraftUsername,
-            language: userData.language || 'en'
-          });
-        }
+        const authenticatedUser = await fetchAuthenticatedUser();
+        setUser(authenticatedUser);
       } catch (error) {
         // Session check failed, user is not authenticated
         console.error('Session check failed:', error);
+        setUser(null);
       } finally {
         setIsLoading(false);
       }
@@ -148,9 +160,18 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         return false;
       }
 
-      // Login successful - user info will be fetched by components that need it
-      // The session cookie is set by the backend
-      setUser({ _id: '', email, username: email.split('@')[0], role: 'Helper', minecraftUsername: undefined });
+      const authenticatedUser = await fetchAuthenticatedUser();
+      if (!authenticatedUser) {
+        toast({
+          title: i18n.t('toast.loginError'),
+          description: i18n.t('toast.loginErrorDesc'),
+          variant: "destructive",
+        });
+        setIsLoading(false);
+        return false;
+      }
+
+      setUser(authenticatedUser);
 
       toast({
         title: i18n.t('toast.loginSuccess'),
