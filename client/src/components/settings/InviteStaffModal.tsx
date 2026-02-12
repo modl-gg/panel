@@ -98,15 +98,15 @@ const InviteStaffModal: React.FC<InviteStaffModalProps> = ({ isOpen, onClose, on
       });
 
       if (!response.ok) {
-        const errorData = await response.json().catch(() => ({ message: 'Failed to send invitation.' }));
-        throw new Error(errorData.message || 'Failed to send invitation.');
+        const errorData = await response.json().catch(() => ({ error: 'Failed to send invitation.' }));
+        throw new Error(errorData.error || 'Failed to send invitation.');
       }
 
-      const result = await response.json().catch(() => ({}));
+      await response.json().catch(() => ({}));
       
       toast({
         title: 'Success',
-        description: result.message || 'Invitation sent successfully.',
+        description: 'Invitation sent successfully.',
       });
       
       // Reset form
