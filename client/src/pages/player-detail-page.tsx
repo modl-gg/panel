@@ -1558,7 +1558,7 @@ const PlayerDetailPage = () => {
                                       {mod.type.replace(/_/g, ' ').toLowerCase().replace(/\b\w/g, (l: string) => l.toUpperCase())}
                                     </Badge>
                                     <span className="text-muted-foreground text-xs">
-                                      {formatDateWithTime(mod.issued)}
+                                      {formatDateWithTime(mod.date)}
                                     </span>
                                   </div>
                                   {mod.reason && (
