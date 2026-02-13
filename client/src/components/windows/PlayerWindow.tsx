@@ -1052,13 +1052,20 @@ const PlayerWindow = ({ playerId, isOpen, onClose, initialPosition }: PlayerWind
         
         // Wait a bit for the tab to render, then scroll to the punishment
         setTimeout(() => {
-          const punishmentElement = document.querySelector(`[data-punishment-id="${punishmentIdParam}"]`);
+          const punishmentElement = document.querySelector(`[data-punishment-id="${punishmentIdParam}"]`) as HTMLElement;
           if (punishmentElement) {
-            punishmentElement.scrollIntoView({ 
-              behavior: 'smooth', 
-              block: 'center' 
-            });
-            
+            // Find the scrollable content container (overflow-y-auto parent) instead of using scrollIntoView
+            const scrollContainer = punishmentElement.closest('.overflow-y-auto');
+            if (scrollContainer) {
+              const containerRect = scrollContainer.getBoundingClientRect();
+              const elementRect = punishmentElement.getBoundingClientRect();
+              const offsetTop = elementRect.top - containerRect.top + scrollContainer.scrollTop;
+              scrollContainer.scrollTo({
+                top: offsetTop - containerRect.height / 2 + elementRect.height / 2,
+                behavior: 'smooth'
+              });
+            }
+
             // Add a highlight effect
             punishmentElement.classList.add('bg-blue-100', 'border-2', 'border-blue-400');
             setTimeout(() => {
@@ -1326,45 +1333,28 @@ const PlayerWindow = ({ playerId, isOpen, onClose, initialPosition }: PlayerWind
     
     // Apply modifications in chronological order
     const sortedModifications = modifications.sort((a: any, b: any) => {
-      const dateA = a.issued ? new Date(a.issued) : new Date(0);
-      const dateB = b.issued ? new Date(b.issued) : new Date(0);
-      return dateA.getTime() - dateB.getTime();
+      const dateA = a.date ? new Date(a.date).getTime() : 0;
+      const dateB = b.date ? new Date(b.date).getTime() : 0;
+      return dateA - dateB;
     });
-    
+
     for (const mod of sortedModifications) {
       if (mod.type === 'MANUAL_PARDON' || mod.type === 'APPEAL_ACCEPT') {
-        effectiveActive = false;      } else if (mod.type === 'MANUAL_DURATION_CHANGE' || mod.type === 'APPEAL_DURATION_CHANGE') {
+        effectiveActive = false;
+      } else if (mod.type === 'MANUAL_DURATION_CHANGE' || mod.type === 'APPEAL_DURATION_CHANGE') {
         if (mod.effectiveDuration !== undefined) {
           effectiveDuration = mod.effectiveDuration;
-          
-          // For duration modifications, calculate expiry from the modification's issued time
-          const modificationTime = mod.issued;
-          
-          // Convert modificationTime to Date object if it's a string
-          let modDate;
-          if (modificationTime instanceof Date) {
-            modDate = modificationTime;
-          } else if (typeof modificationTime === 'string') {
-            modDate = new Date(modificationTime);
-          } else {
-            // Fallback to current date if modificationTime is invalid
-            console.warn('Invalid modification time, using current date as fallback:', modificationTime);
-            modDate = new Date();
-          }
-          
-          // Validate the modDate
-          if (isNaN(modDate.getTime())) {
-            console.warn('Invalid modification date calculated, using current date as fallback:', modDate);
-            modDate = new Date();
-          }
-            if (mod.effectiveDuration === 0 || mod.effectiveDuration === -1 || mod.effectiveDuration < 0) {
+
+          if (mod.effectiveDuration === 0 || mod.effectiveDuration === -1 || mod.effectiveDuration < 0) {
             effectiveExpiry = null; // Permanent
             effectiveActive = true; // Permanent punishments are always active
-          } else {
-            effectiveExpiry = new Date(modDate.getTime() + mod.effectiveDuration);
-            // Update active status based on whether the new expiry is in the future
-            const now = new Date();
-            effectiveActive = effectiveExpiry.getTime() > now.getTime();
+          } else if (mod.date) {
+            const modDate = new Date(mod.date);
+            if (!isNaN(modDate.getTime())) {
+              effectiveExpiry = new Date(modDate.getTime() + mod.effectiveDuration);
+              const now = new Date();
+              effectiveActive = effectiveExpiry.getTime() > now.getTime();
+            }
           }
         }
       }

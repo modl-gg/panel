@@ -124,6 +124,7 @@ const AccountSettings = ({
                 <SelectItem value="en">English</SelectItem>
                 <SelectItem value="de">Deutsch</SelectItem>
                 <SelectItem value="es">Español</SelectItem>
+                <SelectItem value="nl">Nederlands</SelectItem>
               </SelectContent>
             </Select>
             <p className="text-xs text-muted-foreground mt-1.5">

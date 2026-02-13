@@ -387,30 +387,33 @@ const PlayerDetailPage = () => {
     let hasModifications = modifications.length > 0;
     
     // Process modifications in chronological order (oldest first)
-    const sortedModifications = [...modifications].sort((a, b) => 
-      new Date(a.issued).getTime() - new Date(b.issued).getTime()
-    );
-    
+    const sortedModifications = [...modifications].sort((a: any, b: any) => {
+      const dateA = a.date ? new Date(a.date).getTime() : 0;
+      const dateB = b.date ? new Date(b.date).getTime() : 0;
+      return dateA - dateB;
+    });
+
     for (const mod of sortedModifications) {
       switch (mod.type) {
         case 'MANUAL_PARDON':
         case 'APPEAL_ACCEPT':
           effectiveActive = false;
-          effectiveExpiry = mod.issued; // Set expiry to when it was pardoned
+          effectiveExpiry = mod.date; // Set expiry to when it was pardoned
           break;
         case 'MANUAL_DURATION_CHANGE':
+        case 'APPEAL_DURATION_CHANGE':
           if (mod.effectiveDuration !== undefined) {
             effectiveDuration = mod.effectiveDuration;
-            // Calculate new expiry based on new duration and punishment start time
             if (mod.effectiveDuration === 0 || mod.effectiveDuration === -1 || mod.effectiveDuration < 0) {
               effectiveExpiry = null; // Permanent
-            } else if (punishment.issued || punishment.date) {
-              const startTime = new Date(punishment.issued || punishment.date);
-              effectiveExpiry = new Date(startTime.getTime() + mod.effectiveDuration).toISOString();
+            } else if (mod.date) {
+              const modDate = new Date(mod.date);
+              if (!isNaN(modDate.getTime())) {
+                effectiveExpiry = new Date(modDate.getTime() + mod.effectiveDuration).toISOString();
+              }
             }
           }
           break;
-        // Add other modification types as needed
       }
     }
     
