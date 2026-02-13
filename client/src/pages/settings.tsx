@@ -18,7 +18,7 @@ import { Badge } from '@modl-gg/shared-web/components/ui/badge';
 import { Checkbox } from '@modl-gg/shared-web/components/ui/checkbox';
 import { useToast } from '@modl-gg/shared-web/hooks/use-toast';
 import { Select, SelectContent, SelectGroup, SelectItem, SelectLabel, SelectTrigger, SelectValue } from '@modl-gg/shared-web/components/ui/select';
-import { useSettings, useBillingStatus, useUsageData, usePunishmentTypes, useTicketFormSettings, useQuickResponses } from '@/hooks/use-data';
+import { useSettings, useBillingStatus, useUsageData, usePunishmentTypes, useTicketFormSettings, useQuickResponses, useStatusThresholds } from '@/hooks/use-data';
 import PageContainer from '@/components/layout/PageContainer'
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@modl-gg/shared-web/components/ui/dialog";
 import { queryClient } from '@/lib/queryClient';
@@ -1027,6 +1027,7 @@ const Settings = () => {
   const { data: ticketFormSettingsData, isLoading: isLoadingTicketForms } = useTicketFormSettings();
   const { data: punishmentTypesData, isLoading: isLoadingPunishmentTypes } = usePunishmentTypes();
   const { data: quickResponsesData, isLoading: isLoadingQuickResponses } = useQuickResponses();
+  const { data: statusThresholdsData, isLoading: isLoadingStatusThresholds } = useStatusThresholds();
   const { data: billingStatus } = useBillingStatus();
   const { data: usageData } = useUsageData();
   const [currentEmail, setCurrentEmail] = useState('');
@@ -1887,6 +1888,17 @@ const Settings = () => {
         });
       }
 
+      // Save status thresholds only if dirty
+      if (dirty.has('status-thresholds')) {
+        await csrfFetch('/v1/panel/settings/status-thresholds', {
+          method: 'PUT',
+          headers: {
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify(statusThresholds)
+        });
+      }
+
       if (!hasError) {
         setLastSaved(new Date());
       }
@@ -1902,7 +1914,7 @@ const Settings = () => {
     }
   }, [
     serverDisplayName, discordWebhookUrl, homepageIconUrl, panelIconUrl,
-    labels, bugReportTags, playerReportTags, appealTags, ticketForms, quickResponsesState, toast
+    labels, bugReportTags, playerReportTags, appealTags, ticketForms, quickResponsesState, statusThresholds, toast
   ]);
 
   // Effect: Load settings from React Query into local component state
@@ -1987,6 +1999,21 @@ const Settings = () => {
     }
   }, [quickResponsesData, isLoadingQuickResponses]);
 
+  // Effect: Load status thresholds from the dedicated endpoint
+  useEffect(() => {
+    if (isLoadingStatusThresholds || !statusThresholdsData) {
+      return;
+    }
+
+    if (statusThresholdsData.social && statusThresholdsData.gameplay) {
+      justLoadedFromServerRef.current = true;
+      setStatusThresholdsState(statusThresholdsData);
+      setTimeout(() => {
+        justLoadedFromServerRef.current = false;
+      }, 100);
+    }
+  }, [statusThresholdsData, isLoadingStatusThresholds]);
+
   // Track which settings categories are dirty
   useEffect(() => {
     if (!justLoadedFromServerRef.current && initialLoadCompletedRef.current) {
@@ -2005,6 +2032,12 @@ const Settings = () => {
       dirtyCategoriesRef.current.add('ticket-forms');
     }
   }, [ticketForms]);
+
+  useEffect(() => {
+    if (!justLoadedFromServerRef.current && initialLoadCompletedRef.current) {
+      dirtyCategoriesRef.current.add('status-thresholds');
+    }
+  }, [statusThresholds]);
 
   // Debounced auto-save effect - only trigger when settings change after initial load
   useEffect(() => {
@@ -2035,8 +2068,8 @@ const Settings = () => {
       }
     };  }, [
     serverDisplayName, discordWebhookUrl, homepageIconUrl, panelIconUrl,
-    labels, bugReportTags, playerReportTags, appealTags, ticketForms, quickResponsesState,
-    // punishmentTypes, statusThresholds, mongodbUri, has2FA, hasPasskey removed - they have their own save mechanisms
+    labels, bugReportTags, playerReportTags, appealTags, ticketForms, quickResponsesState, statusThresholds,
+    // punishmentTypes, mongodbUri, has2FA, hasPasskey removed - they have their own save mechanisms
     isLoadingSettings, isFetchingSettings, saveSettings
   ]);
 

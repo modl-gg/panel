@@ -488,6 +488,24 @@ export function useQuickResponses() {
   });
 }
 
+export function useStatusThresholds() {
+  return useQuery({
+    queryKey: ['/v1/panel/settings/status-thresholds'],
+    queryFn: async () => {
+      const res = await apiFetch('/v1/panel/settings/status-thresholds');
+      if (!res.ok) {
+        if (res.status === 401 || res.status === 403) {
+          return null;
+        }
+        throw new Error('Failed to fetch status thresholds');
+      }
+      return res.json();
+    },
+    staleTime: 1000 * 60 * 5,
+    refetchOnWindowFocus: false
+  });
+}
+
 export function useStats() {
   return useQuery({
     queryKey: ['/v1/panel/stats'],
