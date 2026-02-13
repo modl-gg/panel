@@ -75,7 +75,9 @@
     "emailDescription": "Used for login and receiving ticket notifications.",
     "minecraftChangeAdmin": "Change this in Staff Management settings.",
     "minecraftChangeContact": "Contact an admin to change this.",
-    "languageDescription": "Language for the panel interface and date formatting."
+    "languageDescription": "Language for the panel interface.",
+    "dateFormat": "Date Format",
+    "dateFormatDescription": "How dates are displayed across the panel."
   },
   "dashboard": {
     "title": "Dashboard",

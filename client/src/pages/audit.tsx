@@ -29,7 +29,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Popover, PopoverContent, PopoverTrigger } from '@modl-gg/shared-web/components/ui/popover';
 import { Calendar as CalendarComponent } from '@modl-gg/shared-web/components/ui/calendar';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogPortal } from '@modl-gg/shared-web/components/ui/dialog';
-import { format, subDays } from 'date-fns';
+import { subDays } from 'date-fns';
+import { formatDateOnly } from '@/utils/date-utils';
 import { useLogs } from '@/hooks/use-data';
 import { useQuery } from '@tanstack/react-query';
 import PageContainer from '@/components/layout/PageContainer';
@@ -151,7 +152,7 @@ const formatRelativeTime = (date: Date) => {
   if (diffMins < 60) return `${diffMins}m ago`;
   if (diffHours < 24) return `${diffHours}h ago`;
   if (diffDays < 7) return `${diffDays}d ago`;
-  return format(date, 'MMM d, yyyy');
+  return formatDateOnly(date);
 };
 
 const formatDurationDetailed = (date: Date) => {
@@ -654,7 +655,7 @@ const StaffDetailModal = ({ staff, isOpen, onClose, initialPeriod = '30d' }: {
         body: JSON.stringify({ 
           startDate: rollbackStartDate.toISOString(),
           endDate: rollbackEndDate.toISOString(),
-          reason: `Bulk rollback for ${staff.username} from ${format(rollbackStartDate, 'MMM d, yyyy')} to ${format(rollbackEndDate, 'MMM d, yyyy')}`
+          reason: `Bulk rollback for ${staff.username} from ${formatDateOnly(rollbackStartDate)} to ${formatDateOnly(rollbackEndDate)}`
         })
       });
       
@@ -745,7 +746,7 @@ const StaffDetailModal = ({ staff, isOpen, onClose, initialPeriod = '30d' }: {
                           className="w-full justify-start text-left font-normal h-8"
                         >
                           <Calendar className="mr-2 h-3 w-3" />
-                          {rollbackStartDate ? format(rollbackStartDate, "MMM d, yyyy") : "Select start"}
+                          {rollbackStartDate ? formatDateOnly(rollbackStartDate) : "Select start"}
                         </Button>
                       </PopoverTrigger>
                       <PopoverContent className="w-auto p-0" align="start">
@@ -768,7 +769,7 @@ const StaffDetailModal = ({ staff, isOpen, onClose, initialPeriod = '30d' }: {
                           className="w-full justify-start text-left font-normal h-8"
                         >
                           <Calendar className="mr-2 h-3 w-3" />
-                          {rollbackEndDate ? format(rollbackEndDate, "MMM d, yyyy") : "Select end"}
+                          {rollbackEndDate ? formatDateOnly(rollbackEndDate) : "Select end"}
                         </Button>
                       </PopoverTrigger>
                       <PopoverContent className="w-auto p-0" align="start">
@@ -1069,7 +1070,7 @@ const StaffDetailModal = ({ staff, isOpen, onClose, initialPeriod = '30d' }: {
                               </div>
                             </td>
                             <td className="p-2">{formatDuration(punishment.duration)}</td>
-                            <td className="p-2">{format(new Date(punishment.issued), 'MMM d, yyyy')}</td>
+                            <td className="p-2">{formatDateOnly(new Date(punishment.issued))}</td>
                             <td className="p-2">
                               <div className="flex items-center gap-2">
                                 <Badge variant={statusInfo.variant} className={`text-xs ${statusInfo.color}`}>

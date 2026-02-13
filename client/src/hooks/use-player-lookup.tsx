@@ -88,15 +88,30 @@ export function usePunishmentLookup(punishmentId: string) {
     queryKey: ['punishment-lookup', punishmentId],
     queryFn: async (): Promise<PunishmentLookupResult> => {
       if (!punishmentId) throw new Error('No punishment ID provided');
-      
-      const res = await apiFetch(`/v1/panel/players/punishment-lookup/${punishmentId}`);
+
+      const res = await apiFetch(`/v1/panel/players/punishments/${punishmentId}`);
       if (!res.ok) {
         if (res.status === 404) {
           throw new Error('Punishment not found');
         }
         throw new Error('Failed to lookup punishment');
       }
-      return res.json();
+      const data = await res.json();
+      // Transform flat PunishmentResponse into the expected shape
+      return {
+        playerUuid: data.playerUuid,
+        playerUsername: data.playerUsername,
+        punishment: {
+          id: data.id,
+          type: data.type,
+          reason: data.reason,
+          severity: data.severity,
+          status: data.status,
+          issued: data.issued,
+          expiry: data.expires,
+          active: data.active,
+        },
+      };
     },
     enabled: !!punishmentId && punishmentId.length > 0,
     staleTime: 1000 * 60 * 5, // 5 minutes

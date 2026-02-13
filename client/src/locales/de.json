@@ -75,7 +75,9 @@
     "emailDescription": "Für die Anmeldung und den Empfang von Ticket-Benachrichtigungen.",
     "minecraftChangeAdmin": "In den Personalverwaltungseinstellungen ändern.",
     "minecraftChangeContact": "Kontaktiere einen Admin, um dies zu ändern.",
-    "languageDescription": "Sprache für die Panel-Oberfläche und Datumsformatierung."
+    "languageDescription": "Sprache für die Panel-Oberfläche.",
+    "dateFormat": "Datumsformat",
+    "dateFormatDescription": "Wie Datumsangaben im Panel angezeigt werden."
   },
   "dashboard": {
     "title": "Dashboard",

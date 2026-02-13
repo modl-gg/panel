@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { Scale, Shield, Globe, Tag, Plus, X, Fingerprint, KeyRound, Lock, QrCode, Copy, Check, Mail, Trash2, GamepadIcon, MessageCircle, Save, CheckCircle, User as UserIcon, CreditCard, BookOpen, Settings as SettingsIcon, Upload, Key, Eye, EyeOff, RefreshCw, ChevronDown, ChevronRight, Layers, GripVertical, Edit3, Users, Bot, FileText, Home, Bell, Crown, Database } from 'lucide-react';
 import { getApiUrl, getCurrentDomain, apiFetch, apiUpload } from '@/lib/api';
-import { setDateLocale } from '@/utils/date-utils';
+import { setDateLocale, setDateFormat as setDateFormatUtil } from '@/utils/date-utils';
 import i18n from '@/lib/i18n';
 import { Button } from '@modl-gg/shared-web/components/ui/button';
 import { Card, CardContent, CardHeader } from '@modl-gg/shared-web/components/ui/card';
@@ -852,6 +852,7 @@ const Settings = () => {
   // Refs to capture latest profile values for auto-save
   const profileUsernameRef = useRef('');
   const languageRef = useRef('en');
+  const dateFormatRef = useRef('MM/DD/YYYY');
 
   // Database connection state
   const [dbConnectionStatus, setDbConnectionStatus] = useState(false);
@@ -1011,6 +1012,7 @@ const Settings = () => {
   const [apiKeyCopied, setApiKeyCopied] = useState(false);    // Profile settings state
   const [profileUsernameState, setProfileUsernameState] = useState('');
   const [languageState, setLanguageState] = useState('en');
+  const [dateFormatState, setDateFormatState] = useState('MM/DD/YYYY');
   
   // AI Moderation settings state
   const [aiModerationSettings, setAiModerationSettings] = useState<IAIModerationSettings>({
@@ -1209,10 +1211,12 @@ const Settings = () => {
       justLoadedFromServerRef.current = true; // Prevent auto-save during initial load
       setProfileUsernameState(user.username || '');
       setLanguageState(user.language || 'en');
+      setDateFormatState(user.dateFormat || 'MM/DD/YYYY');
 
       // Initialize the refs with the current values
       profileUsernameRef.current = user.username || '';
       languageRef.current = user.language || 'en';
+      dateFormatRef.current = user.dateFormat || 'MM/DD/YYYY';
       
       // Mark profile data as loaded after a short delay
       setTimeout(() => {
@@ -2194,6 +2198,18 @@ const Settings = () => {
       triggerProfileAutoSave();
     }
   };
+
+  const setDateFormat = (value: string) => {
+    setDateFormatState(value);
+    dateFormatRef.current = value;
+    setDateFormatUtil(value);
+    if (user) {
+      user.dateFormat = value;
+    }
+    if (!justLoadedFromServerRef.current && initialLoadCompletedRef.current) {
+      triggerProfileAutoSave();
+    }
+  };
   
   // Save profile settings function
   const saveProfileSettings = useCallback(async () => {
@@ -2207,7 +2223,8 @@ const Settings = () => {
         credentials: 'include',
         body: JSON.stringify({
           username: profileUsernameState,
-          language: languageState
+          language: languageState,
+          dateFormat: dateFormatState
         })
       });
 
@@ -2251,7 +2268,7 @@ const Settings = () => {
         description: "Failed to save profile. Please try again.",        variant: "destructive",
       });
     }
-  }, [profileUsernameState, languageState, user, toast, setLastSaved]);
+  }, [profileUsernameState, languageState, dateFormatState, user, toast, setLastSaved]);
   
   // Auto-save function for profile settings
   const triggerProfileAutoSave = useCallback(() => {
@@ -2263,6 +2280,7 @@ const Settings = () => {
       // Use refs to get the latest values at execution time
       const currentUsername = profileUsernameRef.current;
       const currentLanguage = languageRef.current;
+      const currentDateFormat = dateFormatRef.current;
 
       // Skip save if username is empty
       if (!currentUsername.trim()) {
@@ -2278,7 +2296,8 @@ const Settings = () => {
           },
           body: JSON.stringify({
             username: currentUsername,
-            language: currentLanguage
+            language: currentLanguage,
+            dateFormat: currentDateFormat
           })
         });
 
@@ -3210,6 +3229,8 @@ const Settings = () => {
                 userRole={user?.role}
                 language={languageState}
                 setLanguage={setLanguage}
+                dateFormat={dateFormatState}
+                setDateFormat={setDateFormat}
               />
             )}
 

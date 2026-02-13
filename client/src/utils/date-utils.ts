@@ -2,42 +2,69 @@
  * Shared date and time formatting utilities
  */
 
-let _currentLocale = 'en-US';
+let _dateFormat = 'MM/DD/YYYY';
 
-const langToLocaleMap: Record<string, string> = {
-  en: 'en-US',
-  de: 'de-DE',
-  es: 'es-ES',
+export const setDateFormat = (fmt: string) => {
+  _dateFormat = fmt;
 };
 
-export const setDateLocale = (lang: string) => {
-  _currentLocale = langToLocaleMap[lang] || 'en-US';
-};
+export const getDateFormat = () => _dateFormat;
 
-export const getDateLocale = () => _currentLocale;
+// Keep setDateLocale as a no-op for backwards compat (called from use-auth)
+export const setDateLocale = (_lang: string) => {};
+
+const pad = (n: number): string => n.toString().padStart(2, '0');
+
+const formatDateParts = (date: Date, includeTime: boolean): string => {
+  const mm = pad(date.getMonth() + 1);
+  const dd = pad(date.getDate());
+  const yyyy = date.getFullYear().toString();
+
+  let datePart: string;
+  switch (_dateFormat) {
+    case 'DD/MM/YYYY':
+      datePart = `${dd}/${mm}/${yyyy}`;
+      break;
+    case 'YYYY-MM-DD':
+      datePart = `${yyyy}-${mm}-${dd}`;
+      break;
+    default: // MM/DD/YYYY
+      datePart = `${mm}/${dd}/${yyyy}`;
+      break;
+  }
+
+  if (!includeTime) return datePart;
+
+  const hh = pad(date.getHours());
+  const min = pad(date.getMinutes());
+  return `${datePart} ${hh}:${min}`;
+};
 
 export const formatDate = (dateString: string): string => {
   try {
-    // Handle various date formats and edge cases
     if (!dateString || dateString === 'Invalid Date') {
       return 'Unknown';
     }
 
     const date = new Date(dateString);
 
-    // Check if the date is valid
     if (isNaN(date.getTime())) {
       return 'Invalid Date';
     }
 
-    return date.toLocaleString(_currentLocale, {
-      month: '2-digit',
-      day: '2-digit',
-      year: '2-digit',
-      hour: '2-digit',
-      minute: '2-digit',
-      hour12: false
-    });
+    return formatDateParts(date, true);
+  } catch (error) {
+    return 'Invalid Date';
+  }
+};
+
+export const formatDateOnly = (date: Date | string): string => {
+  try {
+    const dateObj = typeof date === 'string' ? new Date(date) : date;
+    if (isNaN(dateObj.getTime())) {
+      return 'Invalid Date';
+    }
+    return formatDateParts(dateObj, false);
   } catch (error) {
     return 'Invalid Date';
   }
@@ -48,19 +75,11 @@ export const formatDateWithTime = (date: Date | string | null | undefined): stri
 
   const dateObj = typeof date === 'string' ? new Date(date) : date;
 
-  // Check if the date is valid
   if (isNaN(dateObj.getTime())) {
     return 'Invalid Date';
   }
 
-  return new Intl.DateTimeFormat(_currentLocale, {
-    month: '2-digit',
-    day: '2-digit',
-    year: '2-digit',
-    hour: '2-digit',
-    minute: '2-digit',
-    hour12: false
-  }).format(dateObj);
+  return formatDateParts(dateObj, true);
 };
 
 export const formatTimeAgo = (dateString: string | Date): string => {
@@ -103,15 +122,7 @@ export const formatDateWithRelative = (dateString: string): string => {
     const now = new Date();
     const timeDiff = date.getTime() - now.getTime();
 
-    // Format the actual date
-    const formattedDate = date.toLocaleString(_currentLocale, {
-      month: '2-digit',
-      day: '2-digit',
-      year: '2-digit',
-      hour: '2-digit',
-      minute: '2-digit',
-      hour12: false
-    });
+    const formattedDate = formatDateParts(date, true);
 
     // Calculate relative time
     const absDiff = Math.abs(timeDiff);
