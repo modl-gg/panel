@@ -132,12 +132,11 @@ export function useTicket(id: string) {
       const tokenKey = `ticket_auth_${id}`;
       const token = getCookie(tokenKey);
 
-      const headers: Record<string, string> = {};
-      if (token) {
-        headers['X-Ticket-Token'] = token;
-      }
+      const url = token
+        ? `/v1/public/tickets/${id}?token=${encodeURIComponent(token)}`
+        : `/v1/public/tickets/${id}`;
 
-      const res = await apiFetch(`/v1/public/tickets/${id}`, { headers });
+      const res = await apiFetch(url);
       if (!res.ok) {
         if (res.status === 404) {
           return null;
@@ -225,16 +224,13 @@ export function useAddTicketReply() {
       const tokenKey = `ticket_auth_${id}`;
       const token = getCookie(tokenKey);
 
-      const headers: Record<string, string> = {
-        'Content-Type': 'application/json'
-      };
-      if (token) {
-        headers['X-Ticket-Token'] = token;
-      }
+      const url = token
+        ? `/v1/public/tickets/${id}/replies?token=${encodeURIComponent(token)}`
+        : `/v1/public/tickets/${id}/replies`;
 
-      const res = await apiFetch(`/v1/public/tickets/${id}/replies`, {
+      const res = await apiFetch(url, {
         method: 'POST',
-        headers,
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(reply)
       });
 
