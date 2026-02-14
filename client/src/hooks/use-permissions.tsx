@@ -165,6 +165,7 @@ export function usePermissions() {
       if (!response.ok) throw new Error('Failed to fetch roles');
       return response.json();
     },
+    enabled: !!user,
     staleTime: 5 * 60 * 1000, // Cache for 5 minutes
   });
 

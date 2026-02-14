@@ -66,8 +66,21 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     return mapUserFromMeResponse(userData);
   };
 
-  // Check for existing session on mount
+  // Check for existing session on mount (skip on public pages)
   useEffect(() => {
+    const path = window.location.pathname;
+    const isPublicPage = path.startsWith('/ticket/') ||
+                         path.startsWith('/appeal') ||
+                         path.startsWith('/submit-ticket') ||
+                         path === '/' ||
+                         path.startsWith('/knowledgebase') ||
+                         path.startsWith('/article/');
+
+    if (isPublicPage) {
+      setIsLoading(false);
+      return;
+    }
+
     const checkSession = async () => {
       try {
         const authenticatedUser = await fetchAuthenticatedUser();
