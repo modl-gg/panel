@@ -1454,7 +1454,7 @@ const TicketAnalyticsSection = ({ analyticsPeriod }: { analyticsPeriod: string }
 // Active Punishments Card component
 const ActivePunishmentsCard = () => {
   const [staffFilter, setStaffFilter] = useState<string>('all');
-  const [categoryFilter, setCategoryFilter] = useState<string>('all');
+  const [typeFilter, setTypeFilter] = useState<string>('all');
   const [evidenceFilter, setEvidenceFilter] = useState<string>('all');
   const [sortBy, setSortBy] = useState<string>('issued');
   const [sortDir, setSortDir] = useState<'asc' | 'desc'>('desc');
@@ -1472,9 +1472,9 @@ const ActivePunishmentsCard = () => {
     return Array.from(names).sort();
   }, [activePunishments]);
 
-  const categories = useMemo(() => {
-    const cats = new Set(activePunishments.map(p => p.category));
-    return Array.from(cats).sort();
+  const punishmentTypes = useMemo(() => {
+    const types = new Set(activePunishments.map(p => p.type));
+    return Array.from(types).sort();
   }, [activePunishments]);
 
   // Filter and sort
@@ -1484,8 +1484,8 @@ const ActivePunishmentsCard = () => {
     if (staffFilter !== 'all') {
       filtered = filtered.filter(p => p.staffName === staffFilter);
     }
-    if (categoryFilter !== 'all') {
-      filtered = filtered.filter(p => p.category === categoryFilter);
+    if (typeFilter !== 'all') {
+      filtered = filtered.filter(p => p.type === typeFilter);
     }
     if (evidenceFilter === 'yes') {
       filtered = filtered.filter(p => p.hasEvidence);
@@ -1516,7 +1516,7 @@ const ActivePunishmentsCard = () => {
     });
 
     return filtered;
-  }, [activePunishments, staffFilter, categoryFilter, evidenceFilter, sortBy, sortDir]);
+  }, [activePunishments, staffFilter, typeFilter, evidenceFilter, sortBy, sortDir]);
 
   const toggleSort = (field: string) => {
     if (sortBy === field) {
@@ -1589,14 +1589,14 @@ const ActivePunishmentsCard = () => {
               </Select>
             </div>
 
-            <Select value={categoryFilter} onValueChange={setCategoryFilter}>
+            <Select value={typeFilter} onValueChange={setTypeFilter}>
               <SelectTrigger className="w-[140px] h-8 text-xs">
-                <SelectValue placeholder="Category" />
+                <SelectValue placeholder="Type" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="all">All Categories</SelectItem>
-                {categories.map(cat => (
-                  <SelectItem key={cat} value={cat}>{cat}</SelectItem>
+                <SelectItem value="all">All Types</SelectItem>
+                {punishmentTypes.map(type => (
+                  <SelectItem key={type} value={type}>{type}</SelectItem>
                 ))}
               </SelectContent>
             </Select>
