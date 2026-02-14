@@ -128,10 +128,25 @@ export function useTicket(id: string) {
   return useQuery({
     queryKey: ['/v1/public/tickets', id],
     queryFn: async () => {
-      const res = await apiFetch(`/v1/public/tickets/${id}`);
+      // Check for stored ticket auth token
+      const tokenKey = `ticket_auth_${id}`;
+      const token = getCookie(tokenKey);
+
+      const headers: Record<string, string> = {};
+      if (token) {
+        headers['X-Ticket-Token'] = token;
+      }
+
+      const res = await apiFetch(`/v1/public/tickets/${id}`, { headers });
       if (!res.ok) {
         if (res.status === 404) {
           return null;
+        }
+        if (res.status === 403) {
+          const data = await res.json().catch(() => ({}));
+          if (data.requiresVerification) {
+            return { requiresVerification: true, emailHint: data.emailHint || '', ticketId: id };
+          }
         }
         throw new Error('Failed to fetch ticket');
       }
@@ -143,6 +158,17 @@ export function useTicket(id: string) {
     refetchOnMount: true,
     refetchOnWindowFocus: true
   });
+}
+
+// Cookie helpers for ticket auth tokens
+export function setCookie(name: string, value: string, days: number) {
+  const expires = new Date(Date.now() + days * 864e5).toUTCString();
+  document.cookie = `${name}=${encodeURIComponent(value)}; expires=${expires}; path=/; SameSite=Lax`;
+}
+
+function getCookie(name: string): string | null {
+  const match = document.cookie.match(new RegExp('(^| )' + name + '=([^;]+)'));
+  return match ? decodeURIComponent(match[2]) : null;
 }
 
 export function useCreateTicket() {
@@ -195,11 +221,19 @@ export function useUpdateTicket() {
 export function useAddTicketReply() {
   return useMutation({
     mutationFn: async ({ id, reply }: { id: string, reply: any }) => {
+      const tokenKey = `ticket_auth_${id}`;
+      const token = getCookie(tokenKey);
+
+      const headers: Record<string, string> = {
+        'Content-Type': 'application/json'
+      };
+      if (token) {
+        headers['X-Ticket-Token'] = token;
+      }
+
       const res = await apiFetch(`/v1/public/tickets/${id}/replies`, {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json'
-        },
+        headers,
         body: JSON.stringify(reply)
       });
 
@@ -234,6 +268,47 @@ export function useSubmitTicketForm() {
     },
     onSuccess: (data, variables) => {
       queryClient.invalidateQueries({ queryKey: ['/v1/public/tickets', variables.id] });
+    }
+  });
+}
+
+export function useRequestTicketVerification() {
+  return useMutation({
+    mutationFn: async (ticketId: string) => {
+      const res = await apiFetch(`/v1/public/tickets/${ticketId}/request-verification`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        }
+      });
+
+      if (!res.ok) {
+        const error = await res.json().catch(() => ({}));
+        throw new Error(error.message || 'Failed to request verification');
+      }
+
+      return res.json();
+    }
+  });
+}
+
+export function useVerifyTicketCode() {
+  return useMutation({
+    mutationFn: async ({ ticketId, code }: { ticketId: string, code: string }) => {
+      const res = await apiFetch(`/v1/public/tickets/${ticketId}/verify`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({ code })
+      });
+
+      if (!res.ok) {
+        const error = await res.json().catch(() => ({}));
+        throw new Error(error.message || 'Invalid or expired code');
+      }
+
+      return res.json();
     }
   });
 }

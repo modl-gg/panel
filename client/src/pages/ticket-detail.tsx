@@ -39,6 +39,7 @@ import {
   Video,
   File,
   Eye,
+  EyeOff,
   Paperclip
 } from 'lucide-react';
 import { Button } from '@modl-gg/shared-web/components/ui/button';
@@ -176,6 +177,7 @@ export interface TicketDetails {
   createdServer?: string;
   aiAnalysis?: AIAnalysis;
   punishmentData?: PlayerPunishmentData; // New field for punishment interface data
+  hidden?: boolean;
 }
 
 // Avatar component for messages - moved outside to prevent recreation on re-renders
@@ -1180,6 +1182,7 @@ const TicketDetail = () => {
         tags,
         createdServer: ticketData.createdServer || undefined,
         locked: ticketData.locked === true,
+        hidden: ticketData.hidden === true,
         // Set default action to "Comment" to highlight the Comment button
         selectedAction: 'Comment',
         // Extract AI analysis from ticket data if present
@@ -1716,13 +1719,21 @@ const TicketDetail = () => {
                       
                       {/* Simple Status Badge - Only Open or Closed */}
                       <Badge variant="outline" className={
-                        ticketDetails.status === 'Open' ? 
-                          'bg-green-50 text-green-700 border-green-200' : 
+                        ticketDetails.status === 'Open' ?
+                          'bg-green-50 text-green-700 border-green-200' :
                           'bg-gray-50 text-gray-700 border-gray-200'
                       }>
                         {ticketDetails.status === 'Open' ? 'Open' : 'Closed'}
                       </Badge>
-                      
+
+                      {/* Hidden Badge */}
+                      {ticketDetails.hidden && (
+                        <Badge variant="outline" className="bg-orange-50 text-orange-700 border-orange-200">
+                          <EyeOff className="h-3 w-3 mr-1" />
+                          Hidden
+                        </Badge>
+                      )}
+
                       {/* Display the tags using LabelBadge */}
                       {ticketDetails.tags && ticketDetails.tags.map((tag, index) => {
                         const labelConfig = availableLabels.find((l: any) => l.name === tag);
@@ -1844,6 +1855,40 @@ const TicketDetail = () => {
                         </p>
                       </div>
                     </div>
+                  </div>
+                )}
+
+                {/* Hide/Unhide button - only show for closed tickets */}
+                {ticketDetails.locked && (
+                  <div className="mt-3">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => {
+                        const newHidden = !ticketDetails.hidden;
+                        setTicketDetails(prev => ({ ...prev, hidden: newHidden }));
+                        updateTicketMutation.mutate({
+                          id: ticketDetails.id,
+                          data: { hidden: newHidden }
+                        }, {
+                          onSuccess: () => {
+                            queryClient.invalidateQueries({ queryKey: ['/v1/panel/tickets'] });
+                            toast({
+                              title: newHidden ? 'Ticket Hidden' : 'Ticket Unhidden',
+                              description: newHidden
+                                ? 'This ticket is now hidden from the public ticket page.'
+                                : 'This ticket is now visible on the public ticket page.',
+                            });
+                          }
+                        });
+                      }}
+                    >
+                      {ticketDetails.hidden ? (
+                        <><Eye className="h-4 w-4 mr-2" />Unhide from Public</>
+                      ) : (
+                        <><EyeOff className="h-4 w-4 mr-2" />Hide from Public</>
+                      )}
+                    </Button>
                   </div>
                 )}
               </div>

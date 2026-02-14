@@ -288,6 +288,7 @@ const SubmitTicketPage = () => {
           formData: labeledFormData,
           creatorIdentifier: creatorIdentifier,
           createdServer: 'Web',
+          emailAuthEnabled: formData['emailAuthEnabled'] === 'true',
         }),
       });
 
@@ -697,6 +698,25 @@ const SubmitTicketPage = () => {
                 </div>
               );
             })}
+          {/* Email authentication option */}
+          <div className="border-t pt-4 mt-2">
+            <div className="flex items-start space-x-2">
+              <Checkbox
+                id="emailAuthEnabled"
+                checked={formData['emailAuthEnabled'] === 'true'}
+                onCheckedChange={(checked: boolean) => handleFormFieldChange('emailAuthEnabled', checked ? 'true' : 'false')}
+                className="mt-1"
+              />
+              <div>
+                <label htmlFor="emailAuthEnabled" className="text-sm font-medium leading-tight cursor-pointer">
+                  Enable email authentication on this ticket
+                </label>
+                <p className="text-xs text-muted-foreground mt-1">
+                  Require email verification to access this ticket. If disabled, anyone with the ticket ID can view and reply.
+                </p>
+              </div>
+            </div>
+          </div>
         </div>
 
         <div className="flex justify-end">
