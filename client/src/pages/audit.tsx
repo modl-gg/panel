@@ -252,18 +252,19 @@ interface ActivePunishment {
   issued: string;
   started: string | null;
   expires: string | null;
+  active: boolean;
   hasEvidence: boolean;
   evidenceCount: number;
   evidence: Array<{ text?: string; url?: string; type?: string; fileName?: string }>;
   attachedTicketIds: string[];
 }
 
-const fetchActivePunishments = async (): Promise<ActivePunishment[]> => {
-  const response = await fetch(getApiUrl('/v1/panel/audit/punishments/active'), {
+const fetchPunishmentsList = async (status: string): Promise<ActivePunishment[]> => {
+  const response = await fetch(getApiUrl(`/v1/panel/audit/punishments/active?status=${status}`), {
     credentials: 'include',
     headers: { 'X-Server-Domain': getCurrentDomain() }
   });
-  if (!response.ok) throw new Error('Failed to fetch active punishments');
+  if (!response.ok) throw new Error('Failed to fetch punishments');
   return response.json();
 };
 
@@ -1453,8 +1454,9 @@ const TicketAnalyticsSection = ({ analyticsPeriod }: { analyticsPeriod: string }
   );
 };
 
-// Active Punishments Card component
+// Punishments List Card component
 const ActivePunishmentsCard = () => {
+  const [statusFilter, setStatusFilter] = useState<string>('active');
   const [staffFilter, setStaffFilter] = useState<string>('all');
   const [typeFilter, setTypeFilter] = useState<string>('all');
   const [evidenceFilter, setEvidenceFilter] = useState<string>('all');
@@ -1465,8 +1467,8 @@ const ActivePunishmentsCard = () => {
   const { openPlayerWindow } = usePlayerWindow();
 
   const { data: activePunishments = [], isLoading } = useQuery({
-    queryKey: ['active-punishments'],
-    queryFn: fetchActivePunishments,
+    queryKey: ['punishments-list', statusFilter],
+    queryFn: () => fetchPunishmentsList(statusFilter),
     staleTime: 5 * 60 * 1000
   });
 
@@ -1525,7 +1527,7 @@ const ActivePunishmentsCard = () => {
   // Reset page when filters change
   useEffect(() => {
     setPage(0);
-  }, [staffFilter, typeFilter, evidenceFilter, sortBy, sortDir]);
+  }, [statusFilter, staffFilter, typeFilter, evidenceFilter, sortBy, sortDir]);
 
   const totalPages = Math.ceil(filteredPunishments.length / pageSize);
   const paginatedPunishments = filteredPunishments.slice(page * pageSize, (page + 1) * pageSize);
@@ -1581,25 +1583,36 @@ const ActivePunishmentsCard = () => {
         <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
           <CardTitle className="text-base flex items-center gap-2">
             <Shield className="h-4 w-4 text-red-600" />
-            Active Punishments
+            Punishments List
             <Badge variant="secondary" className="ml-1">{filteredPunishments.length}</Badge>
           </CardTitle>
 
           <div className="flex flex-wrap items-center gap-2">
             <div className="flex items-center gap-1">
               <Filter className="h-3 w-3 text-muted-foreground" />
-              <Select value={staffFilter} onValueChange={setStaffFilter}>
-                <SelectTrigger className="w-[140px] h-8 text-xs">
-                  <SelectValue placeholder="Staff" />
+              <Select value={statusFilter} onValueChange={setStatusFilter}>
+                <SelectTrigger className="w-[120px] h-8 text-xs">
+                  <SelectValue placeholder="Status" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="all">All Staff</SelectItem>
-                  {staffNames.map(name => (
-                    <SelectItem key={name} value={name}>{name}</SelectItem>
-                  ))}
+                  <SelectItem value="active">Active</SelectItem>
+                  <SelectItem value="inactive">Inactive</SelectItem>
+                  <SelectItem value="all">All</SelectItem>
                 </SelectContent>
               </Select>
             </div>
+
+            <Select value={staffFilter} onValueChange={setStaffFilter}>
+              <SelectTrigger className="w-[140px] h-8 text-xs">
+                <SelectValue placeholder="Staff" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All Staff</SelectItem>
+                {staffNames.map(name => (
+                  <SelectItem key={name} value={name}>{name}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
 
             <Select value={typeFilter} onValueChange={setTypeFilter}>
               <SelectTrigger className="w-[140px] h-8 text-xs">
@@ -1636,7 +1649,7 @@ const ActivePunishmentsCard = () => {
             <div className="text-center">
               <Shield className="h-8 w-8 mx-auto mb-2 opacity-50" />
               <p className="text-sm">
-                {activePunishments.length === 0 ? 'No active punishments' : 'No punishments match the selected filters'}
+                {activePunishments.length === 0 ? 'No punishments found' : 'No punishments match the selected filters'}
               </p>
             </div>
           </div>
@@ -1647,6 +1660,7 @@ const ActivePunishmentsCard = () => {
                 <tr className="border-b">
                   <th className="text-left p-2">Player</th>
                   <th className="text-left p-2">Type</th>
+                  {statusFilter !== 'active' && <th className="text-left p-2">Status</th>}
                   <th className="text-left p-2">Staff</th>
                   <SortHeader field="issued" label="Issued" />
                   <SortHeader field="started" label="Started" />
@@ -1657,7 +1671,7 @@ const ActivePunishmentsCard = () => {
               </thead>
               <tbody>
                 {paginatedPunishments.map((punishment) => (
-                  <tr key={punishment.id} className="border-b hover:bg-muted/50">
+                  <tr key={punishment.id} className={cn("border-b hover:bg-muted/50", !punishment.active && "opacity-60")}>
                     <td className="p-2">
                       <Button
                         variant="link"
@@ -1680,6 +1694,13 @@ const ActivePunishmentsCard = () => {
                         </Badge>
                       </div>
                     </td>
+                    {statusFilter !== 'active' && (
+                      <td className="p-2">
+                        <Badge variant={punishment.active ? 'destructive' : 'outline'} className="text-xs">
+                          {punishment.active ? 'Active' : 'Inactive'}
+                        </Badge>
+                      </td>
+                    )}
                     <td className="p-2 text-muted-foreground">{punishment.staffName}</td>
                     <td className="p-2">{formatDateOnly(new Date(punishment.issued))}</td>
                     <td className="p-2">
