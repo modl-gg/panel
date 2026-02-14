@@ -22,7 +22,9 @@ import {
   Gavel,
   ArrowUpDown,
   Filter,
-  Paperclip
+  Paperclip,
+  ChevronLeft,
+  ChevronRight
 } from 'lucide-react';
 import { getApiUrl, getCurrentDomain, apiFetch } from '@/lib/api';
 import { Button } from '@modl-gg/shared-web/components/ui/button';
@@ -1458,6 +1460,8 @@ const ActivePunishmentsCard = () => {
   const [evidenceFilter, setEvidenceFilter] = useState<string>('all');
   const [sortBy, setSortBy] = useState<string>('issued');
   const [sortDir, setSortDir] = useState<'asc' | 'desc'>('desc');
+  const [page, setPage] = useState(0);
+  const pageSize = 20;
   const { openPlayerWindow } = usePlayerWindow();
 
   const { data: activePunishments = [], isLoading } = useQuery({
@@ -1517,6 +1521,14 @@ const ActivePunishmentsCard = () => {
 
     return filtered;
   }, [activePunishments, staffFilter, typeFilter, evidenceFilter, sortBy, sortDir]);
+
+  // Reset page when filters change
+  useEffect(() => {
+    setPage(0);
+  }, [staffFilter, typeFilter, evidenceFilter, sortBy, sortDir]);
+
+  const totalPages = Math.ceil(filteredPunishments.length / pageSize);
+  const paginatedPunishments = filteredPunishments.slice(page * pageSize, (page + 1) * pageSize);
 
   const toggleSort = (field: string) => {
     if (sortBy === field) {
@@ -1644,7 +1656,7 @@ const ActivePunishmentsCard = () => {
                 </tr>
               </thead>
               <tbody>
-                {filteredPunishments.map((punishment) => (
+                {paginatedPunishments.map((punishment) => (
                   <tr key={punishment.id} className="border-b hover:bg-muted/50">
                     <td className="p-2">
                       <Button
@@ -1708,6 +1720,34 @@ const ActivePunishmentsCard = () => {
               </tbody>
             </table>
           </div>
+          {totalPages > 1 && (
+            <div className="flex items-center justify-between pt-4">
+              <span className="text-sm text-muted-foreground">
+                Showing {page * pageSize + 1}-{Math.min((page + 1) * pageSize, filteredPunishments.length)} of {filteredPunishments.length}
+              </span>
+              <div className="flex items-center gap-2">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setPage(p => p - 1)}
+                  disabled={page === 0}
+                >
+                  <ChevronLeft className="h-4 w-4" />
+                </Button>
+                <span className="text-sm">
+                  {page + 1} / {totalPages}
+                </span>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setPage(p => p + 1)}
+                  disabled={page >= totalPages - 1}
+                >
+                  <ChevronRight className="h-4 w-4" />
+                </Button>
+              </div>
+            </div>
+          )}
         )}
       </CardContent>
     </Card>
