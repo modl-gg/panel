@@ -143,7 +143,7 @@ export function useTicket(id: string) {
           return null;
         }
         if (res.status === 403) {
-          const data = await res.json().catch(() => ({}));
+          const data = await res.json().catch(() => ({ requiresVerification: true }));
           if (data.requiresVerification) {
             return { requiresVerification: true, emailHint: data.emailHint || '', ticketId: id };
           }
@@ -153,6 +153,7 @@ export function useTicket(id: string) {
       return res.json();
     },
     enabled: !!id,
+    retry: false,
     staleTime: 0,
     gcTime: 0,
     refetchOnMount: true,
