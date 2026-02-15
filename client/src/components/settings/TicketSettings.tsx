@@ -805,8 +805,8 @@ const TicketSettings = ({
   }, [quickResponsesState, setQuickResponsesState]);
 
   // AI Moderation computed values
-  const availablePunishmentTypes = punishmentTypesState?.filter(pt => 
-    pt.isCustomizable && (!aiModerationSettings.aiPunishmentConfigs?.[pt.id] || !aiModerationSettings.aiPunishmentConfigs[pt.id].enabled)
+  const availablePunishmentTypes = punishmentTypesState?.filter(pt =>
+    pt.isCustomizable && (!aiModerationSettings.aiPunishmentConfigs?.[pt.ordinal] || !aiModerationSettings.aiPunishmentConfigs[pt.ordinal].enabled)
   ) || [];
 
   // Clear form when dialog opens for new field (not editing)
@@ -1034,13 +1034,13 @@ const TicketSettings = ({
                   if (selectedPunishmentTypeId && newAIPunishmentDescription.trim()) {
                     const selectedType = punishmentTypesState.find(t => t.id === selectedPunishmentTypeId);
                     if (selectedType) {
-                      const newId = Date.now().toString();
+                      const configKey = selectedType.ordinal.toString();
                       setAiModerationSettings((prev: any) => ({
                         ...prev,
                         aiPunishmentConfigs: {
                           ...prev.aiPunishmentConfigs,
-                          [newId]: {
-                            id: newId,
+                          [configKey]: {
+                            id: configKey,
                             name: selectedType.name,
                             aiDescription: newAIPunishmentDescription.trim(),
                             enabled: true
