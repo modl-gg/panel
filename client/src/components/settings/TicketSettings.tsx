@@ -1182,6 +1182,64 @@ const TicketSettings = ({
         </AlertDialogContent>
       </AlertDialog>
 
+      {/* AI Punishment Edit Dialog */}
+      {selectedAIPunishmentType && (
+        <Dialog open={Boolean(selectedAIPunishmentType)} onOpenChange={() => setSelectedAIPunishmentType(null)}>
+          <DialogContent className="max-w-lg">
+            <DialogHeader>
+              <DialogTitle>Edit AI Punishment Configuration</DialogTitle>
+              <DialogDescription>
+                Update the AI description for "{selectedAIPunishmentType.name}".
+              </DialogDescription>
+            </DialogHeader>
+
+            <div className="space-y-4">
+              <div className="space-y-2">
+                <Label htmlFor="edit-ai-punishment-desc">AI Description</Label>
+                <textarea
+                  id="edit-ai-punishment-desc"
+                  className="w-full rounded-md border border-border bg-background px-3 py-2 text-sm min-h-[100px]"
+                  value={newAIPunishmentDescription}
+                  onChange={(e) => setNewAIPunishmentDescription(e.target.value)}
+                />
+                <p className="text-xs text-muted-foreground">
+                  This description helps the AI understand when to suggest this punishment type.
+                </p>
+              </div>
+            </div>
+
+            <DialogFooter>
+              <Button
+                variant="outline"
+                onClick={() => setSelectedAIPunishmentType(null)}
+              >
+                Cancel
+              </Button>
+              <Button
+                onClick={() => {
+                  if (selectedAIPunishmentType && newAIPunishmentDescription.trim()) {
+                    setAiModerationSettings((prev: any) => ({
+                      ...prev,
+                      aiPunishmentConfigs: {
+                        ...prev.aiPunishmentConfigs,
+                        [selectedAIPunishmentType.id]: {
+                          ...prev.aiPunishmentConfigs[selectedAIPunishmentType.id],
+                          aiDescription: newAIPunishmentDescription.trim()
+                        }
+                      }
+                    }));
+                    setSelectedAIPunishmentType(null);
+                  }
+                }}
+                disabled={!newAIPunishmentDescription.trim()}
+              >
+                Save Changes
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+      )}
+
       {/* Quick Response Action Dialog */}
       <Dialog open={showActionDialog} onOpenChange={setShowActionDialog}>
         <DialogContent className="max-w-2xl">
