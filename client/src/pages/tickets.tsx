@@ -9,6 +9,7 @@ import {
   ChevronLeft,
   ChevronRight,
   Eye,
+  EyeOff,
   User,
   SortAsc,
   Plus
@@ -39,6 +40,7 @@ interface Ticket {
   date: string;
   status: string;
   locked?: boolean;
+  hidden?: boolean;
   tags?: string[];
   assignedTo?: string;
   lastReply?: {
@@ -290,6 +292,12 @@ const Tickets = () => {
             <div className="min-w-0 flex-1">
               <div className="flex items-center gap-2 flex-wrap">
                 <span className="font-medium text-sm">{ticket.subject}</span>
+                {ticket.hidden && (
+                  <span className="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded text-xs font-medium bg-orange-50 text-orange-700 border border-orange-200">
+                    <EyeOff className="h-3 w-3" />
+                    Hidden
+                  </span>
+                )}
                 {ticketLabels.map((tagName) => {
                   const label = labels.find((l) => l.name === tagName);
                   return (
@@ -397,6 +405,11 @@ const Tickets = () => {
                   <CircleDot className="h-4 w-4 text-green-500 flex-shrink-0" />
                 )}
                 <span className="font-medium text-sm truncate">{ticket.subject}</span>
+                {ticket.hidden && (
+                  <span className="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded text-xs font-medium bg-orange-50 text-orange-700 border border-orange-200">
+                    <EyeOff className="h-3 w-3" />
+                  </span>
+                )}
               </div>
               <div className="flex flex-wrap gap-1 mb-2 items-center">
                 {ticketLabels.map((tagName) => {

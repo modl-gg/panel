@@ -17,6 +17,8 @@ interface AccountSettingsProps {
   userRole?: string;
   language: string;
   setLanguage: (value: string) => void;
+  dateFormat: string;
+  setDateFormat: (value: string) => void;
 }
 
 const AccountSettings = ({
@@ -27,7 +29,9 @@ const AccountSettings = ({
   minecraftUsername,
   userRole,
   language,
-  setLanguage
+  setLanguage,
+  dateFormat,
+  setDateFormat
 }: AccountSettingsProps) => {
   const { toast } = useToast();
   const { logout } = useAuth();
@@ -120,10 +124,30 @@ const AccountSettings = ({
                 <SelectItem value="en">English</SelectItem>
                 <SelectItem value="de">Deutsch</SelectItem>
                 <SelectItem value="es">Español</SelectItem>
+                <SelectItem value="nl">Nederlands</SelectItem>
               </SelectContent>
             </Select>
             <p className="text-xs text-muted-foreground mt-1.5">
               {t('settings.languageDescription')}
+            </p>
+          </div>
+        </div>
+
+        <div className="flex gap-3">
+          <Label htmlFor="date-format" className="w-36 text-sm pt-2.5 shrink-0">{t('settings.dateFormat')}</Label>
+          <div className="flex-1 max-w-xs">
+            <Select value={dateFormat} onValueChange={setDateFormat}>
+              <SelectTrigger id="date-format">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="MM/DD/YYYY">MM/DD/YYYY HH:mm</SelectItem>
+                <SelectItem value="DD/MM/YYYY">DD/MM/YYYY HH:mm</SelectItem>
+                <SelectItem value="YYYY-MM-DD">YYYY-MM-DD HH:mm</SelectItem>
+              </SelectContent>
+            </Select>
+            <p className="text-xs text-muted-foreground mt-1.5">
+              {t('settings.dateFormatDescription')}
             </p>
           </div>
         </div>

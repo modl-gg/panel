@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { Scale, Shield, Globe, Tag, Plus, X, Fingerprint, KeyRound, Lock, QrCode, Copy, Check, Mail, Trash2, GamepadIcon, MessageCircle, Save, CheckCircle, User as UserIcon, CreditCard, BookOpen, Settings as SettingsIcon, Upload, Key, Eye, EyeOff, RefreshCw, ChevronDown, ChevronRight, Layers, GripVertical, Edit3, Users, Bot, FileText, Home, Bell, Crown, Database } from 'lucide-react';
 import { getApiUrl, getCurrentDomain, apiFetch, apiUpload } from '@/lib/api';
-import { setDateLocale } from '@/utils/date-utils';
+import { setDateLocale, setDateFormat as setDateFormatUtil } from '@/utils/date-utils';
 import i18n from '@/lib/i18n';
 import { Button } from '@modl-gg/shared-web/components/ui/button';
 import { Card, CardContent, CardHeader } from '@modl-gg/shared-web/components/ui/card';
@@ -18,7 +18,7 @@ import { Badge } from '@modl-gg/shared-web/components/ui/badge';
 import { Checkbox } from '@modl-gg/shared-web/components/ui/checkbox';
 import { useToast } from '@modl-gg/shared-web/hooks/use-toast';
 import { Select, SelectContent, SelectGroup, SelectItem, SelectLabel, SelectTrigger, SelectValue } from '@modl-gg/shared-web/components/ui/select';
-import { useSettings, useBillingStatus, useUsageData, usePunishmentTypes, useTicketFormSettings, useQuickResponses } from '@/hooks/use-data';
+import { useSettings, useBillingStatus, useUsageData, usePunishmentTypes, useTicketFormSettings, useQuickResponses, useStatusThresholds } from '@/hooks/use-data';
 import PageContainer from '@/components/layout/PageContainer'
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@modl-gg/shared-web/components/ui/dialog";
 import { queryClient } from '@/lib/queryClient';
@@ -852,6 +852,7 @@ const Settings = () => {
   // Refs to capture latest profile values for auto-save
   const profileUsernameRef = useRef('');
   const languageRef = useRef('en');
+  const dateFormatRef = useRef('MM/DD/YYYY');
 
   // Database connection state
   const [dbConnectionStatus, setDbConnectionStatus] = useState(false);
@@ -1011,6 +1012,7 @@ const Settings = () => {
   const [apiKeyCopied, setApiKeyCopied] = useState(false);    // Profile settings state
   const [profileUsernameState, setProfileUsernameState] = useState('');
   const [languageState, setLanguageState] = useState('en');
+  const [dateFormatState, setDateFormatState] = useState('MM/DD/YYYY');
   
   // AI Moderation settings state
   const [aiModerationSettings, setAiModerationSettings] = useState<IAIModerationSettings>({
@@ -1027,6 +1029,7 @@ const Settings = () => {
   const { data: ticketFormSettingsData, isLoading: isLoadingTicketForms } = useTicketFormSettings();
   const { data: punishmentTypesData, isLoading: isLoadingPunishmentTypes } = usePunishmentTypes();
   const { data: quickResponsesData, isLoading: isLoadingQuickResponses } = useQuickResponses();
+  const { data: statusThresholdsData, isLoading: isLoadingStatusThresholds } = useStatusThresholds();
   const { data: billingStatus } = useBillingStatus();
   const { data: usageData } = useUsageData();
   const [currentEmail, setCurrentEmail] = useState('');
@@ -1208,10 +1211,12 @@ const Settings = () => {
       justLoadedFromServerRef.current = true; // Prevent auto-save during initial load
       setProfileUsernameState(user.username || '');
       setLanguageState(user.language || 'en');
+      setDateFormatState(user.dateFormat || 'MM/DD/YYYY');
 
       // Initialize the refs with the current values
       profileUsernameRef.current = user.username || '';
       languageRef.current = user.language || 'en';
+      dateFormatRef.current = user.dateFormat || 'MM/DD/YYYY';
       
       // Mark profile data as loaded after a short delay
       setTimeout(() => {
@@ -1887,6 +1892,17 @@ const Settings = () => {
         });
       }
 
+      // Save status thresholds only if dirty
+      if (dirty.has('status-thresholds')) {
+        await csrfFetch('/v1/panel/settings/status-thresholds', {
+          method: 'PUT',
+          headers: {
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify(statusThresholds)
+        });
+      }
+
       if (!hasError) {
         setLastSaved(new Date());
       }
@@ -1902,7 +1918,7 @@ const Settings = () => {
     }
   }, [
     serverDisplayName, discordWebhookUrl, homepageIconUrl, panelIconUrl,
-    labels, bugReportTags, playerReportTags, appealTags, ticketForms, quickResponsesState, toast
+    labels, bugReportTags, playerReportTags, appealTags, ticketForms, quickResponsesState, statusThresholds, toast
   ]);
 
   // Effect: Load settings from React Query into local component state
@@ -1987,6 +2003,21 @@ const Settings = () => {
     }
   }, [quickResponsesData, isLoadingQuickResponses]);
 
+  // Effect: Load status thresholds from the dedicated endpoint
+  useEffect(() => {
+    if (isLoadingStatusThresholds || !statusThresholdsData) {
+      return;
+    }
+
+    if (statusThresholdsData.social && statusThresholdsData.gameplay) {
+      justLoadedFromServerRef.current = true;
+      setStatusThresholdsState(statusThresholdsData);
+      setTimeout(() => {
+        justLoadedFromServerRef.current = false;
+      }, 100);
+    }
+  }, [statusThresholdsData, isLoadingStatusThresholds]);
+
   // Track which settings categories are dirty
   useEffect(() => {
     if (!justLoadedFromServerRef.current && initialLoadCompletedRef.current) {
@@ -2005,6 +2036,12 @@ const Settings = () => {
       dirtyCategoriesRef.current.add('ticket-forms');
     }
   }, [ticketForms]);
+
+  useEffect(() => {
+    if (!justLoadedFromServerRef.current && initialLoadCompletedRef.current) {
+      dirtyCategoriesRef.current.add('status-thresholds');
+    }
+  }, [statusThresholds]);
 
   // Debounced auto-save effect - only trigger when settings change after initial load
   useEffect(() => {
@@ -2035,8 +2072,8 @@ const Settings = () => {
       }
     };  }, [
     serverDisplayName, discordWebhookUrl, homepageIconUrl, panelIconUrl,
-    labels, bugReportTags, playerReportTags, appealTags, ticketForms, quickResponsesState,
-    // punishmentTypes, statusThresholds, mongodbUri, has2FA, hasPasskey removed - they have their own save mechanisms
+    labels, bugReportTags, playerReportTags, appealTags, ticketForms, quickResponsesState, statusThresholds,
+    // punishmentTypes, mongodbUri, has2FA, hasPasskey removed - they have their own save mechanisms
     isLoadingSettings, isFetchingSettings, saveSettings
   ]);
 
@@ -2161,6 +2198,18 @@ const Settings = () => {
       triggerProfileAutoSave();
     }
   };
+
+  const setDateFormat = (value: string) => {
+    setDateFormatState(value);
+    dateFormatRef.current = value;
+    setDateFormatUtil(value);
+    if (user) {
+      user.dateFormat = value;
+    }
+    if (!justLoadedFromServerRef.current && initialLoadCompletedRef.current) {
+      triggerProfileAutoSave();
+    }
+  };
   
   // Save profile settings function
   const saveProfileSettings = useCallback(async () => {
@@ -2174,7 +2223,8 @@ const Settings = () => {
         credentials: 'include',
         body: JSON.stringify({
           username: profileUsernameState,
-          language: languageState
+          language: languageState,
+          dateFormat: dateFormatState
         })
       });
 
@@ -2218,7 +2268,7 @@ const Settings = () => {
         description: "Failed to save profile. Please try again.",        variant: "destructive",
       });
     }
-  }, [profileUsernameState, languageState, user, toast, setLastSaved]);
+  }, [profileUsernameState, languageState, dateFormatState, user, toast, setLastSaved]);
   
   // Auto-save function for profile settings
   const triggerProfileAutoSave = useCallback(() => {
@@ -2230,6 +2280,7 @@ const Settings = () => {
       // Use refs to get the latest values at execution time
       const currentUsername = profileUsernameRef.current;
       const currentLanguage = languageRef.current;
+      const currentDateFormat = dateFormatRef.current;
 
       // Skip save if username is empty
       if (!currentUsername.trim()) {
@@ -2245,7 +2296,8 @@ const Settings = () => {
           },
           body: JSON.stringify({
             username: currentUsername,
-            language: currentLanguage
+            language: currentLanguage,
+            dateFormat: currentDateFormat
           })
         });
 
@@ -3177,6 +3229,8 @@ const Settings = () => {
                 userRole={user?.role}
                 language={languageState}
                 setLanguage={setLanguage}
+                dateFormat={dateFormatState}
+                setDateFormat={setDateFormat}
               />
             )}
 

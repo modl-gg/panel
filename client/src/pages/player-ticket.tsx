@@ -24,7 +24,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Popover, PopoverContent, PopoverTrigger } from '@modl-gg/shared-web/components/ui/popover';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@modl-gg/shared-web/components/ui/tooltip';
 import { Card, CardHeader, CardTitle, CardDescription, CardContent, CardFooter } from '@modl-gg/shared-web/components/ui/card';
-import { useTicket, useAddTicketReply, useSubmitTicketForm, useSettings } from '@/hooks/use-data';
+import { useTicket, useAddTicketReply, useSubmitTicketForm, useSettings, useRequestTicketVerification, useVerifyTicketCode, setCookie } from '@/hooks/use-data';
 import TicketAttachments from '@/components/TicketAttachments';
 import MediaUpload from '@/components/MediaUpload';
 import { apiRequest } from '@/lib/queryClient';
@@ -199,6 +199,14 @@ const PlayerTicket = () => {
     // Mutation hooks for public ticket operations
   const addReplyMutation = useAddTicketReply();
   const submitFormMutation = useSubmitTicketForm();
+  const requestVerificationMutation = useRequestTicketVerification();
+  const verifyCodeMutation = useVerifyTicketCode();
+
+  // Email verification state
+  const [verificationCode, setVerificationCode] = useState('');
+  const [verificationEmailHint, setVerificationEmailHint] = useState('');
+  const [isVerifying, setIsVerifying] = useState(false);
+  const [codeSent, setCodeSent] = useState(false);
   
   const [ticketDetails, setTicketDetails] = useState<TicketDetails>({
     id: "",
@@ -386,6 +394,107 @@ const PlayerTicket = () => {
           <h2 className="text-xl font-semibold mb-2">Ticket Not Found</h2>
           <p className="mb-4">Sorry, we couldn't find the ticket you're looking for. It may have been deleted or you may not have permission to view it.</p>
         </div>
+      </div>
+    );
+  }
+
+  // Email verification gate
+  if (ticketData?.requiresVerification) {
+    const handleRequestCode = async () => {
+      try {
+        const result = await requestVerificationMutation.mutateAsync(id || '');
+        setVerificationEmailHint(result.emailHint || ticketData.emailHint || '');
+        setCodeSent(true);
+        toast({
+          title: "Code Sent",
+          description: "A verification code has been sent to your email.",
+        });
+      } catch (error: any) {
+        toast({
+          title: "Failed to send code",
+          description: error.message || "Please try again.",
+          variant: "destructive"
+        });
+      }
+    };
+
+    const handleVerifyCode = async () => {
+      if (!verificationCode.trim()) return;
+      setIsVerifying(true);
+      try {
+        const result = await verifyCodeMutation.mutateAsync({
+          ticketId: id || '',
+          code: verificationCode.trim()
+        });
+        if (result.token) {
+          setCookie(`ticket_auth_${id}`, result.token, 7);
+          // Refetch the ticket with the new token
+          queryClient.invalidateQueries({ queryKey: ['/v1/public/tickets', id] });
+          toast({
+            title: "Verified",
+            description: "Access granted. You can now view this ticket.",
+          });
+        }
+      } catch (error: any) {
+        toast({
+          title: "Verification Failed",
+          description: error.message || "Invalid or expired code. Please try again.",
+          variant: "destructive"
+        });
+      } finally {
+        setIsVerifying(false);
+      }
+    };
+
+    return (
+      <div className="min-h-screen bg-background flex items-center justify-center p-4">
+        <Card className="w-full max-w-md">
+          <CardHeader>
+            <CardTitle>Email Verification Required</CardTitle>
+            <CardDescription>
+              This ticket requires email verification to view.
+              {ticketData.emailHint && (
+                <> A code will be sent to <strong>{ticketData.emailHint}</strong>.</>
+              )}
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            {!codeSent ? (
+              <Button onClick={handleRequestCode} disabled={requestVerificationMutation.isPending} className="w-full">
+                {requestVerificationMutation.isPending ? (
+                  <><Loader2 className="mr-2 h-4 w-4 animate-spin" /> Sending...</>
+                ) : (
+                  'Send Verification Code'
+                )}
+              </Button>
+            ) : (
+              <>
+                <div className="space-y-2">
+                  <Label htmlFor="verificationCode">Enter the 6-digit code sent to {verificationEmailHint || ticketData.emailHint}</Label>
+                  <Input
+                    id="verificationCode"
+                    type="text"
+                    placeholder="000000"
+                    value={verificationCode}
+                    onChange={(e) => setVerificationCode(e.target.value.replace(/\D/g, '').slice(0, 6))}
+                    maxLength={6}
+                    className="text-center text-lg tracking-widest"
+                  />
+                </div>
+                <Button onClick={handleVerifyCode} disabled={isVerifying || verificationCode.length !== 6} className="w-full">
+                  {isVerifying ? (
+                    <><Loader2 className="mr-2 h-4 w-4 animate-spin" /> Verifying...</>
+                  ) : (
+                    'Verify Code'
+                  )}
+                </Button>
+                <Button variant="ghost" size="sm" onClick={handleRequestCode} disabled={requestVerificationMutation.isPending} className="w-full">
+                  Resend Code
+                </Button>
+              </>
+            )}
+          </CardContent>
+        </Card>
       </div>
     );
   }
@@ -981,8 +1090,27 @@ const PlayerTicket = () => {
                 </div>
               );
             })}
+          {/* Email authentication option */}
+          <div className="border-t pt-4 mt-2">
+            <div className="flex items-start space-x-2">
+              <Checkbox
+                id="emailAuthEnabled"
+                checked={formData['emailAuthEnabled'] === 'true'}
+                onCheckedChange={(checked: boolean) => handleFormFieldChange('emailAuthEnabled', checked ? 'true' : 'false')}
+                className="mt-1"
+              />
+              <div>
+                <label htmlFor="emailAuthEnabled" className="text-sm font-medium leading-tight cursor-pointer">
+                  Enable email authentication on this ticket
+                </label>
+                <p className="text-xs text-muted-foreground mt-1">
+                  Require email verification to access this ticket. If disabled, anyone with the ticket ID can view and reply.
+                </p>
+              </div>
+            </div>
+          </div>
         </div>
-        
+
         <div className="flex justify-end">
           <Button
             type="submit"
@@ -1011,17 +1139,20 @@ const PlayerTicket = () => {
       <div className="min-h-screen bg-background p-6">
         <div className="max-w-5xl mx-auto">
         {/* Security Disclaimer */}
-        <div className="bg-yellow-50 dark:bg-yellow-950 border border-yellow-200 dark:border-yellow-800 rounded-lg p-4 mb-6">
+        <div className={`${ticketData?.emailAuthEnabled ? 'bg-green-50 dark:bg-green-950 border-green-200 dark:border-green-800' : 'bg-yellow-50 dark:bg-yellow-950 border-yellow-200 dark:border-yellow-800'} border rounded-lg p-4 mb-6`}>
           <div className="flex items-start gap-3">
-            <div className="text-yellow-600 dark:text-yellow-400 mt-0.5">
+            <div className={`${ticketData?.emailAuthEnabled ? 'text-green-600 dark:text-green-400' : 'text-yellow-600 dark:text-yellow-400'} mt-0.5`}>
               <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
                 <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clipRule="evenodd" />
               </svg>
             </div>
             <div>
-              <h3 className="font-medium text-yellow-800 dark:text-yellow-300">Security Notice</h3>
-              <p className="text-sm text-yellow-700 dark:text-yellow-400 mt-1">
-                Do not share sensitive information, personal data, or passwords over tickets. The six digit ticket ID is the only authentication on this page; anyone with this ticket ID can view and reply to this ticket as you.
+              <h3 className={`font-medium ${ticketData?.emailAuthEnabled ? 'text-green-800 dark:text-green-300' : 'text-yellow-800 dark:text-yellow-300'}`}>Security Notice</h3>
+              <p className={`text-sm mt-1 ${ticketData?.emailAuthEnabled ? 'text-green-700 dark:text-green-400' : 'text-yellow-700 dark:text-yellow-400'}`}>
+                {ticketData?.emailAuthEnabled
+                  ? 'This ticket is protected by email authentication. Only you can access it by verifying your email address.'
+                  : 'Do not share sensitive information, personal data, or passwords over tickets. The six digit ticket ID is the only authentication on this page; anyone with this ticket ID can view and reply to this ticket as you.'
+                }
               </p>
             </div>
           </div>

@@ -19,7 +19,12 @@ import {
   Users,
   Clock,
   Undo2,
-  Gavel
+  Gavel,
+  ArrowUpDown,
+  Filter,
+  Paperclip,
+  ChevronLeft,
+  ChevronRight
 } from 'lucide-react';
 import { getApiUrl, getCurrentDomain, apiFetch } from '@/lib/api';
 import { Button } from '@modl-gg/shared-web/components/ui/button';
@@ -29,7 +34,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Popover, PopoverContent, PopoverTrigger } from '@modl-gg/shared-web/components/ui/popover';
 import { Calendar as CalendarComponent } from '@modl-gg/shared-web/components/ui/calendar';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogPortal } from '@modl-gg/shared-web/components/ui/dialog';
-import { format, subDays } from 'date-fns';
+import { subDays } from 'date-fns';
+import { formatDateOnly } from '@/utils/date-utils';
 import { useLogs } from '@/hooks/use-data';
 import { useQuery } from '@tanstack/react-query';
 import PageContainer from '@/components/layout/PageContainer';
@@ -151,7 +157,7 @@ const formatRelativeTime = (date: Date) => {
   if (diffMins < 60) return `${diffMins}m ago`;
   if (diffHours < 24) return `${diffHours}h ago`;
   if (diffDays < 7) return `${diffDays}d ago`;
-  return format(date, 'MMM d, yyyy');
+  return formatDateOnly(date);
 };
 
 const formatDurationDetailed = (date: Date) => {
@@ -227,6 +233,34 @@ const fetchAuditLogsAnalytics = async (period = '7d') => {
 
 const fetchPunishments = async (limit = 50, canRollback = true): Promise<PunishmentAction[]> => {
   const response = await fetch(getApiUrl(`/v1/panel/audit/punishments?limit=${limit}&canRollback=${canRollback}`), {
+    credentials: 'include',
+    headers: { 'X-Server-Domain': getCurrentDomain() }
+  });
+  if (!response.ok) throw new Error('Failed to fetch punishments');
+  return response.json();
+};
+
+interface ActivePunishment {
+  id: string;
+  playerId: string;
+  playerName: string;
+  type: string;
+  category: string;
+  staffName: string;
+  reason: string;
+  duration: number | null;
+  issued: string;
+  started: string | null;
+  expires: string | null;
+  active: boolean;
+  hasEvidence: boolean;
+  evidenceCount: number;
+  evidence: Array<{ text?: string; url?: string; type?: string; fileName?: string }>;
+  attachedTicketIds: string[];
+}
+
+const fetchPunishmentsList = async (status: string): Promise<ActivePunishment[]> => {
+  const response = await fetch(getApiUrl(`/v1/panel/audit/punishments/active?status=${status}`), {
     credentials: 'include',
     headers: { 'X-Server-Domain': getCurrentDomain() }
   });
@@ -654,7 +688,7 @@ const StaffDetailModal = ({ staff, isOpen, onClose, initialPeriod = '30d' }: {
         body: JSON.stringify({ 
           startDate: rollbackStartDate.toISOString(),
           endDate: rollbackEndDate.toISOString(),
-          reason: `Bulk rollback for ${staff.username} from ${format(rollbackStartDate, 'MMM d, yyyy')} to ${format(rollbackEndDate, 'MMM d, yyyy')}`
+          reason: `Bulk rollback for ${staff.username} from ${formatDateOnly(rollbackStartDate)} to ${formatDateOnly(rollbackEndDate)}`
         })
       });
       
@@ -745,7 +779,7 @@ const StaffDetailModal = ({ staff, isOpen, onClose, initialPeriod = '30d' }: {
                           className="w-full justify-start text-left font-normal h-8"
                         >
                           <Calendar className="mr-2 h-3 w-3" />
-                          {rollbackStartDate ? format(rollbackStartDate, "MMM d, yyyy") : "Select start"}
+                          {rollbackStartDate ? formatDateOnly(rollbackStartDate) : "Select start"}
                         </Button>
                       </PopoverTrigger>
                       <PopoverContent className="w-auto p-0" align="start">
@@ -768,7 +802,7 @@ const StaffDetailModal = ({ staff, isOpen, onClose, initialPeriod = '30d' }: {
                           className="w-full justify-start text-left font-normal h-8"
                         >
                           <Calendar className="mr-2 h-3 w-3" />
-                          {rollbackEndDate ? format(rollbackEndDate, "MMM d, yyyy") : "Select end"}
+                          {rollbackEndDate ? formatDateOnly(rollbackEndDate) : "Select end"}
                         </Button>
                       </PopoverTrigger>
                       <PopoverContent className="w-auto p-0" align="start">
@@ -1069,7 +1103,7 @@ const StaffDetailModal = ({ staff, isOpen, onClose, initialPeriod = '30d' }: {
                               </div>
                             </td>
                             <td className="p-2">{formatDuration(punishment.duration)}</td>
-                            <td className="p-2">{format(new Date(punishment.issued), 'MMM d, yyyy')}</td>
+                            <td className="p-2">{formatDateOnly(new Date(punishment.issued))}</td>
                             <td className="p-2">
                               <div className="flex items-center gap-2">
                                 <Badge variant={statusInfo.variant} className={`text-xs ${statusInfo.color}`}>
@@ -1417,6 +1451,333 @@ const TicketAnalyticsSection = ({ analyticsPeriod }: { analyticsPeriod: string }
         </Card>
       )}
     </div>
+  );
+};
+
+// Punishments List Card component
+const ActivePunishmentsCard = () => {
+  const [statusFilter, setStatusFilter] = useState<string>('active');
+  const [staffFilter, setStaffFilter] = useState<string>('all');
+  const [typeFilter, setTypeFilter] = useState<string>('all');
+  const [evidenceFilter, setEvidenceFilter] = useState<string>('all');
+  const [sortBy, setSortBy] = useState<string>('issued');
+  const [sortDir, setSortDir] = useState<'asc' | 'desc'>('desc');
+  const [page, setPage] = useState(0);
+  const pageSize = 20;
+  const { openPlayerWindow } = usePlayerWindow();
+
+  const { data: activePunishments = [], isLoading } = useQuery({
+    queryKey: ['punishments-list', statusFilter],
+    queryFn: () => fetchPunishmentsList(statusFilter),
+    staleTime: 5 * 60 * 1000
+  });
+
+  // Extract unique staff names and categories for filter options
+  const staffNames = useMemo(() => {
+    const names = new Set(activePunishments.map(p => p.staffName));
+    return Array.from(names).sort();
+  }, [activePunishments]);
+
+  const punishmentTypes = useMemo(() => {
+    const types = new Set(activePunishments.map(p => p.type));
+    return Array.from(types).sort();
+  }, [activePunishments]);
+
+  // Filter and sort
+  const filteredPunishments = useMemo(() => {
+    let filtered = [...activePunishments];
+
+    if (staffFilter !== 'all') {
+      filtered = filtered.filter(p => p.staffName === staffFilter);
+    }
+    if (typeFilter !== 'all') {
+      filtered = filtered.filter(p => p.type === typeFilter);
+    }
+    if (evidenceFilter === 'yes') {
+      filtered = filtered.filter(p => p.hasEvidence);
+    } else if (evidenceFilter === 'no') {
+      filtered = filtered.filter(p => !p.hasEvidence);
+    }
+
+    filtered.sort((a, b) => {
+      let valA: number, valB: number;
+      switch (sortBy) {
+        case 'issued':
+          valA = new Date(a.issued).getTime();
+          valB = new Date(b.issued).getTime();
+          break;
+        case 'started':
+          valA = a.started ? new Date(a.started).getTime() : 0;
+          valB = b.started ? new Date(b.started).getTime() : 0;
+          break;
+        case 'duration':
+          valA = a.duration ?? -1;
+          valB = b.duration ?? -1;
+          break;
+        default:
+          valA = new Date(a.issued).getTime();
+          valB = new Date(b.issued).getTime();
+      }
+      return sortDir === 'desc' ? valB - valA : valA - valB;
+    });
+
+    return filtered;
+  }, [activePunishments, staffFilter, typeFilter, evidenceFilter, sortBy, sortDir]);
+
+  // Reset page when filters change
+  useEffect(() => {
+    setPage(0);
+  }, [statusFilter, staffFilter, typeFilter, evidenceFilter, sortBy, sortDir]);
+
+  const totalPages = Math.ceil(filteredPunishments.length / pageSize);
+  const paginatedPunishments = filteredPunishments.slice(page * pageSize, (page + 1) * pageSize);
+
+  const toggleSort = (field: string) => {
+    if (sortBy === field) {
+      setSortDir(prev => prev === 'desc' ? 'asc' : 'desc');
+    } else {
+      setSortBy(field);
+      setSortDir('desc');
+    }
+  };
+
+  const formatDuration = (duration: number | null) => {
+    if (duration === null || duration === undefined || duration <= 0) return 'Permanent';
+    const days = Math.floor(duration / (1000 * 60 * 60 * 24));
+    const hours = Math.floor((duration % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
+    const minutes = Math.floor((duration % (1000 * 60 * 60)) / (1000 * 60));
+    if (days > 0) return `${days}d ${hours}h`;
+    if (hours > 0) return `${hours}h ${minutes}m`;
+    return `${minutes}m`;
+  };
+
+  const formatTimeRemaining = (expires: string | null) => {
+    if (!expires) return 'Permanent';
+    const expiryDate = new Date(expires);
+    const now = new Date();
+    const diffMs = expiryDate.getTime() - now.getTime();
+    if (diffMs <= 0) return 'Expiring...';
+    const days = Math.floor(diffMs / (1000 * 60 * 60 * 24));
+    const hours = Math.floor((diffMs % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
+    if (days > 0) return `${days}d ${hours}h left`;
+    if (hours > 0) return `${hours}h left`;
+    const minutes = Math.floor((diffMs % (1000 * 60 * 60)) / (1000 * 60));
+    return `${minutes}m left`;
+  };
+
+  const SortHeader = ({ field, label }: { field: string; label: string }) => (
+    <th
+      className="text-left p-2 cursor-pointer hover:bg-muted/50 select-none"
+      onClick={() => toggleSort(field)}
+    >
+      <div className="flex items-center gap-1">
+        {label}
+        <ArrowUpDown className={cn("h-3 w-3", sortBy === field ? "text-primary" : "text-muted-foreground")} />
+      </div>
+    </th>
+  );
+
+  return (
+    <Card>
+      <CardHeader>
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+          <CardTitle className="text-base flex items-center gap-2">
+            <Shield className="h-4 w-4 text-red-600" />
+            Punishments List
+            <Badge variant="secondary" className="ml-1">{filteredPunishments.length}</Badge>
+          </CardTitle>
+
+          <div className="flex flex-wrap items-center gap-2">
+            <div className="flex items-center gap-1">
+              <Filter className="h-3 w-3 text-muted-foreground" />
+              <Select value={statusFilter} onValueChange={setStatusFilter}>
+                <SelectTrigger className="w-[120px] h-8 text-xs">
+                  <SelectValue placeholder="Status" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="active">Active</SelectItem>
+                  <SelectItem value="inactive">Inactive</SelectItem>
+                  <SelectItem value="all">All</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+
+            <Select value={staffFilter} onValueChange={setStaffFilter}>
+              <SelectTrigger className="w-[140px] h-8 text-xs">
+                <SelectValue placeholder="Staff" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All Staff</SelectItem>
+                {staffNames.map(name => (
+                  <SelectItem key={name} value={name}>{name}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+
+            <Select value={typeFilter} onValueChange={setTypeFilter}>
+              <SelectTrigger className="w-[140px] h-8 text-xs">
+                <SelectValue placeholder="Type" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All Types</SelectItem>
+                {punishmentTypes.map(type => (
+                  <SelectItem key={type} value={type}>{type}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+
+            <Select value={evidenceFilter} onValueChange={setEvidenceFilter}>
+              <SelectTrigger className="w-[140px] h-8 text-xs">
+                <SelectValue placeholder="Evidence" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All</SelectItem>
+                <SelectItem value="yes">Has Evidence</SelectItem>
+                <SelectItem value="no">No Evidence</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+        </div>
+      </CardHeader>
+      <CardContent>
+        {isLoading ? (
+          <div className="flex items-center justify-center py-8">
+            <RefreshCw className="h-6 w-6 animate-spin" />
+          </div>
+        ) : filteredPunishments.length === 0 ? (
+          <div className="flex items-center justify-center py-8 text-muted-foreground">
+            <div className="text-center">
+              <Shield className="h-8 w-8 mx-auto mb-2 opacity-50" />
+              <p className="text-sm">
+                {activePunishments.length === 0 ? 'No punishments found' : 'No punishments match the selected filters'}
+              </p>
+            </div>
+          </div>
+        ) : (
+          <>
+          <div className="overflow-x-auto">
+            <table className="w-full text-sm">
+              <thead>
+                <tr className="border-b">
+                  <th className="text-left p-2">Player</th>
+                  <th className="text-left p-2">Type</th>
+                  {statusFilter !== 'active' && <th className="text-left p-2">Status</th>}
+                  <th className="text-left p-2">Staff</th>
+                  <SortHeader field="issued" label="Issued" />
+                  <SortHeader field="started" label="Started" />
+                  <SortHeader field="duration" label="Duration" />
+                  <th className="text-left p-2">Remaining</th>
+                  <th className="text-left p-2">Evidence</th>
+                </tr>
+              </thead>
+              <tbody>
+                {paginatedPunishments.map((punishment) => (
+                  <tr key={punishment.id} className={cn("border-b hover:bg-muted/50", !punishment.active && "opacity-60")}>
+                    <td className="p-2">
+                      <Button
+                        variant="link"
+                        className="p-0 h-auto font-medium text-left"
+                        onClick={() => openPlayerWindow(punishment.playerId, punishment.playerName)}
+                      >
+                        {punishment.playerName}
+                      </Button>
+                    </td>
+                    <td className="p-2">
+                      <div className="flex items-center gap-1">
+                        <Badge
+                          variant={punishment.type.includes('Ban') || punishment.type.includes('Blacklist') ? 'destructive' : 'secondary'}
+                          className="text-xs"
+                        >
+                          {punishment.type}
+                        </Badge>
+                        <Badge variant="outline" className="text-xs">
+                          {punishment.category}
+                        </Badge>
+                      </div>
+                    </td>
+                    {statusFilter !== 'active' && (
+                      <td className="p-2">
+                        <Badge variant={punishment.active ? 'destructive' : 'outline'} className="text-xs">
+                          {punishment.active ? 'Active' : 'Inactive'}
+                        </Badge>
+                      </td>
+                    )}
+                    <td className="p-2 text-muted-foreground">{punishment.staffName}</td>
+                    <td className="p-2">{formatDateOnly(new Date(punishment.issued))}</td>
+                    <td className="p-2">
+                      {punishment.started ? formatDateOnly(new Date(punishment.started)) : <span className="text-muted-foreground">--</span>}
+                    </td>
+                    <td className="p-2">{formatDuration(punishment.duration)}</td>
+                    <td className="p-2">
+                      {!punishment.active ? (
+                        <span className="text-xs text-muted-foreground">n/a</span>
+                      ) : (
+                        <span className={cn(
+                          "text-xs font-medium",
+                          !punishment.expires && "text-red-600 dark:text-red-400",
+                          punishment.expires && "text-orange-600 dark:text-orange-400"
+                        )}>
+                          {formatTimeRemaining(punishment.expires)}
+                        </span>
+                      )}
+                    </td>
+                    <td className="p-2">
+                      {punishment.hasEvidence ? (
+                        <div className="flex gap-1 flex-wrap">
+                          {punishment.evidence.map((ev, idx) => (
+                            <Badge
+                              key={idx}
+                              variant="outline"
+                              className={cn("text-xs", ev.url && "cursor-pointer hover:bg-primary/10 transition-colors")}
+                              onClick={() => ev.url && window.open(ev.url, '_blank')}
+                              title={ev.text || ev.fileName || 'Evidence'}
+                            >
+                              <Paperclip className="h-3 w-3 mr-1" />
+                              {ev.fileName || ev.type || `#${idx + 1}`}
+                            </Badge>
+                          ))}
+                        </div>
+                      ) : (
+                        <span className="text-muted-foreground text-xs">None</span>
+                      )}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+          {totalPages > 1 && (
+            <div className="flex items-center justify-between pt-4">
+              <span className="text-sm text-muted-foreground">
+                Showing {page * pageSize + 1}-{Math.min((page + 1) * pageSize, filteredPunishments.length)} of {filteredPunishments.length}
+              </span>
+              <div className="flex items-center gap-2">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setPage(p => p - 1)}
+                  disabled={page === 0}
+                >
+                  <ChevronLeft className="h-4 w-4" />
+                </Button>
+                <span className="text-sm">
+                  {page + 1} / {totalPages}
+                </span>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setPage(p => p + 1)}
+                  disabled={page >= totalPages - 1}
+                >
+                  <ChevronRight className="h-4 w-4" />
+                </Button>
+              </div>
+            </div>
+          )}
+          </>
+        )}
+      </CardContent>
+    </Card>
   );
 };
 
@@ -1808,6 +2169,8 @@ const AuditLog = () => {
                       )}
                     </CardContent>
                   </Card>
+
+                  <ActivePunishmentsCard />
                 </div>
               )}
 

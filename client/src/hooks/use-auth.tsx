@@ -2,7 +2,7 @@ import { createContext, ReactNode, useContext, useState, useEffect } from "react
 import { useLocation } from "wouter";
 import { useToast } from "@modl-gg/shared-web/hooks/use-toast";
 import { getApiUrl, getCurrentDomain } from "@/lib/api";
-import { setDateLocale } from "@/utils/date-utils";
+import { setDateLocale, setDateFormat } from "@/utils/date-utils";
 import i18n from "@/lib/i18n";
 
 interface User {
@@ -12,6 +12,7 @@ interface User {
   role: 'Super Admin' | 'Admin' | 'Moderator' | 'Helper';
   minecraftUsername?: string; // The staff's Minecraft username, used for punishment issuerName
   language?: string;
+  dateFormat?: string;
 }
 
 type AuthContextType = {
@@ -45,6 +46,7 @@ function mapUserFromMeResponse(userData: any): User {
     role: userData.role,
     minecraftUsername: userData.minecraftUsername,
     language: userData.language || 'en',
+    dateFormat: userData.dateFormat || 'MM/DD/YYYY',
   };
 }
 
@@ -64,8 +66,21 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     return mapUserFromMeResponse(userData);
   };
 
-  // Check for existing session on mount
+  // Check for existing session on mount (skip on public pages)
   useEffect(() => {
+    const path = window.location.pathname;
+    const isPublicPage = path.startsWith('/ticket/') ||
+                         path.startsWith('/appeal') ||
+                         path.startsWith('/submit-ticket') ||
+                         path === '/' ||
+                         path.startsWith('/knowledgebase') ||
+                         path.startsWith('/article/');
+
+    if (isPublicPage) {
+      setIsLoading(false);
+      return;
+    }
+
     const checkSession = async () => {
       try {
         const authenticatedUser = await fetchAuthenticatedUser();
@@ -82,12 +97,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     checkSession();
   }, []);
 
-  // Sync date locale and i18n language when user language changes
+  // Sync date locale, date format, and i18n language when user settings change
   useEffect(() => {
     const lang = user?.language || 'en';
     setDateLocale(lang);
+    setDateFormat(user?.dateFormat || 'MM/DD/YYYY');
     i18n.changeLanguage(lang);
-  }, [user?.language]);
+  }, [user?.language, user?.dateFormat]);
 
   const requestEmailVerification = async (email: string): Promise<string | undefined> => {
     try {

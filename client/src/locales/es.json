@@ -75,7 +75,9 @@
     "emailDescription": "Utilizado para iniciar sesión y recibir notificaciones de tickets.",
     "minecraftChangeAdmin": "Cambiar en la configuración de gestión de personal.",
     "minecraftChangeContact": "Contacta a un administrador para cambiar esto.",
-    "languageDescription": "Idioma para la interfaz del panel y formato de fechas."
+    "languageDescription": "Idioma para la interfaz del panel.",
+    "dateFormat": "Formato de fecha",
+    "dateFormatDescription": "Cómo se muestran las fechas en el panel."
   },
   "dashboard": {
     "title": "Panel de control",

@@ -128,21 +128,47 @@ export function useTicket(id: string) {
   return useQuery({
     queryKey: ['/v1/public/tickets', id],
     queryFn: async () => {
-      const res = await apiFetch(`/v1/public/tickets/${id}`);
+      // Check for stored ticket auth token
+      const tokenKey = `ticket_auth_${id}`;
+      const token = getCookie(tokenKey);
+
+      const url = token
+        ? `/v1/public/tickets/${id}?token=${encodeURIComponent(token)}`
+        : `/v1/public/tickets/${id}`;
+
+      const res = await apiFetch(url);
       if (!res.ok) {
         if (res.status === 404) {
           return null;
+        }
+        if (res.status === 403) {
+          const data = await res.json().catch(() => ({ requiresVerification: true }));
+          if (data.requiresVerification) {
+            return { requiresVerification: true, emailHint: data.emailHint || '', ticketId: id };
+          }
         }
         throw new Error('Failed to fetch ticket');
       }
       return res.json();
     },
     enabled: !!id,
+    retry: false,
     staleTime: 0,
     gcTime: 0,
     refetchOnMount: true,
     refetchOnWindowFocus: true
   });
+}
+
+// Cookie helpers for ticket auth tokens
+export function setCookie(name: string, value: string, days: number) {
+  const expires = new Date(Date.now() + days * 864e5).toUTCString();
+  document.cookie = `${name}=${encodeURIComponent(value)}; expires=${expires}; path=/; SameSite=Lax`;
+}
+
+function getCookie(name: string): string | null {
+  const match = document.cookie.match(new RegExp('(^| )' + name + '=([^;]+)'));
+  return match ? decodeURIComponent(match[2]) : null;
 }
 
 export function useCreateTicket() {
@@ -195,11 +221,16 @@ export function useUpdateTicket() {
 export function useAddTicketReply() {
   return useMutation({
     mutationFn: async ({ id, reply }: { id: string, reply: any }) => {
-      const res = await apiFetch(`/v1/public/tickets/${id}/replies`, {
+      const tokenKey = `ticket_auth_${id}`;
+      const token = getCookie(tokenKey);
+
+      const url = token
+        ? `/v1/public/tickets/${id}/replies?token=${encodeURIComponent(token)}`
+        : `/v1/public/tickets/${id}/replies`;
+
+      const res = await apiFetch(url, {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json'
-        },
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(reply)
       });
 
@@ -234,6 +265,47 @@ export function useSubmitTicketForm() {
     },
     onSuccess: (data, variables) => {
       queryClient.invalidateQueries({ queryKey: ['/v1/public/tickets', variables.id] });
+    }
+  });
+}
+
+export function useRequestTicketVerification() {
+  return useMutation({
+    mutationFn: async (ticketId: string) => {
+      const res = await apiFetch(`/v1/public/tickets/${ticketId}/request-verification`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        }
+      });
+
+      if (!res.ok) {
+        const error = await res.json().catch(() => ({}));
+        throw new Error(error.message || 'Failed to request verification');
+      }
+
+      return res.json();
+    }
+  });
+}
+
+export function useVerifyTicketCode() {
+  return useMutation({
+    mutationFn: async ({ ticketId, code }: { ticketId: string, code: string }) => {
+      const res = await apiFetch(`/v1/public/tickets/${ticketId}/verify`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({ code })
+      });
+
+      if (!res.ok) {
+        const error = await res.json().catch(() => ({}));
+        throw new Error(error.message || 'Invalid or expired code');
+      }
+
+      return res.json();
     }
   });
 }
@@ -480,6 +552,24 @@ export function useQuickResponses() {
           return null;
         }
         throw new Error('Failed to fetch quick responses');
+      }
+      return res.json();
+    },
+    staleTime: 1000 * 60 * 5,
+    refetchOnWindowFocus: false
+  });
+}
+
+export function useStatusThresholds() {
+  return useQuery({
+    queryKey: ['/v1/panel/settings/status-thresholds'],
+    queryFn: async () => {
+      const res = await apiFetch('/v1/panel/settings/status-thresholds');
+      if (!res.ok) {
+        if (res.status === 401 || res.status === 403) {
+          return null;
+        }
+        throw new Error('Failed to fetch status thresholds');
       }
       return res.json();
     },
