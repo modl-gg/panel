@@ -1654,6 +1654,7 @@ const ActivePunishmentsCard = () => {
             </div>
           </div>
         ) : (
+          <>
           <div className="overflow-x-auto">
             <table className="w-full text-sm">
               <thead>
@@ -1769,6 +1770,7 @@ const ActivePunishmentsCard = () => {
               </div>
             </div>
           )}
+          </>
         )}
       </CardContent>
     </Card>
