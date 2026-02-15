@@ -1709,13 +1709,17 @@ const ActivePunishmentsCard = () => {
                     </td>
                     <td className="p-2">{formatDuration(punishment.duration)}</td>
                     <td className="p-2">
-                      <span className={cn(
-                        "text-xs font-medium",
-                        !punishment.expires && "text-red-600 dark:text-red-400",
-                        punishment.expires && "text-orange-600 dark:text-orange-400"
-                      )}>
-                        {formatTimeRemaining(punishment.expires)}
-                      </span>
+                      {!punishment.active ? (
+                        <span className="text-xs text-muted-foreground">n/a</span>
+                      ) : (
+                        <span className={cn(
+                          "text-xs font-medium",
+                          !punishment.expires && "text-red-600 dark:text-red-400",
+                          punishment.expires && "text-orange-600 dark:text-orange-400"
+                        )}>
+                          {formatTimeRemaining(punishment.expires)}
+                        </span>
+                      )}
                     </td>
                     <td className="p-2">
                       {punishment.hasEvidence ? (
