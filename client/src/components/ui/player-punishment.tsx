@@ -866,6 +866,10 @@ const PlayerPunishment: React.FC<PlayerPunishmentProps> = ({
           `Apply: ${getPunishmentPreview() || 'Select punishment options'}`
         )}
       </Button>
+      <p className="text-xs text-muted-foreground text-center">
+        The expiration timer for punishments issued on offline players will not begin until the player successfully attempts to login (unimpeded by a previous ban).
+        To force start a punishment, modify it's duration and the timer for the modified duration will begin immediately.
+      </p>
     </div>
   );
 };
