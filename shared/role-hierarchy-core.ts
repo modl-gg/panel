@@ -145,7 +145,7 @@ export function hasPermission(
     return false;
   }
   
-  return roleInfo.permissions.includes(permission);
+  return roleInfo.permissions.some(p => p === permission || permission.startsWith(p + '.'));
 }
 
 /**

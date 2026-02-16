@@ -22,6 +22,7 @@ interface Permission {
   name: string;
   description: string;
   category: 'punishment' | 'ticket' | 'admin';
+  parentId: string | null;
 }
 
 interface StaffRole {
@@ -43,19 +44,43 @@ const PERMISSION_CATEGORIES = {
 
 const DEFAULT_PERMISSIONS: Permission[] = [
   // Admin permissions
-  { id: 'admin.settings.view', name: 'View Settings', description: 'View all system settings', category: 'admin' },
-  { id: 'admin.settings.modify', name: 'Modify Settings', description: 'Modify system settings (excluding account settings)', category: 'admin' },
-  { id: 'admin.staff.manage', name: 'Manage Staff', description: 'Invite, remove, and modify staff members', category: 'admin' },
-  { id: 'admin.audit.view', name: 'View Audit', description: 'Access audit logs and system activity', category: 'admin' },
-  
+  { id: 'admin.settings.view', name: 'View Settings', description: 'View all system settings (includes all sub-permissions)', category: 'admin', parentId: null },
+  { id: 'admin.settings.view.billing', name: 'View Billing', description: 'View billing, subscription, and payment info', category: 'admin', parentId: 'admin.settings.view' },
+  { id: 'admin.settings.modify', name: 'Modify Settings', description: 'Full control over system settings (includes all sub-permissions)', category: 'admin', parentId: null },
+  { id: 'admin.settings.modify.punishments', name: 'Modify Punishments Config', description: 'Create/edit/delete punishment types', category: 'admin', parentId: 'admin.settings.modify' },
+  { id: 'admin.settings.modify.content', name: 'Modify Content', description: 'Edit homepage cards, knowledgebase, media', category: 'admin', parentId: 'admin.settings.modify' },
+  { id: 'admin.settings.modify.domain', name: 'Modify Domain', description: 'Change custom domain configuration', category: 'admin', parentId: 'admin.settings.modify' },
+  { id: 'admin.settings.modify.billing', name: 'Modify Billing', description: 'Update subscription and payment methods', category: 'admin', parentId: 'admin.settings.modify' },
+  { id: 'admin.settings.modify.migration', name: 'Modify Migration', description: 'Import/export data between platforms', category: 'admin', parentId: 'admin.settings.modify' },
+  { id: 'admin.settings.modify.storage', name: 'Modify Storage', description: 'Configure storage backends and limits', category: 'admin', parentId: 'admin.settings.modify' },
+  { id: 'admin.staff.manage', name: 'Manage Staff', description: 'Full staff management (includes all sub-permissions)', category: 'admin', parentId: null },
+  { id: 'admin.staff.manage.members', name: 'Manage Members', description: 'Invite, remove, and reassign staff', category: 'admin', parentId: 'admin.staff.manage' },
+  { id: 'admin.staff.manage.roles', name: 'Manage Roles', description: 'Create/edit/delete roles and permissions', category: 'admin', parentId: 'admin.staff.manage' },
+  { id: 'admin.audit.view', name: 'View Audit', description: 'Full audit access (includes all sub-permissions)', category: 'admin', parentId: null },
+  { id: 'admin.audit.view.dashboard', name: 'View Dashboard', description: 'View dashboard statistics', category: 'admin', parentId: 'admin.audit.view' },
+  { id: 'admin.audit.view.analytics', name: 'View Analytics', description: 'View player and ticket analytics', category: 'admin', parentId: 'admin.audit.view' },
+  { id: 'admin.audit.view.logs', name: 'View Logs', description: 'View audit trail of staff actions', category: 'admin', parentId: 'admin.audit.view' },
+
   // Punishment permissions
-  { id: 'punishment.modify', name: 'Modify Punishments', description: 'Pardon, modify duration, and edit existing punishments', category: 'punishment' },
-  
+  { id: 'punishment.modify', name: 'Modify Punishments', description: 'Full control over existing punishments (includes all sub-permissions)', category: 'punishment', parentId: null },
+  { id: 'punishment.modify.pardon', name: 'Pardon Punishments', description: 'Pardon punishments and clear associated points', category: 'punishment', parentId: 'punishment.modify' },
+  { id: 'punishment.modify.duration', name: 'Modify Duration', description: 'Change punishment duration', category: 'punishment', parentId: 'punishment.modify' },
+  { id: 'punishment.modify.note', name: 'Add Notes', description: 'Add staff notes to punishments', category: 'punishment', parentId: 'punishment.modify' },
+  { id: 'punishment.modify.evidence', name: 'Manage Evidence', description: 'Add and view evidence on punishments', category: 'punishment', parentId: 'punishment.modify' },
+  { id: 'punishment.modify.options', name: 'Toggle Options', description: 'Toggle alt-blocking and stat-wipe options', category: 'punishment', parentId: 'punishment.modify' },
+
   // Ticket permissions
-  { id: 'ticket.view.all', name: 'View All Tickets', description: 'View all tickets regardless of type', category: 'ticket' },
-  { id: 'ticket.reply.all', name: 'Reply to All Tickets', description: 'Reply to all ticket types', category: 'ticket' },
-  { id: 'ticket.close.all', name: 'Close/Reopen All Tickets', description: 'Close and reopen all ticket types', category: 'ticket' },
-  { id: 'ticket.delete.all', name: 'Delete Tickets', description: 'Delete tickets from the system', category: 'ticket' },
+  { id: 'ticket.view.all', name: 'View All Tickets', description: 'View all tickets (includes all sub-permissions)', category: 'ticket', parentId: null },
+  { id: 'ticket.view.all.notes', name: 'View Staff Notes', description: 'View internal staff notes on tickets', category: 'ticket', parentId: 'ticket.view.all' },
+  { id: 'ticket.reply.all', name: 'Reply to All Tickets', description: 'Reply to all ticket types (includes all sub-permissions)', category: 'ticket', parentId: null },
+  { id: 'ticket.reply.all.notes', name: 'Add Staff Notes', description: 'Add staff-only internal notes', category: 'ticket', parentId: 'ticket.reply.all' },
+  { id: 'ticket.close.all', name: 'Close/Reopen All Tickets', description: 'Close and reopen all ticket types (includes all sub-permissions)', category: 'ticket', parentId: null },
+  { id: 'ticket.close.all.lock', name: 'Lock Tickets', description: 'Lock tickets to prevent further replies', category: 'ticket', parentId: 'ticket.close.all' },
+  { id: 'ticket.manage', name: 'Manage Tickets', description: 'Advanced ticket management (includes all sub-permissions)', category: 'ticket', parentId: null },
+  { id: 'ticket.manage.tags', name: 'Manage Tags', description: 'Add and remove tags from tickets', category: 'ticket', parentId: 'ticket.manage' },
+  { id: 'ticket.manage.hide', name: 'Hide Tickets', description: 'Hide tickets from public view', category: 'ticket', parentId: 'ticket.manage' },
+  { id: 'ticket.manage.subscribe', name: 'Manage Subscriptions', description: 'Manage ticket notification subscriptions', category: 'ticket', parentId: 'ticket.manage' },
+  { id: 'ticket.delete.all', name: 'Delete Tickets', description: 'Delete tickets from the system', category: 'ticket', parentId: null },
 ];
 
 const DEFAULT_ROLES: StaffRole[] = [
@@ -254,10 +279,12 @@ const DraggableRoleCard: React.FC<DraggableRoleCardProps> = ({
         <div className="flex flex-wrap gap-1">
           {Object.entries(PERMISSION_CATEGORIES).map(([category, label]) => {
             const categoryPermissions = getPermissionsByCategory(category);
-            const total = categoryPermissions.length;
+            // Count only parent/standalone permissions for badge totals
+            const parentPermissions = categoryPermissions.filter((p: Permission) => !p.parentId);
+            const total = parentPermissions.length;
             // Super Admin always has all permissions
             const isSuperAdmin = role.name === 'Super Admin' || role.id === 'super-admin';
-            const granted = isSuperAdmin ? total : categoryPermissions.filter(p => hasPermission(role, p.id)).length;
+            const granted = isSuperAdmin ? total : parentPermissions.filter((p: Permission) => hasPermission(role, p.id)).length;
 
             if (total === 0) return null;
 
@@ -568,12 +595,23 @@ export default function StaffRolesCard() {
   };
 
   const togglePermission = (permissionId: string) => {
-    setRoleFormData(prev => ({
-      ...prev,
-      permissions: prev.permissions.includes(permissionId)
-        ? prev.permissions.filter(p => p !== permissionId)
-        : [...prev.permissions, permissionId]
-    }));
+    const allPerms = permissions.length > 0 ? permissions : DEFAULT_PERMISSIONS;
+    const isCurrentlyEnabled = roleFormData.permissions.includes(permissionId);
+    const childPermissions = allPerms.filter((p: Permission) => p.parentId === permissionId).map((p: Permission) => p.id);
+
+    if (isCurrentlyEnabled) {
+      // Toggling OFF: remove only the parent, children become individually manageable
+      setRoleFormData(prev => ({
+        ...prev,
+        permissions: prev.permissions.filter(p => p !== permissionId)
+      }));
+    } else {
+      // Toggling ON: add the parent and all its children
+      setRoleFormData(prev => ({
+        ...prev,
+        permissions: [...new Set([...prev.permissions, permissionId, ...childPermissions])]
+      }));
+    }
   };
 
   const getPermissionsByCategory = (category: string) => {
@@ -581,7 +619,8 @@ export default function StaffRolesCard() {
   };
 
   const hasPermission = (role: StaffRole, permissionId: string) => {
-    return role.permissions.includes(permissionId);
+    if (role.permissions.includes(permissionId)) return true;
+    return role.permissions.some(p => permissionId.startsWith(p + '.'));
   };
 
   // Helper function to check if the role form is valid
@@ -686,6 +725,11 @@ export default function StaffRolesCard() {
                 const categoryPermissions = getPermissionsByCategory(category);
                 if (categoryPermissions.length === 0) return null;
 
+                // Separate parents and children
+                const parentPermissions = categoryPermissions.filter((p: Permission) => !p.parentId);
+                const getChildren = (parentId: string) => categoryPermissions.filter((p: Permission) => p.parentId === parentId);
+                const isParentEnabled = (parentId: string) => roleFormData.permissions.includes(parentId);
+
                 return (
                   <div key={category} className="space-y-3">
                     <div className="flex items-center gap-2">
@@ -721,30 +765,65 @@ export default function StaffRolesCard() {
                         </Button>
                       </div>
                     </div>
-                    
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-3 pl-4">
-                      {categoryPermissions.map((permission: Permission) => (
-                        <div key={permission.id} className="flex items-start space-x-2">
-                          <Checkbox
-                            id={permission.id}
-                            checked={roleFormData.permissions.includes(permission.id)}
-                            onCheckedChange={() => togglePermission(permission.id)}
-                          />
-                          <div className="grid gap-1.5 leading-none">
-                            <Label
-                              htmlFor={permission.id}
-                              className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
-                            >
-                              {permission.name}
-                            </Label>
-                            <p className="text-xs text-muted-foreground">
-                              {permission.description}
-                            </p>
+
+                    <div className="space-y-3 pl-4">
+                      {parentPermissions.map((permission: Permission) => {
+                        const children = getChildren(permission.id);
+                        const parentChecked = isParentEnabled(permission.id);
+
+                        return (
+                          <div key={permission.id} className="space-y-2">
+                            {/* Parent permission */}
+                            <div className="flex items-start space-x-2">
+                              <Checkbox
+                                id={permission.id}
+                                checked={roleFormData.permissions.includes(permission.id)}
+                                onCheckedChange={() => togglePermission(permission.id)}
+                              />
+                              <div className="grid gap-1.5 leading-none">
+                                <Label
+                                  htmlFor={permission.id}
+                                  className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
+                                >
+                                  {permission.name}
+                                </Label>
+                                <p className="text-xs text-muted-foreground">
+                                  {permission.description}
+                                </p>
+                              </div>
+                            </div>
+
+                            {/* Child permissions */}
+                            {children.length > 0 && (
+                              <div className="grid grid-cols-1 md:grid-cols-2 gap-2 pl-8">
+                                {children.map((child: Permission) => (
+                                  <div key={child.id} className="flex items-start space-x-2">
+                                    <Checkbox
+                                      id={child.id}
+                                      checked={parentChecked || roleFormData.permissions.includes(child.id)}
+                                      disabled={parentChecked}
+                                      onCheckedChange={() => !parentChecked && togglePermission(child.id)}
+                                    />
+                                    <div className="grid gap-1.5 leading-none">
+                                      <Label
+                                        htmlFor={child.id}
+                                        className={`text-sm font-medium leading-none ${parentChecked ? 'text-muted-foreground' : ''}`}
+                                      >
+                                        {child.name}
+                                      </Label>
+                                      <p className="text-xs text-muted-foreground">
+                                        {parentChecked ? 'Granted by parent' : child.description}
+                                      </p>
+                                    </div>
+                                  </div>
+                                ))}
+                              </div>
+                            )}
                           </div>
-                        </div>
-                      ))}
+                        );
+                      })}
                     </div>
-                    
+
                     {category !== 'admin' && <Separator />}
                   </div>
                 );

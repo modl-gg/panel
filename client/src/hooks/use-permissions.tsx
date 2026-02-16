@@ -26,17 +26,41 @@ async function apiFetch(url: string, options: RequestInit = {}): Promise<Respons
 export const PERMISSIONS = {
   // Admin settings permissions
   ADMIN_SETTINGS_VIEW: 'admin.settings.view',
+  ADMIN_SETTINGS_VIEW_BILLING: 'admin.settings.view.billing',
   ADMIN_SETTINGS_MODIFY: 'admin.settings.modify',
+  ADMIN_SETTINGS_MODIFY_PUNISHMENTS: 'admin.settings.modify.punishments',
+  ADMIN_SETTINGS_MODIFY_CONTENT: 'admin.settings.modify.content',
+  ADMIN_SETTINGS_MODIFY_DOMAIN: 'admin.settings.modify.domain',
+  ADMIN_SETTINGS_MODIFY_BILLING: 'admin.settings.modify.billing',
+  ADMIN_SETTINGS_MODIFY_MIGRATION: 'admin.settings.modify.migration',
+  ADMIN_SETTINGS_MODIFY_STORAGE: 'admin.settings.modify.storage',
   ADMIN_STAFF_MANAGE: 'admin.staff.manage',
+  ADMIN_STAFF_MANAGE_MEMBERS: 'admin.staff.manage.members',
+  ADMIN_STAFF_MANAGE_ROLES: 'admin.staff.manage.roles',
   ADMIN_AUDIT_VIEW: 'admin.audit.view',
-  
+  ADMIN_AUDIT_VIEW_DASHBOARD: 'admin.audit.view.dashboard',
+  ADMIN_AUDIT_VIEW_ANALYTICS: 'admin.audit.view.analytics',
+  ADMIN_AUDIT_VIEW_LOGS: 'admin.audit.view.logs',
+
   // Punishment permissions
   PUNISHMENT_MODIFY: 'punishment.modify',
-  
+  PUNISHMENT_MODIFY_PARDON: 'punishment.modify.pardon',
+  PUNISHMENT_MODIFY_DURATION: 'punishment.modify.duration',
+  PUNISHMENT_MODIFY_NOTE: 'punishment.modify.note',
+  PUNISHMENT_MODIFY_EVIDENCE: 'punishment.modify.evidence',
+  PUNISHMENT_MODIFY_OPTIONS: 'punishment.modify.options',
+
   // Ticket permissions
   TICKET_VIEW_ALL: 'ticket.view.all',
+  TICKET_VIEW_ALL_NOTES: 'ticket.view.all.notes',
   TICKET_REPLY_ALL: 'ticket.reply.all',
+  TICKET_REPLY_ALL_NOTES: 'ticket.reply.all.notes',
   TICKET_CLOSE_ALL: 'ticket.close.all',
+  TICKET_CLOSE_ALL_LOCK: 'ticket.close.all.lock',
+  TICKET_MANAGE: 'ticket.manage',
+  TICKET_MANAGE_TAGS: 'ticket.manage.tags',
+  TICKET_MANAGE_HIDE: 'ticket.manage.hide',
+  TICKET_MANAGE_SUBSCRIBE: 'ticket.manage.subscribe',
   TICKET_DELETE_ALL: 'ticket.delete.all',
 } as const;
 
@@ -132,10 +156,10 @@ export function usePermissions() {
     return defaultPermissions[user.role] || [];
   }, [user, serverPermissions]);
 
-  // Check if user has a specific permission
+  // Check if user has a specific permission (with hierarchical matching)
   const hasPermission = (permission: string): boolean => {
     if (!user) return false;
-    return userPermissions.includes(permission);
+    return userPermissions.some(p => p === permission || permission.startsWith(p + '.'));
   };
 
   // Check if user has all required permissions
