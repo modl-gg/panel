@@ -2,6 +2,7 @@ import { createContext, ReactNode, useContext, useState, useEffect } from "react
 import { useLocation } from "wouter";
 import { useToast } from "@modl-gg/shared-web/hooks/use-toast";
 import { getApiUrl, getCurrentDomain } from "@/lib/api";
+import { isPublicPage } from "@/utils/routes";
 import { setDateLocale, setDateFormat } from "@/utils/date-utils";
 import i18n from "@/lib/i18n";
 
@@ -68,15 +69,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   // Check for existing session on mount (skip on public pages)
   useEffect(() => {
-    const path = window.location.pathname;
-    const isPublicPage = path.startsWith('/ticket/') ||
-                         path.startsWith('/appeal') ||
-                         path.startsWith('/submit-ticket') ||
-                         path === '/' ||
-                         path.startsWith('/knowledgebase') ||
-                         path.startsWith('/article/');
-
-    if (isPublicPage) {
+    if (isPublicPage()) {
       setIsLoading(false);
       return;
     }

@@ -13,7 +13,7 @@ import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, D
 import { Separator } from '@modl-gg/shared-web/components/ui/separator';
 import { useSettings, useRoles, usePermissions, useCreateRole, useUpdateRole, useDeleteRole } from '@/hooks/use-data';
 import { useAuth } from '@/hooks/use-auth';
-import { apiFetch, getCSRFToken } from '@/lib/api';
+import { apiFetch } from '@/lib/api';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@modl-gg/shared-web/components/ui/alert-dialog';
 
 // Permission categories and definitions
@@ -373,9 +373,6 @@ export default function StaffRolesCard() {
     if (!pendingReorder) return;
     
     try {
-      // Pre-fetch CSRF token to avoid initial request failure
-      await getCSRFToken();
-      
       // Filter out Super Admin from the reorder request since it should never be reordered
       // Super Admin should always stay at order 0, other roles start from order 1
       const nonSuperAdminRoles = pendingReorder.filter(role => role.name !== 'Super Admin');

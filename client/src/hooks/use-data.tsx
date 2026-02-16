@@ -3,10 +3,11 @@ import { useQuery, useMutation, useQueryClient, QueryClient, useQueries } from '
 import { queryClient } from '../lib/queryClient';
 import { useAuth } from './use-auth';
 import { getApiUrl, getCurrentDomain } from '@/lib/api';
+import { isPublicPage } from '@/utils/routes';
 
 // Helper function to make API requests with the X-Server-Domain header
 async function apiFetch(url: string, options: RequestInit = {}): Promise<Response> {
-  return fetch(getApiUrl(url), {
+  const response = await fetch(getApiUrl(url), {
     ...options,
     credentials: 'include',
     headers: {
@@ -14,6 +15,12 @@ async function apiFetch(url: string, options: RequestInit = {}): Promise<Respons
       'X-Server-Domain': getCurrentDomain(),
     },
   });
+  if (response.status === 429) {
+    const { handleRateLimitResponse, getCurrentPath } = await import('../utils/rate-limit-handler');
+    await handleRateLimitResponse(response, getCurrentPath());
+    throw new Error('Rate limit exceeded');
+  }
+  return response;
 }
 
 export function usePlayer(uuid: string) {
@@ -409,16 +416,10 @@ export function useSettings() {
   return useQuery({
     queryKey: ['/v1/settings'],
     queryFn: async () => {
-      const currentPath = window.location.pathname;
-      const isPublicPage = currentPath.startsWith('/ticket/') ||
-                          currentPath.startsWith('/appeal') ||
-                          currentPath.startsWith('/submit-ticket') ||
-                          currentPath === '/' ||
-                          currentPath.startsWith('/knowledgebase') ||
-                          currentPath.startsWith('/article/');
+      const isPublic = isPublicPage();
 
       try {
-        if (isPublicPage) {
+        if (isPublic) {
           const publicRes = await apiFetch('/v1/public/settings');
 
           if (publicRes.ok) {
@@ -478,11 +479,11 @@ export function useSettings() {
         throw new Error('Failed to fetch settings from all available endpoints');
       } catch (error) {
         try {
-          const fallbackUrl = isPublicPage ? '/v1/panel/settings/general' : '/v1/public/settings';
+          const fallbackUrl = isPublic ? '/v1/panel/settings/general' : '/v1/public/settings';
           const fallbackRes = await apiFetch(fallbackUrl);
 
           if (fallbackRes.ok) {
-            if (isPublicPage) {
+            if (isPublic) {
               const data = JSON.parse(await fallbackRes.text());
               return { settings: data.settings || {} };
             } else {

@@ -1,9 +1,10 @@
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { getApiUrl, getCurrentDomain } from '@/lib/api';
+import { isPublicPage } from '@/utils/routes';
 
 async function apiFetch(url: string, options: RequestInit = {}): Promise<Response> {
   const fullUrl = getApiUrl(url);
-  return fetch(fullUrl, {
+  const response = await fetch(fullUrl, {
     ...options,
     credentials: "include",
     headers: {
@@ -11,6 +12,12 @@ async function apiFetch(url: string, options: RequestInit = {}): Promise<Respons
       "X-Server-Domain": getCurrentDomain(),
     },
   });
+  if (response.status === 429) {
+    const { handleRateLimitResponse, getCurrentPath } = await import('../utils/rate-limit-handler');
+    await handleRateLimitResponse(response, getCurrentPath());
+    throw new Error('Rate limit exceeded');
+  }
+  return response;
 }
 
 export interface MediaUploadConfig {
@@ -57,12 +64,7 @@ export interface UploadProgress {
 const MEDIA_CONFIG_QUERY_KEY = ['/v1/media/config'];
 
 async function fetchMediaConfig(): Promise<MediaUploadConfig> {
-  const currentPath = window.location.pathname;
-  const isPublic = currentPath.startsWith('/ticket/') ||
-                      currentPath.startsWith('/appeal') ||
-                      currentPath === '/' ||
-                      currentPath.startsWith('/knowledgebase') ||
-                      currentPath.startsWith('/article/');
+  const isPublic = isPublicPage();
 
   try {
     if (isPublic) {
@@ -121,15 +123,6 @@ export function useMediaUploadConfig() {
     staleTime: 5 * 60 * 1000,
     refetchOnWindowFocus: false,
   });
-}
-
-function isPublicPage(): boolean {
-  const currentPath = window.location.pathname;
-  return currentPath.startsWith('/ticket/') ||
-         currentPath.startsWith('/appeal') ||
-         currentPath === '/' ||
-         currentPath.startsWith('/knowledgebase') ||
-         currentPath.startsWith('/article/');
 }
 
 function getEndpointPrefix(): string {

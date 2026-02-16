@@ -6,7 +6,7 @@ import { getApiUrl, getCurrentDomain } from '@/lib/api';
 
 async function apiFetch(url: string, options: RequestInit = {}): Promise<Response> {
   const fullUrl = getApiUrl(url);
-  return fetch(fullUrl, {
+  const response = await fetch(fullUrl, {
     ...options,
     credentials: "include",
     headers: {
@@ -14,6 +14,12 @@ async function apiFetch(url: string, options: RequestInit = {}): Promise<Respons
       "X-Server-Domain": getCurrentDomain(),
     },
   });
+  if (response.status === 429) {
+    const { handleRateLimitResponse, getCurrentPath } = await import('../utils/rate-limit-handler');
+    await handleRateLimitResponse(response, getCurrentPath());
+    throw new Error('Rate limit exceeded');
+  }
+  return response;
 }
 
 // Define permissions that match the backend permission system
@@ -85,9 +91,14 @@ export function usePermissions() {
       return serverPermissions;
     }
     
-    // If serverPermissions is explicitly null, it means fetch failed - use fallback
-    // If serverPermissions is undefined, query is still loading - also use fallback
-    // Fallback to default role permissions for backward compatibility
+    // If serverPermissions is explicitly null, it means fetch failed - deny all permissions
+    // Server is the authority; on failure, grant no permissions for security
+    if (serverPermissions === null) {
+      return [];
+    }
+
+    // If serverPermissions is undefined, query is still loading - use default role permissions
+    // only for the initial load before the first fetch completes
     const defaultPermissions: Record<string, string[]> = {
       'Super Admin': [
         PERMISSIONS.ADMIN_SETTINGS_VIEW,
@@ -117,7 +128,7 @@ export function usePermissions() {
         PERMISSIONS.TICKET_REPLY_ALL,
       ],
     };
-    
+
     return defaultPermissions[user.role] || [];
   }, [user, serverPermissions]);
 

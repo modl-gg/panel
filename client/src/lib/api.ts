@@ -113,12 +113,6 @@ export const api = {
     apiFetch(path, { ...options, method: 'DELETE' }),
 };
 
-// Legacy function for backwards compatibility - now a no-op
-// Spring Boot backend uses cookie-based authentication without CSRF tokens
-export async function getCSRFToken(): Promise<string> {
-  return '';
-}
-
 export async function apiUpload(
   path: string,
   formData: FormData,
