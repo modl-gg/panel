@@ -48,6 +48,15 @@ interface RequestOptions extends Omit<RequestInit, 'method' | 'body'> {
   body?: unknown;
 }
 
+function resolveCredentials(path: string, options?: RequestOptions): RequestCredentials {
+  if (options?.credentials) {
+    return options.credentials;
+  }
+
+  const normalizedPath = path.startsWith('/') ? path : `/${path}`;
+  return normalizedPath.startsWith('/v1/public/') ? 'omit' : 'include';
+}
+
 function createHeaders(options?: RequestOptions): Headers {
   const headers = new Headers(options?.headers);
   headers.set('X-Server-Domain', getCurrentDomain());
@@ -88,7 +97,7 @@ export async function apiFetch(
     ...rest,
     method,
     headers,
-    credentials: 'include',
+    credentials: resolveCredentials(path, options),
     body: processedBody,
   });
 
@@ -126,7 +135,7 @@ export async function apiUpload(
     ...options,
     method: 'POST',
     headers,
-    credentials: 'include',
+    credentials: resolveCredentials(path, options),
     body: formData,
   });
 

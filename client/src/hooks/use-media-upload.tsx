@@ -3,10 +3,13 @@ import { getApiUrl, getCurrentDomain } from '@/lib/api';
 import { isPublicPage } from '@/utils/routes';
 
 async function apiFetch(url: string, options: RequestInit = {}): Promise<Response> {
+  const credentials = options.credentials
+    ?? (url.startsWith('/v1/public/') ? 'omit' : 'include');
+
   const fullUrl = getApiUrl(url);
   const response = await fetch(fullUrl, {
     ...options,
-    credentials: "include",
+    credentials,
     headers: {
       ...options.headers,
       "X-Server-Domain": getCurrentDomain(),

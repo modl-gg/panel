@@ -7,9 +7,12 @@ import { isPublicPage } from '@/utils/routes';
 
 // Helper function to make API requests with the X-Server-Domain header
 async function apiFetch(url: string, options: RequestInit = {}): Promise<Response> {
+  const credentials = options.credentials
+    ?? (url.startsWith('/v1/public/') ? 'omit' : 'include');
+
   const response = await fetch(getApiUrl(url), {
     ...options,
-    credentials: 'include',
+    credentials,
     headers: {
       ...options.headers,
       'X-Server-Domain': getCurrentDomain(),
