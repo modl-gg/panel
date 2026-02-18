@@ -35,6 +35,7 @@ import MarkdownRenderer from '@/components/ui/markdown-renderer';
 import MarkdownHelp from '@/components/ui/markdown-help';
 import { formatDate } from '@/utils/date-utils';
 import { getCreatorIdentifier, getUnverifiedExplanation, shouldShowUnverifiedBadge } from '@/utils/creator-verification';
+import { useMediaUpload } from '@/hooks/use-media-upload';
 
 export interface TicketMessage {
   id: string;
@@ -189,7 +190,9 @@ const PlayerTicket = () => {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [formSubject, setFormSubject] = useState('');
   const [formData, setFormData] = useState<Record<string, string>>({});
+  const [formPendingFiles, setFormPendingFiles] = useState<Record<string, File[]>>({});
   const [replyAttachments, setReplyAttachments] = useState<TicketAttachment[]>([]);
+  const { uploadMedia } = useMediaUpload();
   
   // Use React Query to fetch ticket data
   const { data: ticketData, isLoading, isError } = useTicket(id || '');
@@ -646,6 +649,10 @@ const PlayerTicket = () => {
       for (const [fieldId, value] of Object.entries(formData)) {
         // Find the field config to get its label
         const fieldConfig = allFormFields.find((f: FormField) => f.id === fieldId);
+        if (fieldConfig?.type === 'file_upload') {
+          // File uploads are transmitted via `attachments` for proper media preview rendering.
+          continue;
+        }
         if (fieldConfig && fieldConfig.label) {
           labeledFormData[fieldConfig.label] = value;
         } else {
@@ -654,12 +661,63 @@ const PlayerTicket = () => {
         }
       }
 
+      const visibleFileUploadFields = allFormFields.filter((field: FormField) => {
+        if (field.type !== 'file_upload') return false;
+        return !field.sectionId || visibleSections.has(field.sectionId);
+      });
+      const visibleFileFieldIds = new Set(visibleFileUploadFields.map((field: FormField) => field.id));
+
+      let hiddenExcludedFiles = 0;
+      for (const [fieldId, files] of Object.entries(formPendingFiles)) {
+        if (files.length > 0 && !visibleFileFieldIds.has(fieldId)) {
+          hiddenExcludedFiles += files.length;
+        }
+      }
+
+      const attachments: Array<{
+        url: string;
+        key: string;
+        fileName: string;
+        fileType: string;
+        fileSize: number;
+        fieldId: string;
+        fieldLabel?: string;
+      }> = [];
+
+      for (const field of visibleFileUploadFields) {
+        const files = formPendingFiles[field.id] || [];
+        for (const file of files) {
+          const result = await uploadMedia(file, 'ticket', {
+            ticketId: ticketDetails.id,
+            ticketType: ticketDetails.type,
+            fieldId: field.id
+          });
+          attachments.push({
+            url: result.url,
+            key: result.key,
+            fileName: file.name,
+            fileType: file.type || 'application/octet-stream',
+            fileSize: file.size,
+            fieldId: field.id,
+            fieldLabel: field.label
+          });
+        }
+      }
+
+      if (hiddenExcludedFiles > 0) {
+        toast({
+          title: "Hidden Attachments Excluded",
+          description: `${hiddenExcludedFiles} hidden attachment${hiddenExcludedFiles > 1 ? 's were' : ' was'} not submitted.`,
+        });
+      }
+
       // Submit the form to complete the ticket using the new public endpoint
       await submitFormMutation.mutateAsync({
         id: ticketDetails.id,
         formData: {
           subject: finalSubject,
           formData: labeledFormData,
+          attachments,
           creatorIdentifier: getCreatorIdentifier(ticketDetails.id) // Include creator identifier for verification
         }
       });
@@ -770,7 +828,7 @@ const PlayerTicket = () => {
     };
     
     // Adjust order of existing fields to make room for email field
-    const adjustedFields = fields.map(field => ({
+    const adjustedFields = fields.map((field: FormField) => ({
       ...field,
       order: field.order >= 1 ? field.order + 1 : field.order
     }));
@@ -1017,9 +1075,15 @@ const PlayerTicket = () => {
           <div className="space-y-2">
             <MediaUpload
               uploadType="ticket"
-              onUploadComplete={(result) => {
-                // Store the uploaded file URL in form data
-                handleFormFieldChange(field.id, result.url);
+              autoUpload={false}
+              onFilesSelected={(files) => {
+                const selected = files[0];
+                if (!selected) return;
+                handleFormFieldChange(field.id, selected.name);
+                setFormPendingFiles((prev) => ({
+                  ...prev,
+                  [field.id]: [selected]
+                }));
               }}
               metadata={{
                 ticketId: ticketDetails.id,
@@ -1029,11 +1093,11 @@ const PlayerTicket = () => {
               variant="compact"
               maxFiles={1}
             />
-            {formData[field.id] && (
+            {formPendingFiles[field.id]?.length ? (
               <div className="text-sm text-muted-foreground">
-                File uploaded: {formData[field.id].split('/').pop()}
+                Selected file: {formPendingFiles[field.id][0].name} (uploads on submit)
               </div>
-            )}
+            ) : null}
           </div>
         ) : (
           <Input

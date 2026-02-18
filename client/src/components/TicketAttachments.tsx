@@ -114,6 +114,27 @@ export function TicketAttachments({
   const isVideo = (type: string) => type.startsWith('video/');
   const isPdf = (type: string) => type === 'application/pdf';
 
+  const normalizedCdnHost = config?.cdnDomain
+    ? (() => {
+        const raw = config.cdnDomain.trim();
+        try {
+          const parsed = new URL(raw.startsWith('http') ? raw : `https://${raw}`);
+          return parsed.hostname.toLowerCase();
+        } catch {
+          return raw.replace(/^https?:\/\//i, '').split('/')[0].toLowerCase();
+        }
+      })()
+    : null;
+
+  const isTrustedCdnUrl = (url: string) => {
+    if (!normalizedCdnHost) return false;
+    try {
+      return new URL(url).hostname.toLowerCase() === normalizedCdnHost;
+    } catch {
+      return false;
+    }
+  };
+
   if (!config?.backblazeConfigured) {
     return (
       <div className="p-4 bg-muted/50 rounded-lg">
@@ -200,19 +221,19 @@ export function TicketAttachments({
                       <DialogTitle>{attachment.fileName}</DialogTitle>
                     </DialogHeader>
                     <div className="mt-4">
-                      {isImage(attachment.fileType) ? (
+                      {isImage(attachment.fileType) && isTrustedCdnUrl(attachment.url) ? (
                         <img 
                           src={attachment.url} 
                           alt={attachment.fileName}
                           className="max-w-full h-auto rounded-lg"
                         />
-                      ) : isVideo(attachment.fileType) ? (
+                      ) : isVideo(attachment.fileType) && isTrustedCdnUrl(attachment.url) ? (
                         <video 
                           src={attachment.url} 
                           controls 
                           className="max-w-full h-auto rounded-lg"
                         />
-                      ) : isPdf(attachment.fileType) ? (
+                      ) : isPdf(attachment.fileType) && isTrustedCdnUrl(attachment.url) ? (
                         <iframe
                           src={attachment.url}
                           className="w-full h-96 rounded-lg"

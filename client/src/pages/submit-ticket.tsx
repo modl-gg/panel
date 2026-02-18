@@ -26,6 +26,7 @@ import { useToast } from "@/hooks/use-toast";
 import { useSettings } from "@/hooks/use-data";
 import MediaUpload from '@/components/MediaUpload';
 import { getCreatorIdentifier } from '@/utils/creator-verification';
+import { useMediaUpload } from '@/hooks/use-media-upload';
 
 async function apiFetch(url: string, options: RequestInit = {}): Promise<Response> {
   const fullUrl = getApiUrl(url);
@@ -87,7 +88,9 @@ const SubmitTicketPage = () => {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [formSubject, setFormSubject] = useState('');
   const [formData, setFormData] = useState<Record<string, string>>({});
+  const [formPendingFiles, setFormPendingFiles] = useState<Record<string, File[]>>({});
   const [displayName, setDisplayName] = useState('');
+  const { uploadMedia } = useMediaUpload();
 
   // Fetch settings to get form templates
   const { data: settingsData, isLoading: isLoadingSettings } = useSettings();
@@ -261,12 +264,59 @@ const SubmitTicketPage = () => {
 
       for (const [fieldId, value] of Object.entries(formData)) {
         const fieldConfig = allFormFields.find((f: FormField) => f.id === fieldId);
+        if (fieldConfig?.type === 'file_upload') {
+          // File uploads are sent via `attachments` for preview support.
+          continue;
+        }
         if (fieldConfig && fieldConfig.label) {
           labeledFormData[fieldConfig.label] = value;
         } else if (fieldId === 'email') {
           labeledFormData['Email Address'] = value;
         } else {
           labeledFormData[fieldId] = value;
+        }
+      }
+
+      const visibleFileUploadFields = allFormFields.filter((field: FormField) => {
+        if (field.type !== 'file_upload') return false;
+        return !field.sectionId || visibleSections.has(field.sectionId);
+      });
+      const visibleFileFieldIds = new Set(visibleFileUploadFields.map((field: FormField) => field.id));
+
+      let hiddenExcludedFiles = 0;
+      for (const [fieldId, files] of Object.entries(formPendingFiles)) {
+        if (files.length > 0 && !visibleFileFieldIds.has(fieldId)) {
+          hiddenExcludedFiles += files.length;
+        }
+      }
+
+      const attachments: Array<{
+        url: string;
+        key: string;
+        fileName: string;
+        fileType: string;
+        fileSize: number;
+        fieldId: string;
+        fieldLabel?: string;
+      }> = [];
+
+      for (const field of visibleFileUploadFields) {
+        const files = formPendingFiles[field.id] || [];
+        for (const file of files) {
+          const result = await uploadMedia(file, 'ticket', {
+            ticketId: 'new',
+            ticketType: effectiveType,
+            fieldId: field.id
+          });
+          attachments.push({
+            url: result.url,
+            key: result.key,
+            fileName: file.name,
+            fileType: file.type || 'application/octet-stream',
+            fileSize: file.size,
+            fieldId: field.id,
+            fieldLabel: field.label
+          });
         }
       }
 
@@ -277,6 +327,13 @@ const SubmitTicketPage = () => {
       // Format the creator name as "{name} (Web User)" for unverified submissions
       const webCreatorName = `${displayName.trim()} (Web User)`;
 
+      if (hiddenExcludedFiles > 0) {
+        toast({
+          title: "Hidden Attachments Excluded",
+          description: `${hiddenExcludedFiles} hidden attachment${hiddenExcludedFiles > 1 ? 's were' : ' was'} not submitted.`,
+        });
+      }
+
       // Create the ticket with all data
       const response = await apiFetch('/v1/public/tickets', {
         method: 'POST',
@@ -286,6 +343,7 @@ const SubmitTicketPage = () => {
           creatorName: webCreatorName,
           creatorEmail: formData['email'],
           formData: labeledFormData,
+          attachments,
           creatorIdentifier: creatorIdentifier,
           createdServer: 'Web',
           emailAuthEnabled: formData['emailAuthEnabled'] === 'true',
@@ -607,8 +665,15 @@ const SubmitTicketPage = () => {
             <div className="space-y-2">
               <MediaUpload
                 uploadType="ticket"
-                onUploadComplete={(result) => {
-                  handleFormFieldChange(field.id, result.url);
+                autoUpload={false}
+                onFilesSelected={(files) => {
+                  const selected = files[0];
+                  if (!selected) return;
+                  handleFormFieldChange(field.id, selected.name);
+                  setFormPendingFiles((prev) => ({
+                    ...prev,
+                    [field.id]: [selected]
+                  }));
                 }}
                 metadata={{
                   ticketId: 'new',
@@ -618,11 +683,11 @@ const SubmitTicketPage = () => {
                 variant="compact"
                 maxFiles={1}
               />
-              {formData[field.id] && (
+              {formPendingFiles[field.id]?.length ? (
                 <div className="text-sm text-muted-foreground">
-                  File uploaded: {formData[field.id].split('/').pop()}
+                  Selected file: {formPendingFiles[field.id][0].name} (uploads on submit)
                 </div>
-              )}
+              ) : null}
             </div>
           ) : (
             <Input
