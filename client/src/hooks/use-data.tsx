@@ -1293,6 +1293,7 @@ export function useMarkSubscriptionUpdateAsRead() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['/v1/panel/ticket-subscriptions/updates'] });
+      queryClient.invalidateQueries({ queryKey: ['/v1/panel/ticket-subscriptions/assigned-updates'] });
     },
   });
 }

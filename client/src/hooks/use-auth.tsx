@@ -111,8 +111,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         let description = errorMessage;
 
         if (response.status === 429) {
-          if (data.timeRemaining) {
-            description += ` Please wait ${data.timeRemaining} before trying again.`;
+          if (data.retryAfterSeconds) {
+            description += ` Please wait ${data.retryAfterSeconds} seconds before trying again.`;
           }
         }
 
@@ -155,8 +155,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         let description = errorMessage;
 
         if (response.status === 429) {
-          if (data.timeRemaining) {
-            description += ` Please wait ${data.timeRemaining} before trying again.`;
+          if (data.retryAfterSeconds) {
+            description += ` Please wait ${data.retryAfterSeconds} seconds before trying again.`;
           }
         }
 
