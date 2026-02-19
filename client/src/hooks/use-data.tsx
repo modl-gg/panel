@@ -1281,7 +1281,7 @@ export function useMarkSubscriptionUpdateAsRead() {
 
   return useMutation({
     mutationFn: async (updateId: string) => {
-      const res = await apiFetch(`/v1/panel/ticket-subscriptions/updates/${updateId}/read`, {
+      const res = await apiFetch(`/v1/panel/ticket-subscriptions/updates/${encodeURIComponent(updateId)}/read`, {
         method: 'POST',
       });
 
