@@ -13,7 +13,7 @@ import {
   useRecentTickets,
   useRecentPunishments,
   useAssignedTicketUpdates,
-  useMarkSubscriptionUpdateAsRead
+  useMarkTicketAsRead
 } from '@/hooks/use-data';
 import { useToast } from '@modl-gg/shared-web/hooks/use-toast';
 import PageContainer from '@/components/layout/PageContainer';
@@ -34,7 +34,7 @@ const Home = () => {
   const { data: assignedUpdatesData, isLoading: isLoadingUpdates, refetch: refetchUpdates } = useAssignedTicketUpdates(10);
 
   // Mutations for updates management
-  const markAsReadMutation = useMarkSubscriptionUpdateAsRead();
+  const markTicketAsReadMutation = useMarkTicketAsRead();
 
   const handleRefreshData = async () => {
     setIsSpinning(true);
@@ -63,8 +63,8 @@ const Home = () => {
     }
   };
 
-  const handleMarkAsRead = async (updateId: string) => {
-    return markAsReadMutation.mutateAsync(updateId);
+  const handleDismissTicket = async (ticketId: string) => {
+    return markTicketAsReadMutation.mutateAsync(ticketId);
   };
 
   return (
@@ -98,7 +98,7 @@ const Home = () => {
         <AssignedTicketUpdatesSection
           updates={assignedUpdatesData || []}
           loading={isLoadingUpdates}
-          onMarkAsRead={handleMarkAsRead}
+          onDismissTicket={handleDismissTicket}
         />
 
         {/* Dashboard Grid */}

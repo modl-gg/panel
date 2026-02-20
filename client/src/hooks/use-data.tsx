@@ -1298,6 +1298,28 @@ export function useMarkSubscriptionUpdateAsRead() {
   });
 }
 
+export function useMarkTicketAsRead() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async (ticketId: string) => {
+      const res = await apiFetch(`/v1/panel/ticket-subscriptions/tickets/${encodeURIComponent(ticketId)}/read`, {
+        method: 'POST',
+      });
+
+      if (!res.ok) {
+        throw new Error('Failed to mark ticket as read');
+      }
+
+      return res.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['/v1/panel/ticket-subscriptions/updates'] });
+      queryClient.invalidateQueries({ queryKey: ['/v1/panel/ticket-subscriptions/assigned-updates'] });
+    },
+  });
+}
+
 export function useTicketCounts(options?: {
   search?: string;
   status?: string;

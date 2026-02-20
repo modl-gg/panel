@@ -24,13 +24,13 @@ export interface AssignedTicketUpdate {
 interface AssignedTicketUpdatesSectionProps {
   updates: AssignedTicketUpdate[];
   loading: boolean;
-  onMarkAsRead: (updateId: string) => Promise<void>;
+  onDismissTicket: (ticketId: string) => Promise<void>;
 }
 
 export function AssignedTicketUpdatesSection({
   updates,
   loading,
-  onMarkAsRead,
+  onDismissTicket,
 }: AssignedTicketUpdatesSectionProps) {
   const [, setLocation] = useLocation();
   const [visibleCount, setVisibleCount] = useState(INITIAL_VISIBLE);
@@ -39,11 +39,11 @@ export function AssignedTicketUpdatesSection({
     setLocation(`/panel/tickets/${ticketId}`);
   };
 
-  const handleMarkAsRead = async (updateId: string) => {
+  const handleDismissTicket = async (ticketId: string) => {
     try {
-      await onMarkAsRead(updateId);
+      await onDismissTicket(ticketId);
     } catch (error) {
-      console.error('Error marking update as read:', error);
+      console.error('Error dismissing ticket updates:', error);
     }
   };
 
@@ -136,9 +136,9 @@ export function AssignedTicketUpdatesSection({
                             className="h-6 w-6 p-0 text-muted-foreground hover:text-blue-500"
                             onClick={(e) => {
                               e.stopPropagation();
-                              handleMarkAsRead(update.id);
+                              handleDismissTicket(update.ticketId);
                             }}
-                            title="Mark as read"
+                            title="Dismiss all updates for this ticket"
                           >
                             <X className="h-3 w-3" />
                           </Button>

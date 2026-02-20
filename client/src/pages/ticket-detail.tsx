@@ -949,7 +949,11 @@ const TicketDetail = () => {
   const { data: ticketData, isLoading, isError, error, refetch } = usePanelTicket(ticketId);
   
   useEffect(() => {
-    // Ticket data received
+    if (ticketData) {
+      // Backend marks the ticket as read on fetch — invalidate dashboard notification queries
+      queryClient.invalidateQueries({ queryKey: ['/v1/panel/ticket-subscriptions/updates'] });
+      queryClient.invalidateQueries({ queryKey: ['/v1/panel/ticket-subscriptions/assigned-updates'] });
+    }
   }, [ticketData]);
 
   // Scroll to top of message list when messages load

@@ -24,14 +24,14 @@ interface TicketSubscriptionsSectionProps {
   updates: TicketSubscriptionUpdate[];
   loading: boolean;
   onUnsubscribe: (ticketId: string) => Promise<void>;
-  onMarkAsRead: (updateId: string) => Promise<void>;
+  onDismissTicket: (ticketId: string) => Promise<void>;
 }
 
-export function TicketSubscriptionsSection({ 
-  updates, 
-  loading, 
-  onUnsubscribe, 
-  onMarkAsRead 
+export function TicketSubscriptionsSection({
+  updates,
+  loading,
+  onUnsubscribe,
+  onDismissTicket
 }: TicketSubscriptionsSectionProps) {
   const [, setLocation] = useLocation();
   const { toast } = useToast();
@@ -56,11 +56,11 @@ export function TicketSubscriptionsSection({
     }
   };
 
-  const handleMarkAsRead = async (updateId: string) => {
+  const handleDismissTicket = async (ticketId: string) => {
     try {
-      await onMarkAsRead(updateId);
+      await onDismissTicket(ticketId);
     } catch (error) {
-      console.error('Error marking update as read:', error);
+      console.error('Error dismissing ticket updates:', error);
     }
   };
 
@@ -157,9 +157,9 @@ export function TicketSubscriptionsSection({
                           className="h-6 w-6 p-0 text-muted-foreground hover:text-blue-500"
                           onClick={(e) => {
                             e.stopPropagation();
-                            handleMarkAsRead(update.id);
+                            handleDismissTicket(update.ticketId);
                           }}
-                          title="Mark as read"
+                          title="Dismiss all updates for this ticket"
                         >
                           <X className="h-3 w-3" />
                         </Button>
