@@ -29,6 +29,7 @@ import {
 import { Alert, AlertDescription } from '@modl-gg/shared-web/components/ui/alert';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@modl-gg/shared-web/components/ui/alert-dialog';
 import { Progress } from '@modl-gg/shared-web/components/ui/progress';
+import { Slider } from '@modl-gg/shared-web/components/ui/slider';
 import { Switch } from '@modl-gg/shared-web/components/ui/switch';
 import { Label } from '@modl-gg/shared-web/components/ui/label';
 
@@ -472,51 +473,48 @@ const BillingSettings = () => {
   };
 
   const PremiumBillingView = () => {
-    const { subscriptionStatus, currentPeriodEnd, maxStorageLimitBytes } = billingStatus || {};
-    const [storageLimitGB, setStorageLimitGB] = useState<number>(
-      maxStorageLimitBytes ? Math.round(maxStorageLimitBytes / (1024 * 1024 * 1024)) : 200
+    const { subscriptionStatus, currentPeriodEnd, maxStorageLimitBytes, maxAiOverageRequests } = billingStatus || {};
+    const [storageOverageGB, setStorageOverageGB] = useState<number>(
+      maxStorageLimitBytes ? Math.max(0, Math.round(maxStorageLimitBytes / (1024 * 1024 * 1024)) - 200) : 0
     );
-    const [savingStorageLimit, setSavingStorageLimit] = useState(false);
+    const [aiOverageRequests, setAiOverageRequests] = useState<number>(maxAiOverageRequests ?? 0);
+    const [savingOverageLimits, setSavingOverageLimits] = useState(false);
 
     useEffect(() => {
       if (maxStorageLimitBytes) {
-        setStorageLimitGB(Math.round(maxStorageLimitBytes / (1024 * 1024 * 1024)));
+        setStorageOverageGB(Math.max(0, Math.round(maxStorageLimitBytes / (1024 * 1024 * 1024)) - 200));
       }
     }, [maxStorageLimitBytes]);
 
-    const handleSaveStorageLimit = async () => {
-      if (storageLimitGB > 10000) {
-        toast({
-          title: 'Error',
-          description: 'If you need in excess of 10TB of storage, please contact support.',
-          variant: 'destructive',
-        });
-        return;
-      }
-      setSavingStorageLimit(true);
+    useEffect(() => {
+      setAiOverageRequests(maxAiOverageRequests ?? 0);
+    }, [maxAiOverageRequests]);
+
+    const handleSaveOverageLimits = async () => {
+      setSavingOverageLimits(true);
       try {
-        const response = await apiFetch('/v1/panel/billing/storage-limit', {
+        const response = await apiFetch('/v1/panel/billing/overage-limits', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ maxStorageLimitBytes: storageLimitGB * 1024 * 1024 * 1024 }),
+          body: JSON.stringify({ maxStorageOverageGB: storageOverageGB, maxAiOverageRequests: aiOverageRequests }),
         });
         if (!response.ok) {
           const data = await response.json();
-          throw new Error(data.error || 'Failed to update storage limit');
+          throw new Error(data.error || 'Failed to update overage limits');
         }
         toast({
-          title: 'Storage Limit Updated',
-          description: `Maximum storage limit set to ${storageLimitGB} GB.`,
+          title: 'Overage Limits Updated',
+          description: `Storage overage: ${storageOverageGB} GB, AI overage: ${aiOverageRequests} requests.`,
         });
         queryClient.invalidateQueries({ queryKey: ['/v1/panel/billing/status'] });
       } catch (error: any) {
         toast({
           title: 'Error',
-          description: error.message || 'Failed to update storage limit.',
+          description: error.message || 'Failed to update overage limits.',
           variant: 'destructive',
         });
       } finally {
-        setSavingStorageLimit(false);
+        setSavingOverageLimits(false);
       }
     };
 
@@ -647,48 +645,79 @@ const BillingSettings = () => {
           </CardContent>
         </Card>
 
-        {/* Storage Limit Configuration */}
+        {/* Usage Overage Limits */}
         <Card>
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
-              <HardDrive className="h-5 w-5" />
-              Storage Limit
+              <Settings className="h-5 w-5" />
+              Usage Overage Limits
             </CardTitle>
             <CardDescription>
-              Configure the maximum storage limit for your server. The base 200GB is included with your premium plan.
-              Usage above 200GB is billed at $0.08/GB/month.
+              Configure the maximum overage you're willing to allow beyond your included plan limits.
+              Set to 0 to prevent any overage charges.
             </CardDescription>
           </CardHeader>
-          <CardContent className="space-y-4">
-            <div className="flex items-end gap-3">
-              <div className="flex-1">
-                <Label htmlFor="storage-limit">Maximum Storage (GB)</Label>
-                <input
-                  id="storage-limit"
-                  type="number"
-                  min={1}
-                  value={storageLimitGB}
-                  onChange={(e) => setStorageLimitGB(Math.max(1, parseInt(e.target.value) || 1))}
-                  className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 mt-1.5"
-                />
+          <CardContent className="space-y-6">
+            {/* Storage Overage Slider */}
+            <div className="space-y-3">
+              <div className="flex items-center justify-between">
+                <Label className="flex items-center gap-2">
+                  <HardDrive className="h-4 w-4" />
+                  Storage Overage Limit
+                </Label>
+                <span className="text-sm font-medium">{storageOverageGB} GB</span>
               </div>
-              <Button
-                onClick={handleSaveStorageLimit}
-                disabled={savingStorageLimit || storageLimitGB > 10000}
-              >
-                {savingStorageLimit ? 'Saving...' : 'Save'}
-              </Button>
-            </div>
-            {storageLimitGB > 10000 && (
-              <p className="text-sm text-destructive">
-                If you need in excess of 10TB of storage, please contact support.
-              </p>
-            )}
-            {storageLimitGB > 200 && storageLimitGB <= 10000 && (
+              <Slider
+                value={[storageOverageGB]}
+                onValueChange={([v]) => setStorageOverageGB(v)}
+                min={0}
+                max={2000}
+                step={10}
+              />
+              <div className="flex items-center justify-between text-xs text-muted-foreground">
+                <span>0 GB (no overage)</span>
+                <span>2,000 GB</span>
+              </div>
               <p className="text-sm text-muted-foreground">
-                Estimated overage cost: <strong>${((storageLimitGB - 200) * 0.08).toFixed(2)}/month</strong> if fully used (at $0.08/GB/month for storage above 200GB).
+                Rate: $0.08/GB/month &middot; Max cost: <strong>${(storageOverageGB * 0.08).toFixed(2)}/month</strong>
               </p>
-            )}
+            </div>
+
+            {/* AI Request Overage Slider */}
+            <div className="space-y-3">
+              <div className="flex items-center justify-between">
+                <Label className="flex items-center gap-2">
+                  <Brain className="h-4 w-4" />
+                  AI Request Overage Limit
+                </Label>
+                <span className="text-sm font-medium">{aiOverageRequests.toLocaleString()} requests</span>
+              </div>
+              <Slider
+                value={[aiOverageRequests]}
+                onValueChange={([v]) => setAiOverageRequests(v)}
+                min={0}
+                max={5000}
+                step={100}
+              />
+              <div className="flex items-center justify-between text-xs text-muted-foreground">
+                <span>0 (no overage)</span>
+                <span>5,000 requests</span>
+              </div>
+              <p className="text-sm text-muted-foreground">
+                Rate: $0.02/request &middot; Max cost: <strong>${(aiOverageRequests * 0.02).toFixed(2)}/month</strong>
+              </p>
+            </div>
+
+            <p className="text-sm text-muted-foreground">
+              Need higher limits? Contact support for custom pricing.
+            </p>
+
+            <Button
+              onClick={handleSaveOverageLimits}
+              disabled={savingOverageLimits}
+            >
+              {savingOverageLimits ? 'Saving...' : 'Save'}
+            </Button>
           </CardContent>
         </Card>
       </div>
