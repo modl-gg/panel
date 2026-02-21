@@ -42,6 +42,12 @@ import WebhookSettings from '@/components/settings/WebhookSettings';
 import { DndProvider, useDrag, useDrop } from 'react-dnd';
 import { HTML5Backend } from 'react-dnd-html5-backend';
 import { QuickResponsesConfiguration, defaultQuickResponsesConfig } from '@/types/quickResponses';
+import {
+  formatSubscriptionStatusLabel,
+  hasPremiumAccess,
+  normalizeStrictnessLevel,
+  normalizeSubscriptionStatus,
+} from '@/lib/backend-enums';
 
 // Type definitions for appeal form fields
 interface AppealFormField {
@@ -186,7 +192,7 @@ interface IAIPunishmentConfig {
 interface IAIModerationSettings {
   enableAIReview: boolean;
   enableAutomatedActions: boolean;
-  strictnessLevel: 'lenient' | 'standard' | 'strict';
+  strictnessLevel: 'LENIENT' | 'STANDARD' | 'STRICT';
   aiPunishmentConfigs: Record<string, IAIPunishmentConfig>;
 }
 
@@ -760,14 +766,11 @@ const Settings = () => {
 
   const isPremiumUser = () => {
     if (!billingStatusTop) return false;
-    const { subscriptionStatus, currentPeriodEnd, plan } = billingStatusTop;
-    if (subscriptionStatus === 'canceled') {
-      if (!currentPeriodEnd) return false;
-      return new Date(currentPeriodEnd) > new Date() && plan === 'premium';
-    }
-    return (['active', 'trialing'].includes(subscriptionStatus) && plan === 'premium') ||
-           (['past_due', 'unpaid', 'incomplete'].includes(subscriptionStatus) && plan === 'premium' &&
-            currentPeriodEnd && new Date(currentPeriodEnd) > new Date());
+    return hasPremiumAccess({
+      plan: billingStatusTop.plan,
+      subscriptionStatus: billingStatusTop.subscriptionStatus,
+      currentPeriodEnd: billingStatusTop.currentPeriodEnd,
+    });
   };
 
   // Update URL when category changes
@@ -1018,7 +1021,7 @@ const Settings = () => {
   const [aiModerationSettings, setAiModerationSettings] = useState<IAIModerationSettings>({
     enableAIReview: false,
     enableAutomatedActions: false,
-    strictnessLevel: 'standard',
+    strictnessLevel: 'STANDARD',
     aiPunishmentConfigs: {}
   });
   const [isLoadingAiSettings, setIsLoadingAiSettings] = useState(false);
@@ -1037,70 +1040,20 @@ const Settings = () => {
   // Helper functions for enhanced summaries
   const getBillingSummary = () => {
     if (!billingStatus) return "Loading billing info...";
-    
-    // Use the same logic as BillingSettings.tsx getCurrentPlan() function
-    const getCurrentPlan = () => {
-      const { plan, subscriptionStatus, currentPeriodEnd } = billingStatus;
-      
-      // If plan is explicitly set to premium in the database, trust it
-      if (plan === 'premium') {
-        if (subscriptionStatus === 'canceled') {
-          if (!currentPeriodEnd) {
-            return 'Free';
-          }
-          const endDate = new Date(currentPeriodEnd);
-          const now = new Date();
-          if (endDate <= now) {
-            return 'Free';
-          }
-          return 'Premium';
-        }
-        return 'Premium';
-      }
-      
-      // For cancelled subscriptions, check if the period has ended
-      if (subscriptionStatus === 'canceled') {
-        if (!currentPeriodEnd) {
-          return 'Free'; // No end date means it's already expired
-        }
-        const endDate = new Date(currentPeriodEnd);
-        const now = new Date();
-        if (endDate <= now) {
-          return 'Free'; // Cancellation period has ended
-        }
-        return 'Premium'; // Still has access until end date
-      }
-      
-      // Active and trialing are clearly premium
-      if (['active', 'trialing'].includes(subscriptionStatus)) {
-        return 'Premium';
-      }
-      
-      // For payment issues (past_due, unpaid), check if still within period
-      if (['past_due', 'unpaid', 'incomplete'].includes(subscriptionStatus)) {
-        if (currentPeriodEnd) {
-          const endDate = new Date(currentPeriodEnd);
-          const now = new Date();
-          if (endDate > now) {
-            return 'Premium'; // Still within paid period despite payment issues
-          }
-        }
-      }
-      
-      return 'Free';
-    };
 
-    const plan = getCurrentPlan();
-    const status = billingStatus.subscriptionStatus || "active";
+    const plan = hasPremiumAccess({
+      plan: billingStatus.plan,
+      subscriptionStatus: billingStatus.subscriptionStatus,
+      currentPeriodEnd: billingStatus.currentPeriodEnd,
+    })
+      ? "Premium"
+      : "Free";
+    const status = normalizeSubscriptionStatus(billingStatus.subscriptionStatus);
     const nextBilling = billingStatus.currentPeriodEnd ? new Date(billingStatus.currentPeriodEnd).toLocaleDateString() : null;
-    
-    let statusBadge = "";
-    if (status === "active") statusBadge = "Active";
-    else if (status === "canceled") statusBadge = "Cancelled";
-    else if (status === "past_due") statusBadge = "Past Due";
-    else statusBadge = status;
-    
-    return nextBilling ? `${plan} Plan • ${statusBadge} • Next: ${nextBilling}` : `${plan} Plan • ${statusBadge}`;
+
+    const statusBadge = formatSubscriptionStatusLabel(status);
+
+    return nextBilling ? `${plan} Plan - ${statusBadge} - Next: ${nextBilling}` : `${plan} Plan - ${statusBadge}`;
   };
 
   const getUsageSummary = () => {
@@ -1461,6 +1414,7 @@ const Settings = () => {
         setAiModerationSettings(prev => ({
           ...prev,
           ...data,
+          strictnessLevel: normalizeStrictnessLevel(data.strictnessLevel),
           aiPunishmentConfigs: data.aiPunishmentConfigs || prev.aiPunishmentConfigs || {}
         }));
       } else {
@@ -1478,6 +1432,7 @@ const Settings = () => {
     try {
       const payload = {
         ...settings,
+        strictnessLevel: normalizeStrictnessLevel(settings.strictnessLevel),
         aiPunishmentConfigs: configs || settings.aiPunishmentConfigs
       };
       
@@ -1801,7 +1756,10 @@ const Settings = () => {
     if (settingsObject.aiModerationSettings) {
       const aiSettings = settingsObject.aiModerationSettings;
       const parsedAiSettings = typeof aiSettings === 'string' ? JSON.parse(aiSettings) : JSON.parse(JSON.stringify(aiSettings));
-      setAiModerationSettings(parsedAiSettings);
+      setAiModerationSettings({
+        ...parsedAiSettings,
+        strictnessLevel: normalizeStrictnessLevel(parsedAiSettings.strictnessLevel),
+      });
     }
 
     // After a short delay, reset the flag to allow auto-saving

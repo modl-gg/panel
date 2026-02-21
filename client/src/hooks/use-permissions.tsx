@@ -241,7 +241,7 @@ export function usePermissions() {
     }
     
     // For other roles, they can only change their own
-    return user._id === targetUserId;
+    return user.id === targetUserId;
   };
 
   return {

@@ -90,8 +90,9 @@ const PlayerLookupWindow = ({
           : 'None';
         
         // Format IP
-        const lastIP = player.ipList && player.ipList.length > 0 
-          ? player.ipList[player.ipList.length - 1].ipAddress.replace(/\d+$/, 'x.x') 
+        const ipAddresses = Array.isArray(player.ipAddresses) ? player.ipAddresses : [];
+        const lastIP = ipAddresses.length > 0 && ipAddresses[ipAddresses.length - 1]?.ipAddress
+          ? ipAddresses[ipAddresses.length - 1].ipAddress.replace(/\d+$/, 'x.x')
           : 'Unknown';
           
         // Determine player status
@@ -113,12 +114,14 @@ const PlayerLookupWindow = ({
         // Add punishments to warnings
         if (player.punishments) {
           player.punishments.forEach((punishment: any) => {
+            const issuedAt = punishment.issued || punishment.date;
+            const expiresAt = punishment.expires || punishment.expiresAt;
             warnings.push({
               type: punishment.type,
               reason: punishment.reason,
-              date: new Date(punishment.date).toLocaleDateString(),
-              by: punishment.issuerName + (punishment.expires ? ` (until ${new Date(punishment.expires).toLocaleDateString()})` : ''),
-              originalDate: punishment.date // Store original date for sorting
+              date: issuedAt ? new Date(issuedAt).toLocaleDateString() : 'Unknown',
+              by: punishment.issuerName + (expiresAt ? ` (until ${new Date(expiresAt).toLocaleDateString()})` : ''),
+              originalDate: issuedAt // Store original date for sorting
             });
           });
         }

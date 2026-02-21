@@ -4,6 +4,7 @@ import { CheckCircle, XCircle, Loader2, Mail, Server, LogIn } from 'lucide-react
 import { Button } from '@modl-gg/shared-web/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@modl-gg/shared-web/components/ui/card';
 import { getApiUrl, getCurrentDomain } from '@/lib/api';
+import { normalizeProvisioningStatus } from '@/lib/backend-enums';
 
 type SetupState = 'verifying' | 'verified' | 'provisioning' | 'completing' | 'complete' | 'error';
 
@@ -117,8 +118,9 @@ export default function SetupPage() {
       }
 
       setServerName(status.serverName);
+      const provisioningStatus = normalizeProvisioningStatus(status.provisioningStatus);
 
-      if (status.provisioningStatus === 'completed') {
+      if (provisioningStatus === 'COMPLETED') {
         setState('completing');
         setMessage('Setup complete! Logging you in...');
 
@@ -134,7 +136,7 @@ export default function SetupPage() {
           setMessage(loginResult.message || 'Auto-login failed. Please sign in manually.');
           setState('error');
         }
-      } else if (status.provisioningStatus === 'failed') {
+      } else if (provisioningStatus === 'FAILED') {
         setMessage('Server setup failed. Please contact support.');
         setState('error');
       } else {
