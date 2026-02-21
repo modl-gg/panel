@@ -1863,6 +1863,7 @@ const Settings = () => {
           },
           body: JSON.stringify(statusThresholds)
         });
+        queryClient.invalidateQueries({ queryKey: ['/v1/panel/settings/status-thresholds'] });
       }
 
       if (!hasError) {
