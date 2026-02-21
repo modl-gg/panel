@@ -1,11 +1,13 @@
 import { useEffect } from 'react';
 import { useLocation } from 'wouter';
 import { apiFetch } from '@/lib/api';
+import { normalizeProvisioningStatus } from '@/lib/backend-enums';
 
 interface ProvisioningStatusResponse {
-  status: string;
-  serverName: string;
-  emailVerified: boolean;
+  status?: string | null;
+  provisioningStatus?: string | null;
+  serverName?: string | null;
+  emailVerified?: boolean | null;
 }
 
 export function useProvisioningStatusCheck() {
@@ -42,12 +44,14 @@ export function useProvisioningStatusCheck() {
         }
 
         const data: ProvisioningStatusResponse = await response.json();
+        const provisioningStatus = normalizeProvisioningStatus(data.status ?? data.provisioningStatus);
+        const emailVerified = data.emailVerified === true;
 
         // If email not verified or server not completed, redirect to setup page
         if (process.env.ENVIRONMENT !== 'development') {
-          if (!data.emailVerified) {
+          if (!emailVerified) {
             setLocation('/verify-email?status=check&reason=email_not_verified');
-          } else if (data.status !== 'completed') {
+          } else if (provisioningStatus !== 'COMPLETED') {
             setLocation('/verify-email?status=check&reason=provisioning_incomplete');
           }
         }
