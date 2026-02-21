@@ -168,10 +168,12 @@ interface StatusThresholds {
   gameplay: {
     medium: number;  // Points threshold for medium offender status
     habitual: number; // Points threshold for habitual offender status
+    pointExpiryMonths: number; // Months after expiry before points stop counting
   };
   social: {
     medium: number;  // Points threshold for medium offender status
     habitual: number; // Points threshold for habitual offender status
+    pointExpiryMonths: number; // Months after expiry before points stop counting
   };
 }
 
@@ -879,11 +881,13 @@ const Settings = () => {
   const [statusThresholdsState, setStatusThresholdsState] = useState<StatusThresholds>({
     gameplay: {
       medium: 5,  // 5+ points = medium offender
-      habitual: 10 // 10+ points = habitual offender
+      habitual: 10, // 10+ points = habitual offender
+      pointExpiryMonths: 24 // Points expire 24 months after punishment expiry
     },
     social: {
       medium: 4,  // 4+ points = medium offender
-      habitual: 8  // 8+ points = habitual offender
+      habitual: 8,  // 8+ points = habitual offender
+      pointExpiryMonths: 24 // Points expire 24 months after punishment expiry
     }
   });
   // Selected punishment for editing
