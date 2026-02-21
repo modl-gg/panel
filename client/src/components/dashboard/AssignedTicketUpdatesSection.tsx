@@ -5,6 +5,7 @@ import { Button } from '@modl-gg/shared-web/components/ui/button';
 import { UserCheck, Clock, User, MessageSquare, X } from 'lucide-react';
 import { useLocation } from 'wouter';
 import { formatTimeAgo } from '@/utils/date-utils';
+import { stripMarkdown } from '@/utils/markdown-utils';
 
 const INITIAL_VISIBLE = 2;
 const LOAD_MORE_COUNT = 2;
@@ -49,7 +50,7 @@ export function AssignedTicketUpdatesSection({
 
   const truncateContent = (content: string | undefined | null, maxLength: number = 100) => {
     if (!content) return 'No content available';
-    const contentStr = String(content);
+    const contentStr = stripMarkdown(String(content));
     if (contentStr.length <= maxLength) return contentStr;
     return contentStr.substring(0, maxLength) + '...';
   };

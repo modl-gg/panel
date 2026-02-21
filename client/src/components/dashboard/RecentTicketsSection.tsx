@@ -5,6 +5,7 @@ import { Button } from '@modl-gg/shared-web/components/ui/button';
 import { Ticket, Clock, User } from 'lucide-react';
 import { useLocation } from 'wouter';
 import { formatTimeAgo } from '@/utils/date-utils';
+import { stripMarkdown } from '@/utils/markdown-utils';
 
 export interface RecentTicket {
   id: string;
@@ -47,7 +48,7 @@ export function RecentTicketsSection({ tickets, loading }: RecentTicketsSectionP
 
   const truncateMessage = (message: string | undefined | null, maxLength: number = 120) => {
     if (!message) return 'No message available';
-    const messageStr = String(message);
+    const messageStr = stripMarkdown(String(message));
     if (messageStr.length <= maxLength) return messageStr;
     return messageStr.substring(0, maxLength) + '...';
   };
