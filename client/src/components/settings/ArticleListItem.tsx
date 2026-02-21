@@ -97,7 +97,7 @@ const ArticleListItem: React.FC<ArticleListItemProps> = ({
           <div className="flex items-center">
             <GripVertical className="mr-2 h-5 w-5 text-muted-foreground cursor-grab" />
             <span className="text-sm">{article.title}</span>
-            {article.is_visible ? (
+            {article.isVisible ? (
               <Eye className="ml-2 h-3 w-3 text-green-600" />
             ) : (
               <EyeOff className="ml-2 h-3 w-3 text-gray-400" />

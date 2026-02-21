@@ -277,7 +277,7 @@ const PlayerTicket = () => {
         id: ticketData.id || ticketData._id,
         subject: ticketData.subject || 'No Subject',
         status: mappedStatus as 'Unfinished' | 'Open' | 'Closed',
-        reportedBy: ticketData.creator || ticketData.reportedBy || 'Unknown',
+        reportedBy: ticketData.creatorName || ticketData.reportedBy || 'Unknown',
         date: validDate,
         category: ticketData.category || 'Support',
         // Use category if it's a more specific type, otherwise use type. Normalize to lowercase.
@@ -289,8 +289,8 @@ const PlayerTicket = () => {
       });
       
       // If creator is set, use it as the default playerName
-      if ((ticketData.creator || ticketData.reportedBy) && !playerName) {
-        const name = ticketData.creator || ticketData.reportedBy;
+      if ((ticketData.creatorName || ticketData.reportedBy) && !playerName) {
+        const name = ticketData.creatorName || ticketData.reportedBy;
         setPlayerName(name);
         localStorage.setItem('playerName', name);
       }

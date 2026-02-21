@@ -1194,7 +1194,7 @@ const TicketDetail = () => {
         relatedPlayerId: ticketData.relatedPlayer?.uuid || ticketData.relatedPlayerId || ticketData.reportedPlayerUuid,
         messages: ((ticketData.messages || ticketData.replies || []).map((reply: any, index: number) => ({
           id: reply._id || reply.id || `msg-${Date.now()}-${Math.random().toString(36).substring(2, 7)}`,
-          sender: reply.name || reply.sender || (reply.staff ? 'Staff' : (index === 0 ? (ticketData.creator || ticketData.reportedBy || 'Player') : 'Player')),
+          sender: reply.name || reply.sender || (reply.staff ? 'Staff' : (index === 0 ? (ticketData.creatorName || ticketData.reportedBy || 'Player') : 'Player')),
           senderType: reply.type === 'staff' ? 'staff' :
                      reply.type === 'system' ? 'system' : 'user',
           content: reply.content,

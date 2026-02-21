@@ -818,9 +818,9 @@ export function usePanelTicket(id: string) {
 
 export function usePlayerTickets(uuid: string) {
   return useQuery({
-    queryKey: ['/v1/panel/tickets/creator', uuid],
+    queryKey: ['/v1/panel/tickets/player', uuid],
     queryFn: async () => {
-      const res = await apiFetch(`/v1/panel/tickets/creator/${uuid}`);
+      const res = await apiFetch(`/v1/panel/tickets/player/${uuid}`);
       if (!res.ok) {
         if (res.status === 404) {
           return [];
