@@ -857,8 +857,9 @@ const TicketDetail = () => {
   // Function to get available quick responses for current ticket category
   const getQuickResponsesForTicket = (category: TicketCategory) => {
     // Use quick responses from dedicated endpoint, fallback to default config
+    const quickResponsesPayload = (quickResponsesData as any)?.data ?? quickResponsesData;
     const quickResponses: QuickResponsesConfiguration =
-      (quickResponsesData?.categories ? quickResponsesData : null) || defaultQuickResponsesConfig;
+      (quickResponsesPayload?.categories ? quickResponsesPayload : null) || defaultQuickResponsesConfig;
 
     // Map display category to possible ticketType values
     // Support both formats: 'chat_report' (TicketSettings format) and 'chat' (MongoDB format)

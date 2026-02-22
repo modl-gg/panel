@@ -18,7 +18,7 @@ import { Badge } from '@modl-gg/shared-web/components/ui/badge';
 import { Checkbox } from '@modl-gg/shared-web/components/ui/checkbox';
 import { useToast } from '@modl-gg/shared-web/hooks/use-toast';
 import { Select, SelectContent, SelectGroup, SelectItem, SelectLabel, SelectTrigger, SelectValue } from '@modl-gg/shared-web/components/ui/select';
-import { useSettings, useBillingStatus, useUsageData, usePunishmentTypes, useTicketFormSettings, useQuickResponses, useStatusThresholds } from '@/hooks/use-data';
+import { useSettings, useBillingStatus, useUsageData, usePunishmentTypes, useTicketFormSettings, useQuickResponses, useStatusThresholds, useTicketLabelSettings } from '@/hooks/use-data';
 import PageContainer from '@/components/layout/PageContainer'
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@modl-gg/shared-web/components/ui/dialog";
 import { queryClient } from '@/lib/queryClient';
@@ -27,7 +27,7 @@ import { useLocation } from "wouter"; // For wouter navigation
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@modl-gg/shared-web/components/ui/tooltip";
 import { useAuth } from '@/hooks/use-auth';
 import { useIsMobile } from '@/hooks/use-mobile';
-import { usePermissions } from '@/hooks/use-permissions';
+import { PERMISSIONS, usePermissions } from '@/hooks/use-permissions';
 import StaffManagementPanel from '@/components/settings/StaffManagementPanel';
 import StaffRolesCard from '@/components/settings/StaffRolesCard';
 import BillingSettings from '@/components/settings/BillingSettings';
@@ -757,7 +757,11 @@ const Settings = () => {
   const { } = useSidebar();
   const [location, navigateWouter] = useLocation();
   const { user, logout } = useAuth();
-  const { canAccessSettingsTab, getAccessibleSettingsTabs } = usePermissions();
+  const { canAccessSettingsTab, hasPermission } = usePermissions();
+  const canViewAdminSettings = hasPermission(PERMISSIONS.ADMIN_SETTINGS_VIEW);
+  const canViewAllTickets = hasPermission(PERMISSIONS.TICKET_VIEW_ALL);
+  const canManageTicketTags = hasPermission(PERMISSIONS.TICKET_MANAGE_TAGS);
+  const canAccessGeneralSettings = canAccessSettingsTab('general');
   const isMobile = useIsMobile();
   const mainContentClass = "ml-[32px] pl-8";
   const [expandedCategory, setExpandedCategory] = useState<string | null>(null);
@@ -817,15 +821,24 @@ const Settings = () => {
         setExpandedCategory(mappedCategory);
         if (urlSubCategory) {
           const subCat = urlSubCategory.split(',')[0];
+          const canAccessTicketSubCategory = mappedCategory !== 'tickets'
+            || (
+              (subCat === 'label-management'
+                && canManageTicketTags
+                && canViewAllTickets)
+              || (['quick-responses', 'ticket-forms', 'ai-moderation'].includes(subCat) && canViewAdminSettings)
+            );
           if ((subCat === 'billing' || subCat === 'server-config') && user?.role !== 'Super Admin') {
             // Non-super-admins cannot access billing or server config
+          } else if (!canAccessTicketSubCategory) {
+            // No permission for this tickets sub-section
           } else {
             setExpandedSubCategory(subCat);
           }
         }
       }
     }
-  }, [user, canAccessSettingsTab]);
+  }, [user, canAccessSettingsTab, canManageTicketTags, canViewAllTickets, canViewAdminSettings]);
 
   // Handle sub-category selection - only one can be selected at a time
   const handleSubCategorySelect = (category: string, subCategory: string) => {
@@ -851,6 +864,49 @@ const Settings = () => {
   const pendingChangesRef = useRef(false);
   const initialLoadCompletedRef = useRef(false);
   const dirtyCategoriesRef = useRef<Set<string>>(new Set());
+
+  const [generalVersion, setGeneralVersion] = useState(0);
+  const [quickResponsesVersion, setQuickResponsesVersion] = useState(0);
+  const [ticketFormsVersion, setTicketFormsVersion] = useState(0);
+  const [statusThresholdsVersion, setStatusThresholdsVersion] = useState(0);
+  const [ticketLabelsVersion, setTicketLabelsVersion] = useState(0);
+
+  const generalSnapshotRef = useRef({
+    serverDisplayName: '',
+    discordWebhookUrl: '',
+    homepageIconUrl: '',
+    panelIconUrl: '',
+  });
+  const quickResponsesSnapshotRef = useRef<QuickResponsesConfiguration>(defaultQuickResponsesConfig);
+  const ticketFormsSnapshotRef = useRef<TicketFormsConfiguration>({
+    bug: { fields: [], sections: [] },
+    support: { fields: [], sections: [] },
+    application: { fields: [], sections: [] }
+  });
+  const statusThresholdsSnapshotRef = useRef<StatusThresholds>({
+    gameplay: { medium: 5, habitual: 10 },
+    social: { medium: 4, habitual: 8 }
+  });
+  const ticketLabelsSnapshotRef = useRef<any[]>([]);
+
+  const hasDeepChanges = (current: any, snapshot: any): boolean => {
+    return JSON.stringify(current) !== JSON.stringify(snapshot);
+  };
+
+  const toSettingsEnvelope = <T,>(value: any): { data: T; _meta?: { version?: number; updatedAt?: string | null } } => {
+    if (value && typeof value === 'object' && 'data' in value) {
+      return value;
+    }
+    return { data: value as T, _meta: { version: 0, updatedAt: null } };
+  };
+
+  const applyServerSyncedState = (apply: () => void) => {
+    justLoadedFromServerRef.current = true;
+    apply();
+    setTimeout(() => {
+      justLoadedFromServerRef.current = false;
+    }, 100);
+  };
   
   // Refs to capture latest profile values for auto-save
   const profileUsernameRef = useRef('');
@@ -1033,6 +1089,7 @@ const Settings = () => {
   const { data: punishmentTypesData, isLoading: isLoadingPunishmentTypes } = usePunishmentTypes();
   const { data: quickResponsesData, isLoading: isLoadingQuickResponses } = useQuickResponses();
   const { data: statusThresholdsData, isLoading: isLoadingStatusThresholds } = useStatusThresholds();
+  const { data: ticketLabelSettingsData, isLoading: isLoadingTicketLabels } = useTicketLabelSettings();
   const { data: billingStatus } = useBillingStatus();
   const { data: usageData } = useUsageData();
   const [currentEmail, setCurrentEmail] = useState('');
@@ -1113,7 +1170,7 @@ const Settings = () => {
     try {
       const csrfFetch = apiFetch;
       const response = await csrfFetch('/v1/panel/settings/webhooks', {
-        method: 'PUT',
+        method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(webhookSettings),
         credentials: 'include'
@@ -1123,7 +1180,7 @@ const Settings = () => {
         throw new Error('Failed to save webhook settings');
       }
 
-      queryClient.invalidateQueries({ queryKey: ['/v1/panel/settings/general'] });
+      queryClient.invalidateQueries({ queryKey: ['/v1/settings'] });
     } catch (error) {
       console.error('Error saving webhook settings:', error);
       throw error;
@@ -1183,10 +1240,10 @@ const Settings = () => {
 
   // Load API key on component mount (only for users with appropriate permissions)
   useEffect(() => {
-    if (user && canAccessSettingsTab('general')) {
+    if (user && canAccessGeneralSettings) {
       loadApiKey();
     }
-  }, [user?.role]); // Only depend on user role, not the function
+  }, [user, canAccessGeneralSettings]);
 
   // File upload functions
   const uploadIcon = async (file: File, iconType: 'homepage' | 'panel'): Promise<string | null> => {
@@ -1235,7 +1292,7 @@ const Settings = () => {
       setPanelIconUrl(uploadedUrl);
       
       // Refresh webhook settings to get updated avatar URL
-      queryClient.invalidateQueries({ queryKey: ['/v1/panel/settings/general'] });
+      queryClient.invalidateQueries({ queryKey: ['/v1/settings'] });
 
       toast({
         title: "Panel Icon Uploaded",
@@ -1438,7 +1495,7 @@ const Settings = () => {
       
       const csrfFetch = apiFetch;
       const response = await csrfFetch('/v1/panel/settings/ai-moderation', {
-        method: 'PUT',
+        method: 'PATCH',
         headers: {
           'Content-Type': 'application/json',
         },
@@ -1604,51 +1661,68 @@ const Settings = () => {
 
   // Load AI moderation settings on component mount (only for users with appropriate permissions)
   useEffect(() => {
-    if (user && canAccessSettingsTab('tags')) {
+    if (user && canViewAdminSettings) {
       loadAiModerationSettings();
       loadAvailablePunishmentTypes();
     }
-  }, [user?.role]); // Only depend on user role, not the function
+  }, [user, canViewAdminSettings]);
 
   // Auto-save AI moderation settings when they change
   useEffect(() => {
-    if (!isLoadingAiSettings && initialLoadCompletedRef.current && canAccessSettingsTab('tags')) {
+    if (!isLoadingAiSettings && initialLoadCompletedRef.current && canViewAdminSettings) {
       const saveTimeout = setTimeout(() => {
         saveAiModerationSettings(aiModerationSettings);
       }, 1000);
       return () => clearTimeout(saveTimeout);
     }
-  }, [aiModerationSettings, isLoadingAiSettings]); // Don't include canAccessSettingsTab in dependencies
+  }, [aiModerationSettings, isLoadingAiSettings, canViewAdminSettings]);
 
   // Auto-save AI punishment configs when they change
   useEffect(() => {
-    if (!isLoadingAiSettings && initialLoadCompletedRef.current && canAccessSettingsTab('tags') && aiModerationSettings?.aiPunishmentConfigs) {
+    if (!isLoadingAiSettings && initialLoadCompletedRef.current && canViewAdminSettings && aiModerationSettings?.aiPunishmentConfigs) {
       const saveTimeout = setTimeout(() => {
         saveAiModerationSettings(aiModerationSettings);
       }, 1000);
       return () => clearTimeout(saveTimeout);
     }
-  }, [aiModerationSettings?.aiPunishmentConfigs, aiModerationSettings, isLoadingAiSettings]); // Don't include canAccessSettingsTab in dependencies
+  }, [aiModerationSettings?.aiPunishmentConfigs, aiModerationSettings, isLoadingAiSettings, canViewAdminSettings]);
 
   // Define captureInitialSettings first, before it's used anywhere else
   const captureInitialSettings = useCallback(() => {
     const currentSettingsSnapshot = {
-      punishmentTypes: JSON.parse(JSON.stringify(punishmentTypes)), // Deep copy
-      statusThresholds: JSON.parse(JSON.stringify(statusThresholds)), // Deep copy
-      labels: JSON.parse(JSON.stringify(labels)), // Deep copy
-      bugReportTags: JSON.parse(JSON.stringify(bugReportTags)), // Deep copy
-      playerReportTags: JSON.parse(JSON.stringify(playerReportTags)), // Deep copy
-      appealTags: JSON.parse(JSON.stringify(appealTags)), // Deep copy
-      ticketForms: JSON.parse(JSON.stringify(ticketForms)), // Deep copy
-      mongodbUri,
-      has2FA,
-      hasPasskey,
+      punishmentTypes: JSON.parse(JSON.stringify(punishmentTypes)),
+      statusThresholds: JSON.parse(JSON.stringify(statusThresholds)),
+      labels: JSON.parse(JSON.stringify(labels)),
+      ticketForms: JSON.parse(JSON.stringify(ticketForms)),
+      quickResponses: JSON.parse(JSON.stringify(quickResponsesState)),
       serverDisplayName,
+      discordWebhookUrl,
       homepageIconUrl,
       panelIconUrl,
     };
     initialSettingsRef.current = currentSettingsSnapshot;
-  }, [punishmentTypes, statusThresholds, labels, bugReportTags, playerReportTags, appealTags, ticketForms, quickResponsesState, mongodbUri, has2FA, hasPasskey, serverDisplayName, homepageIconUrl, panelIconUrl]);
+
+    generalSnapshotRef.current = {
+      serverDisplayName,
+      discordWebhookUrl,
+      homepageIconUrl,
+      panelIconUrl,
+    };
+    quickResponsesSnapshotRef.current = JSON.parse(JSON.stringify(quickResponsesState));
+    ticketFormsSnapshotRef.current = JSON.parse(JSON.stringify(ticketForms));
+    statusThresholdsSnapshotRef.current = JSON.parse(JSON.stringify(statusThresholds));
+    ticketLabelsSnapshotRef.current = JSON.parse(JSON.stringify(labels));
+  }, [
+    punishmentTypes,
+    statusThresholds,
+    labels,
+    ticketForms,
+    quickResponsesState,
+    serverDisplayName,
+    discordWebhookUrl,
+    homepageIconUrl,
+    panelIconUrl
+  ]);
 
   // Helper to apply a settings object to all state variables without triggering auto-save
   const applySettingsObjectToState = useCallback((settingsObject: any) => {
@@ -1785,80 +1859,253 @@ const Settings = () => {
     try {
       const csrfFetch = apiFetch;
       let hasError = false;
+      const failedSections = new Set<string>();
+      const reloadGeneralSettings = async () => {
+        try {
+          const latestGeneralResponse = await csrfFetch('/v1/panel/settings/general');
+          if (!latestGeneralResponse.ok) {
+            return;
+          }
 
-      // Save general settings only if dirty
-      if (dirty.has('general')) {
-        const generalSettingsPayload = {
-          serverDisplayName,
-          discordWebhookUrl,
-          homepageIconUrl,
-          panelIconUrl,
-          labels,
-          bugReportTags,
-          playerReportTags,
-          appealTags,
-        };
+          const latestEnvelope = toSettingsEnvelope<any>(await latestGeneralResponse.json());
+          const latestGeneral = {
+            serverDisplayName: latestEnvelope?.data?.serverDisplayName ?? '',
+            discordWebhookUrl: latestEnvelope?.data?.discordWebhookUrl ?? '',
+            homepageIconUrl: latestEnvelope?.data?.homepageIconUrl ?? '',
+            panelIconUrl: latestEnvelope?.data?.panelIconUrl ?? '',
+          };
 
-        const response = await csrfFetch('/v1/panel/settings/general', {
-          method: 'PUT',
-          headers: {
-            'Content-Type': 'application/json'
-          },
-          body: JSON.stringify(generalSettingsPayload)
+          const latestVersion = Number(latestEnvelope?._meta?.version ?? 0);
+          setGeneralVersion(Number.isFinite(latestVersion) ? latestVersion : 0);
+          applyServerSyncedState(() => {
+            setServerDisplayName(latestGeneral.serverDisplayName);
+            setDiscordWebhookUrl(latestGeneral.discordWebhookUrl);
+            setHomepageIconUrl(latestGeneral.homepageIconUrl);
+            setPanelIconUrl(latestGeneral.panelIconUrl);
+          });
+          generalSnapshotRef.current = latestGeneral;
+        } catch (reloadError) {
+          console.error('Failed to reload latest general settings:', reloadError);
+        }
+      };
+
+      const handleFailedSave = async (
+        response: Response,
+        sectionLabel: string,
+        queryKey: readonly unknown[],
+        sectionKey: string
+      ) => {
+        hasError = true;
+        const errorData = await response.json().catch(() => ({ error: 'Unknown error' }));
+        console.error(`${sectionLabel} save failed:`, response.status, errorData);
+
+        if (response.status === 409) {
+          toast({
+            title: "Update Conflict",
+            description: `Someone else changed ${sectionLabel}. Reloaded latest values.`,
+            variant: "destructive"
+          });
+          if (sectionKey === 'general') {
+            await reloadGeneralSettings();
+          }
+          queryClient.invalidateQueries({ queryKey });
+          return;
+        }
+
+        if (response.status === 403) {
+          toast({
+            title: "Permission Denied",
+            description: errorData.error || errorData.message || 'You do not have permission to modify these settings.',
+            variant: "destructive"
+          });
+          if (sectionKey === 'general') {
+            await reloadGeneralSettings();
+          }
+          queryClient.invalidateQueries({ queryKey });
+          return;
+        }
+
+        failedSections.add(sectionKey);
+
+        toast({
+          title: "Error",
+          description: `Failed to save ${sectionLabel}: ${errorData.error || response.statusText}`,
+          variant: "destructive"
         });
+      };
 
-        if (!response.ok) {
-          hasError = true;
-          const errorData = await response.json().catch(() => ({ error: 'Unknown error' }));
-          console.error('General settings save failed:', response.status, errorData);
+      if (dirty.has('general')) {
+        const snapshot = generalSnapshotRef.current;
+        const patch: any = { expectedVersion: generalVersion };
+        if (serverDisplayName !== snapshot.serverDisplayName) patch.serverDisplayName = serverDisplayName;
+        if (discordWebhookUrl !== snapshot.discordWebhookUrl) patch.discordWebhookUrl = discordWebhookUrl;
+        if (homepageIconUrl !== snapshot.homepageIconUrl) patch.homepageIconUrl = homepageIconUrl;
+        if (panelIconUrl !== snapshot.panelIconUrl) patch.panelIconUrl = panelIconUrl;
 
-          if (response.status === 403) {
-            toast({
-              title: "Permission Denied",
-              description: errorData.error || errorData.message || 'You do not have permission to modify these settings.',
-              variant: "destructive"
-            });
+        if (Object.keys(patch).length > 1) {
+          const response = await csrfFetch('/v1/panel/settings/general', {
+            method: 'PATCH',
+            headers: {
+              'Content-Type': 'application/json'
+            },
+            body: JSON.stringify(patch)
+          });
+
+          if (!response.ok) {
+            await handleFailedSave(response, 'general settings', ['/v1/settings'], 'general');
           } else {
-            toast({
-              title: "Error",
-              description: `Failed to save settings: ${errorData.error || response.statusText}`,
-              variant: "destructive"
+            const envelope = toSettingsEnvelope<any>(await response.json());
+            const canonicalGeneral = envelope?.data || {};
+            const nextVersion = Number(envelope?._meta?.version ?? generalVersion + 1);
+            setGeneralVersion(Number.isFinite(nextVersion) ? nextVersion : generalVersion + 1);
+
+            const nextGeneralSnapshot = {
+              serverDisplayName: canonicalGeneral.serverDisplayName ?? '',
+              discordWebhookUrl: canonicalGeneral.discordWebhookUrl ?? '',
+              homepageIconUrl: canonicalGeneral.homepageIconUrl ?? '',
+              panelIconUrl: canonicalGeneral.panelIconUrl ?? '',
+            };
+
+            applyServerSyncedState(() => {
+              setServerDisplayName(nextGeneralSnapshot.serverDisplayName);
+              setDiscordWebhookUrl(nextGeneralSnapshot.discordWebhookUrl);
+              setHomepageIconUrl(nextGeneralSnapshot.homepageIconUrl);
+              setPanelIconUrl(nextGeneralSnapshot.panelIconUrl);
             });
+
+            generalSnapshotRef.current = nextGeneralSnapshot;
           }
         }
       }
 
-      // Save quick responses only if dirty
       if (dirty.has('quick-responses')) {
-        await csrfFetch('/v1/panel/settings/quick-responses', {
-          method: 'PUT',
-          headers: {
-            'Content-Type': 'application/json'
-          },
-          body: JSON.stringify(quickResponsesState)
-        });
+        const snapshot = quickResponsesSnapshotRef.current;
+        if (hasDeepChanges(quickResponsesState, snapshot)) {
+          const response = await csrfFetch('/v1/panel/settings/quick-responses', {
+            method: 'PATCH',
+            headers: {
+              'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+              expectedVersion: quickResponsesVersion,
+              categories: quickResponsesState.categories
+            })
+          });
+
+          if (!response.ok) {
+            await handleFailedSave(response, 'quick responses', ['/v1/panel/settings/quick-responses'], 'quick-responses');
+          } else {
+            const envelope = toSettingsEnvelope<any>(await response.json());
+            const canonicalQuickResponses = envelope?.data?.categories
+              ? envelope.data
+              : defaultQuickResponsesConfig;
+            const nextVersion = Number(envelope?._meta?.version ?? quickResponsesVersion + 1);
+            setQuickResponsesVersion(Number.isFinite(nextVersion) ? nextVersion : quickResponsesVersion + 1);
+
+            applyServerSyncedState(() => {
+              setQuickResponsesState(JSON.parse(JSON.stringify(canonicalQuickResponses)));
+            });
+            quickResponsesSnapshotRef.current = JSON.parse(JSON.stringify(canonicalQuickResponses));
+          }
+        }
       }
 
-      // Save ticket forms only if dirty
       if (dirty.has('ticket-forms') && ticketForms) {
-        await csrfFetch('/v1/panel/settings/ticket-forms', {
-          method: 'PUT',
-          headers: {
-            'Content-Type': 'application/json'
-          },
-          body: JSON.stringify(ticketForms)
-        });
+        const snapshot = ticketFormsSnapshotRef.current;
+        if (hasDeepChanges(ticketForms, snapshot)) {
+          const response = await csrfFetch('/v1/panel/settings/ticket-forms', {
+            method: 'PATCH',
+            headers: {
+              'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+              expectedVersion: ticketFormsVersion,
+              settings: ticketForms
+            })
+          });
+
+          if (!response.ok) {
+            await handleFailedSave(response, 'ticket forms', ['/v1/panel/settings/ticket-forms'], 'ticket-forms');
+          } else {
+            const envelope = toSettingsEnvelope<any>(await response.json());
+            const canonicalTicketForms = envelope?.data || ticketForms;
+            const nextVersion = Number(envelope?._meta?.version ?? ticketFormsVersion + 1);
+            setTicketFormsVersion(Number.isFinite(nextVersion) ? nextVersion : ticketFormsVersion + 1);
+
+            applyServerSyncedState(() => {
+              setTicketFormsState(JSON.parse(JSON.stringify(canonicalTicketForms)));
+            });
+            ticketFormsSnapshotRef.current = JSON.parse(JSON.stringify(canonicalTicketForms));
+          }
+        }
       }
 
-      // Save status thresholds only if dirty
       if (dirty.has('status-thresholds')) {
-        await csrfFetch('/v1/panel/settings/status-thresholds', {
-          method: 'PUT',
-          headers: {
-            'Content-Type': 'application/json'
-          },
-          body: JSON.stringify(statusThresholds)
-        });
+        const snapshot = statusThresholdsSnapshotRef.current;
+        if (hasDeepChanges(statusThresholds, snapshot)) {
+          const response = await csrfFetch('/v1/panel/settings/status-thresholds', {
+            method: 'PATCH',
+            headers: {
+              'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+              expectedVersion: statusThresholdsVersion,
+              settings: statusThresholds
+            })
+          });
+
+          if (!response.ok) {
+            await handleFailedSave(response, 'status thresholds', ['/v1/panel/settings/status-thresholds'], 'status-thresholds');
+          } else {
+            const envelope = toSettingsEnvelope<any>(await response.json());
+            const canonicalStatusThresholds = envelope?.data?.social && envelope?.data?.gameplay
+              ? envelope.data
+              : statusThresholds;
+            const nextVersion = Number(envelope?._meta?.version ?? statusThresholdsVersion + 1);
+            setStatusThresholdsVersion(Number.isFinite(nextVersion) ? nextVersion : statusThresholdsVersion + 1);
+
+            applyServerSyncedState(() => {
+              setStatusThresholdsState(JSON.parse(JSON.stringify(canonicalStatusThresholds)));
+            });
+            statusThresholdsSnapshotRef.current = JSON.parse(JSON.stringify(canonicalStatusThresholds));
+          }
+        }
+      }
+
+      if (dirty.has('ticket-labels')) {
+        const snapshot = ticketLabelsSnapshotRef.current;
+        if (hasDeepChanges(labels, snapshot)) {
+          const response = await csrfFetch('/v1/panel/settings/ticket-labels', {
+            method: 'PATCH',
+            headers: {
+              'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+              expectedVersion: ticketLabelsVersion,
+              labels
+            })
+          });
+
+          if (!response.ok) {
+            await handleFailedSave(response, 'ticket labels', ['/v1/panel/settings/ticket-labels'], 'ticket-labels');
+          } else {
+            const envelope = toSettingsEnvelope<any>(await response.json());
+            const canonicalLabels = Array.isArray(envelope?.data?.labels) ? envelope.data.labels : [];
+            const nextVersion = Number(envelope?._meta?.version ?? ticketLabelsVersion + 1);
+            setTicketLabelsVersion(Number.isFinite(nextVersion) ? nextVersion : ticketLabelsVersion + 1);
+
+            applyServerSyncedState(() => {
+              setLabelsState(JSON.parse(JSON.stringify(canonicalLabels)));
+            });
+            ticketLabelsSnapshotRef.current = JSON.parse(JSON.stringify(canonicalLabels));
+            queryClient.invalidateQueries({ queryKey: ['/v1/panel/settings/ticket-labels'] });
+          }
+        }
+      }
+
+      if (failedSections.size > 0) {
+        failedSections.forEach(section => dirtyCategoriesRef.current.add(section));
+        pendingChangesRef.current = true;
       }
 
       if (!hasError) {
@@ -1866,6 +2113,8 @@ const Settings = () => {
       }
     } catch (error) {
       console.error("Error saving settings:", error);
+      dirty.forEach(section => dirtyCategoriesRef.current.add(section));
+      pendingChangesRef.current = true;
       toast({
         title: "Error",
         description: "An unexpected error occurred while saving",
@@ -1876,7 +2125,9 @@ const Settings = () => {
     }
   }, [
     serverDisplayName, discordWebhookUrl, homepageIconUrl, panelIconUrl,
-    labels, bugReportTags, playerReportTags, appealTags, ticketForms, quickResponsesState, statusThresholds, toast
+    labels, ticketForms, quickResponsesState, statusThresholds,
+    generalVersion, quickResponsesVersion, ticketFormsVersion, statusThresholdsVersion, ticketLabelsVersion, toast,
+    applyServerSyncedState, toSettingsEnvelope
   ]);
 
   // Effect: Load settings from React Query into local component state
@@ -1890,6 +2141,8 @@ const Settings = () => {
 
     if (settingsData?.settings && Object.keys(settingsData.settings).length > 0 && !initialLoadCompletedRef.current) {
       applySettingsObjectToState(settingsData.settings); // Call directly
+      const loadedGeneralVersion = Number(settingsData.settings?.generalMeta?.version ?? 0);
+      setGeneralVersion(Number.isFinite(loadedGeneralVersion) ? loadedGeneralVersion : 0);
 
       // Capture settings for future reference and mark initial load as complete
       // This timeout ensures state updates from applySettingsObjectToState have settled
@@ -1927,9 +2180,14 @@ const Settings = () => {
       return;
     }
 
+    const ticketFormEnvelope = toSettingsEnvelope<any>(ticketFormSettingsData);
+    const ticketFormPayload = ticketFormEnvelope.data;
+    const loadedVersion = Number(ticketFormEnvelope?._meta?.version ?? 0);
+    setTicketFormsVersion(Number.isFinite(loadedVersion) ? loadedVersion : 0);
+
     // Check if the ticket forms data has meaningful content
-    const hasData = ticketFormSettingsData && typeof ticketFormSettingsData === 'object' &&
-      Object.values(ticketFormSettingsData).some((form: any) =>
+    const hasData = ticketFormPayload && typeof ticketFormPayload === 'object' &&
+      Object.values(ticketFormPayload).some((form: any) =>
         form && (
           (Array.isArray(form.fields) && form.fields.length > 0) ||
           (Array.isArray(form.sections) && form.sections.length > 0)
@@ -1938,7 +2196,8 @@ const Settings = () => {
 
     if (hasData) {
       justLoadedFromServerRef.current = true;
-      setTicketFormsState(ticketFormSettingsData as TicketFormsConfiguration);
+      setTicketFormsState(ticketFormPayload as TicketFormsConfiguration);
+      ticketFormsSnapshotRef.current = JSON.parse(JSON.stringify(ticketFormPayload));
       setTimeout(() => {
         justLoadedFromServerRef.current = false;
       }, 100);
@@ -1951,10 +2210,16 @@ const Settings = () => {
       return;
     }
 
+    const quickResponsesEnvelope = toSettingsEnvelope<any>(quickResponsesData);
+    const quickResponsesPayload = quickResponsesEnvelope.data;
+    const loadedVersion = Number(quickResponsesEnvelope?._meta?.version ?? 0);
+    setQuickResponsesVersion(Number.isFinite(loadedVersion) ? loadedVersion : 0);
+
     // Check if quick responses data has categories
-    if (quickResponsesData.categories && Array.isArray(quickResponsesData.categories)) {
+    if (quickResponsesPayload?.categories && Array.isArray(quickResponsesPayload.categories)) {
       justLoadedFromServerRef.current = true;
-      setQuickResponsesState(quickResponsesData as QuickResponsesConfiguration);
+      setQuickResponsesState(quickResponsesPayload as QuickResponsesConfiguration);
+      quickResponsesSnapshotRef.current = JSON.parse(JSON.stringify(quickResponsesPayload));
       setTimeout(() => {
         justLoadedFromServerRef.current = false;
       }, 100);
@@ -1967,21 +2232,53 @@ const Settings = () => {
       return;
     }
 
-    if (statusThresholdsData.social && statusThresholdsData.gameplay) {
+    const statusThresholdEnvelope = toSettingsEnvelope<any>(statusThresholdsData);
+    const statusThresholdPayload = statusThresholdEnvelope.data;
+    const loadedVersion = Number(statusThresholdEnvelope?._meta?.version ?? 0);
+    setStatusThresholdsVersion(Number.isFinite(loadedVersion) ? loadedVersion : 0);
+
+    if (statusThresholdPayload?.social && statusThresholdPayload?.gameplay) {
       justLoadedFromServerRef.current = true;
-      setStatusThresholdsState(statusThresholdsData);
+      setStatusThresholdsState(statusThresholdPayload);
+      statusThresholdsSnapshotRef.current = JSON.parse(JSON.stringify(statusThresholdPayload));
       setTimeout(() => {
         justLoadedFromServerRef.current = false;
       }, 100);
     }
   }, [statusThresholdsData, isLoadingStatusThresholds]);
 
+  useEffect(() => {
+    if (isLoadingTicketLabels || !ticketLabelSettingsData) {
+      return;
+    }
+
+    const ticketLabelEnvelope = toSettingsEnvelope<any>(ticketLabelSettingsData);
+    const labelPayload = Array.isArray(ticketLabelEnvelope?.data?.labels)
+      ? ticketLabelEnvelope.data.labels
+      : [];
+    const loadedVersion = Number(ticketLabelEnvelope?._meta?.version ?? 0);
+    setTicketLabelsVersion(Number.isFinite(loadedVersion) ? loadedVersion : 0);
+
+    justLoadedFromServerRef.current = true;
+    setLabelsState(JSON.parse(JSON.stringify(labelPayload)));
+    ticketLabelsSnapshotRef.current = JSON.parse(JSON.stringify(labelPayload));
+    setTimeout(() => {
+      justLoadedFromServerRef.current = false;
+    }, 100);
+  }, [ticketLabelSettingsData, isLoadingTicketLabels]);
+
   // Track which settings categories are dirty
   useEffect(() => {
     if (!justLoadedFromServerRef.current && initialLoadCompletedRef.current) {
       dirtyCategoriesRef.current.add('general');
     }
-  }, [serverDisplayName, discordWebhookUrl, homepageIconUrl, panelIconUrl, labels, bugReportTags, playerReportTags, appealTags]);
+  }, [serverDisplayName, discordWebhookUrl, homepageIconUrl, panelIconUrl]);
+
+  useEffect(() => {
+    if (!justLoadedFromServerRef.current && initialLoadCompletedRef.current) {
+      dirtyCategoriesRef.current.add('ticket-labels');
+    }
+  }, [labels]);
 
   useEffect(() => {
     if (!justLoadedFromServerRef.current && initialLoadCompletedRef.current) {
@@ -2030,7 +2327,7 @@ const Settings = () => {
       }
     };  }, [
     serverDisplayName, discordWebhookUrl, homepageIconUrl, panelIconUrl,
-    labels, bugReportTags, playerReportTags, appealTags, ticketForms, quickResponsesState, statusThresholds,
+    labels, ticketForms, quickResponsesState, statusThresholds,
     // punishmentTypes, mongodbUri, has2FA, hasPasskey removed - they have their own save mechanisms
     isLoadingSettings, isFetchingSettings, saveSettings
   ]);
@@ -3042,10 +3339,18 @@ const Settings = () => {
       icon: FileText,
       permission: 'tags',
       subCategories: [
-        { id: 'quick-responses', title: 'Quick Responses', icon: MessageCircle },
-        { id: 'label-management', title: 'Label Management', icon: Tag },
-        { id: 'ticket-forms', title: 'Ticket Forms', icon: Layers },
-        { id: 'ai-moderation', title: 'AI Moderation', icon: Bot },
+        ...(canViewAdminSettings
+          ? [{ id: 'quick-responses', title: 'Quick Responses', icon: MessageCircle }]
+          : []),
+        ...(canManageTicketTags && canViewAllTickets
+          ? [{ id: 'label-management', title: 'Label Management', icon: Tag }]
+          : []),
+        ...(canViewAdminSettings
+          ? [{ id: 'ticket-forms', title: 'Ticket Forms', icon: Layers }]
+          : []),
+        ...(canViewAdminSettings
+          ? [{ id: 'ai-moderation', title: 'AI Moderation', icon: Bot }]
+          : []),
       ],
     },
     {
@@ -3109,6 +3414,9 @@ const Settings = () => {
           {settingsCategories.map((category) => {
             // Check permission
             if (category.permission && !canAccessSettingsTab(category.permission as any)) {
+              return null;
+            }
+            if (category.subCategories && category.subCategories.length === 0) {
               return null;
             }
 
@@ -4297,7 +4605,7 @@ const Settings = () => {
                     if (selectedPunishment) {
                       try {
                         const response = await apiFetch(`/v1/panel/settings/punishment-types/${selectedPunishment.ordinal}`, {
-                          method: 'PUT',
+                          method: 'PATCH',
                           headers: { 'Content-Type': 'application/json' },
                           body: JSON.stringify(selectedPunishment),
                         });

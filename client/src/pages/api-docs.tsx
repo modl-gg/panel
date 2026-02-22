@@ -226,11 +226,11 @@ const ApiDocs = () => {
           responseType: 'GeneralSettings'
         },
         {
-          method: 'PUT',
+          method: 'PATCH',
           path: '/v1/panel/settings/general',
-          description: 'Update general settings',
-          requestType: 'GeneralSettings',
-          responseType: 'GeneralSettings'
+          description: 'Patch general settings (partial fields + expectedVersion)',
+          requestType: 'PatchGeneralSettingsRequest',
+          responseType: 'SettingsEnvelope<GeneralSettings>'
         },
         {
           method: 'GET',
@@ -245,7 +245,7 @@ const ApiDocs = () => {
           responseType: 'AIModerationSettings'
         },
         {
-          method: 'PUT',
+          method: 'PATCH',
           path: '/v1/panel/settings/ai-moderation',
           description: 'Update AI moderation settings',
           requestType: 'AIModerationSettings',
@@ -258,11 +258,24 @@ const ApiDocs = () => {
           responseType: 'WebhookSettings'
         },
         {
-          method: 'PUT',
+          method: 'PATCH',
           path: '/v1/panel/settings/webhooks',
           description: 'Update webhook settings',
           requestType: 'WebhookSettings',
           responseType: 'WebhookSettings'
+        },
+        {
+          method: 'GET',
+          path: '/v1/panel/settings/ticket-labels',
+          description: 'Retrieve ticket label settings',
+          responseType: 'SettingsEnvelope<TicketLabelSettings>'
+        },
+        {
+          method: 'PATCH',
+          path: '/v1/panel/settings/ticket-labels',
+          description: 'Patch ticket labels (labels + expectedVersion)',
+          requestType: 'PatchTicketLabelSettingsRequest',
+          responseType: 'SettingsEnvelope<TicketLabelSettings>'
         },
         {
           method: 'POST',

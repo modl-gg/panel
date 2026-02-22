@@ -26,6 +26,27 @@ async function apiFetch(url: string, options: RequestInit = {}): Promise<Respons
   return response;
 }
 
+type SettingsEnvelope<T> = {
+  data: T;
+  _meta?: {
+    version: number;
+    updatedAt?: string | null;
+  } | null;
+};
+
+function toSettingsEnvelope<T>(payload: any): SettingsEnvelope<T> {
+  if (payload && typeof payload === 'object' && 'data' in payload) {
+    return payload as SettingsEnvelope<T>;
+  }
+  return {
+    data: payload as T,
+    _meta: {
+      version: 0,
+      updatedAt: null,
+    },
+  };
+}
+
 export function usePlayer(uuid: string) {
   return useQuery({
     queryKey: ['/v1/panel/players', uuid],
@@ -445,7 +466,8 @@ export function useSettings() {
           ]);
 
           if (res.ok) {
-            const data = await res.json();
+            const generalEnvelope = toSettingsEnvelope<any>(await res.json());
+            const general = generalEnvelope.data || {};
             let webhookSettings = null;
 
             if (webhookRes.ok) {
@@ -454,7 +476,9 @@ export function useSettings() {
 
             return {
               settings: {
-                ...data,
+                ...general,
+                general,
+                generalMeta: generalEnvelope._meta || null,
                 webhookSettings
               }
             };
@@ -487,8 +511,20 @@ export function useSettings() {
 
           if (fallbackRes.ok) {
             if (isPublic) {
-              const data = JSON.parse(await fallbackRes.text());
-              return { settings: data.settings || {} };
+              const payload = await fallbackRes.json();
+              if (payload && typeof payload === 'object' && 'settings' in payload) {
+                return { settings: (payload as any).settings || {} };
+              }
+
+              const generalEnvelope = toSettingsEnvelope<any>(payload);
+              const general = generalEnvelope.data || {};
+              return {
+                settings: {
+                  ...general,
+                  general,
+                  generalMeta: generalEnvelope._meta || null,
+                }
+              };
             } else {
               const publicData = await fallbackRes.json();
               return {
@@ -529,7 +565,7 @@ export function useSettings() {
 }
 
 export function useTicketFormSettings() {
-  return useQuery({
+  return useQuery<SettingsEnvelope<any> | null>({
     queryKey: ['/v1/panel/settings/ticket-forms'],
     queryFn: async () => {
       const res = await apiFetch('/v1/panel/settings/ticket-forms');
@@ -539,7 +575,7 @@ export function useTicketFormSettings() {
         }
         throw new Error('Failed to fetch ticket form settings');
       }
-      return res.json();
+      return toSettingsEnvelope(await res.json());
     },
     staleTime: 1000 * 60 * 5,
     refetchOnWindowFocus: false
@@ -547,7 +583,7 @@ export function useTicketFormSettings() {
 }
 
 export function useQuickResponses() {
-  return useQuery({
+  return useQuery<SettingsEnvelope<any> | null>({
     queryKey: ['/v1/panel/settings/quick-responses'],
     queryFn: async () => {
       const res = await apiFetch('/v1/panel/settings/quick-responses');
@@ -557,7 +593,7 @@ export function useQuickResponses() {
         }
         throw new Error('Failed to fetch quick responses');
       }
-      return res.json();
+      return toSettingsEnvelope(await res.json());
     },
     staleTime: 1000 * 60 * 5,
     refetchOnWindowFocus: false
@@ -565,7 +601,7 @@ export function useQuickResponses() {
 }
 
 export function useStatusThresholds() {
-  return useQuery({
+  return useQuery<SettingsEnvelope<any> | null>({
     queryKey: ['/v1/panel/settings/status-thresholds'],
     queryFn: async () => {
       const res = await apiFetch('/v1/panel/settings/status-thresholds');
@@ -575,7 +611,25 @@ export function useStatusThresholds() {
         }
         throw new Error('Failed to fetch status thresholds');
       }
-      return res.json();
+      return toSettingsEnvelope(await res.json());
+    },
+    staleTime: 1000 * 60 * 5,
+    refetchOnWindowFocus: false
+  });
+}
+
+export function useTicketLabelSettings() {
+  return useQuery<SettingsEnvelope<any> | null>({
+    queryKey: ['/v1/panel/settings/ticket-labels'],
+    queryFn: async () => {
+      const res = await apiFetch('/v1/panel/settings/ticket-labels');
+      if (!res.ok) {
+        if (res.status === 401 || res.status === 403) {
+          return null;
+        }
+        throw new Error('Failed to fetch ticket label settings');
+      }
+      return toSettingsEnvelope(await res.json());
     },
     staleTime: 1000 * 60 * 5,
     refetchOnWindowFocus: false
@@ -1435,14 +1489,17 @@ export function useBulkUpdateTickets() {
 
 export function useLabels() {
   return useQuery({
-    queryKey: ['/v1/panel/settings/general/labels'],
+    queryKey: ['/v1/panel/settings/ticket-labels', 'labels'],
     queryFn: async () => {
-      const res = await apiFetch('/v1/panel/settings/general');
+      const res = await apiFetch('/v1/panel/settings/ticket-labels');
       if (!res.ok) {
+        if (res.status === 401 || res.status === 403) {
+          return [];
+        }
         throw new Error('Failed to fetch labels');
       }
-      const data = await res.json();
-      return data.labels || [];
+      const envelope = toSettingsEnvelope<any>(await res.json());
+      return envelope?.data?.labels || [];
     },
     staleTime: 1000 * 60 * 5,
     refetchOnWindowFocus: false

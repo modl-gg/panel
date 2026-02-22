@@ -69,7 +69,7 @@ export const SETTINGS_PERMISSIONS = {
   account: [], // Everyone can access account settings
   general: [PERMISSIONS.ADMIN_SETTINGS_VIEW], // Server & Billing
   punishment: [PERMISSIONS.ADMIN_SETTINGS_VIEW], // Punishment Types
-  tags: [PERMISSIONS.ADMIN_SETTINGS_VIEW], // Tickets - requires settings view
+  tags: [], // Tickets tab has mixed permission gates by sub-section
   staff: [PERMISSIONS.ADMIN_STAFF_MANAGE], // Staff Management
   knowledgebase: [PERMISSIONS.ADMIN_SETTINGS_VIEW], // Knowledgebase - requires settings view
   homepage: [PERMISSIONS.ADMIN_SETTINGS_VIEW], // Homepage Cards
@@ -179,6 +179,13 @@ export function usePermissions() {
   // Check if user can access a specific settings tab
   const canAccessSettingsTab = (tabName: keyof typeof SETTINGS_PERMISSIONS): boolean => {
     if (!user) return false;
+    if (tabName === 'tags') {
+      return hasAnyPermission([
+        PERMISSIONS.ADMIN_SETTINGS_VIEW,
+        PERMISSIONS.TICKET_VIEW_ALL,
+        PERMISSIONS.TICKET_MANAGE_TAGS,
+      ]);
+    }
     const requiredPermissions = SETTINGS_PERMISSIONS[tabName];
     if (!requiredPermissions || !Array.isArray(requiredPermissions)) return false; // Defensive check
     return requiredPermissions.length === 0 || hasAllPermissions(requiredPermissions);
