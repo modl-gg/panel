@@ -825,10 +825,7 @@ const Settings = () => {
           const subCat = urlSubCategory.split(',')[0];
           const canAccessTicketSubCategory = mappedCategory !== 'tickets'
             || (
-              (subCat === 'label-management'
-                && canManageTicketTags
-                && canViewAllTickets)
-              || (['quick-responses', 'ticket-forms', 'ai-moderation'].includes(subCat) && canViewAdminSettings)
+              (['label-management', 'quick-responses', 'ticket-forms', 'ai-moderation'].includes(subCat) && canViewAdminSettings)
             );
           if ((subCat === 'billing' || subCat === 'server-config') && user?.role !== 'Super Admin') {
             // Non-super-admins cannot access billing or server config
@@ -3346,7 +3343,7 @@ const Settings = () => {
         ...(canViewAdminSettings
           ? [{ id: 'quick-responses', title: 'Quick Responses', icon: MessageCircle }]
           : []),
-        ...(canManageTicketTags && canViewAllTickets
+        ...(canViewAdminSettings
           ? [{ id: 'label-management', title: 'Label Management', icon: Tag }]
           : []),
         ...(canViewAdminSettings
