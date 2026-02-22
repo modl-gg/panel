@@ -1206,7 +1206,7 @@ const StaffDetailModal = ({ staff, isOpen, onClose, initialPeriod = '30d' }: {
                             </td>
                             <td className="p-2">{ticket.subject || ticket.title || 'No subject'}</td>
                             <td className="p-2">
-                              <Badge variant={ticket.status === 'resolved' || ticket.status === 'Resolved' || ticket.status === 'closed' || ticket.status === 'Closed' ? 'outline' : 'secondary'}>
+                              <Badge variant={ticket.status === 'closed' || ticket.status === 'Closed' ? 'outline' : 'secondary'}>
                                 {ticket.status}
                               </Badge>
                             </td>

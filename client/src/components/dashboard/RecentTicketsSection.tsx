@@ -26,9 +26,7 @@ interface RecentTicketsSectionProps {
 const statusColors: Record<string, string> = {
   open: 'bg-blue-500/20 text-blue-500',
   closed: 'bg-green-500/20 text-green-500',
-  under_review: 'bg-yellow-500/20 text-yellow-500',
-  pending_player_response: 'bg-purple-500/20 text-purple-500',
-  draft: 'bg-gray-500/20 text-gray-500'
+  unfinished: 'bg-gray-500/20 text-gray-500'
 };
 
 const priorityColors: Record<string, string> = {

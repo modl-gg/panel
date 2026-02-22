@@ -20,10 +20,12 @@ interface StatusThresholds {
   gameplay: {
     medium: number;
     habitual: number;
+    pointExpiryMonths: number;
   };
   social: {
     medium: number;
     habitual: number;
+    pointExpiryMonths: number;
   };
 }
 
@@ -59,6 +61,14 @@ const PunishmentSettings = ({
   const [showCorePunishments, setShowCorePunishments] = useState(false);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [punishmentToDelete, setPunishmentToDelete] = useState<PunishmentType | null>(null);
+
+  const formatMonths = (months: number): string => {
+    const years = Math.floor(months / 12);
+    const remainingMonths = months % 12;
+    if (years === 0) return `${remainingMonths} month${remainingMonths !== 1 ? 's' : ''}`;
+    if (remainingMonths === 0) return `${years} year${years !== 1 ? 's' : ''}`;
+    return `${years} year${years !== 1 ? 's' : ''} ${remainingMonths} month${remainingMonths !== 1 ? 's' : ''}`;
+  };
 
   // Determine which sections to show
   const showThresholds = !visibleSection || visibleSection === 'thresholds';
@@ -133,6 +143,27 @@ const PunishmentSettings = ({
                   }))}
                 />
               </div>
+
+              <div className="space-y-2">
+                <div className="flex justify-between">
+                  <Label htmlFor="gameplay-point-expiry">Point Expiry</Label>
+                  <span className="text-sm text-muted-foreground">{formatMonths(statusThresholds.gameplay.pointExpiryMonths)}</span>
+                </div>
+                <Slider
+                  id="gameplay-point-expiry"
+                  value={[statusThresholds.gameplay.pointExpiryMonths]}
+                  min={1}
+                  max={60}
+                  step={1}
+                  onValueChange={values => setStatusThresholds(prev => ({
+                    ...prev,
+                    gameplay: {
+                      ...prev.gameplay,
+                      pointExpiryMonths: values[0]
+                    }
+                  }))}
+                />
+              </div>
             </div>
           </div>
 
@@ -179,6 +210,27 @@ const PunishmentSettings = ({
                     social: {
                       ...prev.social,
                       habitual: values[0]
+                    }
+                  }))}
+                />
+              </div>
+
+              <div className="space-y-2">
+                <div className="flex justify-between">
+                  <Label htmlFor="social-point-expiry">Point Expiry</Label>
+                  <span className="text-sm text-muted-foreground">{formatMonths(statusThresholds.social.pointExpiryMonths)}</span>
+                </div>
+                <Slider
+                  id="social-point-expiry"
+                  value={[statusThresholds.social.pointExpiryMonths]}
+                  min={1}
+                  max={60}
+                  step={1}
+                  onValueChange={values => setStatusThresholds(prev => ({
+                    ...prev,
+                    social: {
+                      ...prev.social,
+                      pointExpiryMonths: values[0]
                     }
                   }))}
                 />
