@@ -2493,8 +2493,13 @@ const PlayerDetailPage = () => {
                           </p>
                         </div>
                         <div className="text-xs text-muted-foreground mt-2">
-                          Created: {ticket.createdAt ? formatDateWithTime(ticket.createdAt) : 'Unknown'} 
-                          {ticket.assignedTo && ` • Assigned to: ${ticket.assignedTo}`}
+                          Created: {ticket.createdAt ? formatDateWithTime(ticket.createdAt) : 'Unknown'}
+                          {(() => {
+                            const assigneeDisplay = Array.isArray(ticket.assignedTo)
+                              ? ticket.assignedTo.join(', ')
+                              : ticket.assignedTo;
+                            return assigneeDisplay ? ` • Assigned to: ${assigneeDisplay}` : '';
+                          })()}
                         </div>
                       </div>
                       <div className="ml-2">

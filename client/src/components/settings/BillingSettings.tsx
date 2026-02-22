@@ -480,6 +480,7 @@ const BillingSettings = () => {
           description: `Storage overage: ${storageOverageGB} GB, AI overage: ${aiOverageRequests} requests.`,
         });
         queryClient.invalidateQueries({ queryKey: ['/v1/panel/billing/status'] });
+        queryClient.invalidateQueries({ queryKey: ['/v1/panel/billing/usage'] });
       } catch (error: any) {
         toast({
           title: 'Error',

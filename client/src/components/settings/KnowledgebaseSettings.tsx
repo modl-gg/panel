@@ -19,6 +19,18 @@ import { KnowledgebaseCategory, KnowledgebaseArticle } from '@modl-gg/shared-web
 
 // TODO: Define these types based on your backend schema
 
+const normalizeArticle = (article: any): KnowledgebaseArticle => ({
+  ...article,
+  isVisible: article?.isVisible ?? article?.visible ?? true,
+});
+
+const normalizeCategory = (category: any): KnowledgebaseCategory => ({
+  ...category,
+  articles: Array.isArray(category?.articles)
+    ? category.articles.map(normalizeArticle)
+    : [],
+});
+
 const fetchCategories = async (): Promise<KnowledgebaseCategory[]> => {
   const { getApiUrl, getCurrentDomain } = await import('@/lib/api');
   const response = await fetch(getApiUrl('/v1/panel/knowledgebase/categories'), {
@@ -28,7 +40,8 @@ const fetchCategories = async (): Promise<KnowledgebaseCategory[]> => {
   if (!response.ok) {
     throw new Error('Failed to fetch categories');
   }
-  return response.json();
+  const data = await response.json();
+  return Array.isArray(data) ? data.map(normalizeCategory) : [];
 };
 const ItemTypes = {
   CATEGORY: 'category',
@@ -521,7 +534,7 @@ const KnowledgebaseSettings: React.FC = () => {
         throw new Error('Failed to fetch article details');
       }
       const articleData = await response.json();
-      setEditingArticle(articleData);
+      setEditingArticle(normalizeArticle(articleData));
 
       // Scroll to the article editing section with smooth animation
       setTimeout(() => {

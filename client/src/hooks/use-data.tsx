@@ -1259,7 +1259,7 @@ export function useRecentTickets(limit: number = 5) {
       return res.json();
     },
     staleTime: 2 * 60 * 1000,
-    refetchOnWindowFocus: true,
+    refetchOnWindowFocus: false,
   });
 }
 
@@ -1274,7 +1274,7 @@ export function useRecentPunishments(limit: number = 10) {
       return res.json();
     },
     staleTime: 2 * 60 * 1000,
-    refetchOnWindowFocus: true,
+    refetchOnWindowFocus: false,
   });
 }
 
@@ -1517,7 +1517,7 @@ export function useAssignedTicketUpdates(limit: number = 10) {
       return res.json();
     },
     staleTime: 30 * 1000,
-    refetchOnWindowFocus: true,
+    refetchOnWindowFocus: false,
   });
 }
 
