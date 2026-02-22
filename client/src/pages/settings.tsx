@@ -168,10 +168,12 @@ interface StatusThresholds {
   gameplay: {
     medium: number;  // Points threshold for medium offender status
     habitual: number; // Points threshold for habitual offender status
+    pointExpiryMonths: number; // Months after punishment expiry that points still count
   };
   social: {
     medium: number;  // Points threshold for medium offender status
     habitual: number; // Points threshold for habitual offender status
+    pointExpiryMonths: number; // Months after punishment expiry that points still count
   };
 }
 
@@ -884,8 +886,8 @@ const Settings = () => {
     application: { fields: [], sections: [] }
   });
   const statusThresholdsSnapshotRef = useRef<StatusThresholds>({
-    gameplay: { medium: 5, habitual: 10 },
-    social: { medium: 4, habitual: 8 }
+    gameplay: { medium: 5, habitual: 10, pointExpiryMonths: 24 },
+    social: { medium: 4, habitual: 8, pointExpiryMonths: 24 }
   });
   const ticketLabelsSnapshotRef = useRef<any[]>([]);
 
@@ -935,11 +937,13 @@ const Settings = () => {
   const [statusThresholdsState, setStatusThresholdsState] = useState<StatusThresholds>({
     gameplay: {
       medium: 5,  // 5+ points = medium offender
-      habitual: 10 // 10+ points = habitual offender
+      habitual: 10, // 10+ points = habitual offender
+      pointExpiryMonths: 24 // points count for 24 months after punishment expiry
     },
     social: {
       medium: 4,  // 4+ points = medium offender
-      habitual: 8  // 8+ points = habitual offender
+      habitual: 8,  // 8+ points = habitual offender
+      pointExpiryMonths: 24 // points count for 24 months after punishment expiry
     }
   });
   // Selected punishment for editing
