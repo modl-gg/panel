@@ -46,7 +46,12 @@ const PERMISSION_CATEGORIES = {
 const DEFAULT_PERMISSIONS: Permission[] = [
   // Admin permissions
   { id: 'admin.settings.view', name: 'View Settings', description: 'View all system settings (includes all sub-permissions)', category: 'admin', parentId: null },
+  { id: 'admin.settings.view.punishments', name: 'View Punishments Config', description: 'View punishment type configuration', category: 'admin', parentId: 'admin.settings.view' },
+  { id: 'admin.settings.view.content', name: 'View Content', description: 'View homepage cards, knowledgebase, media', category: 'admin', parentId: 'admin.settings.view' },
+  { id: 'admin.settings.view.domain', name: 'View Domain', description: 'View custom domain configuration', category: 'admin', parentId: 'admin.settings.view' },
   { id: 'admin.settings.view.billing', name: 'View Billing', description: 'View billing, subscription, and payment info', category: 'admin', parentId: 'admin.settings.view' },
+  { id: 'admin.settings.view.migration', name: 'View Migration', description: 'View import/export data configuration', category: 'admin', parentId: 'admin.settings.view' },
+  { id: 'admin.settings.view.storage', name: 'View Storage', description: 'View storage configuration', category: 'admin', parentId: 'admin.settings.view' },
   { id: 'admin.settings.modify', name: 'Modify Settings', description: 'Full control over system settings (includes all sub-permissions)', category: 'admin', parentId: null },
   { id: 'admin.settings.modify.punishments', name: 'Modify Punishments Config', description: 'Create/edit/delete punishment types', category: 'admin', parentId: 'admin.settings.modify' },
   { id: 'admin.settings.modify.content', name: 'Modify Content', description: 'Edit homepage cards, knowledgebase, media', category: 'admin', parentId: 'admin.settings.modify' },

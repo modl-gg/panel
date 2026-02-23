@@ -309,7 +309,7 @@ const GeneralSettings = ({
 
         {visibleSection === 'server-config' && serverConfigContent}
 
-        {visibleSection === 'domain' && hasPermission('admin.settings.view') && (
+        {visibleSection === 'domain' && hasPermission('admin.settings.view.domain') && (
           <DomainSettings />
         )}
 
@@ -393,7 +393,7 @@ const GeneralSettings = ({
         </Collapsible>
 
         {/* Custom Domain Settings */}
-        {hasPermission('admin.settings.view') && (
+        {hasPermission('admin.settings.view.domain') && (
           <Collapsible open={isDomainExpanded} onOpenChange={setIsDomainExpanded}>
             <CollapsibleTrigger className="flex items-center justify-between w-full p-4 bg-muted/50 rounded-lg hover:bg-muted/70 transition-colors">
               <div className="flex items-center">

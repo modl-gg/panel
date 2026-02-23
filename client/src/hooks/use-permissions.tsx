@@ -26,7 +26,12 @@ async function apiFetch(url: string, options: RequestInit = {}): Promise<Respons
 export const PERMISSIONS = {
   // Admin settings permissions
   ADMIN_SETTINGS_VIEW: 'admin.settings.view',
+  ADMIN_SETTINGS_VIEW_PUNISHMENTS: 'admin.settings.view.punishments',
+  ADMIN_SETTINGS_VIEW_CONTENT: 'admin.settings.view.content',
+  ADMIN_SETTINGS_VIEW_DOMAIN: 'admin.settings.view.domain',
   ADMIN_SETTINGS_VIEW_BILLING: 'admin.settings.view.billing',
+  ADMIN_SETTINGS_VIEW_MIGRATION: 'admin.settings.view.migration',
+  ADMIN_SETTINGS_VIEW_STORAGE: 'admin.settings.view.storage',
   ADMIN_SETTINGS_MODIFY: 'admin.settings.modify',
   ADMIN_SETTINGS_MODIFY_PUNISHMENTS: 'admin.settings.modify.punishments',
   ADMIN_SETTINGS_MODIFY_CONTENT: 'admin.settings.modify.content',
