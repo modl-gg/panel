@@ -181,6 +181,15 @@ export function usePermissions() {
     return permissions.some(permission => hasPermission(permission));
   };
 
+  // Check if user has a permission OR any child of it
+  // e.g. hasPermissionOrChild('admin.settings.view') returns true if user has
+  // 'admin.settings.view' itself OR 'admin.settings.view.punishments', etc.
+  const hasPermissionOrChild = (permission: string): boolean => {
+    if (!user) return false;
+    if (hasPermission(permission)) return true;
+    return userPermissions.some(p => p.startsWith(permission + '.'));
+  };
+
   // Check if user can access a specific settings tab
   const canAccessSettingsTab = (tabName: keyof typeof SETTINGS_PERMISSIONS): boolean => {
     if (!user) return false;
@@ -189,11 +198,12 @@ export function usePermissions() {
         PERMISSIONS.ADMIN_SETTINGS_VIEW,
         PERMISSIONS.TICKET_VIEW_ALL,
         PERMISSIONS.TICKET_MANAGE_TAGS,
-      ]);
+      ]) || userPermissions.some(p => p.startsWith(PERMISSIONS.ADMIN_SETTINGS_VIEW + '.'));
     }
     const requiredPermissions = SETTINGS_PERMISSIONS[tabName];
     if (!requiredPermissions || !Array.isArray(requiredPermissions)) return false; // Defensive check
-    return requiredPermissions.length === 0 || hasAllPermissions(requiredPermissions);
+    if (requiredPermissions.length === 0) return true;
+    return requiredPermissions.every(perm => hasPermissionOrChild(perm));
   };
 
   // Get accessible settings tabs
