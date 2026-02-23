@@ -13,6 +13,7 @@ import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, D
 import { Separator } from '@modl-gg/shared-web/components/ui/separator';
 import { useSettings, useRoles, usePermissions, useCreateRole, useUpdateRole, useDeleteRole } from '@/hooks/use-data';
 import { useAuth } from '@/hooks/use-auth';
+import { usePermissions as useUserPermissions } from '@/hooks/use-permissions';
 import { apiFetch } from '@/lib/api';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@modl-gg/shared-web/components/ui/alert-dialog';
 
@@ -324,7 +325,16 @@ export default function StaffRolesCard() {
   const createRoleMutation = useCreateRole();
   const updateRoleMutation = useUpdateRole();
   const deleteRoleMutation = useDeleteRole();
-  
+  const { hasPermission: userHasPermission } = useUserPermissions();
+
+  const isSuperAdmin = currentUser?.role === 'Super Admin';
+
+  // Check if the current user can grant a specific permission
+  const canGrantPermission = (permissionId: string): boolean => {
+    if (isSuperAdmin) return true;
+    return userHasPermission(permissionId);
+  };
+
   const roles = rolesData?.roles || [];
   const permissions = permissionsData?.permissions || [];
   const permissionCategories = permissionsData?.categories || PERMISSION_CATEGORIES;
@@ -595,6 +605,7 @@ export default function StaffRolesCard() {
   };
 
   const togglePermission = (permissionId: string) => {
+    if (!canGrantPermission(permissionId)) return;
     const allPerms = permissions.length > 0 ? permissions : DEFAULT_PERMISSIONS;
     const isCurrentlyEnabled = roleFormData.permissions.includes(permissionId);
     const childPermissions = allPerms.filter((p: Permission) => p.parentId === permissionId).map((p: Permission) => p.id);
@@ -740,10 +751,10 @@ export default function StaffRolesCard() {
                           variant="outline"
                           size="sm"
                           onClick={() => {
-                            const allCategoryPermissions = categoryPermissions.map((p: Permission) => p.id);
+                            const grantablePermissions = categoryPermissions.filter((p: Permission) => canGrantPermission(p.id)).map((p: Permission) => p.id);
                             setRoleFormData(prev => ({
                               ...prev,
-                              permissions: [...prev.permissions.filter((p: string) => !allCategoryPermissions.includes(p)), ...allCategoryPermissions]
+                              permissions: [...prev.permissions.filter((p: string) => !grantablePermissions.includes(p)), ...grantablePermissions]
                             }));
                           }}
                         >
@@ -754,10 +765,10 @@ export default function StaffRolesCard() {
                           variant="outline"
                           size="sm"
                           onClick={() => {
-                            const allCategoryPermissions = categoryPermissions.map((p: Permission) => p.id);
+                            const grantablePermissions = categoryPermissions.filter((p: Permission) => canGrantPermission(p.id)).map((p: Permission) => p.id);
                             setRoleFormData(prev => ({
                               ...prev,
-                              permissions: prev.permissions.filter((p: string) => !allCategoryPermissions.includes(p))
+                              permissions: prev.permissions.filter((p: string) => !grantablePermissions.includes(p))
                             }));
                           }}
                         >
@@ -778,17 +789,18 @@ export default function StaffRolesCard() {
                               <Checkbox
                                 id={permission.id}
                                 checked={roleFormData.permissions.includes(permission.id)}
+                                disabled={!canGrantPermission(permission.id)}
                                 onCheckedChange={() => togglePermission(permission.id)}
                               />
                               <div className="grid gap-1.5 leading-none">
                                 <Label
                                   htmlFor={permission.id}
-                                  className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
+                                  className={`text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70 ${!canGrantPermission(permission.id) ? 'text-muted-foreground' : ''}`}
                                 >
                                   {permission.name}
                                 </Label>
                                 <p className="text-xs text-muted-foreground">
-                                  {permission.description}
+                                  {!canGrantPermission(permission.id) ? "You don't have this permission" : permission.description}
                                 </p>
                               </div>
                             </div>
@@ -796,27 +808,31 @@ export default function StaffRolesCard() {
                             {/* Child permissions */}
                             {children.length > 0 && (
                               <div className="grid grid-cols-1 md:grid-cols-2 gap-2 pl-8">
-                                {children.map((child: Permission) => (
-                                  <div key={child.id} className="flex items-start space-x-2">
-                                    <Checkbox
-                                      id={child.id}
-                                      checked={parentChecked || roleFormData.permissions.includes(child.id)}
-                                      disabled={parentChecked}
-                                      onCheckedChange={() => !parentChecked && togglePermission(child.id)}
-                                    />
-                                    <div className="grid gap-1.5 leading-none">
-                                      <Label
-                                        htmlFor={child.id}
-                                        className={`text-sm font-medium leading-none ${parentChecked ? 'text-muted-foreground' : ''}`}
-                                      >
-                                        {child.name}
-                                      </Label>
-                                      <p className="text-xs text-muted-foreground">
-                                        {parentChecked ? 'Granted by parent' : child.description}
-                                      </p>
+                                {children.map((child: Permission) => {
+                                  const cantGrant = !canGrantPermission(child.id);
+                                  const isDisabled = parentChecked || cantGrant;
+                                  return (
+                                    <div key={child.id} className="flex items-start space-x-2">
+                                      <Checkbox
+                                        id={child.id}
+                                        checked={parentChecked || roleFormData.permissions.includes(child.id)}
+                                        disabled={isDisabled}
+                                        onCheckedChange={() => !isDisabled && togglePermission(child.id)}
+                                      />
+                                      <div className="grid gap-1.5 leading-none">
+                                        <Label
+                                          htmlFor={child.id}
+                                          className={`text-sm font-medium leading-none ${isDisabled ? 'text-muted-foreground' : ''}`}
+                                        >
+                                          {child.name}
+                                        </Label>
+                                        <p className="text-xs text-muted-foreground">
+                                          {cantGrant ? "You don't have this permission" : parentChecked ? 'Granted by parent' : child.description}
+                                        </p>
+                                      </div>
                                     </div>
-                                  </div>
-                                ))}
+                                  );
+                                })}
                               </div>
                             )}
                           </div>
