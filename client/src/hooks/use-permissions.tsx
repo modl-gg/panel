@@ -70,14 +70,15 @@ export const PERMISSIONS = {
 } as const;
 
 // Settings-specific permissions map
+// Each tab lists ALL permissions that grant access (matched with hasAnyPermission)
 export const SETTINGS_PERMISSIONS = {
   account: [], // Everyone can access account settings
-  general: [PERMISSIONS.ADMIN_SETTINGS_VIEW], // Server & Billing
-  punishment: [PERMISSIONS.ADMIN_SETTINGS_VIEW], // Punishment Types
+  general: [PERMISSIONS.ADMIN_SETTINGS_VIEW, PERMISSIONS.ADMIN_SETTINGS_VIEW_BILLING, PERMISSIONS.ADMIN_SETTINGS_VIEW_DOMAIN, PERMISSIONS.ADMIN_SETTINGS_VIEW_STORAGE, PERMISSIONS.ADMIN_SETTINGS_VIEW_MIGRATION],
+  punishment: [PERMISSIONS.ADMIN_SETTINGS_VIEW, PERMISSIONS.ADMIN_SETTINGS_VIEW_PUNISHMENTS],
   tags: [], // Tickets tab has mixed permission gates by sub-section
-  staff: [PERMISSIONS.ADMIN_STAFF_MANAGE], // Staff Management
-  knowledgebase: [PERMISSIONS.ADMIN_SETTINGS_VIEW], // Knowledgebase - requires settings view
-  homepage: [PERMISSIONS.ADMIN_SETTINGS_VIEW], // Homepage Cards
+  staff: [PERMISSIONS.ADMIN_STAFF_MANAGE],
+  knowledgebase: [PERMISSIONS.ADMIN_SETTINGS_VIEW, PERMISSIONS.ADMIN_SETTINGS_VIEW_CONTENT],
+  homepage: [PERMISSIONS.ADMIN_SETTINGS_VIEW, PERMISSIONS.ADMIN_SETTINGS_VIEW_CONTENT],
 } as const;
 
 export function usePermissions() {
@@ -181,15 +182,6 @@ export function usePermissions() {
     return permissions.some(permission => hasPermission(permission));
   };
 
-  // Check if user has a permission OR any child of it
-  // e.g. hasPermissionOrChild('admin.settings.view') returns true if user has
-  // 'admin.settings.view' itself OR 'admin.settings.view.punishments', etc.
-  const hasPermissionOrChild = (permission: string): boolean => {
-    if (!user) return false;
-    if (hasPermission(permission)) return true;
-    return userPermissions.some(p => p.startsWith(permission + '.'));
-  };
-
   // Check if user can access a specific settings tab
   const canAccessSettingsTab = (tabName: keyof typeof SETTINGS_PERMISSIONS): boolean => {
     if (!user) return false;
@@ -198,12 +190,12 @@ export function usePermissions() {
         PERMISSIONS.ADMIN_SETTINGS_VIEW,
         PERMISSIONS.TICKET_VIEW_ALL,
         PERMISSIONS.TICKET_MANAGE_TAGS,
-      ]) || userPermissions.some(p => p.startsWith(PERMISSIONS.ADMIN_SETTINGS_VIEW + '.'));
+      ]);
     }
     const requiredPermissions = SETTINGS_PERMISSIONS[tabName];
     if (!requiredPermissions || !Array.isArray(requiredPermissions)) return false; // Defensive check
     if (requiredPermissions.length === 0) return true;
-    return requiredPermissions.every(perm => hasPermissionOrChild(perm));
+    return hasAnyPermission(requiredPermissions as unknown as string[]);
   };
 
   // Get accessible settings tabs
