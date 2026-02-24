@@ -26,6 +26,7 @@ interface StorageFile {
 }
 
 interface StorageUsage {
+  isPremium: boolean;
   totalUsed: number;
   totalQuota: number;
   byType: {
@@ -177,7 +178,10 @@ const fetchStorageData = async () => {
         other: cdnUsedBytes
       };
 
+      const isPremium = Boolean(usageData.isPremium);
+
       const usage: StorageUsage = {
+        isPremium,
         totalUsed: cdnUsedBytes,
         totalQuota: cdnLimitBytes,
         byType,
@@ -198,7 +202,7 @@ const fetchStorageData = async () => {
           usagePercentage: Math.round(cdnPercentage * 100) / 100,
           baseUsagePercentage: Math.round(cdnPercentage * 100) / 100
         },
-        aiQuota: billingUsageData?.ai ? {
+        aiQuota: isPremium && billingUsageData?.ai ? {
           totalUsed: Number(billingUsageData.ai.used ?? 0),
           baseLimit: Number(billingUsageData.ai.limit ?? DEFAULT_AI_LIMIT),
           overageUsed: Number(billingUsageData.ai.overage ?? 0),
@@ -211,7 +215,7 @@ const fetchStorageData = async () => {
             appeal_analysis: 0,
             other: Number(billingUsageData.ai.used ?? 0)
           }
-        } : usageData.aiQuota ? {
+        } : isPremium && usageData.aiQuota ? {
           totalUsed: usageData.aiQuota.totalUsed ?? 0,
           baseLimit: usageData.aiQuota.baseLimit ?? 0,
           overageUsed: usageData.aiQuota.overageUsed ?? 0,
@@ -229,7 +233,7 @@ const fetchStorageData = async () => {
             appeal_analysis: 0,
             other: usageData.aiQuota.totalUsed ?? 0
           }
-        } : usageData.ai ? {
+        } : isPremium && usageData.ai ? {
           totalUsed: usageData.ai.used ?? 0,
           baseLimit: usageData.ai.limit ?? 0,
           overageUsed: usageData.ai.overage ?? 0,
@@ -721,7 +725,7 @@ const fetchStorageData = async () => {
                       ))}
                     </div>
                   </>
-                ) : (
+                ) : storageUsage.isPremium ? (
                   <div className="space-y-2">
                     <div className="flex justify-between text-sm">
                       <span>Status:</span>
@@ -729,6 +733,19 @@ const fetchStorageData = async () => {
                     </div>
                     <p className="text-xs text-muted-foreground">
                       AI usage tracking is not enabled for this server.
+                    </p>
+                  </div>
+                ) : (
+                  <div className="space-y-2">
+                    <div className="flex justify-between text-sm">
+                      <span>Status:</span>
+                      <span className="text-muted-foreground">Premium only</span>
+                    </div>
+                    <p className="text-xs text-muted-foreground">
+                      AI is only available for Premium users.
+                    </p>
+                    <p className="text-xs text-muted-foreground">
+                      Upgrade to Premium to access AI moderation and analysis features.
                     </p>
                   </div>
                 )}
@@ -789,8 +806,8 @@ const fetchStorageData = async () => {
                 </div>
                 <div className="flex justify-between text-sm">
                   <span>AI Available:</span>
-                  <span className={storageUsage.aiQuota?.canUseAI ? 'text-green-600' : 'text-red-600'}>
-                    {storageUsage.aiQuota?.canUseAI ? 'Yes' : 'No'}
+                  <span className={storageUsage.isPremium && storageUsage.aiQuota ? 'text-green-600' : 'text-red-600'}>
+                    {storageUsage.isPremium && storageUsage.aiQuota ? 'Yes' : 'No'}
                   </span>
                 </div>
               </div>

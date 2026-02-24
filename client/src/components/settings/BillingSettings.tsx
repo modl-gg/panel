@@ -56,7 +56,7 @@ interface PlanFeature {
 }
 
 interface Plan {
-  id: 'free' | 'premium';
+  id: 'FREE' | 'PREMIUM';
   name: string;
   price: number;
   period: string;
@@ -68,7 +68,7 @@ interface Plan {
 
 const plans: Plan[] = [
   {
-    id: 'free',
+    id: 'FREE',
     name: 'Free',
     price: 0,
     period: 'forever',
@@ -86,7 +86,7 @@ const plans: Plan[] = [
     buttonVariant: 'outline'
   },
   {
-    id: 'premium',
+    id: 'PREMIUM',
     name: 'Premium',
     price: 9.99,
     period: 'per month',
