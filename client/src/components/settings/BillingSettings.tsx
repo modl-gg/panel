@@ -56,7 +56,7 @@ interface PlanFeature {
 }
 
 interface Plan {
-  id: 'FREE' | 'PREMIUM';
+  id: 'free' | 'premium';
   name: string;
   price: number;
   period: string;
@@ -68,7 +68,7 @@ interface Plan {
 
 const plans: Plan[] = [
   {
-    id: 'FREE',
+    id: 'free',
     name: 'Free',
     price: 0,
     period: 'forever',
@@ -86,7 +86,7 @@ const plans: Plan[] = [
     buttonVariant: 'outline'
   },
   {
-    id: 'PREMIUM',
+    id: 'premium',
     name: 'Premium',
     price: 9.99,
     period: 'per month',
@@ -95,7 +95,7 @@ const plans: Plan[] = [
       { text: 'Unlimited players', included: true, icon: <Users className="h-4 w-4" /> },
       { text: 'Advanced ticket system', included: true, icon: <Shield className="h-4 w-4" /> },
       { text: 'Unlimited staff members', included: true, icon: <Users className="h-4 w-4" /> },
-      { text: '500k API requests per month', included: true, icon: <Zap className="h-4 w-4" /> },
+      { text: 'Extended service limits', included: true, icon: <Zap className="h-4 w-4" /> },
       { text: '200GB CDN storage ($0.08/GB/month past 200GB)', included: true, icon: <HardDrive className="h-4 w-4" /> },
       { text: 'AI moderation', included: true, icon: <Brain className="h-4 w-4" /> },
       { text: 'Priority support', included: true, icon: <Crown className="h-4 w-4" /> }
@@ -699,7 +699,8 @@ const BillingSettings = () => {
   };
 
   const FreePlanView = () => {
-    const premiumPlan = plans.find(p => p.id === 'premium')!;
+    const premiumPlan = plans.find(p => p.id === 'premium');
+    const premiumFeatures = premiumPlan?.features ?? [];
     
   return (
       <div className="space-y-6">
@@ -741,7 +742,7 @@ const BillingSettings = () => {
               <div className="lg:col-span-2 flex flex-col justify-center ml-0 lg:ml-8 mt-0 lg:mt-[-80px]">
                 <h4 className="font-medium text-sm text-muted-foreground mb-4">Premium Features</h4>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                  {premiumPlan.features.map((feature, index) => (
+                  {premiumFeatures.map((feature, index) => (
                     <div key={index} className="flex items-center gap-3">
                       <Check className="h-4 w-4 text-green-600 flex-shrink-0" />
                       {feature.icon && (
@@ -753,6 +754,9 @@ const BillingSettings = () => {
                     </div>
                   ))}
                 </div>
+                {premiumFeatures.length === 0 && (
+                  <p className="text-sm text-muted-foreground">Premium feature list is currently unavailable.</p>
+                )}
               </div>
             </div>
           </CardContent>
