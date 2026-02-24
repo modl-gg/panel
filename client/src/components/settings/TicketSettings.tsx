@@ -18,6 +18,7 @@ import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, 
 import { QuickResponseAction, QuickResponseCategory, QuickResponsesConfiguration, defaultQuickResponsesConfig } from '@/types/quickResponses';
 import { useBillingStatus } from '@/hooks/use-data';
 import { useAuth } from '@/hooks/use-auth';
+import { formatStrictnessLabel, hasPremiumAccess, normalizeStrictnessLevel } from '@/lib/backend-enums';
 
 // Import the types we need for the form builder
 interface TicketFormField {
@@ -417,20 +418,12 @@ const TicketSettings = ({
   // Check if user has premium access
   const isPremiumUser = () => {
     if (!billingStatus) return false;
-    const { subscriptionStatus, currentPeriodEnd, plan } = billingStatus;
-    
-    // For cancelled subscriptions, check if the period has ended
-    if (subscriptionStatus === 'canceled') {
-      if (!currentPeriodEnd) return false;
-      const endDate = new Date(currentPeriodEnd);
-      const now = new Date();
-      return endDate > now && plan === 'premium';
-    }
-    
-    // Active, trialing, or payment issues within period
-    return (['active', 'trialing'].includes(subscriptionStatus) && plan === 'premium') ||
-           (['past_due', 'unpaid', 'incomplete'].includes(subscriptionStatus) && plan === 'premium' && 
-            currentPeriodEnd && new Date(currentPeriodEnd) > new Date());
+
+    return hasPremiumAccess({
+      plan: billingStatus.plan,
+      subscriptionStatus: billingStatus.subscriptionStatus,
+      currentPeriodEnd: billingStatus.currentPeriodEnd,
+    });
   };
 
   // Collapsible state
@@ -845,7 +838,7 @@ const TicketSettings = ({
               <div>
                 <CardTitle className="text-base">{category.name}</CardTitle>
                 <p className="text-sm text-muted-foreground mt-1">
-                  {category.ticketTypes.join(', ')} • {category.actions.length} actions
+                  {category.ticketTypes.join(', ')} - {category.actions.length} actions
                 </p>
               </div>
               <div className="flex items-center space-x-2">
@@ -1732,7 +1725,7 @@ const TicketSettings = ({
                           <div>
                             <CardTitle className="text-base">{category.name}</CardTitle>
                             <p className="text-sm text-muted-foreground mt-1">
-                              {category.ticketTypes.join(', ')} • {category.actions.length} actions
+                              {category.ticketTypes.join(', ')} - {category.actions.length} actions
                             </p>
                           </div>
                           <div className="flex items-center space-x-2">
@@ -2030,7 +2023,7 @@ const TicketSettings = ({
               <div className="flex items-center space-x-2">
                 {!isAIModerationExpanded && isPremiumUser() && (
                   <span className="text-sm text-muted-foreground">
-                    {aiModerationSettings.enableAutomatedActions ? 'Automated' : 'Manual'} • {aiModerationSettings.strictnessLevel}
+                    {aiModerationSettings.enableAutomatedActions ? 'Automated' : 'Manual'} - {formatStrictnessLabel(aiModerationSettings.strictnessLevel)}
                   </span>
                 )}
                 {!isPremiumUser() && (
@@ -2115,7 +2108,7 @@ const TicketSettings = ({
                         <div className="space-y-3">
                           <Label className="text-sm font-medium">AI Strictness Level</Label>
                           <Select
-                            value={aiModerationSettings.strictnessLevel}
+                            value={normalizeStrictnessLevel(aiModerationSettings.strictnessLevel)}
                             onValueChange={(value) => {
                               setAiModerationSettings((prev: any) => ({
                                 ...prev,
@@ -2127,9 +2120,9 @@ const TicketSettings = ({
                               <SelectValue placeholder="Select strictness level" />
                             </SelectTrigger>
                             <SelectContent>
-                              <SelectItem value="lenient">Lenient - Only flagrant violations</SelectItem>
-                              <SelectItem value="standard">Standard - Balanced approach</SelectItem>
-                              <SelectItem value="strict">Strict - Zero tolerance policy</SelectItem>
+                              <SelectItem value="LENIENT">Lenient - Only flagrant violations</SelectItem>
+                              <SelectItem value="STANDARD">Standard - Balanced approach</SelectItem>
+                              <SelectItem value="STRICT">Strict - Zero tolerance policy</SelectItem>
                             </SelectContent>
                           </Select>
                           <p className="text-xs text-muted-foreground">

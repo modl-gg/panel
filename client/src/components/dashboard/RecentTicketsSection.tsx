@@ -5,6 +5,7 @@ import { Button } from '@modl-gg/shared-web/components/ui/button';
 import { Ticket, Clock, User } from 'lucide-react';
 import { useLocation } from 'wouter';
 import { formatTimeAgo } from '@/utils/date-utils';
+import { stripMarkdown } from '@/utils/markdown-utils';
 
 export interface RecentTicket {
   id: string;
@@ -25,9 +26,7 @@ interface RecentTicketsSectionProps {
 const statusColors: Record<string, string> = {
   open: 'bg-blue-500/20 text-blue-500',
   closed: 'bg-green-500/20 text-green-500',
-  under_review: 'bg-yellow-500/20 text-yellow-500',
-  pending_player_response: 'bg-purple-500/20 text-purple-500',
-  draft: 'bg-gray-500/20 text-gray-500'
+  unfinished: 'bg-gray-500/20 text-gray-500'
 };
 
 const priorityColors: Record<string, string> = {
@@ -47,7 +46,7 @@ export function RecentTicketsSection({ tickets, loading }: RecentTicketsSectionP
 
   const truncateMessage = (message: string | undefined | null, maxLength: number = 120) => {
     if (!message) return 'No message available';
-    const messageStr = String(message);
+    const messageStr = stripMarkdown(String(message));
     if (messageStr.length <= maxLength) return messageStr;
     return messageStr.substring(0, maxLength) + '...';
   };

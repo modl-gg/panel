@@ -6,7 +6,7 @@ import { getApiUrl, getCurrentDomain } from '@/lib/api';
 
 async function apiFetch(url: string, options: RequestInit = {}): Promise<Response> {
   const fullUrl = getApiUrl(url);
-  return fetch(fullUrl, {
+  const response = await fetch(fullUrl, {
     ...options,
     credentials: "include",
     headers: {
@@ -14,35 +14,71 @@ async function apiFetch(url: string, options: RequestInit = {}): Promise<Respons
       "X-Server-Domain": getCurrentDomain(),
     },
   });
+  if (response.status === 429) {
+    const { handleRateLimitResponse, getCurrentPath } = await import('../utils/rate-limit-handler');
+    await handleRateLimitResponse(response, getCurrentPath());
+    throw new Error('Rate limit exceeded');
+  }
+  return response;
 }
 
 // Define permissions that match the backend permission system
 export const PERMISSIONS = {
   // Admin settings permissions
   ADMIN_SETTINGS_VIEW: 'admin.settings.view',
+  ADMIN_SETTINGS_VIEW_PUNISHMENTS: 'admin.settings.view.punishments',
+  ADMIN_SETTINGS_VIEW_CONTENT: 'admin.settings.view.content',
+  ADMIN_SETTINGS_VIEW_DOMAIN: 'admin.settings.view.domain',
+  ADMIN_SETTINGS_VIEW_BILLING: 'admin.settings.view.billing',
+  ADMIN_SETTINGS_VIEW_MIGRATION: 'admin.settings.view.migration',
+  ADMIN_SETTINGS_VIEW_STORAGE: 'admin.settings.view.storage',
   ADMIN_SETTINGS_MODIFY: 'admin.settings.modify',
+  ADMIN_SETTINGS_MODIFY_PUNISHMENTS: 'admin.settings.modify.punishments',
+  ADMIN_SETTINGS_MODIFY_CONTENT: 'admin.settings.modify.content',
+  ADMIN_SETTINGS_MODIFY_DOMAIN: 'admin.settings.modify.domain',
+  ADMIN_SETTINGS_MODIFY_BILLING: 'admin.settings.modify.billing',
+  ADMIN_SETTINGS_MODIFY_MIGRATION: 'admin.settings.modify.migration',
+  ADMIN_SETTINGS_MODIFY_STORAGE: 'admin.settings.modify.storage',
   ADMIN_STAFF_MANAGE: 'admin.staff.manage',
+  ADMIN_STAFF_MANAGE_MEMBERS: 'admin.staff.manage.members',
+  ADMIN_STAFF_MANAGE_ROLES: 'admin.staff.manage.roles',
   ADMIN_AUDIT_VIEW: 'admin.audit.view',
-  
+  ADMIN_AUDIT_VIEW_DASHBOARD: 'admin.audit.view.dashboard',
+  ADMIN_AUDIT_VIEW_ANALYTICS: 'admin.audit.view.analytics',
+  ADMIN_AUDIT_VIEW_LOGS: 'admin.audit.view.logs',
+
   // Punishment permissions
   PUNISHMENT_MODIFY: 'punishment.modify',
-  
+  PUNISHMENT_MODIFY_PARDON: 'punishment.modify.pardon',
+  PUNISHMENT_MODIFY_DURATION: 'punishment.modify.duration',
+  PUNISHMENT_MODIFY_NOTE: 'punishment.modify.note',
+  PUNISHMENT_MODIFY_EVIDENCE: 'punishment.modify.evidence',
+  PUNISHMENT_MODIFY_OPTIONS: 'punishment.modify.options',
+
   // Ticket permissions
   TICKET_VIEW_ALL: 'ticket.view.all',
+  TICKET_VIEW_ALL_NOTES: 'ticket.view.all.notes',
   TICKET_REPLY_ALL: 'ticket.reply.all',
+  TICKET_REPLY_ALL_NOTES: 'ticket.reply.all.notes',
   TICKET_CLOSE_ALL: 'ticket.close.all',
+  TICKET_CLOSE_ALL_LOCK: 'ticket.close.all.lock',
+  TICKET_MANAGE: 'ticket.manage',
+  TICKET_MANAGE_TAGS: 'ticket.manage.tags',
+  TICKET_MANAGE_HIDE: 'ticket.manage.hide',
+  TICKET_MANAGE_SUBSCRIBE: 'ticket.manage.subscribe',
   TICKET_DELETE_ALL: 'ticket.delete.all',
 } as const;
 
 // Settings-specific permissions map
+// Each tab lists ALL permissions that grant access (matched with hasAnyPermission)
 export const SETTINGS_PERMISSIONS = {
   account: [], // Everyone can access account settings
-  general: [PERMISSIONS.ADMIN_SETTINGS_VIEW], // Server & Billing
-  punishment: [PERMISSIONS.ADMIN_SETTINGS_VIEW], // Punishment Types
-  tags: [PERMISSIONS.ADMIN_SETTINGS_VIEW], // Tickets - requires settings view
-  staff: [PERMISSIONS.ADMIN_STAFF_MANAGE], // Staff Management
-  knowledgebase: [PERMISSIONS.ADMIN_SETTINGS_VIEW], // Knowledgebase - requires settings view
-  homepage: [PERMISSIONS.ADMIN_SETTINGS_VIEW], // Homepage Cards
+  general: [PERMISSIONS.ADMIN_SETTINGS_VIEW, PERMISSIONS.ADMIN_SETTINGS_VIEW_BILLING, PERMISSIONS.ADMIN_SETTINGS_VIEW_DOMAIN, PERMISSIONS.ADMIN_SETTINGS_VIEW_STORAGE, PERMISSIONS.ADMIN_SETTINGS_VIEW_MIGRATION],
+  punishment: [PERMISSIONS.ADMIN_SETTINGS_VIEW, PERMISSIONS.ADMIN_SETTINGS_VIEW_PUNISHMENTS],
+  tags: [], // Tickets tab has mixed permission gates by sub-section
+  staff: [PERMISSIONS.ADMIN_STAFF_MANAGE],
+  knowledgebase: [PERMISSIONS.ADMIN_SETTINGS_VIEW, PERMISSIONS.ADMIN_SETTINGS_VIEW_CONTENT],
+  homepage: [PERMISSIONS.ADMIN_SETTINGS_VIEW, PERMISSIONS.ADMIN_SETTINGS_VIEW_CONTENT],
 } as const;
 
 export function usePermissions() {
@@ -85,9 +121,14 @@ export function usePermissions() {
       return serverPermissions;
     }
     
-    // If serverPermissions is explicitly null, it means fetch failed - use fallback
-    // If serverPermissions is undefined, query is still loading - also use fallback
-    // Fallback to default role permissions for backward compatibility
+    // If serverPermissions is explicitly null, it means fetch failed - deny all permissions
+    // Server is the authority; on failure, grant no permissions for security
+    if (serverPermissions === null) {
+      return [];
+    }
+
+    // If serverPermissions is undefined, query is still loading - use default role permissions
+    // only for the initial load before the first fetch completes
     const defaultPermissions: Record<string, string[]> = {
       'Super Admin': [
         PERMISSIONS.ADMIN_SETTINGS_VIEW,
@@ -117,14 +158,14 @@ export function usePermissions() {
         PERMISSIONS.TICKET_REPLY_ALL,
       ],
     };
-    
+
     return defaultPermissions[user.role] || [];
   }, [user, serverPermissions]);
 
-  // Check if user has a specific permission
+  // Check if user has a specific permission (with hierarchical matching)
   const hasPermission = (permission: string): boolean => {
     if (!user) return false;
-    return userPermissions.includes(permission);
+    return userPermissions.some(p => p === permission || permission.startsWith(p + '.'));
   };
 
   // Check if user has all required permissions
@@ -144,9 +185,17 @@ export function usePermissions() {
   // Check if user can access a specific settings tab
   const canAccessSettingsTab = (tabName: keyof typeof SETTINGS_PERMISSIONS): boolean => {
     if (!user) return false;
+    if (tabName === 'tags') {
+      return hasAnyPermission([
+        PERMISSIONS.ADMIN_SETTINGS_VIEW,
+        PERMISSIONS.TICKET_VIEW_ALL,
+        PERMISSIONS.TICKET_MANAGE_TAGS,
+      ]);
+    }
     const requiredPermissions = SETTINGS_PERMISSIONS[tabName];
     if (!requiredPermissions || !Array.isArray(requiredPermissions)) return false; // Defensive check
-    return requiredPermissions.length === 0 || hasAllPermissions(requiredPermissions);
+    if (requiredPermissions.length === 0) return true;
+    return hasAnyPermission(requiredPermissions as unknown as string[]);
   };
 
   // Get accessible settings tabs
@@ -206,7 +255,7 @@ export function usePermissions() {
     }
     
     // For other roles, they can only change their own
-    return user._id === targetUserId;
+    return user.id === targetUserId;
   };
 
   return {

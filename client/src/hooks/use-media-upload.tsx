@@ -1,16 +1,26 @@
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { getApiUrl, getCurrentDomain } from '@/lib/api';
+import { isPublicPage } from '@/utils/routes';
 
 async function apiFetch(url: string, options: RequestInit = {}): Promise<Response> {
+  const credentials = options.credentials
+    ?? (url.startsWith('/v1/public/') ? 'omit' : 'include');
+
   const fullUrl = getApiUrl(url);
-  return fetch(fullUrl, {
+  const response = await fetch(fullUrl, {
     ...options,
-    credentials: "include",
+    credentials,
     headers: {
       ...options.headers,
       "X-Server-Domain": getCurrentDomain(),
     },
   });
+  if (response.status === 429) {
+    const { handleRateLimitResponse, getCurrentPath } = await import('../utils/rate-limit-handler');
+    await handleRateLimitResponse(response, getCurrentPath());
+    throw new Error('Rate limit exceeded');
+  }
+  return response;
 }
 
 export interface MediaUploadConfig {
@@ -54,15 +64,18 @@ export interface UploadProgress {
   percentage: number;
 }
 
+interface UploadMetadata {
+  entityId?: string;
+  ticketId?: string;
+  appealId?: string;
+  accessToken?: string;
+  ticketToken?: string;
+}
+
 const MEDIA_CONFIG_QUERY_KEY = ['/v1/media/config'];
 
 async function fetchMediaConfig(): Promise<MediaUploadConfig> {
-  const currentPath = window.location.pathname;
-  const isPublic = currentPath.startsWith('/ticket/') ||
-                      currentPath.startsWith('/appeal') ||
-                      currentPath === '/' ||
-                      currentPath.startsWith('/knowledgebase') ||
-                      currentPath.startsWith('/article/');
+  const isPublic = isPublicPage();
 
   try {
     if (isPublic) {
@@ -123,36 +136,75 @@ export function useMediaUploadConfig() {
   });
 }
 
-function isPublicPage(): boolean {
-  const currentPath = window.location.pathname;
-  return currentPath.startsWith('/ticket/') ||
-         currentPath.startsWith('/appeal') ||
-         currentPath === '/' ||
-         currentPath.startsWith('/knowledgebase') ||
-         currentPath.startsWith('/article/');
-}
-
 function getEndpointPrefix(): string {
   return isPublicPage() ? '/v1/public/media' : '/v1/panel/media';
 }
 
+function getCookieValue(name: string): string | null {
+  if (typeof document === 'undefined') {
+    return null;
+  }
+
+  const target = `${name}=`;
+  const match = document.cookie
+    .split(';')
+    .map((cookie) => cookie.trim())
+    .find((cookie) => cookie.startsWith(target));
+
+  if (!match) {
+    return null;
+  }
+
+  return decodeURIComponent(match.slice(target.length));
+}
+
+function resolveUploadContext(metadata: UploadMetadata = {}): { entityId?: string; accessToken?: string } {
+  const rawEntityId = metadata.entityId
+    || metadata.ticketId
+    || metadata.appealId;
+  const entityId = rawEntityId?.trim();
+
+  let accessToken = metadata.accessToken || metadata.ticketToken;
+  if (!accessToken && entityId) {
+    const normalized = entityId.toLowerCase();
+    if (normalized !== 'new' && normalized !== 'unknown') {
+      accessToken = getCookieValue(`ticket_auth_${entityId}`);
+    }
+  }
+
+  return {
+    entityId: entityId || undefined,
+    accessToken: accessToken || undefined,
+  };
+}
+
 async function getPresignedUrl(
   file: File,
-  uploadType: string
+  uploadType: string,
+  metadata: UploadMetadata = {}
 ): Promise<PresignResponse> {
   const endpoint = `${getEndpointPrefix()}/presign`;
+  const context = resolveUploadContext(metadata);
+
+  const payload: Record<string, unknown> = {
+    uploadType,
+    fileName: file.name,
+    fileSize: file.size,
+    contentType: file.type,
+  };
+  if (context.entityId) {
+    payload.entityId = context.entityId;
+  }
+  if (context.accessToken) {
+    payload.accessToken = context.accessToken;
+  }
   
   const response = await apiFetch(endpoint, {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
     },
-    body: JSON.stringify({
-      uploadType,
-      fileName: file.name,
-      fileSize: file.size,
-      contentType: file.type,
-    }),
+    body: JSON.stringify(payload),
   });
 
   if (!response.ok) {
@@ -212,15 +264,20 @@ async function uploadToS3(
   });
 }
 
-async function confirmUpload(key: string): Promise<ConfirmResponse> {
+async function confirmUpload(key: string, metadata: UploadMetadata = {}): Promise<ConfirmResponse> {
   const endpoint = `${getEndpointPrefix()}/confirm`;
+  const context = resolveUploadContext(metadata);
+  const payload: Record<string, string> = { key };
+  if (context.accessToken) {
+    payload.accessToken = context.accessToken;
+  }
   
   const response = await apiFetch(endpoint, {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
     },
-    body: JSON.stringify({ key }),
+    body: JSON.stringify(payload),
   });
 
   if (!response.ok) {
@@ -238,7 +295,7 @@ export function useMediaUpload() {
   const uploadMedia = async (
     file: File,
     uploadType: 'evidence' | 'ticket' | 'appeal' | 'article' | 'server-icon',
-    _metadata: Record<string, unknown> = {},
+    metadata: Record<string, unknown> = {},
     onProgress?: (progress: UploadProgress) => void
   ): Promise<{ url: string; key: string }> => {
     // Get fresh config from cache or fetch it
@@ -254,11 +311,11 @@ export function useMediaUpload() {
       throw new Error('Media storage is not configured. Please check your Backblaze B2 credentials.');
     }
 
-    const presign = await getPresignedUrl(file, uploadType);
+    const presign = await getPresignedUrl(file, uploadType, metadata as UploadMetadata);
 
     await uploadToS3(presign.presignedUrl, file, presign.requiredHeaders, onProgress);
 
-    const confirmed = await confirmUpload(presign.key);
+    const confirmed = await confirmUpload(presign.key, metadata as UploadMetadata);
 
     return { url: confirmed.url, key: confirmed.key };
   };

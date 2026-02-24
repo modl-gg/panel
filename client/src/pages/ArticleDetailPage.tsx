@@ -15,8 +15,8 @@ interface ArticleDetail {
     name: string;
     slug: string;
   };
-  created_at: string;
-  updated_at: string;
+  createdAt: string;
+  updatedAt: string;
 }
 
 const ArticleDetailPage: React.FC = () => {
@@ -83,7 +83,7 @@ const ArticleDetailPage: React.FC = () => {
         <article className="prose lg:prose-xl max-w-none bg-card p-6 rounded-lg shadow prose-headings:text-foreground prose-p:text-foreground prose-strong:text-foreground prose-em:text-foreground prose-li:text-foreground prose-blockquote:text-foreground prose-code:text-foreground prose-pre:bg-muted prose-pre:text-foreground dark:prose-invert">
           <h1 className="text-3xl font-bold mb-4 text-foreground">{article.title}</h1>
           <div className="text-sm text-muted-foreground mb-4">
-            <span>Last updated: {new Date(article.updated_at).toLocaleDateString()}</span>
+            <span>Last updated: {new Date(article.updatedAt).toLocaleDateString()}</span>
           </div>
           <ReactMarkdown>{article.content}</ReactMarkdown>
         </article>

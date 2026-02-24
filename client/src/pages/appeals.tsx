@@ -938,7 +938,7 @@ const AppealsPage = () => {
                         uploadType="appeal"
                         onUploadComplete={handleFileUpload}
                         metadata={{
-                          appealId: appealForm.getValues('banId') || 'unknown',
+                          entityId: 'new',
                           fieldId: field.id
                         }}
                         variant="compact"
@@ -1323,7 +1323,7 @@ const AppealsPage = () => {
                                   }
                                 }}
                                 metadata={{
-                                  appealId: appealInfo?.id || 'unknown',
+                                  appealId: appealInfo?.id || 'new',
                                   fieldId: 'reply'
                                 }}
                                 variant="button-only"

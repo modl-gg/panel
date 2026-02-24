@@ -42,7 +42,7 @@ interface Ticket {
   locked?: boolean;
   hidden?: boolean;
   tags?: string[];
-  assignedTo?: string;
+  assignedTo?: string[] | string;
   lastReply?: {
     created: string;
     name: string;
@@ -270,6 +270,10 @@ const Tickets = () => {
     const ticketLabels = ticket.tags || [];
     const availableLabelsForTicket = labels.filter(l => !ticketLabels.includes(l.name));
 
+    const assigneeDisplay = Array.isArray(ticket.assignedTo)
+      ? ticket.assignedTo.join(', ')
+      : (ticket.assignedTo || '');
+
     return (
       <TableRow
         key={ticket.id}
@@ -347,10 +351,10 @@ const Tickets = () => {
           </div>
         </TableCell>
         <TableCell className="text-right text-sm text-muted-foreground">
-          {ticket.assignedTo && (
+          {assigneeDisplay && (
             <div className="flex items-center justify-end gap-1">
               <User className="h-3.5 w-3.5" />
-              <span>{ticket.assignedTo}</span>
+              <span>{assigneeDisplay}</span>
             </div>
           )}
         </TableCell>
@@ -381,6 +385,10 @@ const Tickets = () => {
     const isSelected = selectedTickets.has(ticket.id);
     const ticketLabels = ticket.tags || [];
     const availableLabelsForTicket = labels.filter(l => !ticketLabels.includes(l.name));
+
+    const assigneeDisplay = Array.isArray(ticket.assignedTo)
+      ? ticket.assignedTo.join(', ')
+      : (ticket.assignedTo || '');
 
     return (
       <Card
@@ -457,10 +465,10 @@ const Tickets = () => {
               <div className="text-xs text-muted-foreground">
                 #{ticket.id} - {ticket.reportedByName || ticket.reportedBy} - {formatTimeAgo(ticket.date)}
               </div>
-              {ticket.assignedTo && (
+              {assigneeDisplay && (
                 <div className="text-xs text-muted-foreground mt-1 flex items-center gap-1">
                   <User className="h-3 w-3" />
-                  {ticket.assignedTo}
+                  {assigneeDisplay}
                 </div>
               )}
             </div>

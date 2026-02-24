@@ -2,10 +2,13 @@ import { useQuery } from '@tanstack/react-query';
 import { getApiUrl, getCurrentDomain } from '@/lib/api';
 
 async function apiFetch(url: string, options: RequestInit = {}): Promise<Response> {
+  const credentials = options.credentials
+    ?? (url.startsWith('/v1/public/') ? 'omit' : 'include');
+
   const fullUrl = getApiUrl(url);
   return fetch(fullUrl, {
     ...options,
-    credentials: "include",
+    credentials,
     headers: {
       ...options.headers,
       "X-Server-Domain": getCurrentDomain(),

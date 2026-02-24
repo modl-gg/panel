@@ -6,6 +6,12 @@ import { useToast } from '@modl-gg/shared-web/hooks/use-toast';
 import { loadStripe } from '@stripe/stripe-js';
 import { apiFetch } from '@/lib/api';
 import { useBillingStatus, useCancelSubscription, useResubscribe } from '@/hooks/use-data';
+import {
+  formatSubscriptionStatusLabel,
+  hasPremiumAccess,
+  normalizeSubscriptionStatus,
+  type SubscriptionStatus,
+} from '@/lib/backend-enums';
 import { useQueryClient } from '@tanstack/react-query';
 import { Skeleton } from '@modl-gg/shared-web/components/ui/skeleton';
 import { 
@@ -29,6 +35,7 @@ import {
 import { Alert, AlertDescription } from '@modl-gg/shared-web/components/ui/alert';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@modl-gg/shared-web/components/ui/alert-dialog';
 import { Progress } from '@modl-gg/shared-web/components/ui/progress';
+import { Slider } from '@modl-gg/shared-web/components/ui/slider';
 import { Switch } from '@modl-gg/shared-web/components/ui/switch';
 import { Label } from '@modl-gg/shared-web/components/ui/label';
 
@@ -88,7 +95,7 @@ const plans: Plan[] = [
       { text: 'Unlimited players', included: true, icon: <Users className="h-4 w-4" /> },
       { text: 'Advanced ticket system', included: true, icon: <Shield className="h-4 w-4" /> },
       { text: 'Unlimited staff members', included: true, icon: <Users className="h-4 w-4" /> },
-      { text: '500k API requests per month', included: true, icon: <Zap className="h-4 w-4" /> },
+      { text: 'Extended service limits', included: true, icon: <Zap className="h-4 w-4" /> },
       { text: '200GB CDN storage ($0.08/GB/month past 200GB)', included: true, icon: <HardDrive className="h-4 w-4" /> },
       { text: 'AI moderation', included: true, icon: <Brain className="h-4 w-4" /> },
       { text: 'Priority support', included: true, icon: <Crown className="h-4 w-4" /> }
@@ -255,53 +262,13 @@ const BillingSettings = () => {
 
   const getCurrentPlan = () => {
     if (!billingStatus) return 'free';
-    const { plan, subscriptionStatus, currentPeriodEnd } = billingStatus;
-    
-    // If plan is explicitly set to premium in the database, trust it
-    if (plan === 'premium') {
-      // For cancelled subscriptions, check if the period has ended
-      if (subscriptionStatus === 'canceled') {
-        if (!currentPeriodEnd) {
-          return 'free'; // No end date means it's already expired
-        }
-        const endDate = new Date(currentPeriodEnd);
-        const now = new Date();
-        if (endDate <= now) {
-          return 'free'; // Cancellation period has ended
-        }
-        return 'premium'; // Still has access until end date
-      }
-      return 'premium';
-    }
-    
-    // Fallback logic for subscription status
-    if (subscriptionStatus === 'canceled') {
-      if (!currentPeriodEnd) {
-        return 'free';
-      }
-      const endDate = new Date(currentPeriodEnd);
-      const now = new Date();
-      if (endDate <= now) {
-        return 'free';
-      }
-      return 'premium';
-    }
-    
-    if (['active', 'trialing'].includes(subscriptionStatus)) {
-      return 'premium';
-    }
-    
-    if (['past_due', 'unpaid', 'incomplete'].includes(subscriptionStatus)) {
-      if (currentPeriodEnd) {
-        const endDate = new Date(currentPeriodEnd);
-        const now = new Date();
-        if (endDate > now) {
-          return 'premium';
-        }
-      }
-    }
-    
-    return 'free';
+    return hasPremiumAccess({
+      plan: billingStatus.plan,
+      subscriptionStatus: billingStatus.subscriptionStatus,
+      currentPeriodEnd: billingStatus.currentPeriodEnd,
+    })
+      ? 'premium'
+      : 'free';
   };
 
   const isPremiumUser = () => {
@@ -311,10 +278,11 @@ const BillingSettings = () => {
   const getSubscriptionAlert = () => {
     if (isBillingLoading || !billingStatus) return null;
 
-    const { subscriptionStatus, currentPeriodEnd } = billingStatus;
+    const { currentPeriodEnd } = billingStatus;
+    const normalizedStatus = normalizeSubscriptionStatus(billingStatus.subscriptionStatus);
 
     // Special handling for cancelled subscriptions
-    if (subscriptionStatus === 'canceled') {
+    if (normalizedStatus === 'CANCELED') {
       if (!currentPeriodEnd) {
         // No end date means it's already expired - show expired message
         return (
@@ -356,7 +324,7 @@ const BillingSettings = () => {
     }
 
     // Handle other problematic statuses
-    if (['past_due', 'unpaid'].includes(subscriptionStatus)) {
+    if (normalizedStatus === 'PAST_DUE' || normalizedStatus === 'UNPAID') {
       return (
         <Alert variant="destructive" className="flex items-center">
           <AlertTriangle className="h-4 w-4" />
@@ -373,10 +341,11 @@ const BillingSettings = () => {
   const getSubscriptionStatusBadge = () => {
     if (!billingStatus) return null;
     
-    const { subscriptionStatus, currentPeriodEnd } = billingStatus;
+    const { currentPeriodEnd } = billingStatus;
+    const normalizedStatus = normalizeSubscriptionStatus(billingStatus.subscriptionStatus);
     
     // Special handling for cancelled subscriptions
-    if (subscriptionStatus === 'canceled') {
+    if (normalizedStatus === 'CANCELED') {
       if (!currentPeriodEnd) {
         return <Badge variant="secondary" className="bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-100"><AlertTriangle className="h-3 w-3 mr-1" />Expired</Badge>;
       }
@@ -389,15 +358,15 @@ const BillingSettings = () => {
       }
     }
     
-    switch (subscriptionStatus) {
-      case 'active':
+    switch (normalizedStatus) {
+      case 'ACTIVE':
         return <Badge variant="secondary" className="bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-100"><CheckCircle className="h-3 w-3 mr-1" />Active</Badge>;
-      case 'trialing':
+      case 'TRIALING':
         return <Badge variant="secondary" className="bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-100"><Clock className="h-3 w-3 mr-1" />Trial</Badge>;
-      case 'past_due':
+      case 'PAST_DUE':
         return <Badge variant="destructive"><AlertTriangle className="h-3 w-3 mr-1" />Past Due</Badge>;
       default:
-        return <Badge variant="outline">{subscriptionStatus}</Badge>;
+        return <Badge variant="outline">{formatSubscriptionStatusLabel(normalizedStatus)}</Badge>;
     }
   };
 
@@ -472,51 +441,54 @@ const BillingSettings = () => {
   };
 
   const PremiumBillingView = () => {
-    const { subscriptionStatus, currentPeriodEnd, maxStorageLimitBytes } = billingStatus || {};
-    const [storageLimitGB, setStorageLimitGB] = useState<number>(
-      maxStorageLimitBytes ? Math.round(maxStorageLimitBytes / (1024 * 1024 * 1024)) : 200
+    const {
+      currentPeriodEnd,
+      maxStorageLimitBytes,
+      maxAiOverageRequests,
+    } = billingStatus || {};
+    const normalizedStatus: SubscriptionStatus = normalizeSubscriptionStatus(billingStatus?.subscriptionStatus);
+    const [storageOverageGB, setStorageOverageGB] = useState<number>(
+      maxStorageLimitBytes ? Math.max(0, Math.round(maxStorageLimitBytes / (1024 * 1024 * 1024)) - 200) : 0
     );
-    const [savingStorageLimit, setSavingStorageLimit] = useState(false);
+    const [aiOverageRequests, setAiOverageRequests] = useState<number>(maxAiOverageRequests ?? 0);
+    const [savingOverageLimits, setSavingOverageLimits] = useState(false);
 
     useEffect(() => {
       if (maxStorageLimitBytes) {
-        setStorageLimitGB(Math.round(maxStorageLimitBytes / (1024 * 1024 * 1024)));
+        setStorageOverageGB(Math.max(0, Math.round(maxStorageLimitBytes / (1024 * 1024 * 1024)) - 200));
       }
     }, [maxStorageLimitBytes]);
 
-    const handleSaveStorageLimit = async () => {
-      if (storageLimitGB > 10000) {
-        toast({
-          title: 'Error',
-          description: 'If you need in excess of 10TB of storage, please contact support.',
-          variant: 'destructive',
-        });
-        return;
-      }
-      setSavingStorageLimit(true);
+    useEffect(() => {
+      setAiOverageRequests(maxAiOverageRequests ?? 0);
+    }, [maxAiOverageRequests]);
+
+    const handleSaveOverageLimits = async () => {
+      setSavingOverageLimits(true);
       try {
-        const response = await apiFetch('/v1/panel/billing/storage-limit', {
+        const response = await apiFetch('/v1/panel/billing/overage-limits', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ maxStorageLimitBytes: storageLimitGB * 1024 * 1024 * 1024 }),
+          body: JSON.stringify({ maxStorageOverageGB: storageOverageGB, maxAiOverageRequests: aiOverageRequests }),
         });
         if (!response.ok) {
           const data = await response.json();
-          throw new Error(data.error || 'Failed to update storage limit');
+          throw new Error(data.error || 'Failed to update overage limits');
         }
         toast({
-          title: 'Storage Limit Updated',
-          description: `Maximum storage limit set to ${storageLimitGB} GB.`,
+          title: 'Overage Limits Updated',
+          description: `Storage overage: ${storageOverageGB} GB, AI overage: ${aiOverageRequests} requests.`,
         });
         queryClient.invalidateQueries({ queryKey: ['/v1/panel/billing/status'] });
+        queryClient.invalidateQueries({ queryKey: ['/v1/panel/billing/usage'] });
       } catch (error: any) {
         toast({
           title: 'Error',
-          description: error.message || 'Failed to update storage limit.',
+          description: error.message || 'Failed to update overage limits.',
           variant: 'destructive',
         });
       } finally {
-        setSavingStorageLimit(false);
+        setSavingOverageLimits(false);
       }
     };
 
@@ -534,13 +506,13 @@ const BillingSettings = () => {
                   <span className="text-2xl font-bold text-primary">$9.99/month</span>
                 </CardTitle>
                 <CardDescription className='mt-4'>
-                  {subscriptionStatus === 'canceled' && currentPeriodEnd
+                  {normalizedStatus === 'CANCELED' && currentPeriodEnd
                     ? `Access ends ${new Date(currentPeriodEnd).toLocaleDateString()}`
-                    : subscriptionStatus === 'canceled' && !currentPeriodEnd
+                    : normalizedStatus === 'CANCELED' && !currentPeriodEnd
                     ? 'Your subscription has been cancelled and access has ended.'
                     : currentPeriodEnd 
-                    ? `${subscriptionStatus === 'trialing' ? 'Trial ends' : 'Next billing'} ${new Date(currentPeriodEnd).toLocaleDateString()}`
-                    : subscriptionStatus === 'active'
+                    ? `${normalizedStatus === 'TRIALING' ? 'Trial ends' : 'Next billing'} ${new Date(currentPeriodEnd).toLocaleDateString()}`
+                    : normalizedStatus === 'ACTIVE'
                     ? 'Your premium subscription is active. Billing information is being synced with Stripe.'
                     : 'Modl uses Stripe to handle billing. Use the buttons below to manage your subscription.'
                   }
@@ -554,7 +526,7 @@ const BillingSettings = () => {
           <CardContent className="space-y-6">
             {/* Billing Management Buttons */}
             <div className="flex gap-3">
-              {subscriptionStatus !== 'canceled' && (
+              {normalizedStatus !== 'CANCELED' && (
                 <Button 
                   onClick={handleCreatePortalSession}
                   disabled={isLoading}
@@ -565,7 +537,7 @@ const BillingSettings = () => {
                 </Button>
               )}
               
-              {subscriptionStatus === 'active' && (
+              {normalizedStatus === 'ACTIVE' && (
                 <AlertDialog>
                   <AlertDialogTrigger asChild>
                     <Button 
@@ -599,7 +571,7 @@ const BillingSettings = () => {
                 </AlertDialog>
               )}
               
-              {subscriptionStatus === 'canceled' && (
+              {normalizedStatus === 'CANCELED' && (
                 <>
                   <Button 
                     onClick={handleCreatePortalSession}
@@ -647,48 +619,79 @@ const BillingSettings = () => {
           </CardContent>
         </Card>
 
-        {/* Storage Limit Configuration */}
+        {/* Usage Overage Limits */}
         <Card>
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
-              <HardDrive className="h-5 w-5" />
-              Storage Limit
+              <Settings className="h-5 w-5" />
+              Usage Overage Limits
             </CardTitle>
             <CardDescription>
-              Configure the maximum storage limit for your server. The base 200GB is included with your premium plan.
-              Usage above 200GB is billed at $0.08/GB/month.
+              Configure the maximum overage you're willing to allow beyond your included plan limits.
+              Set to 0 to prevent any overage charges.
             </CardDescription>
           </CardHeader>
-          <CardContent className="space-y-4">
-            <div className="flex items-end gap-3">
-              <div className="flex-1">
-                <Label htmlFor="storage-limit">Maximum Storage (GB)</Label>
-                <input
-                  id="storage-limit"
-                  type="number"
-                  min={1}
-                  value={storageLimitGB}
-                  onChange={(e) => setStorageLimitGB(Math.max(1, parseInt(e.target.value) || 1))}
-                  className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 mt-1.5"
-                />
+          <CardContent className="space-y-6">
+            {/* Storage Overage Slider */}
+            <div className="space-y-3">
+              <div className="flex items-center justify-between">
+                <Label className="flex items-center gap-2">
+                  <HardDrive className="h-4 w-4" />
+                  Storage Overage Limit
+                </Label>
+                <span className="text-sm font-medium">{storageOverageGB} GB</span>
               </div>
-              <Button
-                onClick={handleSaveStorageLimit}
-                disabled={savingStorageLimit || storageLimitGB > 10000}
-              >
-                {savingStorageLimit ? 'Saving...' : 'Save'}
-              </Button>
-            </div>
-            {storageLimitGB > 10000 && (
-              <p className="text-sm text-destructive">
-                If you need in excess of 10TB of storage, please contact support.
-              </p>
-            )}
-            {storageLimitGB > 200 && storageLimitGB <= 10000 && (
+              <Slider
+                value={[storageOverageGB]}
+                onValueChange={([v]) => setStorageOverageGB(v)}
+                min={0}
+                max={2000}
+                step={10}
+              />
+              <div className="flex items-center justify-between text-xs text-muted-foreground">
+                <span>0 GB (no overage)</span>
+                <span>2,000 GB</span>
+              </div>
               <p className="text-sm text-muted-foreground">
-                Estimated overage cost: <strong>${((storageLimitGB - 200) * 0.08).toFixed(2)}/month</strong> if fully used (at $0.08/GB/month for storage above 200GB).
+                Rate: $0.08/GB/month &middot; Max cost: <strong>${(storageOverageGB * 0.08).toFixed(2)}/month</strong>
               </p>
-            )}
+            </div>
+
+            {/* AI Request Overage Slider */}
+            <div className="space-y-3">
+              <div className="flex items-center justify-between">
+                <Label className="flex items-center gap-2">
+                  <Brain className="h-4 w-4" />
+                  AI Request Overage Limit
+                </Label>
+                <span className="text-sm font-medium">{aiOverageRequests.toLocaleString()} requests</span>
+              </div>
+              <Slider
+                value={[aiOverageRequests]}
+                onValueChange={([v]) => setAiOverageRequests(v)}
+                min={0}
+                max={5000}
+                step={100}
+              />
+              <div className="flex items-center justify-between text-xs text-muted-foreground">
+                <span>0 (no overage)</span>
+                <span>5,000 requests</span>
+              </div>
+              <p className="text-sm text-muted-foreground">
+                Rate: $0.02/request &middot; Max cost: <strong>${(aiOverageRequests * 0.02).toFixed(2)}/month</strong>
+              </p>
+            </div>
+
+            <p className="text-sm text-muted-foreground">
+              Need higher limits? Contact support for custom pricing.
+            </p>
+
+            <Button
+              onClick={handleSaveOverageLimits}
+              disabled={savingOverageLimits}
+            >
+              {savingOverageLimits ? 'Saving...' : 'Save'}
+            </Button>
           </CardContent>
         </Card>
       </div>
@@ -696,7 +699,8 @@ const BillingSettings = () => {
   };
 
   const FreePlanView = () => {
-    const premiumPlan = plans.find(p => p.id === 'premium')!;
+    const premiumPlan = plans.find(p => p.id === 'premium');
+    const premiumFeatures = premiumPlan?.features ?? [];
     
   return (
       <div className="space-y-6">
@@ -738,7 +742,7 @@ const BillingSettings = () => {
               <div className="lg:col-span-2 flex flex-col justify-center ml-0 lg:ml-8 mt-0 lg:mt-[-80px]">
                 <h4 className="font-medium text-sm text-muted-foreground mb-4">Premium Features</h4>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                  {premiumPlan.features.map((feature, index) => (
+                  {premiumFeatures.map((feature, index) => (
                     <div key={index} className="flex items-center gap-3">
                       <Check className="h-4 w-4 text-green-600 flex-shrink-0" />
                       {feature.icon && (
@@ -750,6 +754,9 @@ const BillingSettings = () => {
                     </div>
                   ))}
                 </div>
+                {premiumFeatures.length === 0 && (
+                  <p className="text-sm text-muted-foreground">Premium feature list is currently unavailable.</p>
+                )}
               </div>
             </div>
           </CardContent>

@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { HardDrive, Search, Filter, Trash2, Download, FolderOpen, Calendar, AlertCircle, Settings, CreditCard, Brain, Zap } from 'lucide-react';
+import { HardDrive, Search, Trash2, Download, FolderOpen, Calendar, AlertCircle, Settings, CreditCard, Brain } from 'lucide-react';
 import { getApiUrl, getCurrentDomain, apiFetch } from '@/lib/api';
 import { Button } from '@modl-gg/shared-web/components/ui/button';
 import { Input } from '@modl-gg/shared-web/components/ui/input';
@@ -26,6 +26,7 @@ interface StorageFile {
 }
 
 interface StorageUsage {
+  isPremium: boolean;
   totalUsed: number;
   totalQuota: number;
   byType: {
@@ -110,6 +111,7 @@ const UsageSettings = () => {
   const [newOverageLimit, setNewOverageLimit] = useState<number>(0);
   const [currentPage, setCurrentPage] = useState(1);
   const [itemsPerPage, setItemsPerPage] = useState(25);
+  const DEFAULT_AI_LIMIT = 1000;
 
   useEffect(() => {
     fetchStorageData();
@@ -120,12 +122,22 @@ const fetchStorageData = async () => {
     try {
       setLoading(true);
 
-      // Fetch storage usage using quota endpoint
-      const usageResponse = await fetch(getApiUrl('/v1/panel/storage/quota'), {
-        credentials: 'include',
+      const requestOptions = {
+        credentials: 'include' as RequestCredentials,
         headers: { 'X-Server-Domain': getCurrentDomain() }
-      });
+      };
+
+      const [usageResponse, billingUsageResponse] = await Promise.all([
+        fetch(getApiUrl('/v1/panel/storage/quota'), requestOptions),
+        fetch(getApiUrl('/v1/panel/billing/usage'), requestOptions)
+      ]);
+
+      if (!usageResponse.ok) {
+        throw new Error(`Failed to fetch storage quota: ${usageResponse.status}`);
+      }
+
       const usageData = await usageResponse.json();
+      const billingUsageData = billingUsageResponse.ok ? await billingUsageResponse.json() : null;
       
       // Detect response format: 
       // - Old format: { usedBytes, maxBytes, usedPercentage, usedFormatted, maxFormatted } (values in bytes)
@@ -166,7 +178,10 @@ const fetchStorageData = async () => {
         other: cdnUsedBytes
       };
 
+      const isPremium = Boolean(usageData.isPremium);
+
       const usage: StorageUsage = {
+        isPremium,
         totalUsed: cdnUsedBytes,
         totalQuota: cdnLimitBytes,
         byType,
@@ -182,12 +197,25 @@ const fetchStorageData = async () => {
           overageUsed: 0,
           overageUsedFormatted: '0 Bytes',
           overageCost: usageData.cdn?.overageCost ?? 0,
-          isPaid: usageData.usageBillingEnabled ?? false,
+          isPaid: billingUsageData?.usageBillingEnabled ?? usageData.usageBillingEnabled ?? false,
           canUpload: cdnPercentage < 100,
           usagePercentage: Math.round(cdnPercentage * 100) / 100,
           baseUsagePercentage: Math.round(cdnPercentage * 100) / 100
         },
-        aiQuota: usageData.aiQuota ? {
+        aiQuota: isPremium && billingUsageData?.ai ? {
+          totalUsed: Number(billingUsageData.ai.used ?? 0),
+          baseLimit: Number(billingUsageData.ai.limit ?? DEFAULT_AI_LIMIT),
+          overageUsed: Number(billingUsageData.ai.overage ?? 0),
+          overageCost: Number(billingUsageData.ai.overageCost ?? 0),
+          canUseAI: Number(billingUsageData.ai.used ?? 0) < Number(billingUsageData.ai.limit ?? DEFAULT_AI_LIMIT),
+          usagePercentage: Math.max(0, Math.min(100, Math.round(Number(billingUsageData.ai.percentage ?? 0) * 100) / 100)),
+          byService: {
+            moderation: 0,
+            ticket_analysis: 0,
+            appeal_analysis: 0,
+            other: Number(billingUsageData.ai.used ?? 0)
+          }
+        } : isPremium && usageData.aiQuota ? {
           totalUsed: usageData.aiQuota.totalUsed ?? 0,
           baseLimit: usageData.aiQuota.baseLimit ?? 0,
           overageUsed: usageData.aiQuota.overageUsed ?? 0,
@@ -205,7 +233,7 @@ const fetchStorageData = async () => {
             appeal_analysis: 0,
             other: usageData.aiQuota.totalUsed ?? 0
           }
-        } : usageData.ai ? {
+        } : isPremium && usageData.ai ? {
           totalUsed: usageData.ai.used ?? 0,
           baseLimit: usageData.ai.limit ?? 0,
           overageUsed: usageData.ai.overage ?? 0,
@@ -221,12 +249,12 @@ const fetchStorageData = async () => {
         } : undefined,
         pricing: {
           storage: {
-            overagePricePerGB: usageData.cdn?.overageRate ?? 0.08,
+            overagePricePerGB: billingUsageData?.cdn?.overageRate ?? usageData.cdn?.overageRate ?? 0.08,
             currency: 'USD',
             period: 'month'
           },
           ai: {
-            overagePricePerRequest: usageData.ai?.overageRate ?? 0.01,
+            overagePricePerRequest: billingUsageData?.ai?.overageRate ?? usageData.ai?.overageRate ?? 0.02,
             currency: 'USD',
             period: 'month'
           }
@@ -236,10 +264,10 @@ const fetchStorageData = async () => {
       setStorageUsage(usage);
 
       // Fetch files
-      const filesResponse = await fetch(getApiUrl('/v1/panel/storage/files'), {
-        credentials: 'include',
-        headers: { 'X-Server-Domain': getCurrentDomain() }
-      });
+      const filesResponse = await fetch(getApiUrl('/v1/panel/storage/files'), requestOptions);
+      if (!filesResponse.ok) {
+        throw new Error(`Failed to fetch files: ${filesResponse.status}`);
+      }
       const filesData = await filesResponse.json();
       
       // Transform the file data to match the expected structure
@@ -380,6 +408,8 @@ const fetchStorageData = async () => {
       default: return <HardDrive className="h-4 w-4" />;
     }
   };
+
+  const formatRequestCount = (value: number) => Math.round(value).toLocaleString();
 
   const filteredAndSortedFiles = files
     .filter(file => {
@@ -660,8 +690,8 @@ const fetchStorageData = async () => {
                   <>
                     <div>
                       <div className="flex justify-between text-sm mb-2">
-                        <span>Used: {storageUsage.aiQuota.totalUsed} requests</span>
-                        <span>Limit: {storageUsage.aiQuota.baseLimit} requests</span>
+                        <span>Used: {formatRequestCount(storageUsage.aiQuota.totalUsed)} requests</span>
+                        <span>Limit: {formatRequestCount(storageUsage.aiQuota.baseLimit)} requests</span>
                       </div>
                       <Progress 
                         value={storageUsage.aiQuota.usagePercentage}
@@ -676,7 +706,7 @@ const fetchStorageData = async () => {
                       <div className="space-y-2">
                         <div className="flex justify-between text-sm">
                           <span>Overage Used:</span>
-                          <span>{storageUsage.aiQuota.overageUsed} requests</span>
+                          <span>{formatRequestCount(storageUsage.aiQuota.overageUsed)} requests</span>
                         </div>
                         <div className="flex justify-between text-sm">
                           <span>Overage Cost:</span>
@@ -685,17 +715,17 @@ const fetchStorageData = async () => {
                       </div>
                     )}
                     
-                    <div className="space-y-1">
-                      <div className="text-xs font-medium text-muted-foreground">By Service:</div>
+                    <div className="border-t pt-4 mt-4 space-y-1">
+                      <div className="text-xs font-medium text-muted-foreground">AI Breakdown</div>
                       {Object.entries(storageUsage.aiQuota.byService).map(([service, count]) => (
                         <div key={service} className="flex justify-between text-xs">
                           <span className="capitalize">{service.replace('_', ' ')}: </span>
-                          <span>{count}</span>
+                          <span>{formatRequestCount(count as number)}</span>
                         </div>
                       ))}
                     </div>
                   </>
-                ) : (
+                ) : storageUsage.isPremium ? (
                   <div className="space-y-2">
                     <div className="flex justify-between text-sm">
                       <span>Status:</span>
@@ -703,6 +733,19 @@ const fetchStorageData = async () => {
                     </div>
                     <p className="text-xs text-muted-foreground">
                       AI usage tracking is not enabled for this server.
+                    </p>
+                  </div>
+                ) : (
+                  <div className="space-y-2">
+                    <div className="flex justify-between text-sm">
+                      <span>Status:</span>
+                      <span className="text-muted-foreground">Premium only</span>
+                    </div>
+                    <p className="text-xs text-muted-foreground">
+                      AI is only available for Premium users.
+                    </p>
+                    <p className="text-xs text-muted-foreground">
+                      Upgrade to Premium to access AI moderation and analysis features.
                     </p>
                   </div>
                 )}
@@ -763,8 +806,8 @@ const fetchStorageData = async () => {
                 </div>
                 <div className="flex justify-between text-sm">
                   <span>AI Available:</span>
-                  <span className={storageUsage.aiQuota?.canUseAI ? 'text-green-600' : 'text-red-600'}>
-                    {storageUsage.aiQuota?.canUseAI ? 'Yes' : 'No'}
+                  <span className={storageUsage.isPremium && storageUsage.aiQuota ? 'text-green-600' : 'text-red-600'}>
+                    {storageUsage.isPremium && storageUsage.aiQuota ? 'Yes' : 'No'}
                   </span>
                 </div>
               </div>

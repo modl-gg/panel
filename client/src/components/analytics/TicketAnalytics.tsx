@@ -23,9 +23,6 @@ const COLORS = ['#3b82f6', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6', '#ec4899'
 const statusColorMap: { [key: string]: string } = {
   'Open': '#3b82f6',
   'Closed': '#10b981',
-  'Under Review': '#f59e0b',
-  'Pending Player Response': '#8b5cf6',
-  'Resolved': '#10b981',
   'Unfinished': '#6b7280'
 };
 

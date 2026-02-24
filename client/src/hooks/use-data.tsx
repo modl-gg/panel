@@ -3,17 +3,48 @@ import { useQuery, useMutation, useQueryClient, QueryClient, useQueries } from '
 import { queryClient } from '../lib/queryClient';
 import { useAuth } from './use-auth';
 import { getApiUrl, getCurrentDomain } from '@/lib/api';
+import { isPublicPage } from '@/utils/routes';
 
 // Helper function to make API requests with the X-Server-Domain header
 async function apiFetch(url: string, options: RequestInit = {}): Promise<Response> {
-  return fetch(getApiUrl(url), {
+  const credentials = options.credentials
+    ?? (url.startsWith('/v1/public/') ? 'omit' : 'include');
+
+  const response = await fetch(getApiUrl(url), {
     ...options,
-    credentials: 'include',
+    credentials,
     headers: {
       ...options.headers,
       'X-Server-Domain': getCurrentDomain(),
     },
   });
+  if (response.status === 429) {
+    const { handleRateLimitResponse, getCurrentPath } = await import('../utils/rate-limit-handler');
+    await handleRateLimitResponse(response, getCurrentPath());
+    throw new Error('Rate limit exceeded');
+  }
+  return response;
+}
+
+type SettingsEnvelope<T> = {
+  data: T;
+  _meta?: {
+    version: number;
+    updatedAt?: string | null;
+  } | null;
+};
+
+function toSettingsEnvelope<T>(payload: any): SettingsEnvelope<T> {
+  if (payload && typeof payload === 'object' && 'data' in payload) {
+    return payload as SettingsEnvelope<T>;
+  }
+  return {
+    data: payload as T,
+    _meta: {
+      version: 0,
+      updatedAt: null,
+    },
+  };
 }
 
 export function usePlayer(uuid: string) {
@@ -409,16 +440,10 @@ export function useSettings() {
   return useQuery({
     queryKey: ['/v1/settings'],
     queryFn: async () => {
-      const currentPath = window.location.pathname;
-      const isPublicPage = currentPath.startsWith('/ticket/') ||
-                          currentPath.startsWith('/appeal') ||
-                          currentPath.startsWith('/submit-ticket') ||
-                          currentPath === '/' ||
-                          currentPath.startsWith('/knowledgebase') ||
-                          currentPath.startsWith('/article/');
+      const isPublic = isPublicPage();
 
       try {
-        if (isPublicPage) {
+        if (isPublic) {
           const publicRes = await apiFetch('/v1/public/settings');
 
           if (publicRes.ok) {
@@ -441,7 +466,8 @@ export function useSettings() {
           ]);
 
           if (res.ok) {
-            const data = await res.json();
+            const generalEnvelope = toSettingsEnvelope<any>(await res.json());
+            const general = generalEnvelope.data || {};
             let webhookSettings = null;
 
             if (webhookRes.ok) {
@@ -450,7 +476,9 @@ export function useSettings() {
 
             return {
               settings: {
-                ...data,
+                ...general,
+                general,
+                generalMeta: generalEnvelope._meta || null,
                 webhookSettings
               }
             };
@@ -478,13 +506,25 @@ export function useSettings() {
         throw new Error('Failed to fetch settings from all available endpoints');
       } catch (error) {
         try {
-          const fallbackUrl = isPublicPage ? '/v1/panel/settings/general' : '/v1/public/settings';
+          const fallbackUrl = isPublic ? '/v1/panel/settings/general' : '/v1/public/settings';
           const fallbackRes = await apiFetch(fallbackUrl);
 
           if (fallbackRes.ok) {
-            if (isPublicPage) {
-              const data = JSON.parse(await fallbackRes.text());
-              return { settings: data.settings || {} };
+            if (isPublic) {
+              const payload = await fallbackRes.json();
+              if (payload && typeof payload === 'object' && 'settings' in payload) {
+                return { settings: (payload as any).settings || {} };
+              }
+
+              const generalEnvelope = toSettingsEnvelope<any>(payload);
+              const general = generalEnvelope.data || {};
+              return {
+                settings: {
+                  ...general,
+                  general,
+                  generalMeta: generalEnvelope._meta || null,
+                }
+              };
             } else {
               const publicData = await fallbackRes.json();
               return {
@@ -525,7 +565,7 @@ export function useSettings() {
 }
 
 export function useTicketFormSettings() {
-  return useQuery({
+  return useQuery<SettingsEnvelope<any> | null>({
     queryKey: ['/v1/panel/settings/ticket-forms'],
     queryFn: async () => {
       const res = await apiFetch('/v1/panel/settings/ticket-forms');
@@ -535,7 +575,7 @@ export function useTicketFormSettings() {
         }
         throw new Error('Failed to fetch ticket form settings');
       }
-      return res.json();
+      return toSettingsEnvelope(await res.json());
     },
     staleTime: 1000 * 60 * 5,
     refetchOnWindowFocus: false
@@ -543,7 +583,7 @@ export function useTicketFormSettings() {
 }
 
 export function useQuickResponses() {
-  return useQuery({
+  return useQuery<SettingsEnvelope<any> | null>({
     queryKey: ['/v1/panel/settings/quick-responses'],
     queryFn: async () => {
       const res = await apiFetch('/v1/panel/settings/quick-responses');
@@ -553,7 +593,7 @@ export function useQuickResponses() {
         }
         throw new Error('Failed to fetch quick responses');
       }
-      return res.json();
+      return toSettingsEnvelope(await res.json());
     },
     staleTime: 1000 * 60 * 5,
     refetchOnWindowFocus: false
@@ -561,7 +601,7 @@ export function useQuickResponses() {
 }
 
 export function useStatusThresholds() {
-  return useQuery({
+  return useQuery<SettingsEnvelope<any> | null>({
     queryKey: ['/v1/panel/settings/status-thresholds'],
     queryFn: async () => {
       const res = await apiFetch('/v1/panel/settings/status-thresholds');
@@ -571,7 +611,25 @@ export function useStatusThresholds() {
         }
         throw new Error('Failed to fetch status thresholds');
       }
-      return res.json();
+      return toSettingsEnvelope(await res.json());
+    },
+    staleTime: 1000 * 60 * 5,
+    refetchOnWindowFocus: false
+  });
+}
+
+export function useTicketLabelSettings() {
+  return useQuery<SettingsEnvelope<any> | null>({
+    queryKey: ['/v1/panel/settings/ticket-labels'],
+    queryFn: async () => {
+      const res = await apiFetch('/v1/panel/settings/ticket-labels');
+      if (!res.ok) {
+        if (res.status === 401 || res.status === 403) {
+          return null;
+        }
+        throw new Error('Failed to fetch ticket label settings');
+      }
+      return toSettingsEnvelope(await res.json());
     },
     staleTime: 1000 * 60 * 5,
     refetchOnWindowFocus: false
@@ -814,9 +872,9 @@ export function usePanelTicket(id: string) {
 
 export function usePlayerTickets(uuid: string) {
   return useQuery({
-    queryKey: ['/v1/panel/tickets/creator', uuid],
+    queryKey: ['/v1/panel/tickets/player', uuid],
     queryFn: async () => {
-      const res = await apiFetch(`/v1/panel/tickets/creator/${uuid}`);
+      const res = await apiFetch(`/v1/panel/tickets/player/${uuid}`);
       if (!res.ok) {
         if (res.status === 404) {
           return [];
@@ -1201,7 +1259,7 @@ export function useRecentTickets(limit: number = 5) {
       return res.json();
     },
     staleTime: 2 * 60 * 1000,
-    refetchOnWindowFocus: true,
+    refetchOnWindowFocus: false,
   });
 }
 
@@ -1216,7 +1274,7 @@ export function useRecentPunishments(limit: number = 10) {
       return res.json();
     },
     staleTime: 2 * 60 * 1000,
-    refetchOnWindowFocus: true,
+    refetchOnWindowFocus: false,
   });
 }
 
@@ -1277,7 +1335,7 @@ export function useMarkSubscriptionUpdateAsRead() {
 
   return useMutation({
     mutationFn: async (updateId: string) => {
-      const res = await apiFetch(`/v1/panel/ticket-subscriptions/updates/${updateId}/read`, {
+      const res = await apiFetch(`/v1/panel/ticket-subscriptions/updates/${encodeURIComponent(updateId)}/read`, {
         method: 'POST',
       });
 
@@ -1289,6 +1347,29 @@ export function useMarkSubscriptionUpdateAsRead() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['/v1/panel/ticket-subscriptions/updates'] });
+      queryClient.invalidateQueries({ queryKey: ['/v1/panel/ticket-subscriptions/assigned-updates'] });
+    },
+  });
+}
+
+export function useMarkTicketAsRead() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async (ticketId: string) => {
+      const res = await apiFetch(`/v1/panel/ticket-subscriptions/tickets/${encodeURIComponent(ticketId)}/read`, {
+        method: 'POST',
+      });
+
+      if (!res.ok) {
+        throw new Error('Failed to mark ticket as read');
+      }
+
+      return res.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['/v1/panel/ticket-subscriptions/updates'] });
+      queryClient.invalidateQueries({ queryKey: ['/v1/panel/ticket-subscriptions/assigned-updates'] });
     },
   });
 }
@@ -1408,14 +1489,17 @@ export function useBulkUpdateTickets() {
 
 export function useLabels() {
   return useQuery({
-    queryKey: ['/v1/panel/settings/general/labels'],
+    queryKey: ['/v1/panel/settings/ticket-labels', 'labels'],
     queryFn: async () => {
-      const res = await apiFetch('/v1/panel/settings/general');
+      const res = await apiFetch('/v1/panel/settings/ticket-labels');
       if (!res.ok) {
+        if (res.status === 401 || res.status === 403) {
+          return [];
+        }
         throw new Error('Failed to fetch labels');
       }
-      const data = await res.json();
-      return data.labels || [];
+      const envelope = toSettingsEnvelope<any>(await res.json());
+      return envelope?.data?.labels || [];
     },
     staleTime: 1000 * 60 * 5,
     refetchOnWindowFocus: false
@@ -1433,7 +1517,7 @@ export function useAssignedTicketUpdates(limit: number = 10) {
       return res.json();
     },
     staleTime: 30 * 1000,
-    refetchOnWindowFocus: true,
+    refetchOnWindowFocus: false,
   });
 }
 

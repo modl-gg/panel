@@ -47,11 +47,11 @@ interface HomepageCard {
   title: string;
   description: string;
   icon: string;
-  icon_color?: string;
-  action_type: 'url' | 'category_dropdown';
-  action_url?: string;
-  action_button_text?: string;
-  background_color?: string;
+  iconColor?: string;
+  actionType: 'url' | 'category_dropdown';
+  actionUrl?: string;
+  actionButtonText?: string;
+  backgroundColor?: string;
   ordinal: number;
   category?: {
     id: string;
@@ -170,9 +170,9 @@ const HomePage: React.FC = () => {
   const renderHomepageCard = (card: HomepageCard, index: number) => {
     const IconComponent = getIconComponent(card.icon);
     const isExpanded = expandedCards.has(card.id);
-    const iconColor = card.icon_color || '#3b82f6'; // Default to blue if no color specified
+    const iconColor = card.iconColor || '#3b82f6'; // Default to blue if no color specified
 
-    if (card.action_type === 'category_dropdown' && card.category) {
+    if (card.actionType === 'category_dropdown' && card.category) {
       return (
         <Card key={card.id} className="group hover:shadow-md transition-all duration-300 hover:-translate-y-1 h-72">
           <Collapsible open={isExpanded} onOpenChange={() => toggleExpanded(card.id)}>
@@ -197,8 +197,8 @@ const HomePage: React.FC = () => {
       );
     } else {
       // URL action type
-      const buttonText = card.action_button_text || 'Learn More';
-      const url = card.action_url || '#';
+      const buttonText = card.actionButtonText || 'Learn More';
+      const url = card.actionUrl || '#';
       
       return (
         <Card key={card.id} className="group hover:shadow-md transition-all duration-300 hover:-translate-y-1 h-64 sm:h-72">
@@ -439,10 +439,10 @@ const HomePage: React.FC = () => {
             <div className="mt-6 space-y-4">
               {homepageCards.length > 0 ? (
                 homepageCards
-                  .filter(card => card.action_type === 'category_dropdown' && card.category && expandedCards.has(card.id))
+                  .filter(card => card.actionType === 'category_dropdown' && card.category && expandedCards.has(card.id))
                   .map(card => {
                     const IconComponent = getIconComponent(card.icon);
-                    const iconColor = card.icon_color || '#3b82f6';
+                    const iconColor = card.iconColor || '#3b82f6';
                     
                     return (
                       <Card key={`expanded-${card.id}`} className="bg-muted/20 border-2 border-dashed border-primary/20">

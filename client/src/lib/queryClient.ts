@@ -1,6 +1,15 @@
 import { QueryClient, QueryFunction } from "@tanstack/react-query";
 import { getApiUrl, getCurrentDomain } from "./api";
 
+function resolveCredentials(url: string, credentials?: RequestCredentials): RequestCredentials {
+  if (credentials) {
+    return credentials;
+  }
+
+  const normalizedPath = url.startsWith("/") ? url : `/${url}`;
+  return normalizedPath.startsWith("/v1/public/") ? "omit" : "include";
+}
+
 async function throwIfResNotOk(res: Response) {
   if (!res.ok) {
     const text = (await res.text()) || res.statusText;
@@ -22,7 +31,7 @@ export async function apiRequest(
       "X-Server-Domain": getCurrentDomain(),
     },
     body: data ? JSON.stringify(data) : undefined,
-    credentials: "include",
+    credentials: resolveCredentials(url),
   });
 
   await throwIfResNotOk(res);
@@ -36,9 +45,10 @@ export const getQueryFn: <T>(options: {
   ({ on401: unauthorizedBehavior }) =>
   async ({ queryKey }) => {
     const fullUrl = getApiUrl(queryKey[0] as string);
+    const url = queryKey[0] as string;
 
     const res = await fetch(fullUrl, {
-      credentials: "include",
+      credentials: resolveCredentials(url),
       headers: {
         "X-Server-Domain": getCurrentDomain(),
       },

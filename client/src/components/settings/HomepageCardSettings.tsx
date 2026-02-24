@@ -56,13 +56,13 @@ interface HomepageCard {
   title: string;
   description: string;
   icon: string;
-  icon_color?: string;
-  action_type: 'url' | 'category_dropdown';
-  action_url?: string;
-  action_button_text?: string;
-  category_id?: string;
-  background_color?: string;
-  is_enabled: boolean;
+  iconColor?: string;
+  actionType: 'url' | 'category_dropdown';
+  actionUrl?: string;
+  actionButtonText?: string;
+  categoryId?: string;
+  backgroundColor?: string;
+  isEnabled: boolean;
   ordinal: number;
   category?: {
     id: string;
@@ -114,13 +114,13 @@ const HomepageCardSettings: React.FC = () => {
     title: '',
     description: '',
     icon: 'BookOpen',
-    icon_color: '#3b82f6', // Default blue color
-    action_type: 'url' as 'url' | 'category_dropdown',
-    action_url: '',
-    action_button_text: '',
-    category_id: '',
-    background_color: '',
-    is_enabled: true
+    iconColor: '#3b82f6', // Default blue color
+    actionType: 'url' as 'url' | 'category_dropdown',
+    actionUrl: '',
+    actionButtonText: '',
+    categoryId: '',
+    backgroundColor: '',
+    isEnabled: true
   });
 
   const availableIcons = getAvailableIcons();
@@ -215,13 +215,13 @@ const HomepageCardSettings: React.FC = () => {
       title: '',
       description: '',
       icon: 'BookOpen',
-      icon_color: '#3b82f6',
-      action_type: 'url',
-      action_url: '',
-      action_button_text: '',
-      category_id: '',
-      background_color: '',
-      is_enabled: true
+      iconColor: '#3b82f6',
+      actionType: 'url',
+      actionUrl: '',
+      actionButtonText: '',
+      categoryId: '',
+      backgroundColor: '',
+      isEnabled: true
     });
   };
 
@@ -231,12 +231,12 @@ const HomepageCardSettings: React.FC = () => {
       return;
     }
 
-    if (formData.action_type === 'url' && !formData.action_url.trim()) {
+    if (formData.actionType === 'url' && !formData.actionUrl.trim()) {
       toast({ title: 'Error', description: 'URL is required for URL actions.', variant: 'destructive' });
       return;
     }
 
-    if (formData.action_type === 'category_dropdown' && !formData.category_id) {
+    if (formData.actionType === 'category_dropdown' && !formData.categoryId) {
       toast({ title: 'Error', description: 'Category is required for category dropdown actions.', variant: 'destructive' });
       return;
     }
@@ -261,13 +261,13 @@ const HomepageCardSettings: React.FC = () => {
       title: card.title,
       description: card.description,
       icon: card.icon,
-      icon_color: card.icon_color || '#3b82f6',
-      action_type: card.action_type,
-      action_url: card.action_url || '',
-      action_button_text: card.action_button_text || '',
-      category_id: card.category_id || '',
-      background_color: card.background_color || '',
-      is_enabled: card.is_enabled
+      iconColor: card.iconColor || '#3b82f6',
+      actionType: card.actionType,
+      actionUrl: card.actionUrl || '',
+      actionButtonText: card.actionButtonText || '',
+      categoryId: card.categoryId || '',
+      backgroundColor: card.backgroundColor || '',
+      isEnabled: card.isEnabled
     });
     setIsCreating(true);
   };
@@ -327,7 +327,7 @@ const HomepageCardSettings: React.FC = () => {
                         {availableIcons.map(iconName => (
                           <SelectItem key={iconName} value={iconName}>
                             <div className="flex items-center gap-2">
-                              <IconPreview iconName={iconName} color={formData.icon_color} />
+                              <IconPreview iconName={iconName} color={formData.iconColor} />
                               {iconName}
                             </div>
                           </SelectItem>
@@ -338,24 +338,24 @@ const HomepageCardSettings: React.FC = () => {
                 </div>
 
                 <div>
-                  <Label htmlFor="icon_color">Icon Color</Label>
+                  <Label htmlFor="iconColor">Icon Color</Label>
                   <div className="flex items-center gap-3">
                     <Input
-                      id="icon_color"
+                      id="iconColor"
                       type="color"
-                      value={formData.icon_color}
-                      onChange={(e) => setFormData({ ...formData, icon_color: e.target.value })}
+                      value={formData.iconColor}
+                      onChange={(e) => setFormData({ ...formData, iconColor: e.target.value })}
                       className="w-16 h-10 p-1 rounded cursor-pointer"
                     />
                     <Input
                       type="text"
                       placeholder="#3b82f6"
-                      value={formData.icon_color}
-                      onChange={(e) => setFormData({ ...formData, icon_color: e.target.value })}
+                      value={formData.iconColor}
+                      onChange={(e) => setFormData({ ...formData, iconColor: e.target.value })}
                       className="flex-1"
                     />
                     <div className="flex items-center gap-2 px-3 py-2 border rounded-md bg-muted/30">
-                      <IconPreview iconName={formData.icon} color={formData.icon_color} />
+                      <IconPreview iconName={formData.icon} color={formData.iconColor} />
                       <span className="text-sm text-muted-foreground">Preview</span>
                     </div>
                   </div>
@@ -372,10 +372,10 @@ const HomepageCardSettings: React.FC = () => {
                 </div>
 
                 <div>
-                  <Label htmlFor="action_type">Action Type</Label>
+                  <Label htmlFor="actionType">Action Type</Label>
                   <Select 
-                    value={formData.action_type} 
-                    onValueChange={(value: 'url' | 'category_dropdown') => setFormData({ ...formData, action_type: value })}
+                    value={formData.actionType} 
+                    onValueChange={(value: 'url' | 'category_dropdown') => setFormData({ ...formData, actionType: value })}
                   >
                     <SelectTrigger>
                       <SelectValue />
@@ -387,33 +387,33 @@ const HomepageCardSettings: React.FC = () => {
                   </Select>
                 </div>
 
-                {formData.action_type === 'url' ? (
+                {formData.actionType === 'url' ? (
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div>
-                      <Label htmlFor="action_url">URL</Label>
+                      <Label htmlFor="actionUrl">URL</Label>
                       <Input
-                        id="action_url"
+                        id="actionUrl"
                         placeholder="https://example.com or /internal-page"
-                        value={formData.action_url}
-                        onChange={(e) => setFormData({ ...formData, action_url: e.target.value })}
+                        value={formData.actionUrl}
+                        onChange={(e) => setFormData({ ...formData, actionUrl: e.target.value })}
                       />
                     </div>
                     <div>
-                      <Label htmlFor="action_button_text">Button Text</Label>
+                      <Label htmlFor="actionButtonText">Button Text</Label>
                       <Input
-                        id="action_button_text"
+                        id="actionButtonText"
                         placeholder="Learn More"
-                        value={formData.action_button_text}
-                        onChange={(e) => setFormData({ ...formData, action_button_text: e.target.value })}
+                        value={formData.actionButtonText}
+                        onChange={(e) => setFormData({ ...formData, actionButtonText: e.target.value })}
                       />
                     </div>
                   </div>
                 ) : (
                   <div>
-                    <Label htmlFor="category_id">Category</Label>
+                    <Label htmlFor="categoryId">Category</Label>
                     <Select 
-                      value={formData.category_id} 
-                      onValueChange={(value) => setFormData({ ...formData, category_id: value })}
+                      value={formData.categoryId} 
+                      onValueChange={(value) => setFormData({ ...formData, categoryId: value })}
                     >
                       <SelectTrigger>
                         <SelectValue placeholder="Select a category" />
@@ -431,11 +431,11 @@ const HomepageCardSettings: React.FC = () => {
 
                 <div className="flex items-center space-x-2">
                   <Switch
-                    id="is_enabled"
-                    checked={formData.is_enabled}
-                    onCheckedChange={(checked) => setFormData({ ...formData, is_enabled: checked })}
+                    id="isEnabled"
+                    checked={formData.isEnabled}
+                    onCheckedChange={(checked) => setFormData({ ...formData, isEnabled: checked })}
                   />
-                  <Label htmlFor="is_enabled">Enabled</Label>
+                  <Label htmlFor="isEnabled">Enabled</Label>
                 </div>
 
                 <div className="flex gap-2">
@@ -470,17 +470,17 @@ const HomepageCardSettings: React.FC = () => {
                   <div className="flex items-center justify-between">
                     <div className="flex items-center gap-3">
                       <GripVertical className="h-5 w-5 text-muted-foreground cursor-grab" />
-                      <IconPreview iconName={card.icon} color={card.icon_color} />
+                      <IconPreview iconName={card.icon} color={card.iconColor} />
                       <div>
                         <h4 className="font-medium">{card.title}</h4>
                         <p className="text-sm text-muted-foreground">{card.description}</p>
                         <p className="text-xs text-muted-foreground">
-                          {card.action_type === 'url' ? `URL: ${card.action_url}` : `Category: ${card.category?.name}`}
+                          {card.actionType === 'url' ? `URL: ${card.actionUrl}` : `Category: ${card.category?.name}`}
                         </p>
                       </div>
                     </div>
                     <div className="flex items-center gap-2">
-                      {card.is_enabled ? (
+                      {card.isEnabled ? (
                         <Eye className="h-4 w-4 text-green-600" />
                       ) : (
                         <EyeOff className="h-4 w-4 text-muted-foreground" />
@@ -535,3 +535,4 @@ const HomepageCardSettings: React.FC = () => {
 };
 
 export default HomepageCardSettings;
+

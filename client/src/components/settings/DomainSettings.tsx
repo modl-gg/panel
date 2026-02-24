@@ -274,11 +274,11 @@ const DomainSettings: React.FC = () => {
     }
   };
 
-  // Only show to users with admin settings permissions
-  if (!user || !hasPermission('admin.settings.modify')) {
+  // Only show to users with domain view permissions
+  if (!user || !hasPermission('admin.settings.view.domain')) {
     return (
       <div className="flex items-center justify-center h-64 border-2 border-dashed border-muted rounded-lg">
-        <p className="text-muted-foreground">You do not have permission to view this page.</p>
+        <p className="text-muted-foreground">You do not have permission to do that.</p>
       </div>
     );
   }

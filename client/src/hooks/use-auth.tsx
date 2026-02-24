@@ -2,11 +2,12 @@ import { createContext, ReactNode, useContext, useState, useEffect } from "react
 import { useLocation } from "wouter";
 import { useToast } from "@modl-gg/shared-web/hooks/use-toast";
 import { getApiUrl, getCurrentDomain } from "@/lib/api";
+import { isPublicPage } from "@/utils/routes";
 import { setDateLocale, setDateFormat } from "@/utils/date-utils";
 import i18n from "@/lib/i18n";
 
 interface User {
-  _id: string;
+  id: string;
   email: string;
   username: string;
   role: 'Super Admin' | 'Admin' | 'Moderator' | 'Helper';
@@ -40,7 +41,7 @@ async function authFetch(url: string, options: RequestInit = {}): Promise<Respon
 
 function mapUserFromMeResponse(userData: any): User {
   return {
-    _id: userData.id || '',
+    id: userData.id || '',
     email: userData.email,
     username: userData.username,
     role: userData.role,
@@ -68,15 +69,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   // Check for existing session on mount (skip on public pages)
   useEffect(() => {
-    const path = window.location.pathname;
-    const isPublicPage = path.startsWith('/ticket/') ||
-                         path.startsWith('/appeal') ||
-                         path.startsWith('/submit-ticket') ||
-                         path === '/' ||
-                         path.startsWith('/knowledgebase') ||
-                         path.startsWith('/article/');
-
-    if (isPublicPage) {
+    if (isPublicPage()) {
       setIsLoading(false);
       return;
     }
@@ -118,8 +111,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         let description = errorMessage;
 
         if (response.status === 429) {
-          if (data.timeRemaining) {
-            description += ` Please wait ${data.timeRemaining} before trying again.`;
+          if (data.retryAfterSeconds) {
+            description += ` Please wait ${data.retryAfterSeconds} seconds before trying again.`;
           }
         }
 
@@ -162,8 +155,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         let description = errorMessage;
 
         if (response.status === 429) {
-          if (data.timeRemaining) {
-            description += ` Please wait ${data.timeRemaining} before trying again.`;
+          if (data.retryAfterSeconds) {
+            description += ` Please wait ${data.retryAfterSeconds} seconds before trying again.`;
           }
         }
 
@@ -211,6 +204,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const logout = async () => {
     setIsLoading(true);
+    let shouldRedirectToAuth = false;
+
     try {
       const response = await authFetch('/v1/panel/auth/logout', { method: 'POST' });
       if (!response.ok) {
@@ -220,23 +215,50 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           description: errorData.message || i18n.t('toast.logoutErrorDesc'),
           variant: "destructive",
         });
-      } else {
-        toast({
-          title: i18n.t('toast.logoutSuccess'),
-          description: i18n.t('toast.logoutSuccessDesc'),
-        });
+        try {
+          const authenticatedUser = await fetchAuthenticatedUser();
+          setUser(authenticatedUser);
+        } catch {
+          // Keep the current client state if we can't verify server auth state.
+        }
+        return;
       }
+
+      const authenticatedUser = await fetchAuthenticatedUser();
+      if (authenticatedUser) {
+        setUser(authenticatedUser);
+        toast({
+          title: i18n.t('toast.logoutError'),
+          description: "Logout did not fully clear your server session. Please try again.",
+          variant: "destructive",
+        });
+        return;
+      }
+
+      setUser(null);
+      shouldRedirectToAuth = true;
+      toast({
+        title: i18n.t('toast.logoutSuccess'),
+        description: i18n.t('toast.logoutSuccessDesc'),
+      });
     } catch (error) {
       console.error("Logout error:", error);
+      try {
+        const authenticatedUser = await fetchAuthenticatedUser();
+        setUser(authenticatedUser);
+      } catch {
+        // Keep the current client state if we can't verify server auth state.
+      }
       toast({
         title: i18n.t('toast.logoutError'),
         description: i18n.t('toast.logoutErrorDesc'),
         variant: "destructive",
       });
     } finally {
-      setUser(null);
       setIsLoading(false);
-      navigate('/auth');
+      if (shouldRedirectToAuth) {
+        navigate('/auth');
+      }
     }
   };
 

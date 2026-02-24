@@ -19,6 +19,18 @@ import { KnowledgebaseCategory, KnowledgebaseArticle } from '@modl-gg/shared-web
 
 // TODO: Define these types based on your backend schema
 
+const normalizeArticle = (article: any): KnowledgebaseArticle => ({
+  ...article,
+  isVisible: article?.isVisible ?? article?.visible ?? true,
+});
+
+const normalizeCategory = (category: any): KnowledgebaseCategory => ({
+  ...category,
+  articles: Array.isArray(category?.articles)
+    ? category.articles.map(normalizeArticle)
+    : [],
+});
+
 const fetchCategories = async (): Promise<KnowledgebaseCategory[]> => {
   const { getApiUrl, getCurrentDomain } = await import('@/lib/api');
   const response = await fetch(getApiUrl('/v1/panel/knowledgebase/categories'), {
@@ -28,7 +40,8 @@ const fetchCategories = async (): Promise<KnowledgebaseCategory[]> => {
   if (!response.ok) {
     throw new Error('Failed to fetch categories');
   }
-  return response.json();
+  const data = await response.json();
+  return Array.isArray(data) ? data.map(normalizeCategory) : [];
 };
 const ItemTypes = {
   CATEGORY: 'category',
@@ -220,7 +233,7 @@ const KnowledgebaseSettings: React.FC = () => {
   // editingCategory state is now part of KnowledgebaseSettings
   const [editingArticle, setEditingArticle] = useState<KnowledgebaseArticle | null>(null);
   // const [selectedCategoryForNewArticle, setSelectedCategoryForNewArticle] = useState<string | null>(null); // Replaced by newArticleForModal
-  const [newArticleForModal, setNewArticleForModal] = useState<{ categoryId: string; title: string; content: string; is_visible: boolean } | null>(null);
+  const [newArticleForModal, setNewArticleForModal] = useState<{ categoryId: string; title: string; content: string; isVisible: boolean } | null>(null);
 
   // Delete confirmation dialog state
   const [deleteCategoryDialogOpen, setDeleteCategoryDialogOpen] = useState(false);
@@ -391,13 +404,13 @@ const KnowledgebaseSettings: React.FC = () => {
 
 
   // Article Mutations
-  const createArticleMutation = useMutation<KnowledgebaseArticle, Error, { categoryId: string; title: string; content: string; is_visible?: boolean }>({
+  const createArticleMutation = useMutation<KnowledgebaseArticle, Error, { categoryId: string; title: string; content: string; isVisible?: boolean }>({
     mutationFn: async (newArticle) => {
       const csrfFetch = apiFetch;
       const response = await csrfFetch(`/v1/panel/knowledgebase/categories/${newArticle.categoryId}/articles`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ title: newArticle.title, content: newArticle.content, is_visible: newArticle.is_visible }),
+        body: JSON.stringify({ title: newArticle.title, content: newArticle.content, isVisible: newArticle.isVisible }),
       });
       if (!response.ok) {
         const errorData = await response.json().catch(() => ({ message: 'Failed to create article' }));
@@ -416,13 +429,13 @@ const KnowledgebaseSettings: React.FC = () => {
     },
   });
 
-  const updateArticleMutation = useMutation<KnowledgebaseArticle, Error, { categoryId: string; articleId: string; title: string; content: string; is_visible: boolean }>({
+  const updateArticleMutation = useMutation<KnowledgebaseArticle, Error, { categoryId: string; articleId: string; title: string; content: string; isVisible: boolean }>({
     mutationFn: async (updatedArticle) => {
       const csrfFetch = apiFetch;
       const response = await csrfFetch(`/v1/panel/knowledgebase/categories/${updatedArticle.categoryId}/articles/${updatedArticle.articleId}`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ title: updatedArticle.title, content: updatedArticle.content, is_visible: updatedArticle.is_visible }),
+        body: JSON.stringify({ title: updatedArticle.title, content: updatedArticle.content, isVisible: updatedArticle.isVisible }),
       });
       if (!response.ok) {
         const errorData = await response.json().catch(() => ({ message: 'Failed to update article' }));
@@ -484,7 +497,7 @@ const KnowledgebaseSettings: React.FC = () => {
 
 
   const openCreateArticleModal = (categoryId: string) => {
-    setNewArticleForModal({ categoryId, title: '', content: '', is_visible: true });
+    setNewArticleForModal({ categoryId, title: '', content: '', isVisible: true });
     
     // Scroll to the article writing section with smooth animation
     setTimeout(() => {
@@ -505,7 +518,7 @@ const KnowledgebaseSettings: React.FC = () => {
         categoryId: newArticleForModal.categoryId,
         title: newArticleForModal.title,
         content: newArticleForModal.content,
-        is_visible: newArticleForModal.is_visible,
+        isVisible: newArticleForModal.isVisible,
       });
     } else {
       toast({ title: "Error", description: "Title and content are required.", variant: "destructive" });
@@ -521,7 +534,7 @@ const KnowledgebaseSettings: React.FC = () => {
         throw new Error('Failed to fetch article details');
       }
       const articleData = await response.json();
-      setEditingArticle(articleData);
+      setEditingArticle(normalizeArticle(articleData));
 
       // Scroll to the article editing section with smooth animation
       setTimeout(() => {
@@ -547,7 +560,7 @@ const KnowledgebaseSettings: React.FC = () => {
         articleId: editingArticle.id,
         title: editingArticle.title,
         content: editingArticle.content,
-        is_visible: editingArticle.is_visible,
+        isVisible: editingArticle.isVisible,
       });
     }
   };
@@ -666,8 +679,8 @@ const KnowledgebaseSettings: React.FC = () => {
                         <input
                             type="checkbox"
                             id={`article-visible-${editingArticle.id}`}
-                            checked={editingArticle.is_visible}
-                            onChange={(e) => setEditingArticle(prev => prev ? {...prev, is_visible: e.target.checked} : null)}
+                            checked={editingArticle.isVisible}
+                            onChange={(e) => setEditingArticle(prev => prev ? {...prev, isVisible: e.target.checked} : null)}
                         />
                         <label htmlFor={`article-visible-${editingArticle.id}`}>Visible to users</label>
                     </div>
@@ -706,8 +719,8 @@ const KnowledgebaseSettings: React.FC = () => {
                 <input
                   type="checkbox"
                   id="new-article-visible"
-                  checked={newArticleForModal.is_visible}
-                  onChange={(e) => setNewArticleForModal(prev => prev ? { ...prev, is_visible: e.target.checked } : null)}
+                  checked={newArticleForModal.isVisible}
+                  onChange={(e) => setNewArticleForModal(prev => prev ? { ...prev, isVisible: e.target.checked } : null)}
                 />
                 <label htmlFor="new-article-visible">Visible to users</label>
               </div>

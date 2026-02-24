@@ -1,6 +1,8 @@
+import { useMemo } from 'react';
 import ReactMarkdown from 'react-markdown';
 import { cn } from '@modl-gg/shared-web/lib/utils';
 import { ClickablePlayer } from './clickable-player';
+import { useMediaUploadConfig } from '@/hooks/use-media-upload';
 
 interface MarkdownRendererProps {
   content: string;
@@ -90,6 +92,40 @@ const MarkdownRenderer = ({ content, className, allowHtml = false, disableClicka
   }
 
   const processedContent = processMarkdownContent(content, disableClickablePlayers);
+  const { data: mediaConfig } = useMediaUploadConfig();
+
+  const normalizedCdnHost = useMemo(() => {
+    const rawDomain = mediaConfig?.cdnDomain?.trim();
+    if (!rawDomain) return null;
+
+    try {
+      const parsed = new URL(rawDomain.startsWith('http') ? rawDomain : `https://${rawDomain}`);
+      return parsed.hostname.toLowerCase();
+    } catch {
+      return rawDomain.replace(/^https?:\/\//i, '').split('/')[0].toLowerCase();
+    }
+  }, [mediaConfig?.cdnDomain]);
+
+  const getTrustedMediaKind = (href?: string): 'image' | 'video' | null => {
+    if (!href || !normalizedCdnHost) return null;
+
+    const imageMatch = href.match(/\.(jpg|jpeg|png|gif|webp)(\?.*)?$/i);
+    const videoMatch = href.match(/\.(mp4|webm|mov)(\?.*)?$/i);
+    if (!imageMatch && !videoMatch) return null;
+
+    try {
+      const parsed = new URL(href);
+      if (parsed.hostname.toLowerCase() !== normalizedCdnHost) {
+        return null;
+      }
+    } catch {
+      return null;
+    }
+
+    if (imageMatch) return 'image';
+    if (videoMatch) return 'video';
+    return null;
+  };
 
   // Check if content contains structured form data (bullet points, bold labels)
   const hasStructuredContent = /\*\*[^*]+\*\*:\s*\n(•[^\n]*\n?)+/.test(content);
@@ -170,17 +206,9 @@ const MarkdownRenderer = ({ content, className, allowHtml = false, disableClicka
           },
           // Custom link renderer to handle media URLs and external links
           a: ({ href, children, ...props }) => {
-            // Check if this is a media URL that should be embedded
-            const isMediaUrl = href && (
-              href.match(/\.(jpg|jpeg|png|gif|webp)(\?.*)?$/i) ||
-              href.match(/\.(mp4|webm|mov)(\?.*)?$/i)
-            );
-            
-            if (isMediaUrl) {
-              const isImage = href.match(/\.(jpg|jpeg|png|gif|webp)(\?.*)?$/i);
-              const isVideo = href.match(/\.(mp4|webm|mov)(\?.*)?$/i);
-              
-              if (isImage) {
+            const mediaKind = getTrustedMediaKind(href);
+
+            if (mediaKind === 'image') {
                 return (
                   <div className="my-4">
                     <img 
@@ -201,7 +229,7 @@ const MarkdownRenderer = ({ content, className, allowHtml = false, disableClicka
                     </div>
                   </div>
                 );
-              } else if (isVideo) {
+            } else if (mediaKind === 'video') {
                 return (
                   <div className="my-4">
                     <video 
@@ -222,7 +250,6 @@ const MarkdownRenderer = ({ content, className, allowHtml = false, disableClicka
                     </div>
                   </div>
                 );
-              }
             }
             
             // Default link behavior for non-media URLs

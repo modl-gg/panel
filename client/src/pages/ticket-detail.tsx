@@ -62,7 +62,7 @@ import { getUnverifiedExplanation } from '@/utils/creator-verification';
 import PlayerPunishment, { PlayerPunishmentData } from '@/components/ui/player-punishment';
 import MediaUpload from '@/components/MediaUpload';
 import TicketAttachments from '@/components/TicketAttachments';
-import { useMediaUpload } from '@/hooks/use-media-upload';
+import { useMediaUpload, useMediaUploadConfig } from '@/hooks/use-media-upload';
 
 // Define PunishmentType interface
 interface PunishmentType {
@@ -784,6 +784,29 @@ const TicketDetail = () => {
   const [noteAttachments, setNoteAttachments] = useState<Array<{id: string, url: string, key: string, fileName: string, fileType: string, fileSize: number, uploadedAt: string, uploadedBy: string}>>([]);
   const [pendingFiles, setPendingFiles] = useState<File[]>([]);
   const { uploadMedia } = useMediaUpload();
+  const { data: mediaConfig } = useMediaUploadConfig();
+
+  const normalizedCdnHost = useMemo(() => {
+    const rawDomain = mediaConfig?.cdnDomain?.trim();
+    if (!rawDomain) return null;
+
+    try {
+      const parsed = new URL(rawDomain.startsWith('http') ? rawDomain : `https://${rawDomain}`);
+      return parsed.hostname.toLowerCase();
+    } catch {
+      return rawDomain.replace(/^https?:\/\//i, '').split('/')[0].toLowerCase();
+    }
+  }, [mediaConfig?.cdnDomain]);
+
+  const isTrustedCdnUrl = (url?: string | null): boolean => {
+    if (!url || !normalizedCdnHost) return false;
+    try {
+      const parsed = new URL(url);
+      return parsed.hostname.toLowerCase() === normalizedCdnHost;
+    } catch {
+      return false;
+    }
+  };
   
 
   // Helper function to get file icon
@@ -834,8 +857,9 @@ const TicketDetail = () => {
   // Function to get available quick responses for current ticket category
   const getQuickResponsesForTicket = (category: TicketCategory) => {
     // Use quick responses from dedicated endpoint, fallback to default config
+    const quickResponsesPayload = (quickResponsesData as any)?.data ?? quickResponsesData;
     const quickResponses: QuickResponsesConfiguration =
-      (quickResponsesData?.categories ? quickResponsesData : null) || defaultQuickResponsesConfig;
+      (quickResponsesPayload?.categories ? quickResponsesPayload : null) || defaultQuickResponsesConfig;
 
     // Map display category to possible ticketType values
     // Support both formats: 'chat_report' (TicketSettings format) and 'chat' (MongoDB format)
@@ -926,7 +950,11 @@ const TicketDetail = () => {
   const { data: ticketData, isLoading, isError, error, refetch } = usePanelTicket(ticketId);
   
   useEffect(() => {
-    // Ticket data received
+    if (ticketData) {
+      // Backend marks the ticket as read on fetch — invalidate dashboard notification queries
+      queryClient.invalidateQueries({ queryKey: ['/v1/panel/ticket-subscriptions/updates'] });
+      queryClient.invalidateQueries({ queryKey: ['/v1/panel/ticket-subscriptions/assigned-updates'] });
+    }
   }, [ticketData]);
 
   // Scroll to top of message list when messages load
@@ -1167,7 +1195,7 @@ const TicketDetail = () => {
         relatedPlayerId: ticketData.relatedPlayer?.uuid || ticketData.relatedPlayerId || ticketData.reportedPlayerUuid,
         messages: ((ticketData.messages || ticketData.replies || []).map((reply: any, index: number) => ({
           id: reply._id || reply.id || `msg-${Date.now()}-${Math.random().toString(36).substring(2, 7)}`,
-          sender: reply.name || reply.sender || (reply.staff ? 'Staff' : (index === 0 ? (ticketData.creator || ticketData.reportedBy || 'Player') : 'Player')),
+          sender: reply.name || reply.sender || (reply.staff ? 'Staff' : (index === 0 ? (ticketData.creatorName || ticketData.reportedBy || 'Player') : 'Player')),
           senderType: reply.type === 'staff' ? 'staff' :
                      reply.type === 'system' ? 'system' : 'user',
           content: reply.content,
@@ -2235,8 +2263,9 @@ const TicketDetail = () => {
                                     else if (['mp4', 'webm', 'mov'].includes(ext || '')) fileType = 'video/' + ext;
                                   }
 
-                                  const isImage = fileType?.startsWith('image/');
-                                  const isVideo = fileType?.startsWith('video/');
+                                  const canPreview = isTrustedCdnUrl(attachmentData.url);
+                                  const isImage = canPreview && fileType?.startsWith('image/');
+                                  const isVideo = canPreview && fileType?.startsWith('video/');
 
                                   if (isImage) {
                                     return (
@@ -2836,6 +2865,29 @@ const PunishmentDetailsCard = ({ punishmentId }: { punishmentId: string }) => {
   const [showAdditionalData, setShowAdditionalData] = useState(false);
   const { user } = useAuth();
   const { toast } = useToast();
+  const { data: mediaConfig } = useMediaUploadConfig();
+
+  const normalizedCdnHost = useMemo(() => {
+    const rawDomain = mediaConfig?.cdnDomain?.trim();
+    if (!rawDomain) return null;
+
+    try {
+      const parsed = new URL(rawDomain.startsWith('http') ? rawDomain : `https://${rawDomain}`);
+      return parsed.hostname.toLowerCase();
+    } catch {
+      return rawDomain.replace(/^https?:\/\//i, '').split('/')[0].toLowerCase();
+    }
+  }, [mediaConfig?.cdnDomain]);
+
+  const isTrustedCdnUrl = (url?: string | null): boolean => {
+    if (!url || !normalizedCdnHost) return false;
+    try {
+      const parsed = new URL(url);
+      return parsed.hostname.toLowerCase() === normalizedCdnHost;
+    } catch {
+      return false;
+    }
+  };
 
   useEffect(() => {
     const fetchPunishmentDetails = async () => {
@@ -3177,6 +3229,8 @@ const PunishmentDetailsCard = ({ punishmentId }: { punishmentId: string }) => {
                   
                   // Helper function to detect media type from URL
                   const getMediaType = (url: string) => {
+                    if (!isTrustedCdnUrl(url)) return 'link';
+
                     const imageExts = ['.jpg', '.jpeg', '.png', '.gif', '.webp'];
                     const videoExts = ['.mp4', '.webm', '.mov'];
                     const urlLower = url.toLowerCase();
