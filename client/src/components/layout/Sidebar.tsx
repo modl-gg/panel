@@ -526,16 +526,7 @@ const Sidebar = () => {
                           className="w-full justify-start text-xs py-2 px-3 h-auto mb-1"
                           onClick={() => handlePlayerSelect(player)}
                         >
-                          <div className="flex flex-col items-start">
-                            <span className="font-medium">{player.username || 'Unknown'}</span>
-                            <span className={`text-[10px] ${
-                              player.status === 'Banned' ? 'text-destructive' :
-                              player.status === 'Muted' ? 'text-warning' :
-                              'text-muted-foreground'
-                            }`}>
-                              {player.status}
-                            </span>
-                          </div>
+                          <span className="font-medium">{player.username || 'Unknown'}</span>
                         </Button>
                       ))}
                     </div>
@@ -572,16 +563,7 @@ const Sidebar = () => {
                           className="w-full justify-start text-xs py-2 px-3 h-auto mb-1"
                           onClick={() => handlePlayerSelect(player)}
                         >
-                          <div className="flex flex-col items-start">
-                            <span className="font-medium">{player.username || 'Unknown'}</span>
-                            <span className={`text-[10px] ${
-                              player.status === 'Banned' ? 'text-destructive' :
-                              player.status === 'Muted' ? 'text-warning' :
-                              'text-muted-foreground'
-                            }`}>
-                              {player.status || 'Offline'}
-                            </span>
-                          </div>
+                          <span className="font-medium">{player.username || 'Unknown'}</span>
                         </Button>
                       ))}
                     </>
