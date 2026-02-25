@@ -95,11 +95,15 @@ const PlayerLookupWindow = ({
           ? ipAddresses[ipAddresses.length - 1].ipAddress.replace(/\d+$/, 'x.x')
           : 'Unknown';
           
-        // Determine player status
-        const status = player.punishments && player.punishments.some((p: any) => p.active && !p.expires) 
-          ? 'Banned' 
-          : player.punishments && player.punishments.some((p: any) => p.active) 
-          ? 'Restricted' 
+        // Determine player status using effectiveCategory from backend
+        const hasActiveBan = player.punishments && player.punishments.some((p: any) => p.active && p.effectiveCategory === 'BAN');
+        const hasActiveMute = player.punishments && player.punishments.some((p: any) => p.active && p.effectiveCategory === 'MUTE');
+        const status = hasActiveBan
+          ? 'Banned'
+          : hasActiveMute
+          ? 'Muted'
+          : player.punishments && player.punishments.some((p: any) => p.active)
+          ? 'Restricted'
           : 'Active';
         
         // Format warnings from notes
@@ -209,11 +213,11 @@ const PlayerLookupWindow = ({
               <div className="flex-1 min-w-0">
                 <h5 className="text-lg font-medium">{playerInfo.username || 'Unknown'}</h5>
                 <div className="flex flex-wrap gap-2 mt-1">
-                  <Badge 
-                    variant="outline" 
+                  <Badge
+                    variant="outline"
                     className={`
-                      ${playerInfo.status === 'Online' ? 'bg-success/10 text-success border-success/20' : 
-                        playerInfo.status === 'Restricted' ? 'bg-warning/10 text-warning border-warning/20' : 
+                      ${playerInfo.status === 'Online' || playerInfo.status === 'Active' ? 'bg-success/10 text-success border-success/20' :
+                        playerInfo.status === 'Muted' || playerInfo.status === 'Restricted' ? 'bg-warning/10 text-warning border-warning/20' :
                         'bg-destructive/10 text-destructive border-destructive/20'
                       }
                     `}

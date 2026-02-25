@@ -528,7 +528,11 @@ const Sidebar = () => {
                         >
                           <div className="flex flex-col items-start">
                             <span className="font-medium">{player.username || 'Unknown'}</span>
-                            <span className="text-muted-foreground text-[10px]">
+                            <span className={`text-[10px] ${
+                              player.status === 'Banned' ? 'text-destructive' :
+                              player.status === 'Muted' ? 'text-warning' :
+                              'text-muted-foreground'
+                            }`}>
                               {player.status}
                             </span>
                           </div>
@@ -570,7 +574,11 @@ const Sidebar = () => {
                         >
                           <div className="flex flex-col items-start">
                             <span className="font-medium">{player.username || 'Unknown'}</span>
-                            <span className="text-muted-foreground text-[10px]">
+                            <span className={`text-[10px] ${
+                              player.status === 'Banned' ? 'text-destructive' :
+                              player.status === 'Muted' ? 'text-warning' :
+                              'text-muted-foreground'
+                            }`}>
                               {player.status || 'Offline'}
                             </span>
                           </div>

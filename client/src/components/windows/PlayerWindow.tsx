@@ -48,7 +48,7 @@ interface PlayerInfo {
   playtime: string;
   social: string;
   gameplay: string;
-  punished: boolean;
+  punishmentStatus: 'banned' | 'muted' | null;
   previousNames: string[];
   warnings: Array<{ 
     type: string; 
@@ -619,7 +619,7 @@ const PlayerWindow = ({ playerId, isOpen, onClose, initialPosition }: PlayerWind
     playtime: '342 hours',
     social: 'Low',
     gameplay: 'Medium',
-    punished: false,
+    punishmentStatus: null,
     previousNames: ['Dragon55', 'SlayerXD'],
     warnings: [
       { type: 'Warning', reason: 'Excessive caps in chat', date: '2023-04-12', by: 'Moderator2' },
@@ -850,16 +850,20 @@ const PlayerWindow = ({ playerId, isOpen, onClose, initialPosition }: PlayerWind
               .map((u: any) => u.username)
           : [];
         
-        // Determine player status (exclude kicks from status calculation)
-        // Kicks (ordinal 0) should never affect the "Currently Punished" badge
-        const activePunishments = player.punishments ? player.punishments.filter((p: any) => 
+        // Determine player status using effectiveCategory from backend
+        const activePunishments = player.punishments ? player.punishments.filter((p: any) =>
           p.active && p.typeOrdinal !== 0 // Exclude kicks (ordinal 0) completely
         ) : [];
-        
-        const status = activePunishments.some((p: any) => !p.expires) 
-          ? 'Banned' 
+
+        const hasActiveBan = activePunishments.some((p: any) => p.effectiveCategory === 'BAN');
+        const hasActiveMute = activePunishments.some((p: any) => p.effectiveCategory === 'MUTE');
+
+        const status = hasActiveBan
+          ? 'Banned'
+          : hasActiveMute
+          ? 'Muted'
           : activePunishments.length > 0
-          ? 'Restricted' 
+          ? 'Restricted'
           : 'Active';
         
         // Initialize warnings array - do NOT include staff notes as warnings
@@ -946,7 +950,8 @@ const PlayerWindow = ({ playerId, isOpen, onClose, initialPosition }: PlayerWind
                 return data;
               })(),
               altBlocking: punishment.data?.altBlocking || (punishment.data?.get ? punishment.data.get('altBlocking') : false),
-              started: punishment.started
+              started: punishment.started,
+              effectiveCategory: punishment.effectiveCategory
             });
           });
         }
@@ -1017,7 +1022,7 @@ const PlayerWindow = ({ playerId, isOpen, onClose, initialPosition }: PlayerWind
           })(),
           social: calculatedStatus.social,
           gameplay: calculatedStatus.gameplay,
-          punished: status !== 'Active',
+          punishmentStatus: hasActiveBan ? 'banned' : hasActiveMute ? 'muted' : null,
           previousNames: previousNames,
           warnings: warnings,
           linkedAccounts: linkedAccounts,
@@ -1149,18 +1154,26 @@ const PlayerWindow = ({ playerId, isOpen, onClose, initialPosition }: PlayerWind
 
   // Helper function to get original punishment action (ban/mute/kick) for display
   const getOriginalPunishmentAction = (warning: any, punishmentType: any) => {
-    // Check for explicit action types first
+    // Use the backend-computed effective category when available (authoritative source)
+    const effectiveCategory = warning.effectiveCategory || warning.data?.effectiveCategory;
+    if (effectiveCategory) {
+      const originalDuration = warning.duration || warning.data?.duration;
+      const isPermanent = originalDuration === 0 || originalDuration === -1 || (originalDuration != null && originalDuration < 0);
+      if (effectiveCategory === 'BAN') return isPermanent ? 'permanent ban' : 'ban';
+      if (effectiveCategory === 'MUTE') return isPermanent ? 'permanent mute' : 'mute';
+    }
+
+    // Check for explicit action types in the name (administrative types like Manual Mute, Manual Ban)
     if (warning.type?.toLowerCase().includes('kick')) return 'kick';
     if (warning.type?.toLowerCase().includes('mute')) return 'mute';
     if (warning.type?.toLowerCase().includes('ban') || warning.type?.toLowerCase().includes('blacklist')) return 'ban';
-    
+
     // If we have punishment type configuration, look up the actual action based on duration data
     if (punishmentType && warning) {
       // Get the severity and status from the punishment data
       const severity = warning.severity || warning.data?.severity;
       const status = warning.status || warning.data?.status;
-      const originalDuration = warning.duration || warning.data?.duration;
-      
+
       // For single severity punishments, check singleSeverityDurations
       if (punishmentType.singleSeverityPunishment && punishmentType.singleSeverityDurations) {
         const offenseLevel = status === 'low' ? 'first' : status === 'medium' ? 'medium' : 'habitual';
@@ -1169,7 +1182,7 @@ const PlayerWindow = ({ playerId, isOpen, onClose, initialPosition }: PlayerWind
           return durationConfig.type; // This will be 'mute', 'ban', 'permanent mute', or 'permanent ban'
         }
       }
-      
+
       // For multi-severity punishments, check durations
       if (punishmentType.durations && severity) {
         const severityKey = severity === 'lenient' ? 'low' : severity === 'regular' ? 'regular' : 'severe';
@@ -1179,24 +1192,13 @@ const PlayerWindow = ({ playerId, isOpen, onClose, initialPosition }: PlayerWind
           return durationConfig.type; // This will be 'mute', 'ban', 'permanent mute', or 'permanent ban'
         }
       }
-      
-      // If we can't determine from configuration, check if it's permanent based on duration
-      if (originalDuration === 0 || originalDuration === -1 || originalDuration < 0) {
-        // Default to permanent ban for permanent punishments if we can't determine otherwise
-        return 'permanent ban';
-      }
     }
-    
+
     // Check if the punishment type has an action property
     if (punishmentType?.action) {
       return punishmentType.action;
     }
-    
-    // For other punishment types with durations, default to ban
-    if (punishmentType?.durations || punishmentType?.singleSeverityDurations) {
-      return 'ban';
-    }
-    
+
     return 'punishment';
   };
 
@@ -1475,9 +1477,13 @@ const PlayerWindow = ({ playerId, isOpen, onClose, initialPosition }: PlayerWind
                   }>
                     Gameplay: {playerInfo.gameplay.toLowerCase()}
                   </Badge>
-                  {playerInfo.punished && (
-                    <Badge variant="outline" className="bg-destructive/10 text-destructive border-destructive/20">
-                      Currently Punished
+                  {playerInfo.punishmentStatus && (
+                    <Badge variant="outline" className={
+                      playerInfo.punishmentStatus === 'banned'
+                        ? "bg-destructive/10 text-destructive border-destructive/20"
+                        : "bg-warning/10 text-warning border-warning/20"
+                    }>
+                      {playerInfo.punishmentStatus === 'banned' ? 'Currently banned' : 'Currently muted'}
                     </Badge>
                   )}
                 </div>

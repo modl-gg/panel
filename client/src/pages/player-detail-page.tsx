@@ -31,7 +31,7 @@ interface PlayerInfo {
   playtime: string;
   social: string;
   gameplay: string;
-  punished: boolean;
+  punishmentStatus: 'banned' | 'muted' | null;
   previousNames: string[];
   warnings: Array<{ 
     type: string; 
@@ -236,7 +236,7 @@ const PlayerDetailPage = () => {
     playtime: 'Unknown',
     social: 'Medium',
     gameplay: 'Medium',
-    punished: false,
+    punishmentStatus: null,
     previousNames: [],
     warnings: [],
     linkedAccounts: [],
@@ -530,16 +530,20 @@ const PlayerDetailPage = () => {
               .map((u: any) => u.username)
           : [];
         
-        // Determine player status (exclude kicks from status calculation)
-        // Kicks (ordinal 0) should never affect the "Currently Punished" badge
-        const activePunishments = player.punishments ? player.punishments.filter((p: any) => 
+        // Determine player status using effectiveCategory from backend
+        const activePunishments = player.punishments ? player.punishments.filter((p: any) =>
           p.active && p.typeOrdinal !== 0 // Exclude kicks (ordinal 0) completely
         ) : [];
-        
-        const status = activePunishments.some((p: any) => !p.expires) 
-          ? 'Banned' 
+
+        const hasActiveBan = activePunishments.some((p: any) => p.effectiveCategory === 'BAN');
+        const hasActiveMute = activePunishments.some((p: any) => p.effectiveCategory === 'MUTE');
+
+        const status = hasActiveBan
+          ? 'Banned'
+          : hasActiveMute
+          ? 'Muted'
           : activePunishments.length > 0
-          ? 'Restricted' 
+          ? 'Restricted'
           : 'Active';
         
         // Initialize warnings array
@@ -683,7 +687,7 @@ const PlayerDetailPage = () => {
           })(),
           social: calculatedStatus.social,
           gameplay: calculatedStatus.gameplay,
-          punished: status !== 'Active',
+          punishmentStatus: hasActiveBan ? 'banned' : hasActiveMute ? 'muted' : null,
           previousNames: previousNames,
           warnings: warnings,
           linkedAccounts: linkedAccounts,
@@ -1138,9 +1142,13 @@ const PlayerDetailPage = () => {
                   }>
                     Gameplay: {playerInfo.gameplay.toLowerCase()}
                   </Badge>
-                  {playerInfo.punished && (
-                    <Badge variant="outline" className="bg-destructive/10 text-destructive border-destructive/20">
-                      Currently Punished
+                  {playerInfo.punishmentStatus && (
+                    <Badge variant="outline" className={
+                      playerInfo.punishmentStatus === 'banned'
+                        ? "bg-destructive/10 text-destructive border-destructive/20"
+                        : "bg-warning/10 text-warning border-warning/20"
+                    }>
+                      {playerInfo.punishmentStatus === 'banned' ? 'Currently banned' : 'Currently muted'}
                     </Badge>
                   )}
                 </div>
