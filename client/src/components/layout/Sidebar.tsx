@@ -526,7 +526,12 @@ const Sidebar = () => {
                           className="w-full justify-start text-xs py-2 px-3 h-auto mb-1"
                           onClick={() => handlePlayerSelect(player)}
                         >
-                          <span className="font-medium">{player.username || 'Unknown'}</span>
+                          <div className="flex flex-col items-start">
+                            <span className="font-medium">{player.username || 'Unknown'}</span>
+                            <span className="text-muted-foreground text-[10px]">
+                              {player.isOnline ? 'Online' : 'Offline'}
+                            </span>
+                          </div>
                         </Button>
                       ))}
                     </div>
@@ -563,7 +568,12 @@ const Sidebar = () => {
                           className="w-full justify-start text-xs py-2 px-3 h-auto mb-1"
                           onClick={() => handlePlayerSelect(player)}
                         >
-                          <span className="font-medium">{player.username || 'Unknown'}</span>
+                          <div className="flex flex-col items-start">
+                            <span className="font-medium">{player.username || 'Unknown'}</span>
+                            <span className="text-muted-foreground text-[10px]">
+                              {player.isOnline ? 'Online' : 'Offline'}
+                            </span>
+                          </div>
                         </Button>
                       ))}
                     </>
