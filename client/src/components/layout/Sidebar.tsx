@@ -283,7 +283,7 @@ const Sidebar = () => {
     username?: string;
     status?: string;
     lastOnline?: string;
-    isOnline?: boolean;
+    online?: boolean;
     data?: any;
   }
 
@@ -529,7 +529,7 @@ const Sidebar = () => {
                           <div className="flex flex-col items-start">
                             <span className="font-medium">{player.username || 'Unknown'}</span>
                             <span className="text-muted-foreground text-[10px]">
-                              {player.isOnline ? 'Online' : 'Offline'}
+                              {player.online ? 'Online' : 'Offline'}
                             </span>
                           </div>
                         </Button>
@@ -571,7 +571,7 @@ const Sidebar = () => {
                           <div className="flex flex-col items-start">
                             <span className="font-medium">{player.username || 'Unknown'}</span>
                             <span className="text-muted-foreground text-[10px]">
-                              {player.isOnline ? 'Online' : 'Offline'}
+                              {player.online ? 'Online' : 'Offline'}
                             </span>
                           </div>
                         </Button>
