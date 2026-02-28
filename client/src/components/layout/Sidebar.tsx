@@ -289,6 +289,7 @@ const Sidebar = () => {
   }
 
   const isPlayerOnline = (player: Player) => {
+    if (player.status === 'Online') return true;
     if (player.isOnline !== undefined) return player.isOnline;
     if (player.data?.isOnline !== undefined) return player.data.isOnline;
     return player.online === true;
