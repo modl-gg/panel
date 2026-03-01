@@ -36,6 +36,7 @@ import MarkdownHelp from '@/components/ui/markdown-help';
 import { formatDate } from '@/utils/date-utils';
 import { getCreatorIdentifier, getUnverifiedExplanation, shouldShowUnverifiedBadge } from '@/utils/creator-verification';
 import { useMediaUpload } from '@/hooks/use-media-upload';
+import { isValidEmail, normalizeEmail } from '@/utils/email-validation';
 
 export interface TicketMessage {
   id: string;
@@ -638,7 +639,15 @@ const PlayerTicket = () => {
       }
     }
     
-    // Validation already completed above
+    const creatorEmail = normalizeEmail(formData['email']);
+    if (!isValidEmail(creatorEmail)) {
+      toast({
+        title: "Invalid Email Format",
+        description: "Please enter a valid email address (e.g., name@example.com).",
+        variant: "destructive"
+      });
+      return;
+    }
 
     setIsSubmitting(true);
       try {
@@ -716,6 +725,7 @@ const PlayerTicket = () => {
         id: ticketDetails.id,
         formData: {
           subject: finalSubject,
+          creatorEmail,
           formData: labeledFormData,
           attachments,
           creatorIdentifier: getCreatorIdentifier(ticketDetails.id) // Include creator identifier for verification
@@ -732,11 +742,11 @@ const PlayerTicket = () => {
       });
 
       window.location.reload();
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error submitting ticket form:', error);
       toast({
         title: "Submission Failed",
-        description: "There was an error submitting your ticket. Please try again.",
+        description: error?.message || "There was an error submitting your ticket. Please try again.",
         variant: "destructive"
       });
     } finally {
@@ -1102,7 +1112,7 @@ const PlayerTicket = () => {
         ) : (
           <Input
             id={field.id}
-            type="text"
+            type={field.id === 'email' ? 'email' : 'text'}
             placeholder={`Enter ${field.label.toLowerCase()}`}
             value={formData[field.id] || ''}
             onChange={(e) => handleFormFieldChange(field.id, e.target.value)}

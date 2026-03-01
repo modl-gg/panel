@@ -155,6 +155,7 @@ export interface TicketDetails {
   subject: string;
   status: 'Open' | 'Closed'; // Simplified to just Open/Closed
   reportedBy: string;
+  reportedById?: string;
   date: string;
   category: TicketCategory;
   relatedPlayer?: string;
@@ -907,6 +908,7 @@ const TicketDetail = () => {
     subject: "",
     status: "Open",
     reportedBy: "",
+    reportedById: "",
     date: "",
     category: "Player Report",
     relatedPlayer: "",
@@ -1189,6 +1191,7 @@ const TicketDetail = () => {
         // Simplify status to Open/Closed - anything but Closed is Open
         status: (ticketData.locked === true || ticketData.status === 'Closed') ? 'Closed' : 'Open',
         reportedBy: ticketData.reportedBy || 'Unknown',
+        reportedById: ticketData.reportedById || ticketData.creatorUuid || ticketData.reportedByUuid,
         date: validDate,
         category,
         relatedPlayer: ticketData.relatedPlayer?.username || ticketData.relatedPlayerName || ticketData.reportedPlayer,
@@ -1829,6 +1832,7 @@ const TicketDetail = () => {
                       ) : (
                         <ClickablePlayer
                           playerText={ticketDetails.reportedBy}
+                          uuid={ticketDetails.reportedById}
                           showIcon={true}
                           className="text-sm"
                         >
@@ -1860,6 +1864,7 @@ const TicketDetail = () => {
                         )}
                         <ClickablePlayer
                           playerText={ticketDetails.relatedPlayerId || ticketDetails.relatedPlayer}
+                          uuid={ticketDetails.relatedPlayerId}
                           showIcon={true}
                           className="text-sm"
                         >

@@ -30,6 +30,25 @@ export function extractPlayerIdentifier(playerText: string): string {
   return cleanText;
 }
 
+interface PlayerLookupResultItem {
+  uuid?: string;
+  minecraftUuid?: string;
+  username?: string;
+}
+
+function selectBestPlayerMatch(players: PlayerLookupResultItem[], identifier: string): PlayerLookupResultItem | null {
+  if (!players || players.length === 0) {
+    return null;
+  }
+
+  const normalizedIdentifier = identifier.trim().toLowerCase();
+  const exactMatch = players.find((player) =>
+    (player.username || '').trim().toLowerCase() === normalizedIdentifier
+  );
+
+  return exactMatch || players[0];
+}
+
 // Hook to resolve a username to a player UUID
 export function usePlayerLookup(identifier: string) {
   return useQuery({
@@ -53,12 +72,21 @@ export function usePlayerLookup(identifier: string) {
       if (!players || players.length === 0) {
         throw new Error('Player not found');
       }
-      
-      // Return the first match
-      const player = players[0];
+
+      // Prefer exact case-insensitive username match, then fall back to the best available result
+      const player = selectBestPlayerMatch(players, identifier);
+      if (!player) {
+        throw new Error('Player not found');
+      }
+
+      const uuid = player.uuid || player.minecraftUuid;
+      if (!uuid) {
+        throw new Error('Player lookup response missing UUID');
+      }
+
       return { 
-        uuid: player.uuid || player.minecraftUuid, 
-        username: player.username 
+        uuid,
+        username: player.username || identifier
       };
     },
     enabled: !!identifier,

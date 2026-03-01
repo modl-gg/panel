@@ -283,9 +283,17 @@ const Sidebar = () => {
     username?: string;
     status?: string;
     lastOnline?: string;
+    isOnline?: boolean;
     online?: boolean;
     data?: any;
   }
+
+  const isPlayerOnline = (player: Player) => {
+    if (player.status === 'Online') return true;
+    if (player.isOnline !== undefined) return player.isOnline;
+    if (player.data?.isOnline !== undefined) return player.data.isOnline;
+    return player.online === true;
+  };
 
   // Fetch players from API using search query (only when user types, and not for punishment lookups)
   const { data: players, isLoading } = usePlayerSearch(
@@ -529,7 +537,7 @@ const Sidebar = () => {
                           <div className="flex flex-col items-start">
                             <span className="font-medium">{player.username || 'Unknown'}</span>
                             <span className="text-muted-foreground text-[10px]">
-                              {player.online ? 'Online' : 'Offline'}
+                              {isPlayerOnline(player) ? 'Online' : 'Offline'}
                             </span>
                           </div>
                         </Button>
@@ -571,7 +579,7 @@ const Sidebar = () => {
                           <div className="flex flex-col items-start">
                             <span className="font-medium">{player.username || 'Unknown'}</span>
                             <span className="text-muted-foreground text-[10px]">
-                              {player.online ? 'Online' : 'Offline'}
+                              {isPlayerOnline(player) ? 'Online' : 'Offline'}
                             </span>
                           </div>
                         </Button>
