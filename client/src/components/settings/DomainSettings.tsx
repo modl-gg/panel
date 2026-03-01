@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Globe, CheckCircle, AlertCircle, Copy, ExternalLink, RefreshCw, Check } from 'lucide-react';
+import { Globe, CheckCircle, AlertCircle, Copy, ExternalLink, RefreshCw, Check, Crown } from 'lucide-react';
 import { Button } from '@modl-gg/shared-web/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@modl-gg/shared-web/components/ui/card';
 import { Input } from '@modl-gg/shared-web/components/ui/input';
@@ -30,6 +30,7 @@ const DomainSettings: React.FC = () => {
   const [copied, setCopied] = useState(false);
   const [accessingFromCustomDomain, setAccessingFromCustomDomain] = useState(false);
   const [modlSubdomainUrl, setModlSubdomainUrl] = useState<string>('');
+  const [canManageCustomDomain, setCanManageCustomDomain] = useState(true);
   const { toast } = useToast();
   const { user } = useAuth();
   const { hasPermission } = usePermissions();
@@ -63,6 +64,7 @@ const DomainSettings: React.FC = () => {
         }
         setAccessingFromCustomDomain(data.accessingFromCustomDomain || false);
         setModlSubdomainUrl(data.modlSubdomainUrl || '');
+        setCanManageCustomDomain(Boolean(data.canManageCustomDomain));
       }
     } catch (error) {
       console.error('Error loading domain configuration:', error);
@@ -75,6 +77,15 @@ const DomainSettings: React.FC = () => {
   };
 
   const handleDomainSubmit = async () => {
+    if (!canManageCustomDomain) {
+      toast({
+        title: "Premium Required",
+        description: "Custom domains require Premium unless your server is grandfathered.",
+        variant: "destructive",
+      });
+      return;
+    }
+
     if (!customDomain.trim()) {
       toast({
         title: "Error",
@@ -149,6 +160,15 @@ const DomainSettings: React.FC = () => {
   };
 
   const handleVerifyDomain = async () => {
+    if (!canManageCustomDomain) {
+      toast({
+        title: "Premium Required",
+        description: "Custom domains require Premium unless your server is grandfathered.",
+        variant: "destructive",
+      });
+      return;
+    }
+
     if (!customDomain) return;
 
     setIsVerifying(true);
@@ -209,6 +229,15 @@ const DomainSettings: React.FC = () => {
   };
 
   const handleRemoveDomain = async () => {
+    if (!canManageCustomDomain) {
+      toast({
+        title: "Premium Required",
+        description: "Custom domains require Premium unless your server is grandfathered.",
+        variant: "destructive",
+      });
+      return;
+    }
+
     if (!customDomain) return;
 
     setIsLoading(true);
@@ -294,6 +323,16 @@ const DomainSettings: React.FC = () => {
 
       <Card>
         <CardContent className="space-y-4">
+          {!canManageCustomDomain && (
+            <Alert className="border-orange-200 bg-orange-50">
+              <Crown className="h-4 w-4 text-orange-600" />
+              <AlertTitle className="text-orange-800">Premium Feature</AlertTitle>
+              <AlertDescription className="text-orange-700">
+                Custom domains require Premium unless your server is grandfathered. Upgrade to Premium to configure a new custom domain.
+              </AlertDescription>
+            </Alert>
+          )}
+
           {accessingFromCustomDomain && (
             <Alert className="border-orange-200 bg-orange-50">
               <AlertCircle className="h-4 w-4 text-orange-600" />
@@ -334,13 +373,13 @@ const DomainSettings: React.FC = () => {
                 placeholder="support.examplemc.net"
                 value={customDomain}
                 onChange={(e) => setCustomDomain(e.target.value)}
-                disabled={isLoading || accessingFromCustomDomain}
+                disabled={isLoading || accessingFromCustomDomain || !canManageCustomDomain}
               />
             </div>
             <div className="flex items-end">
               <Button
                 onClick={handleDomainSubmit}
-                disabled={isLoading || !customDomain.trim() || accessingFromCustomDomain}
+                disabled={isLoading || !customDomain.trim() || accessingFromCustomDomain || !canManageCustomDomain}
                 className="w-full"
               >
                 {isLoading ? (
@@ -370,7 +409,7 @@ const DomainSettings: React.FC = () => {
                     variant="outline"
                     size="sm"
                     onClick={handleVerifyDomain}
-                    disabled={isVerifying || accessingFromCustomDomain || domainStatus?.status === 'active'}
+                    disabled={isVerifying || accessingFromCustomDomain || domainStatus?.status === 'active' || !canManageCustomDomain}
                   >
                     {isVerifying ? (
                       <>
@@ -393,7 +432,7 @@ const DomainSettings: React.FC = () => {
                     variant="destructive"
                     size="sm"
                     onClick={handleRemoveDomain}
-                    disabled={isLoading || accessingFromCustomDomain}
+                    disabled={isLoading || accessingFromCustomDomain || !canManageCustomDomain}
                   >
                     Remove
                   </Button>

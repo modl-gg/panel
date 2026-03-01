@@ -779,6 +779,11 @@ const Settings = () => {
     });
   };
 
+  const canManageCustomDomainFeature = () => {
+    if (!billingStatusTop) return false;
+    return isPremiumUser() || Boolean(billingStatusTop.customDomainGrandfathered);
+  };
+
   // Update URL when category changes
   const updateURL = (category: string | null, subCategory?: string | null) => {
     const url = new URL(window.location.href);
@@ -3444,7 +3449,9 @@ const Settings = () => {
                         {category.subCategories.map((sub) => {
                           const SubIcon = sub.icon;
                           const isSubSelected = isSelected && expandedSubCategory === sub.id;
-                          const isLocked = sub.id === 'ai-moderation' && !isPremiumUser();
+                          const isLocked =
+                            (sub.id === 'ai-moderation' && !isPremiumUser()) ||
+                            (sub.id === 'domain' && !canManageCustomDomainFeature());
                           return (
                             <div
                               key={sub.id}
