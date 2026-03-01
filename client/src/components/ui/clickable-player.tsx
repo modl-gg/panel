@@ -8,6 +8,7 @@ import { cn } from '@modl-gg/shared-web/lib/utils';
 interface ClickablePlayerProps {
   children: React.ReactNode;
   playerText: string;
+  uuid?: string;
   className?: string;
   showIcon?: boolean;
   variant?: 'text' | 'button';
@@ -17,6 +18,7 @@ interface ClickablePlayerProps {
 export function ClickablePlayer({ 
   children, 
   playerText, 
+  uuid,
   className,
   showIcon = true,
   variant = 'text',
@@ -25,7 +27,7 @@ export function ClickablePlayer({
   const [isLookingUp, setIsLookingUp] = useState(false);
   const { openPlayerWindow } = usePlayerWindow();
   
-  const identifier = extractPlayerIdentifier(playerText);
+  const identifier = (uuid && uuid.trim()) || extractPlayerIdentifier(playerText);
   
   const { data: playerData, error, refetch } = usePlayerLookup(identifier);
 
@@ -34,6 +36,12 @@ export function ClickablePlayer({
     e.stopPropagation();
     
     if (!identifier) return;
+
+    // If UUID is known, skip lookup and open directly.
+    if (uuid && uuid.trim()) {
+      openPlayerWindow(uuid.trim(), playerText);
+      return;
+    }
     
     setIsLookingUp(true);
     
