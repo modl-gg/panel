@@ -27,6 +27,7 @@ import { useSettings } from "@/hooks/use-data";
 import MediaUpload from '@/components/MediaUpload';
 import { getCreatorIdentifier } from '@/utils/creator-verification';
 import { useMediaUpload } from '@/hooks/use-media-upload';
+import { getApiErrorMessage, isValidEmail, normalizeEmail } from '@/utils/email-validation';
 
 async function apiFetch(url: string, options: RequestInit = {}): Promise<Response> {
   const fullUrl = getApiUrl(url);
@@ -241,18 +242,14 @@ const SubmitTicketPage = () => {
     }
 
     // Validate email format
-    const email = formData['email']?.trim();
-    if (email) {
-      // Email regex: must have @ followed by domain with at least one dot
-      const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-      if (!emailRegex.test(email)) {
-        toast({
-          title: "Invalid Email Format",
-          description: "Please enter a valid email address (e.g., name@example.com).",
-          variant: "destructive"
-        });
-        return;
-      }
+    const email = normalizeEmail(formData['email']);
+    if (!isValidEmail(email)) {
+      toast({
+        title: "Invalid Email Format",
+        description: "Please enter a valid email address (e.g., name@example.com).",
+        variant: "destructive"
+      });
+      return;
     }
 
     setIsSubmitting(true);
@@ -341,7 +338,7 @@ const SubmitTicketPage = () => {
           type: typeConfig?.apiType || effectiveType,
           subject: finalSubject,
           creatorName: webCreatorName,
-          creatorEmail: formData['email'],
+          creatorEmail: email,
           formData: labeledFormData,
           attachments,
           creatorIdentifier: creatorIdentifier,
@@ -351,8 +348,8 @@ const SubmitTicketPage = () => {
       });
 
       if (!response.ok) {
-        const error = await response.json().catch(() => ({}));
-        throw new Error(error.message || 'Failed to create ticket');
+        const errorPayload = await response.json().catch(() => null);
+        throw new Error(getApiErrorMessage(errorPayload, 'Failed to create ticket'));
       }
 
       const data = await response.json();

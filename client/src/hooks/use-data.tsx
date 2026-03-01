@@ -4,6 +4,7 @@ import { queryClient } from '../lib/queryClient';
 import { useAuth } from './use-auth';
 import { getApiUrl, getCurrentDomain } from '@/lib/api';
 import { isPublicPage } from '@/utils/routes';
+import { getApiErrorMessage } from '@/utils/email-validation';
 
 // Helper function to make API requests with the X-Server-Domain header
 async function apiFetch(url: string, options: RequestInit = {}): Promise<Response> {
@@ -289,7 +290,8 @@ export function useSubmitTicketForm() {
       });
 
       if (!res.ok) {
-        throw new Error('Failed to submit ticket form');
+        const errorPayload = await res.json().catch(() => null);
+        throw new Error(getApiErrorMessage(errorPayload, 'Failed to submit ticket form'));
       }
 
       return res.json();
