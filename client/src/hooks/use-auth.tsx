@@ -2,7 +2,6 @@ import { createContext, ReactNode, useContext, useState, useEffect } from "react
 import { useLocation } from "wouter";
 import { useToast } from "@modl-gg/shared-web/hooks/use-toast";
 import { getApiUrl, getCurrentDomain } from "@/lib/api";
-import { isPublicPage } from "@/utils/routes";
 import { setDateLocale, setDateFormat } from "@/utils/date-utils";
 import i18n from "@/lib/i18n";
 
@@ -67,13 +66,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     return mapUserFromMeResponse(userData);
   };
 
-  // Check for existing session on mount (skip on public pages)
+  // Check for existing session on mount
   useEffect(() => {
-    if (isPublicPage()) {
-      setIsLoading(false);
-      return;
-    }
-
     const checkSession = async () => {
       try {
         const authenticatedUser = await fetchAuthenticatedUser();
