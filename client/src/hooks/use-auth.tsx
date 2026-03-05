@@ -230,7 +230,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const loginWithPasskey = async (challengeId: string, optionsJson: any): Promise<boolean> => {
     setIsLoading(true);
     try {
-      const assertionResponse = await startAuthentication({ optionsJSON: optionsJson.publicKey });
+      const optionsJSON = optionsJson?.publicKey ?? optionsJson;
+      const assertionResponse = await startAuthentication({ optionsJSON });
 
       const response = await authFetch('/v1/panel/auth/webauthn/login/verify', {
         method: 'POST',
@@ -304,10 +305,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         setIsLoading(false);
         return false;
       }
-      const { challengeId, options } = await startRes.json();
+      const startData = await startRes.json();
+      console.log('Discoverable passkey options response:', JSON.stringify(startData));
+      const { challengeId, options } = startData;
 
       // 2. Browser shows passkey picker — user selects account
-      const assertionResponse = await startAuthentication({ optionsJSON: options.publicKey });
+      const optionsJSON = options?.publicKey ?? options;
+      const assertionResponse = await startAuthentication({ optionsJSON });
 
       // 3. Verify with backend
       const verifyRes = await authFetch('/v1/panel/auth/webauthn/login/verify', {
