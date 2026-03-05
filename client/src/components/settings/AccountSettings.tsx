@@ -1,5 +1,6 @@
 import React from 'react';
 import { LogOut } from 'lucide-react';
+import PasskeySettings from './PasskeySettings';
 import { Button } from '@modl-gg/shared-web/components/ui/button';
 import { Input } from '@modl-gg/shared-web/components/ui/input';
 import { Label } from '@modl-gg/shared-web/components/ui/label';
@@ -152,6 +153,8 @@ const AccountSettings = ({
           </div>
         </div>
       </div>
+
+      <PasskeySettings />
     </div>
   );
 };

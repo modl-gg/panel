@@ -3,7 +3,7 @@ import { useLocation } from 'wouter';
 import { z } from 'zod';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
-import { KeyRound, Loader2, Mail } from 'lucide-react';
+import { KeyRound, Loader2, Mail, Fingerprint } from 'lucide-react';
 import { useAuth } from '@/hooks/use-auth';
 import { usePublicSettings } from '@/hooks/use-public-settings';
 
@@ -37,6 +37,10 @@ const AuthPage = () => {
   const { toast } = useToast();
   const { data: publicSettings } = usePublicSettings();
   const [loginStep, setLoginStep] = useState<'email' | 'verification'>('email');
+  const [verifyMethod, setVerifyMethod] = useState<'code' | 'passkey'>('code');
+  const [passkeyAvailable, setPasskeyAvailable] = useState(false);
+  const [passkeyChallenge, setPasskeyChallenge] = useState<{ challengeId: string; options: string } | null>(null);
+  const [passkeyLoading, setPasskeyLoading] = useState(false);
   const serverDisplayName = publicSettings?.serverDisplayName || 'modl';
 
   const loginForm = useForm<LoginFormValues>({
@@ -48,7 +52,7 @@ const AuthPage = () => {
   });
   const isSubmitting = loginForm.formState.isSubmitting;
 
-  const { login, user, requestEmailVerification } = useAuth();
+  const { login, user, requestEmailVerification, checkPasskeyOptions, loginWithPasskey } = useAuth();
 
   useEffect(() => {
     if (user) {
@@ -73,10 +77,37 @@ const AuthPage = () => {
     }
   }, [toast]);
 
+  const handlePasskeyLogin = async () => {
+    if (!passkeyChallenge) return;
+    setPasskeyLoading(true);
+    try {
+      const success = await loginWithPasskey(passkeyChallenge.challengeId, passkeyChallenge.options);
+      if (success) {
+        setLocation('/panel');
+      }
+    } finally {
+      setPasskeyLoading(false);
+    }
+  };
+
   const onLoginSubmit = async (values: LoginFormValues) => {
     if (loginStep === 'email') {
-      const result = await requestEmailVerification(values.email);
-      if (result !== undefined) {
+      // Check passkeys and send email code in parallel
+      const [passkeyResult, emailResult] = await Promise.all([
+        checkPasskeyOptions(values.email),
+        requestEmailVerification(values.email),
+      ]);
+
+      if (emailResult !== undefined) {
+        if (passkeyResult.hasPasskeys && passkeyResult.challengeId && passkeyResult.options) {
+          setPasskeyAvailable(true);
+          setPasskeyChallenge({ challengeId: passkeyResult.challengeId, options: passkeyResult.options });
+          setVerifyMethod('passkey');
+        } else {
+          setPasskeyAvailable(false);
+          setPasskeyChallenge(null);
+          setVerifyMethod('code');
+        }
         setLoginStep('verification');
       }
     } else {
@@ -165,52 +196,108 @@ const AuthPage = () => {
                           onClick={() => {
                             setLoginStep('email');
                             loginForm.setValue('code', '');
+                            setPasskeyAvailable(false);
+                            setPasskeyChallenge(null);
+                            setVerifyMethod('code');
                           }}
                           className="h-7 px-2 text-xs"
-                          disabled={isSubmitting}
+                          disabled={isSubmitting || passkeyLoading}
                         >
                           Change
                         </Button>
                       </div>
 
-                      <FormField
-                        control={loginForm.control}
-                        name="code"
-                        render={({ field }) => (
-                          <FormItem>
-                            <FormLabel>Verification Code</FormLabel>
-                            <FormControl>
-                              <div className="relative">
-                                <KeyRound className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
-                                <Input
-                                  {...field}
-                                  placeholder="Enter your 6-digit code"
-                                  className="pl-10"
-                                  inputMode="numeric"
-                                  pattern="[0-9]*"
-                                  maxLength={6}
-                                  disabled={isSubmitting}
-                                />
-                              </div>
-                            </FormControl>
-                            <FormDescription>
-                              Enter the verification code sent to your email
-                            </FormDescription>
-                            <FormMessage />
-                          </FormItem>
-                        )}
-                      />
+                      {passkeyAvailable && (
+                        <div className="flex gap-1 mb-4">
+                          <Button
+                            type="button"
+                            variant={verifyMethod === 'passkey' ? 'default' : 'outline'}
+                            size="sm"
+                            onClick={() => setVerifyMethod('passkey')}
+                            className="flex-1"
+                          >
+                            <Fingerprint className="h-4 w-4 mr-1.5" />
+                            Passkey
+                          </Button>
+                          <Button
+                            type="button"
+                            variant={verifyMethod === 'code' ? 'default' : 'outline'}
+                            size="sm"
+                            onClick={() => setVerifyMethod('code')}
+                            className="flex-1"
+                          >
+                            <Mail className="h-4 w-4 mr-1.5" />
+                            Email Code
+                          </Button>
+                        </div>
+                      )}
 
-                      <Button type="submit" className="w-full mt-6" disabled={isSubmitting}>
-                        {isSubmitting ? (
-                          <>
-                            <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                            Verifying...
-                          </>
-                        ) : (
-                          'Verify & Login'
-                        )}
-                      </Button>
+                      {verifyMethod === 'code' ? (
+                        <>
+                          <FormField
+                            control={loginForm.control}
+                            name="code"
+                            render={({ field }) => (
+                              <FormItem>
+                                <FormLabel>Verification Code</FormLabel>
+                                <FormControl>
+                                  <div className="relative">
+                                    <KeyRound className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
+                                    <Input
+                                      {...field}
+                                      placeholder="Enter your 6-digit code"
+                                      className="pl-10"
+                                      inputMode="numeric"
+                                      pattern="[0-9]*"
+                                      maxLength={6}
+                                      disabled={isSubmitting}
+                                    />
+                                  </div>
+                                </FormControl>
+                                <FormDescription>
+                                  Enter the verification code sent to your email
+                                </FormDescription>
+                                <FormMessage />
+                              </FormItem>
+                            )}
+                          />
+
+                          <Button type="submit" className="w-full mt-6" disabled={isSubmitting}>
+                            {isSubmitting ? (
+                              <>
+                                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                                Verifying...
+                              </>
+                            ) : (
+                              'Verify & Login'
+                            )}
+                          </Button>
+                        </>
+                      ) : (
+                        <div className="space-y-4">
+                          <p className="text-sm text-muted-foreground">
+                            Use your passkey to sign in securely.
+                          </p>
+                          <Button
+                            type="button"
+                            className="w-full"
+                            onClick={handlePasskeyLogin}
+                            disabled={passkeyLoading}
+                          >
+                            {passkeyLoading ? (
+                              <>
+                                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                                Authenticating...
+                              </>
+                            ) : (
+                              <>
+                                <Fingerprint className="mr-2 h-4 w-4" />
+                                Sign in with Passkey
+                              </>
+                            )}
+                          </Button>
+                        </div>
+                      )}
                     </>
                   )}
                 </form>

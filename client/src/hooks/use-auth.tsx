@@ -3,6 +3,7 @@ import { useLocation } from "wouter";
 import { useToast } from "@modl-gg/shared-web/hooks/use-toast";
 import { getApiUrl, getCurrentDomain } from "@/lib/api";
 import { setDateLocale, setDateFormat } from "@/utils/date-utils";
+import { startAuthentication } from "@simplewebauthn/browser";
 import i18n from "@/lib/i18n";
 
 interface User {
@@ -15,6 +16,12 @@ interface User {
   dateFormat?: string;
 }
 
+interface PasskeyLoginOptions {
+  hasPasskeys: boolean;
+  challengeId?: string;
+  options?: string;
+}
+
 type AuthContextType = {
   user: User | null;
   isLoading: boolean;
@@ -22,6 +29,8 @@ type AuthContextType = {
   login: (email: string, code: string) => Promise<boolean>;
   logout: () => void;
   requestEmailVerification: (email: string) => Promise<string | undefined>;
+  checkPasskeyOptions: (email: string) => Promise<PasskeyLoginOptions>;
+  loginWithPasskey: (challengeId: string, optionsJson: string) => Promise<boolean>;
 };
 
 export const AuthContext = createContext<AuthContextType | null>(null);
@@ -196,6 +205,87 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   };
 
+  const checkPasskeyOptions = async (email: string): Promise<PasskeyLoginOptions> => {
+    try {
+      const response = await authFetch('/v1/panel/auth/webauthn/login/options', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email }),
+      });
+      if (!response.ok) {
+        return { hasPasskeys: false };
+      }
+      const data = await response.json();
+      return {
+        hasPasskeys: data.hasPasskeys === true,
+        challengeId: data.challengeId,
+        options: data.options,
+      };
+    } catch {
+      return { hasPasskeys: false };
+    }
+  };
+
+  const loginWithPasskey = async (challengeId: string, optionsJson: string): Promise<boolean> => {
+    setIsLoading(true);
+    try {
+      const assertionResponse = await startAuthentication({ optionsJSON: JSON.parse(optionsJson) });
+
+      const response = await authFetch('/v1/panel/auth/webauthn/login/verify', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          challengeId,
+          response: JSON.stringify(assertionResponse),
+        }),
+      });
+
+      if (!response.ok) {
+        const data = await response.json().catch(() => ({ error: 'Authentication failed' }));
+        toast({
+          title: i18n.t('toast.loginFailed'),
+          description: data.error || 'Passkey authentication failed',
+          variant: 'destructive',
+        });
+        setIsLoading(false);
+        return false;
+      }
+
+      const authenticatedUser = await fetchAuthenticatedUser();
+      if (!authenticatedUser) {
+        toast({
+          title: i18n.t('toast.loginError'),
+          description: i18n.t('toast.loginErrorDesc'),
+          variant: 'destructive',
+        });
+        setIsLoading(false);
+        return false;
+      }
+
+      setUser(authenticatedUser);
+      toast({
+        title: i18n.t('toast.loginSuccess'),
+        description: i18n.t('toast.loginSuccessDesc'),
+      });
+      setIsLoading(false);
+      return true;
+    } catch (e: any) {
+      // User cancelled the WebAuthn prompt
+      if (e.name === 'NotAllowedError') {
+        setIsLoading(false);
+        return false;
+      }
+      console.error('Passkey login error:', e);
+      toast({
+        title: i18n.t('toast.loginError'),
+        description: 'Passkey authentication failed',
+        variant: 'destructive',
+      });
+      setIsLoading(false);
+      return false;
+    }
+  };
+
   const logout = async () => {
     setIsLoading(true);
     let shouldRedirectToAuth = false;
@@ -265,6 +355,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         login,
         logout,
         requestEmailVerification,
+        checkPasskeyOptions,
+        loginWithPasskey,
       }}
     >
       {children}
