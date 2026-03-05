@@ -52,7 +52,8 @@ const AuthPage = () => {
   });
   const isSubmitting = loginForm.formState.isSubmitting;
 
-  const { login, user, requestEmailVerification, checkPasskeyOptions, loginWithPasskey } = useAuth();
+  const { login, user, requestEmailVerification, checkPasskeyOptions, loginWithPasskey, loginWithDiscoverablePasskey } = useAuth();
+  const [discoverableLoading, setDiscoverableLoading] = useState(false);
 
   useEffect(() => {
     if (user) {
@@ -87,6 +88,18 @@ const AuthPage = () => {
       }
     } finally {
       setPasskeyLoading(false);
+    }
+  };
+
+  const handleDiscoverablePasskey = async () => {
+    setDiscoverableLoading(true);
+    try {
+      const success = await loginWithDiscoverablePasskey();
+      if (success) {
+        setLocation('/panel');
+      }
+    } finally {
+      setDiscoverableLoading(false);
     }
   };
 
@@ -174,7 +187,7 @@ const AuthPage = () => {
                         )}
                       />
 
-                      <Button type="submit" className="w-full mt-6" disabled={isSubmitting}>
+                      <Button type="submit" className="w-full mt-6" disabled={isSubmitting || discoverableLoading}>
                         {isSubmitting ? (
                           <>
                             <Loader2 className="mr-2 h-4 w-4 animate-spin" />
@@ -182,6 +195,35 @@ const AuthPage = () => {
                           </>
                         ) : (
                           'Send Verification Code'
+                        )}
+                      </Button>
+
+                      <div className="relative my-4">
+                        <div className="absolute inset-0 flex items-center">
+                          <span className="w-full border-t" />
+                        </div>
+                        <div className="relative flex justify-center text-xs uppercase">
+                          <span className="bg-card px-2 text-muted-foreground">or</span>
+                        </div>
+                      </div>
+
+                      <Button
+                        type="button"
+                        variant="outline"
+                        className="w-full"
+                        onClick={handleDiscoverablePasskey}
+                        disabled={isSubmitting || discoverableLoading}
+                      >
+                        {discoverableLoading ? (
+                          <>
+                            <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                            Authenticating...
+                          </>
+                        ) : (
+                          <>
+                            <Fingerprint className="mr-2 h-4 w-4" />
+                            Sign in with Passkey
+                          </>
                         )}
                       </Button>
                     </>
