@@ -19,7 +19,7 @@ interface User {
 interface PasskeyLoginOptions {
   hasPasskeys: boolean;
   challengeId?: string;
-  options?: string;
+  options?: any;
 }
 
 type AuthContextType = {
@@ -30,7 +30,7 @@ type AuthContextType = {
   logout: () => void;
   requestEmailVerification: (email: string) => Promise<string | undefined>;
   checkPasskeyOptions: (email: string) => Promise<PasskeyLoginOptions>;
-  loginWithPasskey: (challengeId: string, optionsJson: string) => Promise<boolean>;
+  loginWithPasskey: (challengeId: string, optionsJson: any) => Promise<boolean>;
   loginWithDiscoverablePasskey: () => Promise<boolean>;
 };
 
@@ -227,10 +227,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   };
 
-  const loginWithPasskey = async (challengeId: string, optionsJson: string): Promise<boolean> => {
+  const loginWithPasskey = async (challengeId: string, optionsJson: any): Promise<boolean> => {
     setIsLoading(true);
     try {
-      const assertionResponse = await startAuthentication({ optionsJSON: JSON.parse(optionsJson) });
+      const assertionResponse = await startAuthentication({ optionsJSON: optionsJson });
 
       const response = await authFetch('/v1/panel/auth/webauthn/login/verify', {
         method: 'POST',
@@ -307,7 +307,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       const { challengeId, options } = await startRes.json();
 
       // 2. Browser shows passkey picker — user selects account
-      const assertionResponse = await startAuthentication({ optionsJSON: JSON.parse(options) });
+      const assertionResponse = await startAuthentication({ optionsJSON: options });
 
       // 3. Verify with backend
       const verifyRes = await authFetch('/v1/panel/auth/webauthn/login/verify', {

@@ -39,7 +39,7 @@ const AuthPage = () => {
   const [loginStep, setLoginStep] = useState<'email' | 'verification'>('email');
   const [verifyMethod, setVerifyMethod] = useState<'code' | 'passkey'>('code');
   const [passkeyAvailable, setPasskeyAvailable] = useState(false);
-  const [passkeyChallenge, setPasskeyChallenge] = useState<{ challengeId: string; options: string } | null>(null);
+  const [passkeyChallenge, setPasskeyChallenge] = useState<{ challengeId: string; options: any } | null>(null);
   const [passkeyLoading, setPasskeyLoading] = useState(false);
   const serverDisplayName = publicSettings?.serverDisplayName || 'modl';
 

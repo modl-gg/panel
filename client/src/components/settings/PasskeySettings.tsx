@@ -85,7 +85,7 @@ const PasskeySettings = () => {
       }
 
       const { challengeId, options } = await optionsRes.json();
-      const attResp = await startRegistration({ optionsJSON: JSON.parse(options) });
+      const attResp = await startRegistration({ optionsJSON: options });
 
       setPendingChallengeId(challengeId);
       setPendingResponse(JSON.stringify(attResp));
@@ -93,6 +93,7 @@ const PasskeySettings = () => {
       setNameDialogOpen(true);
     } catch (e: any) {
       if (e.name !== 'NotAllowedError') {
+        console.error('Passkey registration error:', e);
         toast({ title: 'Error', description: 'Passkey registration was cancelled or failed', variant: 'destructive' });
       }
     } finally {
