@@ -305,9 +305,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         setIsLoading(false);
         return false;
       }
-      const startData = await startRes.json();
-      console.log('Discoverable passkey options response:', JSON.stringify(startData));
-      const { challengeId, options } = startData;
+      const { challengeId, options } = await startRes.json();
 
       // 2. Browser shows passkey picker — user selects account
       const optionsJSON = options?.publicKey ?? options;
