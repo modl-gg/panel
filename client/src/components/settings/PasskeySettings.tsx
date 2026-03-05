@@ -85,7 +85,7 @@ const PasskeySettings = () => {
       }
 
       const { challengeId, options } = await optionsRes.json();
-      const attResp = await startRegistration({ optionsJSON: options });
+      const attResp = await startRegistration({ optionsJSON: options.publicKey });
 
       setPendingChallengeId(challengeId);
       setPendingResponse(JSON.stringify(attResp));
