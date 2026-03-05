@@ -1006,10 +1006,11 @@ const PlayerWindow = ({ playerId, isOpen, onClose, initialPosition }: PlayerWind
           region: player.latestIPData?.region || player.region || 'Unknown',
           country: player.latestIPData?.country || player.country || 'Unknown',
           firstJoined: firstJoined,
-          lastOnline: getPlayerData(player, 'isOnline') ? 'Online' : 
-            (getPlayerData(player, 'lastDisconnect') ? 
-              formatDateWithTime(getPlayerData(player, 'lastDisconnect')) : 
-              'Unknown'),
+          lastOnline: getPlayerData(player, 'isOnline') ? 'Online' :
+            (getPlayerData(player, 'lastLogout') || getPlayerData(player, 'lastDisconnect') ?
+              formatDateWithTime(getPlayerData(player, 'lastLogout') || getPlayerData(player, 'lastDisconnect')) :
+              (player.ipAddresses?.length ? formatDateWithTime(player.ipAddresses[player.ipAddresses.length - 1].logins?.slice(-1)[0] || player.ipAddresses[player.ipAddresses.length - 1].firstLogin) :
+              'Unknown')),
           lastServer: player.lastServer || 'Unknown',
           playtime: (() => {
             const totalSeconds = getPlayerData(player, 'totalPlaytimeSeconds') || player.totalPlaytimeSeconds || 0;

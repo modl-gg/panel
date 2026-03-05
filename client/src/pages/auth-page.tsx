@@ -6,7 +6,6 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import { KeyRound, Loader2, Mail } from 'lucide-react';
 import { useAuth } from '@/hooks/use-auth';
 import { usePublicSettings } from '@/hooks/use-public-settings';
-import { MODL } from '@modl-gg/shared-web';
 
 import { Button } from "@modl-gg/shared-web/components/ui/button";
 import { Input } from "@modl-gg/shared-web/components/ui/input";
@@ -22,7 +21,6 @@ import {
 import {
   Card,
   CardContent,
-  CardFooter,
 } from "@modl-gg/shared-web/components/ui/card";
 import { useToast } from "@modl-gg/shared-web/hooks/use-toast";
 import { Badge } from '@modl-gg/shared-web/components/ui/badge';
@@ -218,11 +216,6 @@ const AuthPage = () => {
                 </form>
               </Form>
             </CardContent>
-            <CardFooter className="flex justify-center border-t pt-4">
-              <p className="text-xs text-muted-foreground">
-                Administrator contact: <a href={`mailto:${MODL.Email.ADMIN}`} className="text-primary hover:underline">{MODL.Email.ADMIN}</a>
-              </p>
-            </CardFooter>
           </Card>
         </div>
       </div>
