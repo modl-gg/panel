@@ -186,11 +186,9 @@ const PasskeySettings = () => {
 
   return (
     <div className="space-y-4 p-2 pt-0">
-      <div className="flex items-center justify-between">
-        <div className="flex items-center gap-2">
-          <Fingerprint className="h-4 w-4 text-muted-foreground" />
-          <h3 className="text-base font-medium">{t('settings.passkey.passkeys')}</h3>
-        </div>
+      <div className="flex items-center gap-3">
+        <Fingerprint className="h-4 w-4 text-muted-foreground shrink-0" />
+        <h3 className="text-base font-medium">{t('settings.passkey.passkeys')}</h3>
         <Button variant="outline" size="sm" onClick={handleAddPasskey} disabled={registering}>
           {registering ? (
             <Loader2 className="h-4 w-4 animate-spin mr-2" />
