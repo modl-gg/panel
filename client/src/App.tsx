@@ -199,9 +199,6 @@ function AppContent() {
   useDocumentTitle();
   useProvisioningStatusCheck();
 
-  // Simple role check for maintenance bypass — no need to fetch permission nodes here
-  const isAdmin = user?.role === 'Super Admin' || user?.role === 'Admin';
-
   useEffect(() => {
     const hasSeenModal = localStorage.getItem("hasSeenWelcomeModal");
     const isOnPanelHomePage = location === '/panel';
@@ -245,7 +242,7 @@ function AppContent() {
     );
   }
 
-  if (maintenanceMode && !isAdmin) {
+  if (maintenanceMode) {
     return <MaintenancePage message={maintenanceMessage} />;
   }
 
