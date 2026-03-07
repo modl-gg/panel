@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { LogOut } from 'lucide-react';
 import PasskeySettings from './PasskeySettings';
 import { Button } from '@modl-gg/shared-web/components/ui/button';
@@ -8,6 +8,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { useToast } from '@modl-gg/shared-web/hooks/use-toast';
 import { useAuth } from '@/hooks/use-auth';
 import { useTranslation } from 'react-i18next';
+import { apiFetch } from '@/lib/api';
 
 interface AccountSettingsProps {
   profileUsername: string;
@@ -37,6 +38,36 @@ const AccountSettings = ({
   const { toast } = useToast();
   const { logout } = useAuth();
   const { t } = useTranslation();
+  const [isUpdatingEmail, setIsUpdatingEmail] = useState(false);
+
+  const handleUpdateEmail = async () => {
+    setIsUpdatingEmail(true);
+    try {
+      const response = await apiFetch('/v1/panel/auth/email', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ newEmail: currentEmail }),
+      });
+      const data = await response.json();
+      if (!response.ok) {
+        throw new Error(data.message || t('settings.emailUpdateFailed'));
+      }
+      toast({
+        title: t('settings.emailUpdated'),
+        description: t('settings.emailUpdatedDesc'),
+      });
+      setTimeout(() => {
+        window.location.href = '/auth';
+      }, 1500);
+    } catch (error) {
+      toast({
+        title: t('common.error'),
+        description: error instanceof Error ? error.message : t('settings.emailUpdateFailed'),
+        variant: 'destructive',
+      });
+      setIsUpdatingEmail(false);
+    }
+  };
 
   return (
     <div className="space-y-4 p-2">
@@ -98,14 +129,10 @@ const AccountSettings = ({
               <Button
                 variant="outline"
                 size="sm"
-                onClick={() => {
-                  toast({
-                    title: t('toast.workInProgress'),
-                    description: t('toast.workInProgressDesc'),
-                  });
-                }}
+                onClick={handleUpdateEmail}
+                disabled={isUpdatingEmail}
               >
-                {t('common.update')}
+                {isUpdatingEmail ? t('common.saving') : t('common.update')}
               </Button>
             </div>
             <p className="text-xs text-muted-foreground mt-1.5">
@@ -152,9 +179,10 @@ const AccountSettings = ({
             </p>
           </div>
         </div>
+        <div className="rounded-md border">
+          <PasskeySettings />
+        </div>
       </div>
-
-      <PasskeySettings />
     </div>
   );
 };

@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
+import { useTranslation } from 'react-i18next';
 import { Scale, Shield, Globe, Tag, Plus, X, Fingerprint, KeyRound, Lock, QrCode, Copy, Check, Mail, Trash2, GamepadIcon, MessageCircle, Save, CheckCircle, User as UserIcon, CreditCard, BookOpen, Settings as SettingsIcon, Upload, Key, Eye, EyeOff, RefreshCw, ChevronDown, ChevronRight, Layers, GripVertical, Edit3, Users, Bot, FileText, Home, Bell, Crown, Database } from 'lucide-react';
 import { getApiUrl, getCurrentDomain, apiFetch, apiUpload } from '@/lib/api';
 import { setDateLocale, setDateFormat as setDateFormatUtil } from '@/utils/date-utils';
@@ -698,6 +699,7 @@ const AppealFormFieldDropZone = ({ sectionId, moveFieldBetweenSections }: Appeal
 };
 
 const Settings = () => {
+  const { t } = useTranslation();
   const { } = useSidebar();
   const [location, navigateWouter] = useLocation();
   const { user, logout } = useAuth();
@@ -1211,8 +1213,8 @@ const Settings = () => {
     } catch (error) {
       console.error('Upload error:', error);
       toast({
-        title: "Upload Failed",
-        description: error instanceof Error ? error.message : "Failed to upload the icon. Please try again.",
+        title: t('settings.page.uploadFailed'),
+        description: error instanceof Error ? error.message : t('settings.page.uploadFailedDesc'),
         variant: "destructive",
       });
       return null;
@@ -1226,8 +1228,8 @@ const Settings = () => {
       setHomepageIcon(file);
       setHomepageIconUrl(uploadedUrl);
       toast({
-        title: "Homepage Icon Uploaded",
-        description: "Your homepage icon has been successfully uploaded.",
+        title: t('settings.page.homepageIconUploaded'),
+        description: t('settings.page.homepageIconUploadedDesc'),
       });
     }
     setUploadingHomepageIcon(false);
@@ -1243,8 +1245,8 @@ const Settings = () => {
       queryClient.invalidateQueries({ queryKey: ['/v1/settings'] });
 
       toast({
-        title: "Panel Icon Uploaded",
-        description: "Your panel icon has been successfully uploaded. Webhook avatar URL updated automatically.",
+        title: t('settings.page.panelIconUploaded'),
+        description: t('settings.page.panelIconUploadedDesc'),
       });    }
     setUploadingPanelIcon(false);
   };
@@ -1291,8 +1293,8 @@ const Settings = () => {
         setApiKey(data.apiKey); // Display the full key initially
         setShowApiKey(true);
         toast({
-          title: "API Key Generated",
-          description: "Your new API key has been generated.",
+          title: t('settings.page.apiKeyGenerated'),
+          description: t('settings.page.apiKeyGeneratedDesc'),
         });
       } else {
         throw new Error('Failed to generate API key');
@@ -1300,8 +1302,8 @@ const Settings = () => {
     } catch (error) {
       console.error('Error generating API key:', error);
       toast({
-        title: "Error",
-        description: "Failed to generate API key. Please try again.",
+        title: t('common.error'),
+        description: t('settings.page.generateApiKeyFailed'),
         variant: "destructive",
       });
     } finally {
@@ -1325,8 +1327,8 @@ const Settings = () => {
         setFullApiKey('');
         setShowApiKey(false);
         toast({
-          title: "API Key Revoked",
-          description: "The API key has been revoked successfully.",
+          title: t('settings.page.apiKeyRevoked'),
+          description: t('settings.page.apiKeyRevokedDesc'),
         });
       } else {
         throw new Error('Failed to revoke API key');
@@ -1334,8 +1336,8 @@ const Settings = () => {
     } catch (error) {
       console.error('Error revoking API key:', error);
       toast({
-        title: "Error",
-        description: "Failed to revoke API key. Please try again.",
+        title: t('common.error'),
+        description: t('settings.page.revokeApiKeyFailed'),
         variant: "destructive",
       });
     } finally {
@@ -1367,8 +1369,8 @@ const Settings = () => {
       } catch (error) {
         console.error('Error revealing API key:', error);
         toast({
-          title: "Error",
-          description: "Failed to reveal API key. Please try again.",
+          title: t('common.error'),
+          description: t('settings.page.revealApiKeyFailed'),
           variant: "destructive",
         });
         return;
@@ -1387,13 +1389,13 @@ const Settings = () => {
       setApiKeyCopied(true);
       setTimeout(() => setApiKeyCopied(false), 2000);
       toast({
-        title: "Copied",
-        description: "API key copied to clipboard",
+        title: t('common.copied'),
+        description: t('settings.page.apiKeyCopied'),
       });
     } else {
       toast({
-        title: "Cannot copy masked key",
-        description: "Please click the eye icon to reveal the key first, or regenerate a new key to copy it.",
+        title: t('settings.page.cannotCopyMaskedKey'),
+        description: t('settings.page.cannotCopyMaskedKeyDesc'),
         variant: "destructive",
       });
     }
@@ -3256,71 +3258,71 @@ const Settings = () => {
   const settingsCategories = [
     {
       id: 'general',
-      title: 'Server & Billing',
-      description: 'Configure server settings, billing, API keys, and integrations',
+      title: t('settings.page.serverBilling'),
+      description: t('settings.page.serverBillingDesc'),
       icon: SettingsIcon,
       permission: 'general',
       subCategories: [
-        ...(user?.role === 'Super Admin' ? [{ id: 'billing', title: 'Billing', icon: CreditCard }] : []),
-        { id: 'usage', title: 'Usage', icon: Globe },
-        ...(user?.role === 'Super Admin' ? [{ id: 'server-config', title: 'Server Config', icon: SettingsIcon }] : []),
-        { id: 'domain', title: 'Domain', icon: Globe },
-        { id: 'webhooks', title: 'Webhooks', icon: MessageCircle },
-        ...(user?.role === 'Super Admin' ? [{ id: 'migration', title: 'Migration Tool', icon: Database }] : []),
+        ...(user?.role === 'Super Admin' ? [{ id: 'billing', title: t('settings.page.billing'), icon: CreditCard }] : []),
+        { id: 'usage', title: t('settings.page.usage'), icon: Globe },
+        ...(user?.role === 'Super Admin' ? [{ id: 'server-config', title: t('settings.page.serverConfig'), icon: SettingsIcon }] : []),
+        { id: 'domain', title: t('settings.page.domain'), icon: Globe },
+        { id: 'webhooks', title: t('settings.page.webhooks'), icon: MessageCircle },
+        ...(user?.role === 'Super Admin' ? [{ id: 'migration', title: t('settings.page.migrationTool'), icon: Database }] : []),
       ],
     },
     {
       id: 'punishment',
-      title: 'Punishments',
-      description: 'Configure punishment categories, durations, and point thresholds',
+      title: t('settings.page.punishments'),
+      description: t('settings.page.punishmentsDesc'),
       icon: Scale,
       permission: 'punishment',
       subCategories: [
-        { id: 'thresholds', title: 'Thresholds', icon: Layers },
-        { id: 'types', title: 'Types', icon: Scale },
+        { id: 'thresholds', title: t('settings.page.thresholds'), icon: Layers },
+        { id: 'types', title: t('settings.page.types'), icon: Scale },
       ],
     },
     {
       id: 'tickets',
-      title: 'Tickets',
-      description: 'Configure ticket system settings and AI moderation',
+      title: t('settings.page.tickets'),
+      description: t('settings.page.ticketsDesc'),
       icon: FileText,
       permission: 'tags',
       subCategories: [
         ...(canViewAdminSettings
-          ? [{ id: 'quick-responses', title: 'Quick Responses', icon: MessageCircle }]
+          ? [{ id: 'quick-responses', title: t('settings.page.quickResponses'), icon: MessageCircle }]
           : []),
         ...(canViewAdminSettings
-          ? [{ id: 'label-management', title: 'Label Management', icon: Tag }]
+          ? [{ id: 'label-management', title: t('settings.page.labelManagement'), icon: Tag }]
           : []),
         ...(canViewAdminSettings
-          ? [{ id: 'ticket-forms', title: 'Ticket Forms', icon: Layers }]
+          ? [{ id: 'ticket-forms', title: t('settings.page.ticketForms'), icon: Layers }]
           : []),
         ...(canViewAdminSettings
-          ? [{ id: 'ai-moderation', title: 'AI Moderation', icon: Bot }]
+          ? [{ id: 'ai-moderation', title: t('settings.page.aiModeration'), icon: Bot }]
           : []),
       ],
     },
     {
       id: 'staff',
-      title: 'Staff & Roles',
-      description: 'Manage staff members and configure role permissions',
+      title: t('settings.page.staffRoles'),
+      description: t('settings.page.staffRolesDesc'),
       icon: Users,
       permission: 'staff',
       subCategories: [
-        { id: 'staff-management', title: 'Staff Management', icon: UserIcon },
-        { id: 'roles-permissions', title: 'Roles & Permissions', icon: Shield },
+        { id: 'staff-management', title: t('settings.page.staffManagement'), icon: UserIcon },
+        { id: 'roles-permissions', title: t('settings.page.rolesPermissions'), icon: Shield },
       ],
     },
     {
       id: 'knowledgebase',
-      title: 'Knowledgebase & Homepage',
-      description: 'Manage knowledge base articles and homepage customization',
+      title: t('settings.page.knowledgebaseHomepage'),
+      description: t('settings.page.knowledgebaseHomepageDesc'),
       icon: BookOpen,
       permission: 'knowledgebase',
       subCategories: [
-        { id: 'knowledgebase-articles', title: 'Knowledgebase', icon: BookOpen },
-        { id: 'homepage-cards', title: 'Homepage Cards', icon: Home },
+        { id: 'knowledgebase-articles', title: t('settings.page.knowledgebase'), icon: BookOpen },
+        { id: 'homepage-cards', title: t('settings.page.homepageCards'), icon: Home },
       ],
     },
   ];
@@ -3332,12 +3334,12 @@ const Settings = () => {
     <PageContainer>
       <div className="flex flex-col space-y-4">
         <div className="flex justify-between items-center">
-          <h2 className="text-xl font-semibold">Settings</h2>
+          <h2 className="text-xl font-semibold">{t('settings.page.title')}</h2>
           <div className="flex space-x-2 items-center">
             {isSaving ? (
               <span className="text-sm text-muted-foreground flex items-center">
                 <Save className="animate-spin h-4 w-4 mr-2" />
-                Saving...
+                {t('settings.page.saving')}
               </span>
             ) : lastSaved ? (
               <TooltipProvider>
@@ -3345,11 +3347,11 @@ const Settings = () => {
                   <TooltipTrigger>
                     <span className="text-sm text-muted-foreground flex items-center">
                       <CheckCircle className="h-4 w-4 mr-2 text-green-500" />
-                      Saved {formatLastSaved()}
+                      {t('settings.page.saved')} {formatLastSaved()}
                     </span>
                   </TooltipTrigger>
                   <TooltipContent>
-                    <p>Changes are automatically saved</p>
+                    <p>{t('settings.page.autoSaved')}</p>
                   </TooltipContent>
                 </Tooltip>
               </TooltipProvider>
@@ -3454,12 +3456,12 @@ const Settings = () => {
             {expandedCategory === 'general' && expandedSubCategory && (
               <div className="space-y-4">
                 <h3 className="text-lg font-medium flex items-center gap-2">
-                  {expandedSubCategory === 'usage' && <><Globe className="h-5 w-5" />Usage</>}
-                  {expandedSubCategory === 'server-config' && <><SettingsIcon className="h-5 w-5" />Server Config</>}
-                  {expandedSubCategory === 'billing' && <><CreditCard className="h-5 w-5" />Billing</>}
-                  {expandedSubCategory === 'domain' && <><Globe className="h-5 w-5" />Domain</>}
-                  {expandedSubCategory === 'webhooks' && <><Bell className="h-5 w-5" />Webhooks</>}
-                  {expandedSubCategory === 'migration' && <><Database className="h-5 w-5" />Migration Tool</>}
+                  {expandedSubCategory === 'usage' && <><Globe className="h-5 w-5" />{t('settings.page.usage')}</>}
+                  {expandedSubCategory === 'server-config' && <><SettingsIcon className="h-5 w-5" />{t('settings.page.serverConfig')}</>}
+                  {expandedSubCategory === 'billing' && <><CreditCard className="h-5 w-5" />{t('settings.page.billing')}</>}
+                  {expandedSubCategory === 'domain' && <><Globe className="h-5 w-5" />{t('settings.page.domain')}</>}
+                  {expandedSubCategory === 'webhooks' && <><Bell className="h-5 w-5" />{t('settings.page.webhooks')}</>}
+                  {expandedSubCategory === 'migration' && <><Database className="h-5 w-5" />{t('settings.page.migrationTool')}</>}
                 </h3>
                 <GeneralSettings
                 serverDisplayName={serverDisplayName}
@@ -3503,8 +3505,8 @@ const Settings = () => {
             {expandedCategory === 'punishment' && expandedSubCategory && (
               <div className="space-y-4">
                 <h3 className="text-lg font-medium flex items-center gap-2">
-                  {expandedSubCategory === 'thresholds' && <><Layers className="h-5 w-5" />Thresholds</>}
-                  {expandedSubCategory === 'types' && <><Layers className="h-5 w-5" />Punishment Types</>}
+                  {expandedSubCategory === 'thresholds' && <><Layers className="h-5 w-5" />{t('settings.page.thresholds')}</>}
+                  {expandedSubCategory === 'types' && <><Layers className="h-5 w-5" />{t('settings.page.punishmentTypes')}</>}
                 </h3>
                 <PunishmentSettings
                 statusThresholds={statusThresholds}
@@ -3529,7 +3531,7 @@ const Settings = () => {
                     <div>
                       <h3 className="text-lg font-medium mb-4 flex items-center gap-2">
                         <MessageCircle className="h-5 w-5" />
-                        Quick Responses
+                        {t('settings.page.quickResponses')}
                       </h3>
                       <TicketSettings
                         quickResponsesState={quickResponsesState}
@@ -3570,7 +3572,7 @@ const Settings = () => {
                     <div>
                       <h3 className="text-lg font-medium mb-4 flex items-center gap-2">
                         <Tag className="h-5 w-5" />
-                        Label Management
+                        {t('settings.page.labelManagement')}
                       </h3>
                       <TicketSettings
                         quickResponsesState={quickResponsesState}
@@ -3611,7 +3613,7 @@ const Settings = () => {
                     <div>
                       <h3 className="text-lg font-medium mb-4 flex items-center gap-2">
                         <Layers className="h-5 w-5" />
-                        Ticket Forms
+                        {t('settings.page.ticketForms')}
                       </h3>
                       <TicketSettings
                         quickResponsesState={quickResponsesState}
@@ -3652,7 +3654,7 @@ const Settings = () => {
                     <div>
                       <h3 className="text-lg font-medium mb-4 flex items-center gap-2">
                         <Bot className="h-5 w-5" />
-                        AI Moderation
+                        {t('settings.page.aiModeration')}
                       </h3>
                       <TicketSettings
                         quickResponsesState={quickResponsesState}
@@ -3718,17 +3720,17 @@ const Settings = () => {
             <DialogContent className="max-w-4xl p-6 max-h-[90vh] overflow-hidden">
               <DialogHeader>
                 <DialogTitle className="text-lg font-semibold">
-                  Configure Punishment Type
+                  {t('settings.page.configurePunishmentType')}
                 </DialogTitle>
                 <DialogDescription className="text-sm text-muted-foreground">
-                  Adjust the settings for the punishment type "{selectedPunishment.name}".
+                  {t('settings.page.configurePunishmentTypeDesc', { name: selectedPunishment.name })}
                 </DialogDescription>
               </DialogHeader>
 
               <Tabs defaultValue="configuration" className="w-full">
                 <TabsList className="grid w-full grid-cols-2">
-                  <TabsTrigger value="configuration">Configuration</TabsTrigger>
-                  <TabsTrigger value="appeal-form">Appeal Form</TabsTrigger>
+                  <TabsTrigger value="configuration">{t('settings.page.configuration')}</TabsTrigger>
+                  <TabsTrigger value="appeal-form">{t('settings.page.appealForm')}</TabsTrigger>
                 </TabsList>
 
                 <TabsContent value="configuration" className="space-y-4 max-h-[60vh] overflow-y-auto">
@@ -3738,7 +3740,7 @@ const Settings = () => {
                       {/* Punishment Name and Category - Only for customizable punishments */}
                       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                         <div className="space-y-2">
-                          <Label htmlFor="edit-punishment-name">Punishment Name</Label>
+                          <Label htmlFor="edit-punishment-name">{t('settings.page.punishmentName')}</Label>
                           <Input
                             id="edit-punishment-name"
                             value={selectedPunishment.name}
@@ -3747,13 +3749,13 @@ const Settings = () => {
                         </div>
 
                         <div className="space-y-2">
-                          <Label htmlFor="edit-punishment-category">Category</Label>
+                          <Label htmlFor="edit-punishment-category">{t('settings.page.category')}</Label>
                           <Select
                             value={selectedPunishment.category}
                             onValueChange={(value) => setSelectedPunishment(prev => prev ? { ...prev, category: value as 'Gameplay' | 'Social' } : null)}
                           >
                             <SelectTrigger id="edit-punishment-category">
-                              <SelectValue placeholder="Select category" />
+                              <SelectValue placeholder={t('settings.page.selectCategory')} />
                             </SelectTrigger>
                             <SelectContent>
                               <SelectItem value="Gameplay">Gameplay</SelectItem>
@@ -3767,17 +3769,17 @@ const Settings = () => {
                     <>
                       {/* Core Administrative Punishment - Show read-only info */}
                       <div className="bg-muted/30 p-4 rounded-lg">
-                        <h5 className="text-sm font-medium mb-2">Core Administrative Punishment</h5>
+                        <h5 className="text-sm font-medium mb-2">{t('settings.page.coreAdminPunishment')}</h5>
                         <p className="text-xs text-muted-foreground mb-3">
-                          This is a core administrative punishment type. The name, category, durations, and points cannot be modified.
+                          {t('settings.page.coreAdminPunishmentDesc')}
                         </p>
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                           <div className="space-y-1">
-                            <Label className="text-xs text-muted-foreground">Name</Label>
+                            <Label className="text-xs text-muted-foreground">{t('settings.page.name')}</Label>
                             <div className="text-sm font-medium">{selectedPunishment.name}</div>
                           </div>
                           <div className="space-y-1">
-                            <Label className="text-xs text-muted-foreground">Category</Label>
+                            <Label className="text-xs text-muted-foreground">{t('settings.page.category')}</Label>
                             <div className="text-sm font-medium">{selectedPunishment.category}</div>
                           </div>
                         </div>
@@ -3787,33 +3789,33 @@ const Settings = () => {
 
                   {/* Staff and Player Descriptions - Available for all punishment types */}
                   <div className="space-y-4">
-                    <h5 className="text-sm font-medium">Descriptions</h5>
+                    <h5 className="text-sm font-medium">{t('settings.page.descriptions')}</h5>
                     <div className="grid grid-cols-1 gap-4">
                       <div className="space-y-2">
-                        <Label htmlFor="staff-description">Staff Description</Label>
+                        <Label htmlFor="staff-description">{t('settings.page.staffDescription')}</Label>
                         <textarea
                           id="staff-description"
                           className="w-full rounded-md border border-border bg-background px-3 py-2 text-sm min-h-[80px]"
-                          placeholder="Description shown to staff when applying this punishment (optional)"
+                          placeholder={t('settings.page.staffDescriptionPlaceholder')}
                           value={selectedPunishment.staffDescription || ''}
                           onChange={(e) => setSelectedPunishment(prev => prev ? { ...prev, staffDescription: e.target.value } : null)}
                         />
                         <p className="text-xs text-muted-foreground">
-                          This description will be shown to staff members when they apply this punishment type.
+                          {t('settings.page.staffDescriptionHelp')}
                         </p>
                       </div>
-                      
+
                       <div className="space-y-2">
-                        <Label htmlFor="player-description">Player Description</Label>
+                        <Label htmlFor="player-description">{t('settings.page.playerDescription')}</Label>
                         <textarea
                           id="player-description"
                           className="w-full rounded-md border border-border bg-background px-3 py-2 text-sm min-h-[80px]"
-                          placeholder="Description shown to players in appeals, notifications, etc. (optional)"
+                          placeholder={t('settings.page.playerDescriptionPlaceholder')}
                           value={selectedPunishment.playerDescription || ''}
                           onChange={(e) => setSelectedPunishment(prev => prev ? { ...prev, playerDescription: e.target.value } : null)}
                         />
                         <p className="text-xs text-muted-foreground">
-                          This description will be shown to players in appeals, notifications, and other player-facing contexts.
+                          {t('settings.page.playerDescriptionHelp')}
                         </p>
                       </div>
                       
@@ -3827,7 +3829,7 @@ const Settings = () => {
                       {/* Permanent Punishment Options */}
                       {/* New Punishment Options */}
                       <div className="space-y-3 p-3 border rounded-md">
-                        <h5 className="text-sm font-medium">Punishment Options</h5>
+                        <h5 className="text-sm font-medium">{t('settings.page.punishmentOptions')}</h5>
                         <div className="space-y-2">
                           <div className="flex items-center space-x-2">
                             <input
@@ -3844,7 +3846,7 @@ const Settings = () => {
                               className="rounded"
                             />
                             <Label htmlFor="canBeAltBlocking" className="text-sm">
-                              Can be alt-blocking
+                              {t('settings.page.canBeAltBlocking')}
                             </Label>
                           </div>
                           <div className="flex items-center space-x-2">
@@ -3862,7 +3864,7 @@ const Settings = () => {
                               className="rounded"
                             />
                             <Label htmlFor="canBeStatWiping" className="text-sm">
-                              Can be stat-wiping
+                              {t('settings.page.canBeStatWiping')}
                             </Label>
                           </div>
                           <div className="flex items-center space-x-2">
@@ -3887,7 +3889,7 @@ const Settings = () => {
                               className="rounded"
                             />
                             <Label htmlFor="singleSeverityPunishment" className="text-sm">
-                              Single-severity punishment
+                              {t('settings.page.singleSeverityPunishment')}
                             </Label>
                           </div>
                           <div className="flex items-center space-x-2">
@@ -3911,7 +3913,7 @@ const Settings = () => {
                               className="rounded"
                             />
                             <Label htmlFor="permanentUntilUsernameChange" className="text-sm">
-                              Permanent until username change
+                              {t('settings.page.permanentUntilUsernameChange')}
                             </Label>
                           </div>
                           <div className="flex items-center space-x-2">
@@ -3935,13 +3937,13 @@ const Settings = () => {
                               className="rounded"
                             />
                             <Label htmlFor="permanentUntilSkinChange" className="text-sm">
-                              Permanent until skin change
+                              {t('settings.page.permanentUntilSkinChange')}
                             </Label>
                           </div>
                           {selectedPunishment.singleSeverityPunishment && (
                             <div className="ml-6 space-y-3 p-3 border rounded-md bg-muted/20">
                               <div>
-                                <Label className="text-xs text-muted-foreground mb-2 block">Single Severity Durations</Label>
+                                <Label className="text-xs text-muted-foreground mb-2 block">{t('settings.page.singleSeverityDurations')}</Label>
                                 <div className="space-y-3">
                                   {['first', 'medium', 'habitual'].map((offenseType) => (
                                     <div key={`single-${offenseType}`}>
@@ -4034,7 +4036,7 @@ const Settings = () => {
                                 </div>
                               </div>
                               <div>
-                                <Label className="text-xs text-muted-foreground">Single Severity Points</Label>
+                                <Label className="text-xs text-muted-foreground">{t('settings.page.singleSeverityPoints')}</Label>
                                 <Input
                                   type="number"
                                   placeholder="Points"
@@ -4059,15 +4061,15 @@ const Settings = () => {
                     <div className="space-y-4">
                       {/* Durations Configuration */}
                       <div>
-                        <h4 className="text-base font-medium mb-2">Durations</h4>
+                        <h4 className="text-base font-medium mb-2">{t('settings.page.durations')}</h4>
                         <p className="text-sm text-muted-foreground mb-4">
-                          Set the durations and units for low, regular, and severe levels of this punishment.
+                          {t('settings.page.durationsDesc')}
                         </p>
 
                         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                           {/* Low Severity */}
                           <div className="space-y-2">
-                            <Label className="font-medium">Low Severity Durations</Label>
+                            <Label className="font-medium">{t('settings.page.lowSeverityDurations')}</Label>
                             <div className="space-y-3 p-2 border rounded-md">
                               {['first', 'medium', 'habitual'].map((offenseType) => (
                                 <div key={`low-${offenseType}`}>
@@ -4164,7 +4166,7 @@ const Settings = () => {
 
                           {/* Regular Severity */}
                           <div className="space-y-2">
-                            <Label className="font-medium">Regular Severity Durations</Label>
+                            <Label className="font-medium">{t('settings.page.regularSeverityDurations')}</Label>
                             <div className="space-y-3 p-2 border rounded-md">
                               {['first', 'medium', 'habitual'].map((offenseType) => (
                                 <div key={`regular-${offenseType}`}>
@@ -4262,7 +4264,7 @@ const Settings = () => {
 
                           {/* Severe Severity */}
                           <div className="space-y-2">
-                            <Label className="font-medium">Severe Severity Durations</Label>
+                            <Label className="font-medium">{t('settings.page.severeSeverityDurations')}</Label>
                             <div className="space-y-3 p-2 border rounded-md">
                               {['first', 'medium', 'habitual'].map((offenseType) => (
                                 <div key={`severe-${offenseType}`}>
@@ -4367,7 +4369,7 @@ const Settings = () => {
                         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                           {/* Low Severity Points */}
                           <div className="space-y-2">
-                            <Label className="font-medium">Low Severity Points</Label>
+                            <Label className="font-medium">{t('settings.page.lowSeverityPoints')}</Label>
                             <Input
                               type="number"
                               placeholder="Points"
@@ -4389,7 +4391,7 @@ const Settings = () => {
 
                           {/* Regular Severity Points */}
                           <div className="space-y-2">
-                            <Label className="font-medium">Regular Severity Points</Label>
+                            <Label className="font-medium">{t('settings.page.regularSeverityPoints')}</Label>
                             <Input
                               type="number"
                               placeholder="Points"
@@ -4411,7 +4413,7 @@ const Settings = () => {
 
                           {/* Severe Severity Points */}
                           <div className="space-y-2">
-                            <Label className="font-medium">Severe Severity Points</Label>
+                            <Label className="font-medium">{t('settings.page.severeSeverityPoints')}</Label>
                             <Input
                               type="number"
                               placeholder="Points"
@@ -4452,19 +4454,19 @@ const Settings = () => {
                       />
                       <div className="flex-1">
                         <Label htmlFor="isAppealable" className="text-sm font-medium">
-                          Is appealable?
+                          {t('settings.page.isAppealable')}
                         </Label>
                         <p className="text-sm text-muted-foreground">
-                          Whether players can submit appeals for this punishment type. Unchecked punishments will show "This punishment is not appealable" message.
+                          {t('settings.page.isAppealableDesc')}
                         </p>
                       </div>
                     </div>
 
                     <div className="flex items-center justify-between">
                       <div>
-                        <h4 className="text-base font-medium">Appeal Form Configuration</h4>
+                        <h4 className="text-base font-medium">{t('settings.page.appealFormConfiguration')}</h4>
                         <p className="text-sm text-muted-foreground mt-1">
-                          Configure custom sections and fields for players to fill out when appealing this punishment type.
+                          {t('settings.page.appealFormConfigurationDesc')}
                         </p>
                       </div>
                       <div className="flex gap-2">
@@ -4475,7 +4477,7 @@ const Settings = () => {
                           disabled={selectedPunishment.isAppealable === false}
                         >
                           <Plus className="h-4 w-4 mr-2" />
-                          Add Section
+                          {t('settings.page.addSection')}
                         </Button>
                       </div>
                     </div>
@@ -4524,15 +4526,15 @@ const Settings = () => {
                           <div className="text-center py-8 text-muted-foreground">
                             <MessageCircle className="h-8 w-8 mx-auto mb-2 opacity-50" />
                             <p className="text-sm">
-                              {selectedPunishment.isAppealable === false 
-                                ? 'Appeals are disabled for this punishment type'
-                                : 'No custom appeal form configured'
+                              {selectedPunishment.isAppealable === false
+                                ? t('settings.page.appealsDisabled')
+                                : t('settings.page.noCustomAppealForm')
                               }
                             </p>
                             <p className="text-xs mt-1">
-                              {selectedPunishment.isAppealable === false 
-                                ? 'Players will see "This punishment is not appealable" message'
-                                : 'Players will use the default appeal form'
+                              {selectedPunishment.isAppealable === false
+                                ? t('settings.page.appealsDisabledNote')
+                                : t('settings.page.defaultAppealFormNote')
                               }
                             </p>
                           </div>
@@ -4548,7 +4550,7 @@ const Settings = () => {
                   variant="outline"
                   onClick={() => setSelectedPunishment(null)}
                 >
-                  Cancel
+                  {t('common.cancel')}
                 </Button>
                 <Button
                   onClick={async () => {
@@ -4567,22 +4569,22 @@ const Settings = () => {
                           );
                           queryClient.invalidateQueries({ queryKey: ['/v1/panel/settings/punishment-types'] });
                           toast({
-                            title: "Punishment Type Updated",
-                            description: `The punishment type "${selectedPunishment.name}" has been updated`
+                            title: t('settings.page.punishmentTypeUpdated'),
+                            description: t('settings.page.punishmentTypeUpdatedDesc', { name: selectedPunishment.name })
                           });
                         } else {
                           const errorData = await response.json().catch(() => ({ error: 'Unknown error' }));
                           toast({
-                            title: "Error",
-                            description: errorData.error || 'Failed to update punishment type',
+                            title: t('common.error'),
+                            description: errorData.error || t('settings.page.updatePunishmentTypeFailed'),
                             variant: "destructive"
                           });
                         }
                       } catch (error) {
                         console.error('Failed to update punishment type:', error);
                         toast({
-                          title: "Error",
-                          description: 'Failed to update punishment type',
+                          title: t('common.error'),
+                          description: t('settings.page.updatePunishmentTypeFailed'),
                           variant: "destructive"
                         });
                       }
@@ -4590,7 +4592,7 @@ const Settings = () => {
                     setSelectedPunishment(null);
                   }}
                 >
-                  Save Changes
+                  {t('common.saveChanges')}
                 </Button>
               </DialogFooter>
             </DialogContent>
