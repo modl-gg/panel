@@ -185,7 +185,7 @@ const AccountSettings = ({
         </Button>
       </div>
 
-      <div className="grid grid-cols-3 gap-0">
+      <div className="grid grid-cols-[1fr_1fr_8rem] gap-0">
         {/* LEFT: form fields */}
         <div className="space-y-5 pr-6">
           <div className="flex gap-3">
@@ -295,8 +295,8 @@ const AccountSettings = ({
           <SessionsSection onSignOutAll={logout} />
         </div>
 
-        {/* RIGHT: empty column aligned with sign-out button */}
-        <div className="border-l border-border" />
+        {/* RIGHT: small offset column aligned with sign-out button */}
+        <div />
       </div>
     </div>
   );
