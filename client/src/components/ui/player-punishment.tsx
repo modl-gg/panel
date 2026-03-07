@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { Button } from '@modl-gg/shared-web/components/ui/button';
 import { Checkbox } from '@modl-gg/shared-web/components/ui/checkbox';
 import { Badge } from '@modl-gg/shared-web/components/ui/badge';
@@ -48,17 +49,17 @@ interface PlayerPunishmentProps {
 const ADMINISTRATIVE_PUNISHMENTS = ['Kick', 'Manual Mute', 'Manual Ban', 'Security Ban', 'Linked Ban', 'Blacklist'];
 const SEVERITY_OPTIONS = ['Lenient', 'Regular', 'Aggravated'];
 const OFFENSE_LEVELS = [
-  { id: 'first', label: 'First Offense' },
-  { id: 'medium', label: 'Medium' },
-  { id: 'habitual', label: 'Habitual' }
+  { id: 'first', labelKey: 'punishment.offenseFirst' },
+  { id: 'medium', labelKey: 'punishment.offenseMedium' },
+  { id: 'habitual', labelKey: 'punishment.offenseHabitual' }
 ];
 const DURATION_UNITS = [
-  { value: 'seconds', label: 'Seconds' },
-  { value: 'minutes', label: 'Minutes' },
-  { value: 'hours', label: 'Hours' },
-  { value: 'days', label: 'Days' },
-  { value: 'weeks', label: 'Weeks' },
-  { value: 'months', label: 'Months' }
+  { value: 'seconds', labelKey: 'punishment.seconds' },
+  { value: 'minutes', labelKey: 'punishment.minutes' },
+  { value: 'hours', labelKey: 'punishment.hours' },
+  { value: 'days', labelKey: 'punishment.days' },
+  { value: 'weeks', labelKey: 'punishment.weeks' },
+  { value: 'months', labelKey: 'punishment.months' }
 ];
 
 const DEFAULT_PUNISHMENT_TYPES = {
@@ -86,6 +87,7 @@ const PlayerPunishment: React.FC<PlayerPunishmentProps> = ({
   compact = false,
   availableTickets = []
 }) => {
+  const { t } = useTranslation();
   const { toast } = useToast();
   const [isApplying, setIsApplying] = useState(false);
   const [linkedBanSearch, setLinkedBanSearch] = useState('');
@@ -228,13 +230,13 @@ const PlayerPunishment: React.FC<PlayerPunishmentProps> = ({
       });
       
       toast({
-        title: "Punishment Applied",
-        description: `${punishmentType.name} has been applied successfully.`,
+        title: t('punishment.applied'),
+        description: t('punishment.appliedDesc', { name: punishmentType.name }),
       });
     } catch (error) {
       toast({
-        title: "Error",
-        description: "Failed to apply punishment. Please try again.",
+        title: t('common.error'),
+        description: t('punishment.applyFailed'),
         variant: "destructive",
       });
     } finally {
@@ -246,8 +248,8 @@ const PlayerPunishment: React.FC<PlayerPunishmentProps> = ({
     // Validate kick for offline players
     if (type.name === 'Kick' && playerStatus !== 'Online') {
       toast({
-        title: "Cannot Kick",
-        description: "Player must be online to kick.",
+        title: t('punishment.cannotKick'),
+        description: t('punishment.mustBeOnline'),
         variant: "destructive",
       });
       return;
@@ -313,7 +315,7 @@ const PlayerPunishment: React.FC<PlayerPunishmentProps> = ({
           </Button>
         )) : (
           <div className="col-span-2 sm:col-span-3 md:col-span-4 lg:col-span-6 text-xs text-muted-foreground p-2 border border-dashed rounded">
-            {isLoading ? `Loading ${title.toLowerCase()} punishment types...` : `No ${title.toLowerCase()} punishment types configured`}
+            {isLoading ? t('punishment.loadingTypes', { category: title.toLowerCase() }) : t('punishment.noTypesConfigured', { category: title.toLowerCase() })}
           </div>
         )}
       </div>
@@ -334,7 +336,7 @@ const PlayerPunishment: React.FC<PlayerPunishmentProps> = ({
 
     return (
       <div className="space-y-2">
-        <label className="text-sm font-medium">Severity</label>
+        <label className="text-sm font-medium">{t('punishment.severity')}</label>
         <div className="flex gap-2">
           {SEVERITY_OPTIONS.map((severity) => (
             <Button
@@ -366,7 +368,7 @@ const PlayerPunishment: React.FC<PlayerPunishmentProps> = ({
 
     return (
       <div className="space-y-2">
-        <label className="text-sm font-medium">Offense Level</label>
+        <label className="text-sm font-medium">{t('punishment.offenseLevel')}</label>
         <div className="flex gap-2">
           {OFFENSE_LEVELS.map((level) => (
             <Button
@@ -376,7 +378,7 @@ const PlayerPunishment: React.FC<PlayerPunishmentProps> = ({
               onClick={() => updateData({ selectedOffenseLevel: level.id as any })}
               className="min-w-[100px] flex-1"
             >
-              {level.label}
+              {t(level.labelKey)}
             </Button>
           ))}
         </div>
@@ -395,7 +397,7 @@ const PlayerPunishment: React.FC<PlayerPunishmentProps> = ({
     return (
       <div className="space-y-2">
         <div className="flex items-center justify-between mb-2">
-          <label className="text-sm font-medium">Duration</label>
+          <label className="text-sm font-medium">{t('punishment.duration')}</label>
           <div className="flex items-center">
             <Checkbox
               id={`permanent-${punishmentType.name.toLowerCase().replace(' ', '-')}`}
@@ -411,7 +413,7 @@ const PlayerPunishment: React.FC<PlayerPunishmentProps> = ({
               htmlFor={`permanent-${punishmentType.name.toLowerCase().replace(' ', '-')}`} 
               className="text-sm ml-2"
             >
-              Permanent
+              {t('punishment.permanent')}
             </label>
           </div>
         </div>
@@ -444,7 +446,7 @@ const PlayerPunishment: React.FC<PlayerPunishmentProps> = ({
               })}
             >
               {DURATION_UNITS.map(unit => (
-                <option key={unit.value} value={unit.value}>{unit.label}</option>
+                <option key={unit.value} value={unit.value}>{t(unit.labelKey)}</option>
               ))}
             </select>
           </div>
@@ -469,7 +471,7 @@ const PlayerPunishment: React.FC<PlayerPunishmentProps> = ({
             onCheckedChange={(checked) => updateData({ kickSameIP: checked === true })}
           />
           <label htmlFor="kickSameIP" className="text-sm">
-            Kick players with same IP
+            {t('punishment.kickSameIp')}
           </label>
         </div>
       );
@@ -483,7 +485,7 @@ const PlayerPunishment: React.FC<PlayerPunishmentProps> = ({
             onCheckedChange={(checked) => updateData({ banLinkedAccounts: checked === true })}
           />
           <label htmlFor="banLinkedAccounts" className="text-sm">
-            Ban Linked Accounts
+            {t('punishment.banLinkedAccounts')}
           </label>
         </div>,
         <div key="wipeAccount" className="flex items-center space-x-2">
@@ -493,7 +495,7 @@ const PlayerPunishment: React.FC<PlayerPunishmentProps> = ({
             onCheckedChange={(checked) => updateData({ statWiping: checked === true })}
           />
           <label htmlFor="wipeAccount" className="text-sm">
-            Wipe Account After Expiry
+            {t('punishment.wipeAccount')}
           </label>
         </div>
       );
@@ -502,8 +504,8 @@ const PlayerPunishment: React.FC<PlayerPunishmentProps> = ({
       return (
         <div className="space-y-3">
           <div>
-            <label className="text-sm font-medium">Search for Punishment to Link</label>
-            <p className="text-xs text-muted-foreground mb-2">Search by punishment ID or player name</p>
+            <label className="text-sm font-medium">{t('punishment.searchToLink')}</label>
+            <p className="text-xs text-muted-foreground mb-2">{t('punishment.searchByIdOrName')}</p>
             <div className="relative">
               <Input
                 placeholder="Enter punishment ID or player name..."
@@ -555,8 +557,8 @@ const PlayerPunishment: React.FC<PlayerPunishmentProps> = ({
               onCheckedChange={(checked) => updateData({ altBlocking: checked === true })}
             />
             <label htmlFor="altBlocking" className="text-sm">
-              Alt-blocking
-              <span className="text-xs text-muted-foreground ml-2">- Prevents alternative accounts from connecting</span>
+              {t('punishment.altBlocking')}
+              <span className="text-xs text-muted-foreground ml-2">- {t('punishment.altBlockingDesc')}</span>
             </label>
           </div>
         );
@@ -571,8 +573,8 @@ const PlayerPunishment: React.FC<PlayerPunishmentProps> = ({
               onCheckedChange={(checked) => updateData({ statWiping: checked === true })}
             />
             <label htmlFor="statWiping" className="text-sm">
-              Stat-wiping
-              <span className="text-xs text-muted-foreground ml-2">- Resets player statistics and progress</span>
+              {t('punishment.statWiping')}
+              <span className="text-xs text-muted-foreground ml-2">- {t('punishment.statWipingDesc')}</span>
             </label>
           </div>
         );
@@ -588,7 +590,7 @@ const PlayerPunishment: React.FC<PlayerPunishmentProps> = ({
           onCheckedChange={(checked) => updateData({ silentPunishment: checked === true })}
         />
         <label htmlFor="silentPunishment" className="text-sm">
-          Silent punishment
+          {t('punishment.silent')}
         </label>
       </div>
     );
@@ -597,7 +599,7 @@ const PlayerPunishment: React.FC<PlayerPunishmentProps> = ({
 
     return (
       <div className="space-y-2">
-        <label className="text-sm font-medium">Options</label>
+        <label className="text-sm font-medium">{t('punishment.options')}</label>
         <div className="space-y-2">
           {options}
         </div>
@@ -612,8 +614,8 @@ const PlayerPunishment: React.FC<PlayerPunishmentProps> = ({
 
     return (
       <div className="space-y-2">
-        <label className="text-sm font-medium">Link Tickets</label>
-        <p className="text-xs text-muted-foreground">Select tickets to close when this punishment is applied</p>
+        <label className="text-sm font-medium">{t('punishment.linkTickets')}</label>
+        <p className="text-xs text-muted-foreground">{t('punishment.linkTicketsDesc')}</p>
         <div className="space-y-1 max-h-32 overflow-y-auto">
           {openTickets.map(ticket => {
             const isSelected = (data.attachReports || []).includes(ticket.id);
@@ -661,7 +663,7 @@ const PlayerPunishment: React.FC<PlayerPunishmentProps> = ({
       
       sections.push(
         <div key="reason" className="space-y-2">
-          <label className="text-sm font-medium">Reason (shown to player)</label>
+          <label className="text-sm font-medium">{t('punishment.reason')}</label>
           <textarea
             className="w-full min-h-[60px] rounded-md border border-input bg-background px-3 py-2 text-sm"
             placeholder={reasonPlaceholder}
@@ -675,7 +677,7 @@ const PlayerPunishment: React.FC<PlayerPunishmentProps> = ({
     // Evidence field - shown for all punishment types
     sections.push(
       <div key="evidence" className="space-y-4">
-        <label className="text-sm font-medium">Evidence</label>
+        <label className="text-sm font-medium">{t('punishment.evidence')}</label>
         
         {/* Evidence Items */}
         <div className="space-y-2">
@@ -768,7 +770,7 @@ const PlayerPunishment: React.FC<PlayerPunishmentProps> = ({
     // Staff Notes - shown for all punishment types
     sections.push(
       <div key="staffNotes" className="space-y-2">
-        <label className="text-sm font-medium">Staff Notes (Internal)</label>
+        <label className="text-sm font-medium">{t('punishment.staffNotes')}</label>
         <textarea
           className="w-full min-h-[60px] rounded-md border border-input bg-background px-3 py-2 text-sm"
           placeholder="Internal notes for staff..."
@@ -787,7 +789,7 @@ const PlayerPunishment: React.FC<PlayerPunishmentProps> = ({
       <div className={compact ? "space-y-3" : "bg-muted/30 p-4 rounded-lg space-y-4"}>
         {!compact && (
           <div className="flex items-center justify-between">
-            <h4 className="font-medium">Create Punishment</h4>
+            <h4 className="font-medium">{t('punishment.createPunishment')}</h4>
             {playerName && (
               <Badge variant="outline">
                 {playerName}
@@ -797,9 +799,9 @@ const PlayerPunishment: React.FC<PlayerPunishmentProps> = ({
         )}
         
         <div className="space-y-3">
-          {renderCategoryGrid(punishmentTypesByCategory.Administrative, "Administrative Actions")}
-          {renderCategoryGrid(punishmentTypesByCategory.Social, "Chat & Social")}
-          {renderCategoryGrid(punishmentTypesByCategory.Gameplay, "Game & Account")}
+          {renderCategoryGrid(punishmentTypesByCategory.Administrative, t('punishment.administrative'))}
+          {renderCategoryGrid(punishmentTypesByCategory.Social, t('punishment.chatSocial'))}
+          {renderCategoryGrid(punishmentTypesByCategory.Gameplay, t('punishment.gameAccount'))}
         </div>
       </div>
     );
@@ -818,7 +820,7 @@ const PlayerPunishment: React.FC<PlayerPunishmentProps> = ({
             size="sm" 
             onClick={() => updateData({ selectedPunishmentCategory: undefined })}
           >
-            ← Back
+            {t('common.back')}
           </Button>
           <span className="font-medium">{punishmentType.name}</span>
         </div>
@@ -861,9 +863,9 @@ const PlayerPunishment: React.FC<PlayerPunishmentProps> = ({
         className="w-full"
       >
         {isApplying ? (
-          'Applying...'
+          t('punishment.applying')
         ) : (
-          `Apply: ${getPunishmentPreview() || 'Select punishment options'}`
+          `${t('punishment.apply')}: ${getPunishmentPreview() || t('punishment.selectOptions')}`
         )}
       </Button>
       <p className="text-xs text-muted-foreground text-center">

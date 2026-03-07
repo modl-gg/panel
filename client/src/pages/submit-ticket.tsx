@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { useLocation, useParams } from 'wouter';
 import {
   Bug,
@@ -38,12 +39,6 @@ const typeMapping: Record<string, string> = {
   'apply': 'staff',
 };
 
-const ticketTypes = [
-  { id: 'support', label: 'Support Request', icon: HelpCircle, description: 'Get help with an issue', apiType: 'support' },
-  { id: 'bug', label: 'Bug Report', icon: Bug, description: 'Report a bug or technical issue', apiType: 'bug' },
-  { id: 'staff', label: 'Staff Application', icon: User, description: 'Apply to join the staff team', apiType: 'staff' },
-];
-
 interface FormField {
   id: string;
   label: string;
@@ -72,6 +67,14 @@ const SubmitTicketPage = () => {
   const [, setLocation] = useLocation();
   const { type: urlType } = useParams<{ type?: string }>();
   const { toast } = useToast();
+  const { t } = useTranslation();
+
+  const ticketTypes = [
+    { id: 'support', label: t('submitTicket.supportRequest'), icon: HelpCircle, description: t('submitTicket.supportRequestDesc'), apiType: 'support' },
+    { id: 'bug', label: t('submitTicket.bugReport'), icon: Bug, description: t('submitTicket.bugReportDesc'), apiType: 'bug' },
+    { id: 'staff', label: t('submitTicket.staffApplication'), icon: User, description: t('submitTicket.staffApplicationDesc'), apiType: 'staff' },
+  ];
+
   const [selectedType, setSelectedType] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [formSubject, setFormSubject] = useState('');
@@ -110,8 +113,8 @@ const SubmitTicketPage = () => {
     // Check if subject is required for non-application tickets
     if (effectiveType !== 'staff' && effectiveType !== 'application' && !finalSubject) {
       toast({
-        title: "Subject Required",
-        description: "Please provide a subject for your ticket.",
+        title: t('submitTicket.subjectRequired'),
+        description: t('submitTicket.subjectRequiredDesc'),
         variant: "destructive"
       });
       return;
@@ -138,8 +141,8 @@ const SubmitTicketPage = () => {
 
     if (!formConfig || !formConfig.fields) {
       toast({
-        title: "Form Configuration Missing",
-        description: `No form configuration found for ${effectiveType} tickets. Please contact support.`,
+        title: t('submitTicket.formConfigMissing'),
+        description: t('submitTicket.formConfigMissingDesc', { type: effectiveType }),
         variant: "destructive"
       });
       return;
@@ -203,8 +206,8 @@ const SubmitTicketPage = () => {
     // Check display name
     if (!displayName.trim()) {
       toast({
-        title: "Name Required",
-        description: "Please enter your name or username.",
+        title: t('submitTicket.nameRequired'),
+        description: t('submitTicket.nameRequiredDesc'),
         variant: "destructive"
       });
       return;
@@ -220,8 +223,8 @@ const SubmitTicketPage = () => {
       }
       if (field.required && (!formData[field.id] || formData[field.id].trim() === '')) {
         toast({
-          title: "Required Field Missing",
-          description: `Please complete the "${field.label}" field.`,
+          title: t('submitTicket.requiredFieldMissing'),
+          description: t('submitTicket.requiredFieldMissingDesc', { label: field.label }),
           variant: "destructive"
         });
         return;
@@ -232,8 +235,8 @@ const SubmitTicketPage = () => {
     const email = normalizeEmail(formData['email']);
     if (!isValidEmail(email)) {
       toast({
-        title: "Invalid Email Format",
-        description: "Please enter a valid email address (e.g., name@example.com).",
+        title: t('submitTicket.invalidEmail'),
+        description: t('submitTicket.invalidEmailDesc'),
         variant: "destructive"
       });
       return;
@@ -313,8 +316,8 @@ const SubmitTicketPage = () => {
 
       if (hiddenExcludedFiles > 0) {
         toast({
-          title: "Hidden Attachments Excluded",
-          description: `${hiddenExcludedFiles} hidden attachment${hiddenExcludedFiles > 1 ? 's were' : ' was'} not submitted.`,
+          title: t('submitTicket.hiddenAttachmentsExcluded'),
+          description: t('submitTicket.hiddenAttachmentsExcludedDesc', { count: hiddenExcludedFiles }),
         });
       }
 
@@ -342,8 +345,8 @@ const SubmitTicketPage = () => {
       const data = await response.json();
 
       toast({
-        title: "Ticket Submitted Successfully",
-        description: "Your ticket is now open for staff review.",
+        title: t('submitTicket.ticketSubmitted'),
+        description: t('submitTicket.ticketSubmittedDesc'),
         variant: "default"
       });
 
@@ -366,7 +369,7 @@ const SubmitTicketPage = () => {
       return (
         <div className="text-center py-8">
           <Loader2 className="h-8 w-8 animate-spin mx-auto mb-4 text-primary" />
-          <p className="text-muted-foreground">Loading form configuration...</p>
+          <p className="text-muted-foreground">{t('submitTicket.loadingForm')}</p>
         </div>
       );
     }
@@ -400,12 +403,12 @@ const SubmitTicketPage = () => {
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L4.082 15.5c-.77.833.192 2.5 1.732 2.5z" />
             </svg>
           </div>
-          <h3 className="text-lg font-medium text-red-800 dark:text-red-300 mb-2">Form Not Configured</h3>
+          <h3 className="text-lg font-medium text-red-800 dark:text-red-300 mb-2">{t('submitTicket.formNotConfigured')}</h3>
           <p className="text-red-700 dark:text-red-400 mb-4">
-            No form configuration found for {effectiveType} tickets.
+            {t('submitTicket.noFormConfig', { type: effectiveType })}
           </p>
           <p className="text-sm text-red-600 dark:text-red-500">
-            Please contact server administration to configure this ticket form.
+            {t('submitTicket.contactAdmin')}
           </p>
         </div>
       );
@@ -440,9 +443,9 @@ const SubmitTicketPage = () => {
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L4.082 15.5c-.77.833.192 2.5 1.732 2.5z" />
             </svg>
           </div>
-          <h3 className="text-lg font-medium text-yellow-800 dark:text-yellow-300 mb-2">Empty Form Configuration</h3>
+          <h3 className="text-lg font-medium text-yellow-800 dark:text-yellow-300 mb-2">{t('submitTicket.emptyFormConfig')}</h3>
           <p className="text-yellow-700 dark:text-yellow-400 mb-4">
-            The {effectiveType} ticket form has no fields configured.
+            {t('submitTicket.emptyFormConfigDesc', { type: effectiveType })}
           </p>
         </div>
       );
@@ -693,16 +696,16 @@ const SubmitTicketPage = () => {
           {/* Name field - always first */}
           <div>
             <Label htmlFor="displayName" className="font-medium">
-              Your Name
+              {t('submitTicket.yourName')}
               <span className="text-destructive ml-1">*</span>
             </Label>
             <p className="text-sm text-muted-foreground mb-1">
-              Your name or Minecraft username (will show as "{displayName || 'Name'} (Web User)" until verified)
+              {t('submitTicket.yourNameDesc', { name: displayName || t('submitTicket.namePlaceholderExample') })}
             </p>
             <Input
               id="displayName"
               type="text"
-              placeholder="Enter your name or username"
+              placeholder={t('submitTicket.namePlaceholder')}
               value={displayName}
               onChange={(e) => setDisplayName(e.target.value)}
               required
@@ -711,11 +714,11 @@ const SubmitTicketPage = () => {
 
           {effectiveType !== 'staff' && effectiveType !== 'application' && (
             <div>
-              <Label htmlFor="subject" className="font-medium">Ticket Subject</Label>
+              <Label htmlFor="subject" className="font-medium">{t('submitTicket.ticketSubject')}</Label>
               <Input
                 id="subject"
                 type="text"
-                placeholder="Enter a subject for your ticket"
+                placeholder={t('submitTicket.ticketSubjectPlaceholder')}
                 value={formSubject}
                 onChange={(e) => setFormSubject(e.target.value)}
                 className="mt-1"
@@ -758,10 +761,10 @@ const SubmitTicketPage = () => {
               />
               <div>
                 <label htmlFor="emailAuthEnabled" className="text-sm font-medium leading-tight cursor-pointer">
-                  Enable email authentication on this ticket
+                  {t('submitTicket.enableEmailAuth')}
                 </label>
                 <p className="text-xs text-muted-foreground mt-1">
-                  Require email verification to access this ticket. If disabled, anyone with the ticket ID can view and reply.
+                  {t('submitTicket.enableEmailAuthDesc')}
                 </p>
               </div>
             </div>
@@ -777,12 +780,12 @@ const SubmitTicketPage = () => {
             {isSubmitting ? (
               <>
                 <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                Submitting...
+                {t('submitTicket.submitting')}
               </>
             ) : (
               <>
                 <CheckSquare className="mr-2 h-4 w-4" />
-                Submit Ticket
+                {t('submitTicket.submitTicket')}
               </>
             )}
           </Button>
@@ -797,23 +800,23 @@ const SubmitTicketPage = () => {
 
     if (effectiveType === 'staff' || effectiveType === 'application') {
       return {
-        title: 'Staff Application',
-        description: 'Thank you for your interest in becoming a volunteer moderator. Please complete the form with honesty and showcase your personality.'
+        title: t('submitTicket.staffApplication'),
+        description: t('submitTicket.staffApplicationFormDesc')
       };
     } else if (effectiveType === 'bug') {
       return {
-        title: 'Bug Report',
-        description: 'Please provide detailed information about the bug you\'ve encountered'
+        title: t('submitTicket.bugReport'),
+        description: t('submitTicket.bugReportFormDesc')
       };
     } else if (effectiveType === 'support') {
       return {
-        title: 'Support Request',
-        description: 'Please tell us how we can help you'
+        title: t('submitTicket.supportRequest'),
+        description: t('submitTicket.supportRequestFormDesc')
       };
     }
     return {
       title: `${effectiveType.charAt(0).toUpperCase() + effectiveType.slice(1)} Ticket`,
-      description: 'Please provide the required information below to submit your ticket'
+      description: t('submitTicket.genericFormDesc')
     };
   };
 
@@ -833,9 +836,9 @@ const SubmitTicketPage = () => {
                 </svg>
               </div>
               <div>
-                <h3 className="font-medium text-yellow-800 dark:text-yellow-300">Security Notice</h3>
+                <h3 className="font-medium text-yellow-800 dark:text-yellow-300">{t('submitTicket.securityNotice')}</h3>
                 <p className="text-sm text-yellow-700 dark:text-yellow-400 mt-1">
-                  Do not share sensitive information, personal data, or passwords over tickets.
+                  {t('submitTicket.securityNoticeDesc')}
                 </p>
               </div>
             </div>
@@ -851,7 +854,7 @@ const SubmitTicketPage = () => {
                   className="w-fit mb-2 -ml-2"
                 >
                   <ArrowLeft className="h-4 w-4 mr-2" />
-                  Back
+                  {t('common.back')}
                 </Button>
               )}
               <CardTitle>{header?.title}</CardTitle>
@@ -873,9 +876,9 @@ const SubmitTicketPage = () => {
     <div className="min-h-screen bg-background flex items-center justify-center p-4">
       <Card className="w-full max-w-lg">
         <CardHeader className="text-center">
-          <CardTitle>Submit a Ticket</CardTitle>
+          <CardTitle>{t('submitTicket.submitATicket')}</CardTitle>
           <CardDescription>
-            Select the type of ticket you'd like to submit
+            {t('submitTicket.selectType')}
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-3">

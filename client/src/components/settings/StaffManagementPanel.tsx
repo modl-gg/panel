@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { useQueryClient } from '@tanstack/react-query';
 import { useAuth } from '@/hooks/use-auth';
 import { usePermissions } from '@/hooks/use-permissions';
@@ -39,6 +40,7 @@ interface Role {
 
 
 const StaffManagementPanel = () => {
+  const { t } = useTranslation();
   const { data: staff, isLoading, error, refetch: refetchStaff, isRefetching } = useStaff();
   const { data: rolesData } = useRoles();
   const { user: currentUser } = useAuth();
@@ -85,14 +87,14 @@ const StaffManagementPanel = () => {
       ]);
       
       toast({
-        title: "Staff List Refreshed",
-        description: "Staff member information has been updated.",
+        title: t('settings.staff.staffListRefreshed'),
+        description: t('settings.staff.staffListRefreshedDesc'),
       });
     } catch (error) {
       console.error('Error refreshing staff:', error);
       toast({
-        title: "Error",
-        description: "Failed to refresh staff list. Please try again.",
+        title: t('toast.error'),
+        description: t('settings.staff.refreshFailed'),
         variant: "destructive",
       });
     } finally {
@@ -125,10 +127,10 @@ const StaffManagementPanel = () => {
       });
 
       if (!response.ok) {
-        const errorData = await response.json().catch(() => ({ message: 'Failed to remove staff member' }));
+        const errorData = await response.json().catch(() => ({ message: t('settings.staff.removeStaffFailed') }));
         toast({
-          title: 'Error',
-          description: errorData.message || 'Failed to remove staff member',
+          title: t('toast.error'),
+          description: errorData.message || t('settings.staff.removeStaffFailed'),
           variant: 'destructive',
         });
         return;
@@ -137,10 +139,10 @@ const StaffManagementPanel = () => {
       queryClient.invalidateQueries({ queryKey: ['/v1/panel/staff'] });
       
       toast({
-        title: 'Success',
-        description: selectedStaffMember?.status === 'Pending Invitation' 
-          ? 'Invitation cancelled successfully.' 
-          : 'Staff member removed successfully.',
+        title: t('toast.success'),
+        description: selectedStaffMember?.status === 'Pending Invitation'
+          ? t('settings.staff.invitationCancelled')
+          : t('settings.staff.staffMemberRemoved'),
       });
     } catch (error) {
       console.error(error);
@@ -157,18 +159,18 @@ const StaffManagementPanel = () => {
         method: 'POST',
       });
       if (!response.ok) {
-        const errorData = await response.json().catch(() => ({ message: 'Failed to resend invitation' }));
+        const errorData = await response.json().catch(() => ({ message: t('settings.staff.resendInvitationFailed') }));
         throw new Error(errorData.message);
       }
       toast({
-        title: 'Success',
-        description: 'Invitation resent successfully.',
+        title: t('toast.success'),
+        description: t('settings.staff.invitationResent'),
       });
       queryClient.invalidateQueries({ queryKey: ['/v1/panel/staff'] });
     } catch (error) {
       console.error(error);
       toast({
-        title: 'Error',
+        title: t('toast.error'),
         description: (error as Error).message,
         variant: 'destructive',
       });
@@ -180,17 +182,17 @@ const StaffManagementPanel = () => {
       <Card>
         <CardHeader>
           <div className="flex justify-between items-center">
-            <CardTitle>Staff Management</CardTitle>
+            <CardTitle>{t('settings.staff.staffManagement')}</CardTitle>
             <div className="flex space-x-2">
-              <Button 
-                variant="outline" 
-                size="icon" 
+              <Button
+                variant="outline"
+                size="icon"
                 onClick={handleRefreshStaff}
                 disabled={isSpinning}
               >
                 <RefreshCw className={`h-4 w-4 ${isSpinning ? 'animate-spin' : ''}`} />
               </Button>
-              <Button onClick={() => setIsInviteModalOpen(true)}>Invite</Button>
+              <Button onClick={() => setIsInviteModalOpen(true)}>{t('settings.staff.invite')}</Button>
             </div>
           </div>
         </CardHeader>
@@ -202,19 +204,19 @@ const StaffManagementPanel = () => {
               <Skeleton className="h-12 w-full" />
             </div>
           ) : error ? (
-            <div className="text-center text-red-500">Failed to load staff members.</div>
+            <div className="text-center text-red-500">{t('settings.staff.loadFailed')}</div>
           ) : staff && staff.length > 0 ? (
             <div className="overflow-x-auto -mx-4 md:mx-0">
               <div className="min-w-[600px] md:min-w-0 px-4 md:px-0">
                 <Table>
                   <TableHeader>
                     <TableRow>
-                      <TableHead>Email</TableHead>
-                      <TableHead>Role</TableHead>
-                      <TableHead className="hidden md:table-cell">Status</TableHead>
-                      <TableHead className="hidden lg:table-cell">Minecraft Player</TableHead>
-                      <TableHead className="hidden md:table-cell">Date Added</TableHead>
-                      <TableHead className="text-right">Actions</TableHead>
+                      <TableHead>{t('settings.staff.email')}</TableHead>
+                      <TableHead>{t('settings.staff.role')}</TableHead>
+                      <TableHead className="hidden md:table-cell">{t('settings.staff.status')}</TableHead>
+                      <TableHead className="hidden lg:table-cell">{t('settings.staff.minecraftPlayer')}</TableHead>
+                      <TableHead className="hidden md:table-cell">{t('settings.staff.dateAdded')}</TableHead>
+                      <TableHead className="text-right">{t('common.actions')}</TableHead>
                     </TableRow>
                   </TableHeader>
               <TableBody>
@@ -230,10 +232,10 @@ const StaffManagementPanel = () => {
                           {member.assignedMinecraftUsername}
                         </Badge>
                       ) : (
-                        <span className="text-muted-foreground text-sm">Not assigned</span>
+                        <span className="text-muted-foreground text-sm">{t('settings.staff.notAssigned')}</span>
                       )}
                     </TableCell>
-                    <TableCell className="hidden md:table-cell">{member.createdAt ? new Date(member.createdAt).toLocaleDateString() : 'N/A'}</TableCell>
+                    <TableCell className="hidden md:table-cell">{member.createdAt ? new Date(member.createdAt).toLocaleDateString() : t('common.notAvailable')}</TableCell>
                     <TableCell className="text-right">
                       <DropdownMenu>
                         <DropdownMenuTrigger asChild>
@@ -250,27 +252,27 @@ const StaffManagementPanel = () => {
                           {member.status === 'Pending Invitation' ? (
                             <>
                               <DropdownMenuItem onSelect={() => handleResendInvitation(member.id)}>
-                                Resend Invitation
+                                {t('settings.staff.resendInvitation')}
                               </DropdownMenuItem>
                               <DropdownMenuItem onSelect={() => openConfirmationDialog(member)}>
-                                Cancel Invitation
+                                {t('settings.staff.cancelInvitation')}
                               </DropdownMenuItem>
                             </>
                           ) : (
                             <>
                               {hasPermission('admin.staff.manage') && canAssignStaffMinecraftPlayer(member.role, member.id) && (
                                 <DropdownMenuItem onSelect={() => openAssignPlayerModal(member)}>
-                                  {member.assignedMinecraftUsername ? 'Change' : 'Assign'} Minecraft Player
+                                  {member.assignedMinecraftUsername ? t('settings.staff.changeMinecraftPlayer') : t('settings.staff.assignMinecraftPlayer')}
                                 </DropdownMenuItem>
                               )}
                               {hasPermission('admin.staff.manage') && canModifyUserRole(member.role) && member.role !== 'Super Admin' && (
                                 <DropdownMenuItem onSelect={() => openChangeRoleModal(member)}>
-                                  Change Role
+                                  {t('settings.staff.changeRole')}
                                 </DropdownMenuItem>
                               )}
                               {hasPermission('admin.staff.manage') && canRemoveStaffUser(member.role) && (
                                 <DropdownMenuItem onSelect={() => openConfirmationDialog(member)}>
-                                  Remove Staff Member
+                                  {t('settings.staff.removeStaffMember')}
                                 </DropdownMenuItem>
                               )}
                             </>
@@ -285,7 +287,7 @@ const StaffManagementPanel = () => {
               </div>
             </div>
           ) : (
-            <div className="text-center text-gray-500">No staff members found.</div>
+            <div className="text-center text-gray-500">{t('settings.staff.noStaffFound')}</div>
           )}
         </CardContent>
       </Card>
@@ -313,17 +315,17 @@ const StaffManagementPanel = () => {
       <AlertDialog open={isRemoveAlertOpen} onOpenChange={setIsRemoveAlertOpen}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Are you sure?</AlertDialogTitle>
+            <AlertDialogTitle>{t('common.areYouSure')}</AlertDialogTitle>
             <AlertDialogDescription>
               {selectedStaffMember?.status === 'Pending Invitation'
-                ? `Are you sure you want to cancel the invitation for ${selectedStaffMember?.email}?`
-                : `Are you sure you want to remove ${selectedStaffMember?.email}? This will revoke all their access immediately and cannot be undone.`}
+                ? t('settings.staff.cancelInvitationConfirm', { email: selectedStaffMember?.email })
+                : t('settings.staff.removeStaffConfirm', { email: selectedStaffMember?.email })}
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel onClick={() => setSelectedStaffMember(null)}>Cancel</AlertDialogCancel>
+            <AlertDialogCancel onClick={() => setSelectedStaffMember(null)}>{t('common.cancel')}</AlertDialogCancel>
             <AlertDialogAction onClick={handleRemove}>
-              {selectedStaffMember?.status === 'Pending Invitation' ? 'Confirm' : 'Remove'}
+              {selectedStaffMember?.status === 'Pending Invitation' ? t('common.confirm') : t('common.remove')}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

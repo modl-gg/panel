@@ -2,6 +2,7 @@ import { useState, useRef, useEffect } from 'react';
 import { ChevronDown, Check } from 'lucide-react';
 import { Button } from '@modl-gg/shared-web/components/ui/button';
 import { Badge } from '@modl-gg/shared-web/components/ui/badge';
+import { useTranslation } from 'react-i18next';
 
 interface FilterOption {
   value: string;
@@ -26,6 +27,7 @@ export function FilterDropdown({
   multiSelect = false,
   placeholder = 'Select...',
 }: FilterDropdownProps) {
+  const { t } = useTranslation();
   const [isOpen, setIsOpen] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
 
@@ -78,7 +80,7 @@ export function FilterDropdown({
           <div className="max-h-60 overflow-y-auto p-1">
             {options.length === 0 ? (
               <div className="px-2 py-4 text-center text-sm text-muted-foreground">
-                No options found
+                {t('tickets.filter.noOptions')}
               </div>
             ) : (
               options.map((option) => (

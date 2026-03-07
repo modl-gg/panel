@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { useTranslation } from 'react-i18next';
 import { Database, Download, AlertCircle, CheckCircle2, Clock, Upload, Loader2, X } from 'lucide-react';
 import { Button } from '@modl-gg/shared-web/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@modl-gg/shared-web/components/ui/select';
@@ -12,6 +13,7 @@ const MIGRATION_TYPES = [
 ];
 
 const MigrationTool: React.FC = () => {
+  const { t } = useTranslation();
   const [selectedType, setSelectedType] = useState<string>('');
   const [showCompletedAlert, setShowCompletedAlert] = useState(false);
   const [lastCompletedMigration, setLastCompletedMigration] = useState<any>(null);
@@ -91,19 +93,19 @@ const MigrationTool: React.FC = () => {
   const getStatusText = (status: string) => {
     switch (status) {
       case 'idle':
-        return 'Connecting to Minecraft server...';
+        return t('settings.migration.statusConnecting');
       case 'building_json':
-        return 'Building export file on Minecraft server...';
+        return t('settings.migration.statusBuildingJson');
       case 'uploading_json':
-        return 'Uploading migration data...';
+        return t('settings.migration.statusUploading');
       case 'processing_data':
-        return 'Processing and importing data...';
+        return t('settings.migration.statusProcessing');
       case 'completed':
-        return 'Migration completed successfully!';
+        return t('settings.migration.statusCompleted');
       case 'failed':
-        return 'Migration failed! Make sure your Minecraft server can access ' + currentMigration.migrationType + "'s database.";
+        return t('settings.migration.statusFailed', { type: currentMigration.migrationType });
       default:
-        return 'Unknown status. Please contact support.';
+        return t('settings.migration.statusUnknown');
     }
   };
 
@@ -153,10 +155,10 @@ const MigrationTool: React.FC = () => {
       <div>
         <h4 className="text-base font-medium mb-2 flex items-center">
           <Database className="h-4 w-4 mr-2" />
-          Data Migration
+          {t('settings.migration.dataMigration')}
         </h4>
         <p className="text-sm text-muted-foreground">
-          Import player data from external punishment systems into modl.gg. Only Super Admins can initiate migrations.
+          {t('settings.migration.dataMigrationDesc')}
         </p>
       </div>
 
@@ -170,7 +172,7 @@ const MigrationTool: React.FC = () => {
                 <div>
                   <p className="font-medium">{getStatusText(currentMigration.status)}</p>
                   <p className="text-sm text-muted-foreground">
-                    Migrating from {currentMigration.migrationType}...
+                    {t('settings.migration.migratingFrom', { type: currentMigration.migrationType })}
                   </p>
                 </div>
               </div>
@@ -185,7 +187,7 @@ const MigrationTool: React.FC = () => {
                 ) : (
                   <>
                     <X className="h-4 w-4 mr-1" />
-                    Cancel
+                    {t('common.cancel')}
                   </>
                 )}
               </Button>
@@ -204,12 +206,12 @@ const MigrationTool: React.FC = () => {
                 {currentMigration.progress.recordsProcessed !== undefined && (
                   <div className="flex items-center justify-between text-xs text-muted-foreground">
                     <span>
-                      Processed: {currentMigration.progress.recordsProcessed}
+                      {t('settings.migration.processed', { count: currentMigration.progress.recordsProcessed })}
                       {currentMigration.progress.totalRecords && ` / ${currentMigration.progress.totalRecords}`}
                     </span>
                     {currentMigration.progress.recordsSkipped > 0 && (
                       <span className="text-yellow-600">
-                        Skipped: {currentMigration.progress.recordsSkipped}
+                        {t('settings.migration.skipped', { count: currentMigration.progress.recordsSkipped })}
                       </span>
                     )}
                   </div>
@@ -245,19 +247,19 @@ const MigrationTool: React.FC = () => {
             <AlertDescription className={isCancelled ? 'text-amber-700 dark:text-amber-400' : undefined}>
               {isSuccess ? (
                 <>
-                  Migration completed successfully!
+                  {t('settings.migration.migrationCompletedSuccess')}
                   {lastCompletedMigration.progress && (
                     <span className="ml-1">
-                      Processed {lastCompletedMigration.progress.recordsProcessed} records
+                      {t('settings.migration.processedRecords', { count: lastCompletedMigration.progress.recordsProcessed })}
                       {lastCompletedMigration.progress.recordsSkipped > 0 &&
-                        `, skipped ${lastCompletedMigration.progress.recordsSkipped}`}.
+                        t('settings.migration.skippedSuffix', { count: lastCompletedMigration.progress.recordsSkipped })}.
                     </span>
                   )}
                 </>
               ) : isCancelled ? (
-                'Migration cancelled. You can start a new migration immediately.'
+                t('settings.migration.migrationCancelled')
               ) : (
-                lastCompletedMigration.error || 'Migration failed. You can retry immediately.'
+                lastCompletedMigration.error || t('settings.migration.migrationFailed')
               )}
             </AlertDescription>
           </Alert>
@@ -269,7 +271,7 @@ const MigrationTool: React.FC = () => {
         <Alert>
           <Clock className="h-4 w-4" />
           <AlertDescription>
-            Migration cooldown active. You can start a new migration in {formatCooldownTime(cooldownRemainingMs)}.
+            {t('settings.migration.cooldownActive', { time: formatCooldownTime(cooldownRemainingMs) })}
           </AlertDescription>
         </Alert>
       )}
@@ -278,10 +280,10 @@ const MigrationTool: React.FC = () => {
       {!isActive && (
         <div className="space-y-4">
           <div className="space-y-2">
-            <label className="text-sm font-medium">Migration Type</label>
+            <label className="text-sm font-medium">{t('settings.migration.migrationType')}</label>
             <Select value={selectedType} onValueChange={setSelectedType}>
               <SelectTrigger>
-                <SelectValue placeholder="Select migration type..." />
+                <SelectValue placeholder={t('settings.migration.selectMigrationType')} />
               </SelectTrigger>
               <SelectContent>
                 {MIGRATION_TYPES.map((type) => (
@@ -292,7 +294,7 @@ const MigrationTool: React.FC = () => {
               </SelectContent>
             </Select>
             <p className="text-xs text-muted-foreground">
-              Select the external system you want to migrate data from
+              {t('settings.migration.selectSystemHelp')}
             </p>
           </div>
 
@@ -304,12 +306,12 @@ const MigrationTool: React.FC = () => {
             {startMigration.isPending ? (
               <>
                 <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                Starting Migration...
+                {t('settings.migration.startingMigration')}
               </>
             ) : (
               <>
                 <Database className="h-4 w-4 mr-2" />
-                Start Migration
+                {t('settings.migration.startMigration')}
               </>
             )}
           </Button>
@@ -319,7 +321,7 @@ const MigrationTool: React.FC = () => {
       {/* Migration History */}
       {migrationStatus?.history && migrationStatus.history.length > 0 && (
         <div className="space-y-3">
-          <h5 className="text-sm font-medium">Recent Migrations</h5>
+          <h5 className="text-sm font-medium">{t('settings.migration.recentMigrations')}</h5>
           <div className="space-y-2">
             {migrationStatus.history.slice(0, 5).map((entry: any, index: number) => (
               <div
@@ -343,11 +345,11 @@ const MigrationTool: React.FC = () => {
                 </div>
                 <div className="text-right">
                   <p className="text-sm">
-                    {entry.recordsProcessed} records
+                    {t('settings.migration.recordsCount', { count: entry.recordsProcessed })}
                   </p>
                   {entry.recordsSkipped > 0 && (
                     <p className="text-xs text-yellow-600">
-                      {entry.recordsSkipped} skipped
+                      {t('settings.migration.skipped', { count: entry.recordsSkipped })}
                     </p>
                   )}
                 </div>
@@ -360,7 +362,7 @@ const MigrationTool: React.FC = () => {
       {/* Last Migration Timestamp */}
       {migrationStatus?.lastMigrationTimestamp && (
         <p className="text-xs text-muted-foreground">
-          Last successful migration: {formatDate(migrationStatus.lastMigrationTimestamp)}
+          {t('settings.migration.lastSuccessfulMigration', { date: formatDate(migrationStatus.lastMigrationTimestamp) })}
         </p>
       )}
     </div>

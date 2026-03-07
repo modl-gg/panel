@@ -872,6 +872,7 @@ export function useModifyPunishment() {
       const body: any = {
         type: modificationType,
         issuerName: user?.username || 'Unknown User',
+        issuerId: user?.id,
         reason: reason
       };
 
@@ -938,7 +939,8 @@ export function useAddPunishmentNote() {
         },
         body: JSON.stringify({
           text: noteText,
-          issuerName: user?.username || 'Unknown User'
+          issuerName: user?.username || 'Unknown User',
+          issuerId: user?.id
         })
       });
 
@@ -985,7 +987,8 @@ export function useModifyPunishmentTickets() {
           addTicketIds,
           removeTicketIds,
           modifyAssociatedTickets,
-          issuerName: user?.username || 'Unknown User'
+          issuerName: user?.username || 'Unknown User',
+          issuerId: user?.id
         })
       });
 

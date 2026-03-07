@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { useTranslation } from 'react-i18next';
 import { useLocation } from 'wouter';
 import { z } from 'zod';
 import { useForm } from 'react-hook-form';
@@ -94,6 +95,7 @@ interface AppealInfo {
 
 const AppealsPage = () => {
   const [, setLocation] = useLocation();
+  const { t } = useTranslation();
   const { toast } = useToast();
   const [banInfo, setBanInfo] = useState<BanInfo | null>(null);
   const [appealInfo, setAppealInfo] = useState<AppealInfo | null>(null);
@@ -282,10 +284,10 @@ const AppealsPage = () => {
           // Check if it's an unstarted punishment error
           const errorData = await response.json();
           if (errorData.error?.includes('not been started yet')) {
-            setPunishmentError("This punishment has not been started yet and cannot be appealed.");
+            setPunishmentError(t('appeals.punishmentNotStarted'));
             toast({
-              title: "Cannot Appeal Unstarted Punishment",
-              description: "This punishment has not been started yet and cannot be appealed at this time.",
+              title: t('appeals.cannotAppealUnstarted'),
+              description: t('appeals.cannotAppealUnstartedDesc'),
               variant: "destructive"
             });
             return;
@@ -357,16 +359,16 @@ const AppealsPage = () => {
         
         // Show toast for existing appeal
         toast({
-          title: "Appeal Already Exists",
-          description: `You have already submitted an appeal for this punishment. Status: ${punishment.existingAppeal.status}`,
+          title: t('appeals.appealAlreadyExists'),
+          description: t('appeals.appealAlreadyExistsDesc', { status: punishment.existingAppeal.status }),
           variant: "default"
         });
       } else {        
         // Check if punishment is not appealable
         if (banInfo.isAppealable === false) {
           toast({
-            title: "Cannot Appeal This Punishment",
-            description: "This punishment type is not eligible for appeals. Contact support if you believe this is an error.",
+            title: t('appeals.cannotAppeal'),
+            description: t('appeals.cannotAppealDesc'),
             variant: "destructive"
           });
           setShowAppealForm(false);
@@ -374,8 +376,8 @@ const AppealsPage = () => {
         } else if (banInfo.status !== 'Active') {
           // Punishment is not active (expired/pardoned)
           toast({
-            title: "Cannot Appeal Inactive Punishment",
-            description: "Only active punishments can be appealed. This punishment is no longer active.",
+            title: t('appeals.cannotAppealInactive'),
+            description: t('appeals.cannotAppealInactiveDesc'),
             variant: "destructive"
           });
           setShowAppealForm(false);
@@ -396,10 +398,10 @@ const AppealsPage = () => {
       setBanInfo(null);
       setAppealInfo(null);
       setShowAppealForm(false);
-      setPunishmentError(`No punishment found with ID: ${normalizedBanId}`);
+      setPunishmentError(t('appeals.punishmentNotFound', { id: normalizedBanId }));
       toast({
-        title: "Punishment not found",
-        description: `No punishment found with ID: ${normalizedBanId}`,
+        title: t('appeals.punishmentNotFoundTitle'),
+        description: t('appeals.punishmentNotFound', { id: normalizedBanId }),
         variant: "destructive"
       });
     } finally {
@@ -543,8 +545,8 @@ const AppealsPage = () => {
       await createAppealMutation.mutateAsync(appealData);
 
       toast({
-        title: "Appeal Submitted",
-        description: `Your appeal for punishment ${values.banId} has been submitted and will be reviewed by our staff.`,
+        title: t('appeals.appealSubmitted'),
+        description: t('appeals.appealSubmittedDesc', { id: values.banId }),
       });
 
       // Refresh the page data
@@ -555,8 +557,8 @@ const AppealsPage = () => {
     } catch (error) {
       console.error('Error submitting appeal:', error);
       toast({
-        title: "Error",
-        description: "Failed to submit appeal. Please try again.",
+        title: t('appeals.error'),
+        description: t('appeals.submitFailed'),
         variant: "destructive"
       });
     }
@@ -626,15 +628,15 @@ const AppealsPage = () => {
       setReplyAttachments([]); // Clear reply attachments
 
       toast({
-        title: "Reply Sent",
-        description: "Your reply has been added to the appeal.",
+        title: t('appeals.replySent'),
+        description: t('appeals.replySentDesc'),
       });
 
     } catch (error) {
       console.error('Error sending reply:', error);
       toast({
-        title: "Error",
-        description: "Failed to send reply. Please try again.",
+        title: t('appeals.error'),
+        description: t('appeals.replyFailed'),
         variant: "destructive"
       });
     }
@@ -741,7 +743,7 @@ const AppealsPage = () => {
                 >
                   <FormControl>
                     <SelectTrigger>
-                      <SelectValue placeholder={field.description || "Select an option"} />
+                      <SelectValue placeholder={field.description || t('appeals.selectAnOption')} />
                     </SelectTrigger>
                   </FormControl>
                   <SelectContent>
@@ -907,7 +909,7 @@ const AppealsPage = () => {
                       {/* Display uploaded files */}
                       {currentFiles.length > 0 && (
                         <div className="mt-2 space-y-1">
-                          <div className="text-sm font-medium text-muted-foreground">Uploaded files:</div>
+                          <div className="text-sm font-medium text-muted-foreground">{t('appeals.uploadedFiles')}</div>
                           {currentFiles.map((file: any) => (
                             <div key={file.id} className="flex items-center justify-between p-2 bg-muted/50 rounded border">
                               <div className="flex items-center gap-2">
@@ -919,7 +921,7 @@ const AppealsPage = () => {
                                 onClick={() => handleRemoveFile(file)}
                                 className="text-destructive hover:text-destructive/80 text-sm"
                               >
-                                Remove
+                                {t('appeals.remove')}
                               </button>
                             </div>
                           ))}
@@ -1003,9 +1005,9 @@ const AppealsPage = () => {
       <div className="max-w-4xl mx-auto">
         {/* Header section */}
         <div className="flex flex-col space-y-2 mb-8 text-center">
-          <h1 className="text-3xl font-bold">Punishment Appeal</h1>
+          <h1 className="text-3xl font-bold">{t('appeals.title')}</h1>
           <p className="text-muted-foreground">
-            Check the status of or submit an appeal for review
+            {t('appeals.subtitle')}
           </p>
         </div>
 
@@ -1018,13 +1020,13 @@ const AppealsPage = () => {
                   name="banId"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>Punishment ID</FormLabel>
+                      <FormLabel>{t('appeals.punishmentId')}</FormLabel>
                       <FormControl>
                         <div className="relative">
                           <SearchIcon className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
                           <Input
                             {...field}
-                            placeholder="e.g. BAN123456"
+                            placeholder={t('appeals.punishmentIdPlaceholder')}
                             className={`pl-10 ${punishmentError ? 'border-destructive focus-visible:ring-destructive' : ''}`}
                             disabled={isLoadingPunishment}
                             onChange={(e) => {
@@ -1035,7 +1037,7 @@ const AppealsPage = () => {
                         </div>
                       </FormControl>
                       <FormDescription>
-                        Enter the Punishment ID you received with your ban/mute
+                        {t('appeals.punishmentIdDesc')}
                       </FormDescription>
                       <FormMessage />
                       {punishmentError && (
@@ -1046,7 +1048,7 @@ const AppealsPage = () => {
                 />
 
                 <Button type="submit" className="w-full mt-6" disabled={isLoadingPunishment}>
-                  {isLoadingPunishment ? "Searching..." : "Check Status"}
+                  {isLoadingPunishment ? t('appeals.searching') : t('appeals.checkStatus')}
                 </Button>
               </form>
             </Form>
@@ -1054,29 +1056,29 @@ const AppealsPage = () => {
             {/* Ban Information Section */}
             {banInfo && (
               <div className="mt-8 space-y-4">
-                <h3 className="text-lg font-semibold">Punishment Information</h3>
+                <h3 className="text-lg font-semibold">{t('appeals.punishmentInformation')}</h3>
                 <div className="bg-muted/50 rounded-lg p-4 space-y-3">
                   <div className="flex items-center justify-between">
-                    <span className="text-sm font-medium">Punishment ID:</span>
+                    <span className="text-sm font-medium">{t('appeals.punishmentIdLabel')}</span>
                     <Badge variant="outline">{banInfo.id}</Badge>
                   </div>
                   <div className="flex items-center justify-between">
-                    <span className="text-sm font-medium">Type:</span>
+                    <span className="text-sm font-medium">{t('appeals.typeLabel')}</span>
                     <Badge variant="outline">{banInfo.type}</Badge>
                   </div>
                   <div className="flex items-center justify-between">
-                    <span className="text-sm font-medium">Date:</span>
+                    <span className="text-sm font-medium">{t('appeals.dateLabel')}</span>
                     <span className="text-sm">{banInfo.date}</span>
                   </div>
                   <div className="flex items-center justify-between">
-                    <span className="text-sm font-medium">Status:</span>
-                    <Badge 
-                      variant={banInfo.status === 'Active' ? "destructive" : 
+                    <span className="text-sm font-medium">{t('appeals.statusLabel')}</span>
+                    <Badge
+                      variant={banInfo.status === 'Active' ? "destructive" :
                               banInfo.status === 'Pardoned' ? "outline" : "default"}
                       className={banInfo.status === 'Pardoned' ? "border-green-500 text-green-500" : ""}
                     >
                       {banInfo.status}
-                      {banInfo.expiresIn && ` (Expires: ${banInfo.expiresIn})`}
+                      {banInfo.expiresIn && ` (${t('appeals.expires')}: ${banInfo.expiresIn})`}
                     </Badge>
                   </div>
                 </div>
@@ -1086,18 +1088,18 @@ const AppealsPage = () => {
             {/* Appeal Information Section */}
             {appealInfo && (
               <div className="mt-8 space-y-4">
-                <h3 className="text-lg font-semibold">Appeal Status</h3>
+                <h3 className="text-lg font-semibold">{t('appeals.appealStatus')}</h3>
                 <div className="bg-muted/50 rounded-lg p-4 space-y-3">
                   <div className="flex items-center justify-between">
-                    <span className="text-sm font-medium">Appeal ID:</span>
+                    <span className="text-sm font-medium">{t('appeals.appealIdLabel')}</span>
                     <Badge variant="outline">{appealInfo.id}</Badge>
                   </div>
                   <div className="flex items-center justify-between">
-                    <span className="text-sm font-medium">Submitted:</span>
+                    <span className="text-sm font-medium">{t('appeals.submittedLabel')}</span>
                     <span className="text-sm">{formatDate(appealInfo.submittedOn)}</span>
                   </div>
                   <div className="flex items-center justify-between">
-                    <span className="text-sm font-medium">Status:</span>
+                    <span className="text-sm font-medium">{t('appeals.statusLabel')}</span>
                     <Badge 
                       variant={
                         appealInfo.status === 'Approved' ? "outline" :
@@ -1111,7 +1113,7 @@ const AppealsPage = () => {
                   </div>
                   {appealInfo.lastUpdate && (
                     <div className="flex items-center justify-between">
-                      <span className="text-sm font-medium">Last Update:</span>
+                      <span className="text-sm font-medium">{t('appeals.lastUpdateLabel')}</span>
                       <span className="text-sm">{formatDate(appealInfo.lastUpdate)}</span>
                     </div>
                   )}
@@ -1120,29 +1122,29 @@ const AppealsPage = () => {
                 {appealInfo.status === 'Pending Review' && (
                   <Alert className="mt-4">
                     <AlertTriangle className="h-4 w-4" />
-                    <AlertTitle>Appeal Under Review</AlertTitle>
+                    <AlertTitle>{t('appeals.appealUnderReview')}</AlertTitle>
                     <AlertDescription>
-                      Your appeal is in the queue and will be reviewed by our staff. This process typically takes 1-3 days.
+                      {t('appeals.appealUnderReviewDesc')}
                     </AlertDescription>
                   </Alert>
                 )}
-                
+
                 {appealInfo.status === 'Rejected' && (
                   <Alert variant="destructive" className="mt-4">
                     <ShieldX className="h-4 w-4" />
-                    <AlertTitle>Appeal Rejected</AlertTitle>
+                    <AlertTitle>{t('appeals.appealRejected')}</AlertTitle>
                     <AlertDescription>
-                      Your appeal has been reviewed and rejected. You may submit a new appeal after 30 days.
+                      {t('appeals.appealRejectedDesc')}
                     </AlertDescription>
                   </Alert>
                 )}
-                
+
                 {appealInfo.status === 'Approved' && (
                   <Alert className="mt-4 border-green-500 text-green-500 bg-green-50 dark:bg-green-950 dark:bg-opacity-20">
                     <ShieldCheck className="h-4 w-4" />
-                    <AlertTitle>Appeal Approved</AlertTitle>
+                    <AlertTitle>{t('appeals.appealApproved')}</AlertTitle>
                     <AlertDescription>
-                      Your appeal has been approved! Your punishment has been lifted or reduced.
+                      {t('appeals.appealApprovedDesc')}
                     </AlertDescription>
                   </Alert>
                 )}
@@ -1153,7 +1155,7 @@ const AppealsPage = () => {
                     <Separator />
                     <div className="bg-card rounded-lg shadow-sm border border-border overflow-hidden mt-4">
                       <div className="p-3 bg-muted/30">
-                        <h4 className="font-semibold">Appeal Conversation</h4>
+                        <h4 className="font-semibold">{t('appeals.appealConversation')}</h4>
                       </div>
                       <div className="divide-y max-h-[400px] overflow-y-auto">
                         {appealInfo.messages
@@ -1170,12 +1172,12 @@ const AppealsPage = () => {
                                     </span>
                                     {message.sender === 'staff' && (
                                       <Badge variant="secondary" className="text-xs">
-                                        Staff
+                                        {t('playerTicket.staffBadge')}
                                       </Badge>
                                     )}
                                     {message.sender === 'system' && (
                                       <Badge variant="outline" className="text-xs">
-                                        System
+                                        {t('playerTicket.systemBadge')}
                                       </Badge>
                                     )}
                                   </div>
@@ -1217,20 +1219,20 @@ const AppealsPage = () => {
                     {appealInfo.status !== 'Approved' && appealInfo.status !== 'Rejected' && appealInfo.status !== 'Closed' && appealInfo.status !== 'Denied' && (
                       <Card className="mt-4">
                         <CardHeader>
-                          <CardTitle className="text-lg">Reply to Appeal</CardTitle>
+                          <CardTitle className="text-lg">{t('appeals.replyToAppeal')}</CardTitle>
                           <CardDescription>
-                            Add a reply to your appeal. This will be visible to staff reviewing your case.
+                            {t('appeals.replyToAppealDesc')}
                           </CardDescription>
                         </CardHeader>
                         <CardContent>
                           <div className="space-y-4">
                             <div className="space-y-2">
-                              <Label htmlFor="reply">Reply</Label>
+                              <Label htmlFor="reply">{t('playerTicket.replyLabel')}</Label>
                               <Textarea
                                 id="reply"
                                 value={newReply}
                                 onChange={(e) => setNewReply(e.target.value)}
-                                placeholder="Type your reply here..."
+                                placeholder={t('playerTicket.replyPlaceholder')}
                                 className="min-h-[100px]"
                               />
                             </div>
@@ -1294,7 +1296,7 @@ const AppealsPage = () => {
                                 className="flex items-center"
                               >
                                 <Send className="mr-2 h-4 w-4" />
-                                Send Reply
+                                {t('playerTicket.sendReply')}
                               </Button>
                             </div>
                           </div>
@@ -1315,9 +1317,9 @@ const AppealsPage = () => {
                 {banInfo.isAppealable === false && (
                   <Alert variant="destructive">
                     <AlertTriangle className="h-4 w-4" />
-                    <AlertTitle>Appeal Not Available</AlertTitle>
+                    <AlertTitle>{t('appeals.appealNotAvailable')}</AlertTitle>
                     <AlertDescription>
-                      This punishment type is not appealable. If you believe this is in error, please contact support directly.
+                      {t('appeals.appealNotAvailableDesc')}
                     </AlertDescription>
                   </Alert>
                 )}
@@ -1326,9 +1328,9 @@ const AppealsPage = () => {
                 {banInfo.isAppealable !== false && (
                   <Card className="mb-6">
                     <CardHeader>
-                      <CardTitle>Submit Appeal</CardTitle>
+                      <CardTitle>{t('appeals.submitAppeal')}</CardTitle>
                       <CardDescription>
-                        Please provide detailed information about why you believe this punishment should be reviewed. Be honest and thorough in your explanation.
+                        {t('appeals.submitAppealDesc')}
                       </CardDescription>
                     </CardHeader>
                     <CardContent>
@@ -1340,7 +1342,7 @@ const AppealsPage = () => {
                         name="banId"
                         render={({ field }) => (
                           <FormItem>
-                            <FormLabel>Punishment ID</FormLabel>
+                            <FormLabel>{t('appeals.punishmentId')}</FormLabel>
                             <FormControl>
                               <Input {...field} readOnly disabled />
                             </FormControl>
@@ -1355,12 +1357,12 @@ const AppealsPage = () => {
                         name="email"
                         render={({ field }) => (
                           <FormItem>
-                            <FormLabel>Email Address</FormLabel>
+                            <FormLabel>{t('submitTicket.emailAddress')}</FormLabel>
                             <FormControl>
-                              <Input {...field} type="email" placeholder="Your email for notifications" />
+                              <Input {...field} type="email" placeholder={t('appeals.emailPlaceholder')} />
                             </FormControl>
                             <FormDescription>
-                              We'll notify you when your appeal is processed
+                              {t('appeals.emailDesc')}
                             </FormDescription>
                             <FormMessage />
                           </FormItem>
@@ -1430,16 +1432,16 @@ const AppealsPage = () => {
                           name="reason"
                           render={({ field }) => (
                             <FormItem>
-                              <FormLabel>Appeal Reason</FormLabel>
+                              <FormLabel>{t('appeals.appealReason')}</FormLabel>
                               <FormControl>
                                 <Textarea
                                   {...field}
-                                  placeholder="Explain why you believe this punishment should be reviewed..."
+                                  placeholder={t('appeals.appealReasonPlaceholder')}
                                   className="min-h-[120px]"
                                 />
                               </FormControl>
                               <FormDescription>
-                                Be honest and provide as much detail as possible
+                                {t('appeals.appealReasonDesc')}
                               </FormDescription>
                               <FormMessage />
                             </FormItem>
@@ -1457,7 +1459,7 @@ const AppealsPage = () => {
                         disabled={createAppealMutation.isPending}
                         onClick={appealForm.handleSubmit(onAppealSubmit)}
                       >
-                        {createAppealMutation.isPending ? "Submitting..." : "Submit Appeal"}
+                        {createAppealMutation.isPending ? t('playerTicket.submitting') : t('appeals.submitAppeal')}
                       </Button>
                     </CardFooter>
                   </Card>

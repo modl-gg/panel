@@ -1,4 +1,5 @@
 import { useState, useEffect, memo, useMemo, useRef } from 'react';
+import { useTranslation } from 'react-i18next';
 import { useLocation, Link } from 'wouter';
 import { Popover, PopoverContent, PopoverTrigger } from '@modl-gg/shared-web/components/ui/popover';
 import { queryClient } from '@/lib/queryClient';
@@ -318,6 +319,7 @@ const TicketDetail = () => {
   const location = useLocation();
   const { user } = useAuth();
   const { toast } = useToast();
+  const { t } = useTranslation();
   const [isSubmitting, setIsSubmitting] = useState(false);
   const messageListRef = useRef<HTMLDivElement>(null);
   
@@ -424,8 +426,8 @@ const TicketDetail = () => {
     // Validate required fields
     if (!punishmentData.selectedPunishmentCategory) {
       toast({
-        title: "Missing information",
-        description: "Please select a punishment category",
+        title: t('ticket.missingInfo'),
+        description: t('ticket.selectCategory'),
         variant: "destructive"
       });
       return;
@@ -435,8 +437,8 @@ const TicketDetail = () => {
     const needsReason = ['Kick', 'Manual Mute', 'Manual Ban'].includes(punishmentData.selectedPunishmentCategory);
     if (needsReason && !punishmentData.reason?.trim()) {
       toast({
-        title: "Missing information",
-        description: "Please provide a reason for this punishment",
+        title: t('ticket.missingInfo'),
+        description: t('ticket.provideReason'),
         variant: "destructive"
       });
       return;
@@ -446,8 +448,8 @@ const TicketDetail = () => {
     // For multi-severity punishments, severity is required
     if (punishmentType?.singleSeverityPunishment && !punishmentData.selectedOffenseLevel) {
       toast({
-        title: "Missing information",
-        description: "Please select an offense level",
+        title: t('ticket.missingInfo'),
+        description: t('ticket.selectOffenseLevel'),
         variant: "destructive"
       });
       return;
@@ -456,8 +458,8 @@ const TicketDetail = () => {
     if (!punishmentType?.singleSeverityPunishment && !punishmentData.selectedSeverity && 
         !['Kick', 'Manual Mute', 'Manual Ban', 'Security Ban', 'Linked Ban', 'Blacklist'].includes(punishmentData.selectedPunishmentCategory)) {
       toast({
-        title: "Missing information",
-        description: "Please select a severity level",
+        title: t('ticket.missingInfo'),
+        description: t('ticket.selectSeverity'),
         variant: "destructive"
       });
       return;
@@ -469,8 +471,8 @@ const TicketDetail = () => {
                           
     if (needsDuration && !punishmentData.isPermanent && (!punishmentData.duration?.value || punishmentData.duration.value <= 0 || !punishmentData.duration?.unit)) {
       toast({
-        title: "Invalid duration",
-        description: "Please specify a valid duration (greater than 0) or select 'Permanent'",
+        title: t('ticket.invalidDuration'),
+        description: t('ticket.invalidDurationDesc'),
         variant: "destructive"
       });
       return;
@@ -480,8 +482,8 @@ const TicketDetail = () => {
     const typeOrdinal = getPunishmentOrdinal(punishmentData.selectedPunishmentCategory);
     if (typeOrdinal === -1) {
       toast({
-        title: "Invalid punishment type",
-        description: "Unknown punishment type selected",
+        title: t('ticket.invalidPunishmentType'),
+        description: t('ticket.unknownPunishmentType'),
         variant: "destructive"
       });
       return;
@@ -708,7 +710,8 @@ const TicketDetail = () => {
       
       // Prepare punishment data in the format expected by the server
       const punishmentApiData: { [key: string]: any } = {
-        issuerName: user?.username || 'Admin', // Use actual staff member name
+        issuerName: user?.username || 'Admin',
+        issuerId: user?.id,
         typeOrdinal: typeOrdinal,
         notes: notes,
         evidence: evidence,
@@ -747,8 +750,8 @@ const TicketDetail = () => {
       
       // Show success message
       toast({
-        title: "Punishment applied",
-        description: `Successfully applied ${punishmentData.selectedPunishmentCategory} to ${ticketDetails.relatedPlayer}`
+        title: t('ticket.punishmentApplied'),
+        description: t('ticket.punishmentAppliedDesc', { type: punishmentData.selectedPunishmentCategory, player: ticketDetails.relatedPlayer })
       });
       
       // Important: We might need to close/update the ticket after punishment
@@ -757,8 +760,8 @@ const TicketDetail = () => {
     } catch (error) {
       console.error('Error applying punishment:', error);
       toast({
-        title: "Failed to apply punishment",
-        description: error instanceof Error ? error.message : "An unknown error occurred",
+        title: t('ticket.punishmentFailed'),
+        description: error instanceof Error ? error.message : t('ticket.unknownError'),
         variant: "destructive"
       });
       throw error; // Re-throw to ensure PlayerPunishment component knows about the error
@@ -1036,22 +1039,22 @@ const TicketDetail = () => {
         }, 1000);
         
         toast({
-          title: "Success",
-          description: "AI-suggested punishment has been applied successfully.",
+          title: t('toast.success'),
+          description: t('ticket.aiApplied'),
         });
       } else {
         const errorData = await response.json();
         toast({
-          title: "Error",
-          description: errorData.error || "Failed to apply AI suggestion",
+          title: t('toast.error'),
+          description: errorData.error || t('ticket.aiApplyFailed'),
           variant: "destructive",
         });
       }
     } catch (error) {
       console.error('Error applying AI suggestion:', error);
       toast({
-        title: "Error",
-        description: "An unexpected error occurred",
+        title: t('toast.error'),
+        description: t('ticket.unexpectedError'),
         variant: "destructive",
       });
     }
@@ -1096,22 +1099,22 @@ const TicketDetail = () => {
         }, 2000);
         
         toast({
-          title: "Success",
-          description: "AI suggestion has been dismissed.",
+          title: t('toast.success'),
+          description: t('ticket.aiDismissed'),
         });
       } else {
         const errorData = await response.json();
         toast({
-          title: "Error",
-          description: errorData.error || "Failed to dismiss AI suggestion",
+          title: t('toast.error'),
+          description: errorData.error || t('ticket.aiDismissFailed'),
           variant: "destructive",
         });
       }
     } catch (error) {
       console.error('Error dismissing AI suggestion:', error);
       toast({
-        title: "Error",
-        description: "An unexpected error occurred",
+        title: t('toast.error'),
+        description: t('ticket.unexpectedError'),
         variant: "destructive",
       });
     }
@@ -1312,8 +1315,8 @@ const TicketDetail = () => {
           // Show toast for large files
           if (file.size > 5 * 1024 * 1024) {
             toast({
-              title: "Uploading...",
-              description: `Uploading ${file.name} (${Math.round(file.size / 1024 / 1024)}MB)`,
+              title: t('ticket.uploading'),
+              description: t('ticket.uploadingFile', { name: file.name, size: Math.round(file.size / 1024 / 1024) }),
             });
           }
 
@@ -1340,8 +1343,8 @@ const TicketDetail = () => {
       } catch (error) {
         console.error('Failed to upload files:', error);
         toast({
-          title: "Upload Failed",
-          description: "Failed to upload one or more files. Please try again.",
+          title: t('ticket.uploadFailed'),
+          description: t('ticket.uploadFailedDesc'),
           variant: "destructive"
         });
         setIsSubmitting(false);
@@ -1461,8 +1464,8 @@ const TicketDetail = () => {
                 });
 
                 toast({
-                  title: 'Punishment Pardoned',
-                  description: `Punishment ${punishmentId} has been pardoned successfully.`
+                  title: t('ticket.punishmentPardoned'),
+                  description: t('ticket.punishmentPardonedDesc', { id: punishmentId })
                 });
               } else if (appealAction === 'reduce') {
                 // Determine the new duration
@@ -1488,8 +1491,8 @@ const TicketDetail = () => {
                 });
 
                 toast({
-                  title: 'Punishment Reduced',
-                  description: `Punishment ${punishmentId} duration has been reduced successfully.`
+                  title: t('ticket.punishmentReduced'),
+                  description: t('ticket.punishmentReducedDesc', { id: punishmentId })
                 });
               } else if (appealAction === 'reject') {
                 await modifyPunishmentMutation.mutateAsync({
@@ -1501,15 +1504,15 @@ const TicketDetail = () => {
                 });
 
                 toast({
-                  title: 'Appeal Rejected',
-                  description: `Appeal for punishment ${punishmentId} has been rejected.`
+                  title: t('ticket.appealRejected'),
+                  description: t('ticket.appealRejectedDesc', { id: punishmentId })
                 });
               }
             } catch (error) {
               console.error('Error processing appeal action:', error);
               toast({
-                title: 'Error',
-                description: 'Failed to process appeal action. The ticket reply was sent but the punishment was not modified.',
+                title: t('toast.error'),
+                description: t('ticket.appealActionFailed'),
                 variant: 'destructive'
               });
             }
@@ -1524,8 +1527,8 @@ const TicketDetail = () => {
       } catch (error) {
         console.error('Error sending reply:', error);
         toast({
-          title: "Error",
-          description: "Failed to send reply. Please try again later.",
+          title: t('toast.error'),
+          description: t('ticket.replyFailed'),
           variant: "destructive"
         });
       }
@@ -1640,22 +1643,22 @@ const TicketDetail = () => {
             onClick={() => setLocation('/panel/tickets')}
           >
             <ArrowLeft className="h-4 w-4" />
-            Back to Tickets
+            {t('ticket.backToTickets')}
           </Button>
           
           {ticketDetails.id && (
             <div className="flex items-center gap-2">
-              <span className="text-xs text-muted-foreground">Share with player:</span>
+              <span className="text-xs text-muted-foreground">{t('ticket.shareWithPlayer')}</span>
               <Popover>
                 <PopoverTrigger asChild>
                   <Button variant="outline" size="sm" className="flex items-center">
                     <Link2 className="w-4 h-4 mr-2" />
-                    Share Link
+                    {t('ticket.shareLink')}
                   </Button>
                 </PopoverTrigger>
                 <PopoverContent className="p-3 w-auto">
                   <div className="space-y-2">
-                    <p className="text-xs text-muted-foreground">Player can use this link to view and reply to the ticket:</p>
+                    <p className="text-xs text-muted-foreground">{t('ticket.shareLinkDesc')}</p>
                     <div className="flex items-center">
                       <input 
                         type="text" 
@@ -1684,7 +1687,7 @@ const TicketDetail = () => {
           <div className="flex justify-center items-center py-20">
             <div className="flex flex-col items-center">
               <Loader2 className="h-8 w-8 animate-spin text-primary" />
-              <p className="mt-2 text-sm text-muted-foreground">Loading ticket details...</p>
+              <p className="mt-2 text-sm text-muted-foreground">{t('ticket.loadingDetails')}</p>
             </div>
           </div>
         )}
@@ -1693,9 +1696,9 @@ const TicketDetail = () => {
           <div className="flex justify-center items-center py-20">
             <div className="flex flex-col items-center">
               <AlertCircle className="h-8 w-8 text-destructive" />
-              <h3 className="mt-2 text-lg font-medium">Failed to load ticket</h3>
+              <h3 className="mt-2 text-lg font-medium">{t('ticket.loadFailed')}</h3>
               <p className="text-sm text-muted-foreground">
-                We couldn't load the ticket details. Please try again later.
+                {t('ticket.loadFailedDesc')}
               </p>
               <Button 
                 variant="outline" 

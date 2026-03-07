@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
+import { useTranslation } from 'react-i18next';
 import { Fingerprint, Plus, Pencil, Trash2, Loader2 } from 'lucide-react';
 import { startRegistration } from '@simplewebauthn/browser';
 import { Button } from '@modl-gg/shared-web/components/ui/button';
@@ -44,6 +45,7 @@ async function passkeyFetch(url: string, options: RequestInit = {}): Promise<Res
 }
 
 const PasskeySettings = () => {
+  const { t } = useTranslation();
   const { toast } = useToast();
   const [credentials, setCredentials] = useState<Credential[]>([]);
   const [loading, setLoading] = useState(true);
@@ -80,7 +82,7 @@ const PasskeySettings = () => {
     try {
       const optionsRes = await passkeyFetch('/v1/panel/auth/webauthn/register/options', { method: 'POST' });
       if (!optionsRes.ok) {
-        toast({ title: 'Error', description: 'Failed to start passkey registration', variant: 'destructive' });
+        toast({ title: t('toast.error'), description: t('settings.passkey.startRegistrationFailed'), variant: 'destructive' });
         return;
       }
 
@@ -94,7 +96,7 @@ const PasskeySettings = () => {
     } catch (e: any) {
       if (e.name !== 'NotAllowedError') {
         console.error('Passkey registration error:', e);
-        toast({ title: 'Error', description: 'Passkey registration was cancelled or failed', variant: 'destructive' });
+        toast({ title: t('toast.error'), description: t('settings.passkey.registrationCancelledOrFailed'), variant: 'destructive' });
       }
     } finally {
       setRegistering(false);
@@ -110,19 +112,19 @@ const PasskeySettings = () => {
         body: JSON.stringify({
           challengeId: pendingChallengeId,
           response: pendingResponse,
-          name: credentialName || 'Passkey',
+          name: credentialName || t('settings.passkey.defaultPasskeyName'),
         }),
       });
 
       if (res.ok) {
-        toast({ title: 'Passkey added', description: 'Your passkey has been registered successfully' });
+        toast({ title: t('settings.passkey.passkeyAdded'), description: t('settings.passkey.passkeyRegisteredDesc') });
         fetchCredentials();
       } else {
         const data = await res.json();
-        toast({ title: 'Error', description: data.error || 'Failed to register passkey', variant: 'destructive' });
+        toast({ title: t('toast.error'), description: data.error || t('settings.passkey.registerFailed'), variant: 'destructive' });
       }
     } catch {
-      toast({ title: 'Error', description: 'Failed to register passkey', variant: 'destructive' });
+      toast({ title: t('toast.error'), description: t('settings.passkey.registerFailed'), variant: 'destructive' });
     } finally {
       setNameDialogOpen(false);
       setPendingChallengeId(null);
@@ -140,13 +142,13 @@ const PasskeySettings = () => {
       });
 
       if (res.ok) {
-        toast({ title: 'Passkey renamed' });
+        toast({ title: t('settings.passkey.passkeyRenamed') });
         fetchCredentials();
       } else {
-        toast({ title: 'Error', description: 'Failed to rename passkey', variant: 'destructive' });
+        toast({ title: t('toast.error'), description: t('settings.passkey.renameFailed'), variant: 'destructive' });
       }
     } catch {
-      toast({ title: 'Error', description: 'Failed to rename passkey', variant: 'destructive' });
+      toast({ title: t('toast.error'), description: t('settings.passkey.renameFailed'), variant: 'destructive' });
     } finally {
       setRenameDialogOpen(false);
       setRenameTarget(null);
@@ -162,13 +164,13 @@ const PasskeySettings = () => {
       });
 
       if (res.ok) {
-        toast({ title: 'Passkey removed' });
+        toast({ title: t('settings.passkey.passkeyRemoved') });
         fetchCredentials();
       } else {
-        toast({ title: 'Error', description: 'Failed to remove passkey', variant: 'destructive' });
+        toast({ title: t('toast.error'), description: t('settings.passkey.removeFailed'), variant: 'destructive' });
       }
     } catch {
-      toast({ title: 'Error', description: 'Failed to remove passkey', variant: 'destructive' });
+      toast({ title: t('toast.error'), description: t('settings.passkey.removeFailed'), variant: 'destructive' });
     } finally {
       setDeleteDialogOpen(false);
       setDeleteTarget(null);
@@ -176,7 +178,7 @@ const PasskeySettings = () => {
   };
 
   const formatDate = (dateStr: string) => {
-    if (!dateStr) return 'Never';
+    if (!dateStr) return t('settings.passkey.never');
     return new Date(dateStr).toLocaleDateString(undefined, {
       year: 'numeric', month: 'short', day: 'numeric',
     });
@@ -187,7 +189,7 @@ const PasskeySettings = () => {
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-2">
           <Fingerprint className="h-4 w-4 text-muted-foreground" />
-          <h3 className="text-base font-medium">Passkeys</h3>
+          <h3 className="text-base font-medium">{t('settings.passkey.passkeys')}</h3>
         </div>
         <Button variant="outline" size="sm" onClick={handleAddPasskey} disabled={registering}>
           {registering ? (
@@ -195,7 +197,7 @@ const PasskeySettings = () => {
           ) : (
             <Plus className="h-4 w-4 mr-2" />
           )}
-          Add passkey
+          {t('settings.passkey.addPasskey')}
         </Button>
       </div>
 
@@ -205,7 +207,7 @@ const PasskeySettings = () => {
         </div>
       ) : credentials.length === 0 ? (
         <p className="text-sm text-muted-foreground">
-          No passkeys registered. Add a passkey to sign in without email codes.
+          {t('settings.passkey.noPasskeys')}
         </p>
       ) : (
         <div className="space-y-2">
@@ -219,7 +221,7 @@ const PasskeySettings = () => {
                 <div>
                   <p className="text-sm font-medium">{cred.name}</p>
                   <p className="text-xs text-muted-foreground">
-                    Added {formatDate(cred.createdAt)} · Last used {formatDate(cred.lastUsedAt)}
+                    {t('settings.passkey.addedDate', { date: formatDate(cred.createdAt) })} · {t('settings.passkey.lastUsed', { date: formatDate(cred.lastUsedAt) })}
                   </p>
                 </div>
               </div>
@@ -257,22 +259,22 @@ const PasskeySettings = () => {
       <Dialog open={nameDialogOpen} onOpenChange={setNameDialogOpen}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>Name your passkey</DialogTitle>
+            <DialogTitle>{t('settings.passkey.nameYourPasskey')}</DialogTitle>
             <DialogDescription>
-              Give this passkey a name to help you identify it later.
+              {t('settings.passkey.nameYourPasskeyDesc')}
             </DialogDescription>
           </DialogHeader>
           <Input
             value={credentialName}
             onChange={(e) => setCredentialName(e.target.value)}
-            placeholder="e.g. MacBook Pro, YubiKey"
+            placeholder={t('settings.passkey.passkeyNamePlaceholder')}
             onKeyDown={(e) => {
               if (e.key === 'Enter') handleFinishRegistration();
             }}
           />
           <DialogFooter>
-            <Button variant="outline" onClick={() => setNameDialogOpen(false)}>Cancel</Button>
-            <Button onClick={handleFinishRegistration}>Save</Button>
+            <Button variant="outline" onClick={() => setNameDialogOpen(false)}>{t('common.cancel')}</Button>
+            <Button onClick={handleFinishRegistration}>{t('common.save')}</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
@@ -281,7 +283,7 @@ const PasskeySettings = () => {
       <Dialog open={renameDialogOpen} onOpenChange={setRenameDialogOpen}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>Rename passkey</DialogTitle>
+            <DialogTitle>{t('settings.passkey.renamePasskey')}</DialogTitle>
           </DialogHeader>
           <Input
             value={renameName}
@@ -291,8 +293,8 @@ const PasskeySettings = () => {
             }}
           />
           <DialogFooter>
-            <Button variant="outline" onClick={() => setRenameDialogOpen(false)}>Cancel</Button>
-            <Button onClick={handleRename}>Rename</Button>
+            <Button variant="outline" onClick={() => setRenameDialogOpen(false)}>{t('common.cancel')}</Button>
+            <Button onClick={handleRename}>{t('settings.passkey.rename')}</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
@@ -301,14 +303,14 @@ const PasskeySettings = () => {
       <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Remove passkey</AlertDialogTitle>
+            <AlertDialogTitle>{t('settings.passkey.removePasskey')}</AlertDialogTitle>
             <AlertDialogDescription>
-              Are you sure you want to remove "{deleteTarget?.name}"? You won't be able to use it to sign in anymore.
+              {t('settings.passkey.removePasskeyConfirm', { name: deleteTarget?.name })}
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel>Cancel</AlertDialogCancel>
-            <AlertDialogAction onClick={handleDelete}>Remove</AlertDialogAction>
+            <AlertDialogCancel>{t('common.cancel')}</AlertDialogCancel>
+            <AlertDialogAction onClick={handleDelete}>{t('common.remove')}</AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>

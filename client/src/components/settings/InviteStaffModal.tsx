@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
@@ -48,6 +49,7 @@ interface InviteStaffModalProps {
 }
 
 const InviteStaffModal: React.FC<InviteStaffModalProps> = ({ isOpen, onClose, onInviteSent }) => {
+  const { t } = useTranslation();
   const { user } = useAuth();
   const { toast } = useToast();
   const [isLoading, setIsLoading] = useState(false);
@@ -86,15 +88,15 @@ const InviteStaffModal: React.FC<InviteStaffModalProps> = ({ isOpen, onClose, on
       });
 
       if (!response.ok) {
-        const errorData = await response.json().catch(() => ({ error: 'Failed to send invitation.' }));
-        throw new Error(errorData.error || 'Failed to send invitation.');
+        const errorData = await response.json().catch(() => ({ error: t('settings.staff.sendInvitationFailed') }));
+        throw new Error(errorData.error || t('settings.staff.sendInvitationFailed'));
       }
 
       await response.json().catch(() => ({}));
       
       toast({
-        title: 'Success',
-        description: 'Invitation sent successfully.',
+        title: t('toast.success'),
+        description: t('settings.staff.invitationSent'),
       });
       
       // Reset form
@@ -106,8 +108,8 @@ const InviteStaffModal: React.FC<InviteStaffModalProps> = ({ isOpen, onClose, on
     } catch (error: any) {
       console.error('Invitation error:', error);
       toast({
-        title: 'Error',
-        description: error.message || 'Failed to send invitation.',
+        title: t('toast.error'),
+        description: error.message || t('settings.staff.sendInvitationFailed'),
         variant: 'destructive',
       });
     } finally {
@@ -119,9 +121,9 @@ const InviteStaffModal: React.FC<InviteStaffModalProps> = ({ isOpen, onClose, on
     <Dialog open={isOpen} onOpenChange={handleClose}>
       <DialogContent>
         <DialogHeader>
-          <DialogTitle>Invite New Staff Member</DialogTitle>
+          <DialogTitle>{t('settings.staff.inviteNewStaffMember')}</DialogTitle>
           <DialogDescription>
-            Enter the email address and select a role for the new staff member.
+            {t('settings.staff.inviteStaffDesc')}
           </DialogDescription>
         </DialogHeader>
         <Form {...form}>
@@ -131,13 +133,13 @@ const InviteStaffModal: React.FC<InviteStaffModalProps> = ({ isOpen, onClose, on
               name="email"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Email</FormLabel>
+                  <FormLabel>{t('settings.staff.email')}</FormLabel>
                   <FormControl>
                     <Input placeholder="name@example.com" {...field} />
                   </FormControl>
                   <FormMessage />
                   <p className="text-xs text-muted-foreground">
-                    Notice: We are currently unable to send emails to iCloud users. As we work to resolve this issue please use an alternate email provider.
+                    {t('settings.staff.iCloudNotice')}
                   </p>
                 </FormItem>
               )}
@@ -147,11 +149,11 @@ const InviteStaffModal: React.FC<InviteStaffModalProps> = ({ isOpen, onClose, on
               name="role"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Role</FormLabel>
+                  <FormLabel>{t('settings.staff.role')}</FormLabel>
                   <Select onValueChange={field.onChange} defaultValue={field.value}>
                     <FormControl>
                       <SelectTrigger>
-                        <SelectValue placeholder="Select a role" />
+                        <SelectValue placeholder={t('settings.staff.selectRole')} />
                       </SelectTrigger>
                     </FormControl>
                     <SelectContent>
@@ -168,16 +170,16 @@ const InviteStaffModal: React.FC<InviteStaffModalProps> = ({ isOpen, onClose, on
             />
             <DialogFooter>
               <Button type="button" variant="ghost" onClick={onClose} disabled={isLoading}>
-                Cancel
+                {t('common.cancel')}
               </Button>
               <Button type="submit" disabled={isLoading}>
                 {isLoading ? (
                   <>
                     <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                    Sending...
+                    {t('settings.staff.sending')}
                   </>
                 ) : (
-                  'Send Invitation'
+                  t('settings.staff.sendInvitation')
                 )}
               </Button>
             </DialogFooter>

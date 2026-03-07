@@ -2,16 +2,18 @@ import { useEffect, useState } from 'react';
 import { useParams } from 'wouter';
 import PageContainer from '@/components/layout/PageContainer';
 import { Loader2, CheckCircle2, XCircle } from 'lucide-react';
+import { useTranslation } from 'react-i18next';
 
 const VerifyPage = () => {
+  const { t } = useTranslation();
   const { token } = useParams<{ token: string }>();
   const [status, setStatus] = useState<'loading' | 'success' | 'error'>('loading');
-  const [message, setMessage] = useState('Verifying your identity...');
+  const [message, setMessage] = useState('');
 
   useEffect(() => {
     if (!token) {
       setStatus('error');
-      setMessage('Invalid verification link.');
+      setMessage(t('pages.verify.invalidLink'));
       return;
     }
 
@@ -28,17 +30,17 @@ const VerifyPage = () => {
 
         if (response.ok) {
           setStatus('success');
-          setMessage('Identity verified! You can close this page and return to the game.');
+          setMessage(t('pages.verify.success'));
         } else if (response.status === 404) {
           setStatus('error');
-          setMessage('This verification link is invalid or has already been used.');
+          setMessage(t('pages.verify.invalidOrUsed'));
         } else {
           setStatus('error');
-          setMessage('Verification failed. Please try again.');
+          setMessage(t('pages.verify.failed'));
         }
       } catch {
         setStatus('error');
-        setMessage('An error occurred while verifying. Please try again.');
+        setMessage(t('pages.verify.error'));
       }
     };
 
@@ -49,7 +51,7 @@ const VerifyPage = () => {
     <PageContainer>
       <div className="flex items-center justify-center h-screen">
         <div className="text-center max-w-md">
-          <h1 className="text-2xl font-bold mb-4">Staff Verification</h1>
+          <h1 className="text-2xl font-bold mb-4">{t('pages.verify.title')}</h1>
           <div className="flex flex-col items-center gap-4">
             {status === 'loading' && (
               <Loader2 className="h-8 w-8 animate-spin text-primary" />
@@ -60,7 +62,7 @@ const VerifyPage = () => {
             {status === 'error' && (
               <XCircle className="h-8 w-8 text-red-500" />
             )}
-            <p className="text-muted-foreground">{message}</p>
+            <p className="text-muted-foreground">{message || t('pages.verify.verifying')}</p>
           </div>
         </div>
       </div>

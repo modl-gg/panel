@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { Plus, Minus, GripVertical, Palette, Eye, Info, Trash2 } from 'lucide-react';
 import { Button } from '@modl-gg/shared-web/components/ui/button';
 import { Input } from '@modl-gg/shared-web/components/ui/input';
@@ -37,6 +38,7 @@ const EmbedTemplateEditor: React.FC<EmbedTemplateEditorProps> = ({
   onChange,
   disabled = false
 }) => {
+  const { t } = useTranslation();
   const [activeTab, setActiveTab] = useState('basic');
 
   const getAvailableVariables = () => {
@@ -138,13 +140,13 @@ const EmbedTemplateEditor: React.FC<EmbedTemplateEditorProps> = ({
         <PopoverTrigger asChild>
           <Button variant="outline" size="sm" disabled={disabled}>
             <Info className="h-3 w-3 mr-1" />
-            Variables
+            {t('settings.webhook.variables')}
           </Button>
         </PopoverTrigger>
         <PopoverContent className="w-80">
           <div className="space-y-2">
-            <h4 className="font-medium text-sm">Available Variables</h4>
-            <p className="text-xs text-muted-foreground">Click to insert into current field</p>
+            <h4 className="font-medium text-sm">{t('settings.webhook.availableVariables')}</h4>
+            <p className="text-xs text-muted-foreground">{t('settings.webhook.clickToInsert')}</p>
             <div className="grid gap-1">
               {variables.map(variable => (
                 <Button
@@ -160,7 +162,7 @@ const EmbedTemplateEditor: React.FC<EmbedTemplateEditorProps> = ({
                       {`{{${variable}}}`}
                     </Badge>
                     <span className="text-xs text-muted-foreground">
-                      Example: {examples[variable as keyof typeof examples]}
+                      {t('settings.webhook.example', { value: examples[variable as keyof typeof examples] })}
                     </span>
                   </div>
                 </Button>
@@ -328,21 +330,21 @@ const EmbedTemplateEditor: React.FC<EmbedTemplateEditorProps> = ({
     <div className="space-y-4">
       <Tabs value={activeTab} onValueChange={setActiveTab}>
         <TabsList>
-          <TabsTrigger value="basic">Basic Settings</TabsTrigger>
-          <TabsTrigger value="fields">Fields</TabsTrigger>
-          <TabsTrigger value="preview">Preview</TabsTrigger>
+          <TabsTrigger value="basic">{t('settings.webhook.basicSettings')}</TabsTrigger>
+          <TabsTrigger value="fields">{t('settings.webhook.fields')}</TabsTrigger>
+          <TabsTrigger value="preview">{t('settings.webhook.preview')}</TabsTrigger>
         </TabsList>
 
         <TabsContent value="basic" className="space-y-4">
           <Card>
             <CardHeader>
-              <CardTitle className="text-lg">Basic Embed Settings</CardTitle>
+              <CardTitle className="text-lg">{t('settings.webhook.basicEmbedSettings')}</CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">
               {/* Title */}
               <div className="space-y-2">
                 <div className="flex items-center gap-2">
-                  <Label htmlFor={`title-${templateType}`}>Embed Title</Label>
+                  <Label htmlFor={`title-${templateType}`}>{t('settings.webhook.embedTitle')}</Label>
                   <VariableHelper onInsert={(variable) => {
                     updateTemplate({ title: template.title + variable });
                   }} />
@@ -359,7 +361,7 @@ const EmbedTemplateEditor: React.FC<EmbedTemplateEditorProps> = ({
               {/* Description */}
               <div className="space-y-2">
                 <div className="flex items-center gap-2">
-                  <Label htmlFor={`description-${templateType}`}>Description</Label>
+                  <Label htmlFor={`description-${templateType}`}>{t('settings.webhook.embedDescription')}</Label>
                   <VariableHelper onInsert={(variable) => {
                     updateTemplate({ description: template.description + variable });
                   }} />
@@ -376,7 +378,7 @@ const EmbedTemplateEditor: React.FC<EmbedTemplateEditorProps> = ({
 
               {/* Color */}
               <div className="space-y-2">
-                <Label>Embed Color</Label>
+                <Label>{t('settings.webhook.embedColor')}</Label>
                 <ColorPicker
                   value={template.color}
                   onChange={(color) => updateTemplate({ color })}
@@ -389,16 +391,16 @@ const EmbedTemplateEditor: React.FC<EmbedTemplateEditorProps> = ({
         <TabsContent value="fields" className="space-y-4">
           <Card>
             <CardHeader className="flex flex-row items-center justify-between">
-              <CardTitle className="text-lg">Embed Fields</CardTitle>
+              <CardTitle className="text-lg">{t('settings.webhook.embedFields')}</CardTitle>
               <Button onClick={addField} size="sm" disabled={disabled}>
                 <Plus className="h-4 w-4 mr-1" />
-                Add Field
+                {t('settings.webhook.addField')}
               </Button>
             </CardHeader>
             <CardContent className="space-y-4">
               {template.fields.length === 0 ? (
                 <div className="text-center py-8 text-muted-foreground">
-                  No fields configured. Add a field to get started.
+                  {t('settings.webhook.noFieldsConfigured')}
                 </div>
               ) : (
                 template.fields.map((field, index) => (
@@ -407,7 +409,7 @@ const EmbedTemplateEditor: React.FC<EmbedTemplateEditorProps> = ({
                       <div className="flex items-center justify-between">
                         <div className="flex items-center gap-2">
                           <GripVertical className="h-4 w-4 text-muted-foreground cursor-move" />
-                          <span className="font-medium">Field {index + 1}</span>
+                          <span className="font-medium">{t('settings.webhook.fieldN', { n: index + 1 })}</span>
                         </div>
                         <div className="flex items-center gap-2">
                           <div className="flex items-center space-x-2">
@@ -417,7 +419,7 @@ const EmbedTemplateEditor: React.FC<EmbedTemplateEditorProps> = ({
                               onCheckedChange={(checked) => updateField(index, { inline: checked })}
                               disabled={disabled}
                             />
-                            <Label htmlFor={`inline-${index}`} className="text-sm">Inline</Label>
+                            <Label htmlFor={`inline-${index}`} className="text-sm">{t('settings.webhook.inline')}</Label>
                           </div>
                           <Button
                             variant="outline"
@@ -434,7 +436,7 @@ const EmbedTemplateEditor: React.FC<EmbedTemplateEditorProps> = ({
                     <CardContent className="space-y-3">
                       <div className="space-y-2">
                         <div className="flex items-center gap-2">
-                          <Label>Field Name</Label>
+                          <Label>{t('settings.webhook.fieldName')}</Label>
                           <VariableHelper onInsert={(variable) => {
                             updateField(index, { name: field.name + variable });
                           }} />
@@ -448,7 +450,7 @@ const EmbedTemplateEditor: React.FC<EmbedTemplateEditorProps> = ({
                       </div>
                       <div className="space-y-2">
                         <div className="flex items-center gap-2">
-                          <Label>Field Value</Label>
+                          <Label>{t('settings.webhook.fieldValue')}</Label>
                           <VariableHelper onInsert={(variable) => {
                             updateField(index, { value: field.value + variable });
                           }} />
@@ -473,7 +475,7 @@ const EmbedTemplateEditor: React.FC<EmbedTemplateEditorProps> = ({
             <CardHeader>
               <CardTitle className="text-lg flex items-center gap-2">
                 <Eye className="h-5 w-5" />
-                Live Preview
+                {t('settings.webhook.livePreview')}
               </CardTitle>
             </CardHeader>
             <CardContent>

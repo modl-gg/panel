@@ -1,8 +1,10 @@
 import { AlertCircle, Home, ArrowLeft } from 'lucide-react';
 import { Button } from '@modl-gg/shared-web/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@modl-gg/shared-web/components/ui/card';
+import { useTranslation } from 'react-i18next';
 
 export default function ServerNotFoundPage() {
+  const { t } = useTranslation();
   const domain = window.location.hostname;
 
   return (
@@ -14,15 +16,15 @@ export default function ServerNotFoundPage() {
               <AlertCircle className="h-8 w-8 text-destructive" />
             </div>
           </div>
-          <CardTitle>Server Not Found</CardTitle>
+          <CardTitle>{t('pages.serverNotFound.title')}</CardTitle>
           <CardDescription className="mt-2">
-            The server <span className="font-medium text-foreground">{domain}</span> doesn't exist or hasn't been registered yet.
+            {t('pages.serverNotFound.descriptionPrefix')} <span className="font-medium text-foreground">{domain}</span> {t('pages.serverNotFound.descriptionSuffix')}
           </CardDescription>
         </CardHeader>
 
         <CardContent className="space-y-4">
           <p className="text-sm text-muted-foreground text-center">
-            If you recently registered this server, please check your email and verify your account first.
+            {t('pages.serverNotFound.hint')}
           </p>
 
           <div className="space-y-3">
@@ -32,7 +34,7 @@ export default function ServerNotFoundPage() {
               onClick={() => window.location.href = 'https://modl.gg'}
             >
               <Home className="h-4 w-4 mr-2" />
-              Go to modl.gg
+              {t('pages.serverNotFound.goToModl')}
             </Button>
             <Button
               variant="outline"
@@ -40,7 +42,7 @@ export default function ServerNotFoundPage() {
               onClick={() => window.history.back()}
             >
               <ArrowLeft className="h-4 w-4 mr-2" />
-              Go Back
+              {t('common.back')}
             </Button>
           </div>
         </CardContent>

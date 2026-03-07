@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { useTranslation } from 'react-i18next';
 import { MessageCircle, Tag, Plus, X, ChevronDown, ChevronRight, Layers, Shield, Edit3, Trash2, GripVertical, Save, CheckCircle, Settings, Crown } from 'lucide-react';
 import { Button } from '@modl-gg/shared-web/components/ui/button';
 import { Input } from '@modl-gg/shared-web/components/ui/input';
@@ -100,6 +101,7 @@ interface LabelManagementTableProps {
 }
 
 function LabelManagementTable({ labels, onLabelsChange }: LabelManagementTableProps) {
+  const { t } = useTranslation();
   const [newLabelName, setNewLabelName] = useState('');
   const [newLabelColor, setNewLabelColor] = useState('#6b7280');
   const [newLabelDescription, setNewLabelDescription] = useState('');
@@ -177,9 +179,9 @@ function LabelManagementTable({ labels, onLabelsChange }: LabelManagementTablePr
           <table className="w-full">
             <thead className="bg-muted/50">
               <tr>
-                <th className="text-left p-3 text-sm font-medium">Label</th>
-                <th className="text-left p-3 text-sm font-medium">Description</th>
-                <th className="text-right p-3 text-sm font-medium">Actions</th>
+                <th className="text-left p-3 text-sm font-medium">{t('settings.tickets.label')}</th>
+                <th className="text-left p-3 text-sm font-medium">{t('settings.tickets.description')}</th>
+                <th className="text-right p-3 text-sm font-medium">{t('common.actions')}</th>
               </tr>
             </thead>
             <tbody>
@@ -199,7 +201,7 @@ function LabelManagementTable({ labels, onLabelsChange }: LabelManagementTablePr
                             value={editLabelName}
                             onChange={(e) => setEditLabelName(e.target.value)}
                             className="max-w-[150px] h-8"
-                            placeholder="Label name"
+                            placeholder={t('settings.tickets.labelName')}
                           />
                         </div>
                       </td>
@@ -208,17 +210,17 @@ function LabelManagementTable({ labels, onLabelsChange }: LabelManagementTablePr
                           value={editLabelDescription}
                           onChange={(e) => setEditLabelDescription(e.target.value)}
                           className="h-8"
-                          placeholder="Description (optional)"
+                          placeholder={t('settings.tickets.descriptionOptional')}
                         />
                       </td>
                       <td className="p-3 text-right">
                         <div className="flex items-center justify-end gap-2">
                           <Button size="sm" variant="ghost" onClick={handleCancelEdit}>
-                            Cancel
+                            {t('common.cancel')}
                           </Button>
                           <Button size="sm" onClick={handleSaveEdit}>
                             <Save className="h-3.5 w-3.5 mr-1" />
-                            Save
+                            {t('common.save')}
                           </Button>
                         </div>
                       </td>
@@ -275,12 +277,12 @@ function LabelManagementTable({ labels, onLabelsChange }: LabelManagementTablePr
             className="w-8 h-8 rounded cursor-pointer border-0 mt-5"
           />
           <div className="space-y-1">
-            <Label className="text-xs">Name</Label>
+            <Label className="text-xs">{t('settings.tickets.name')}</Label>
             <Input
               value={newLabelName}
               onChange={(e) => setNewLabelName(e.target.value)}
               className="w-[150px] h-8"
-              placeholder="bug, critical, etc."
+              placeholder={t('settings.tickets.labelNamePlaceholder')}
               onKeyDown={(e) => {
                 if (e.key === 'Enter') handleAddLabel();
               }}
@@ -288,12 +290,12 @@ function LabelManagementTable({ labels, onLabelsChange }: LabelManagementTablePr
           </div>
         </div>
         <div className="flex-1 space-y-1">
-          <Label className="text-xs">Description (optional)</Label>
+          <Label className="text-xs">{t('settings.tickets.descriptionOptional')}</Label>
           <Input
             value={newLabelDescription}
             onChange={(e) => setNewLabelDescription(e.target.value)}
             className="h-8"
-            placeholder="Brief description of when to use this label"
+            placeholder={t('settings.tickets.labelDescriptionPlaceholder')}
             onKeyDown={(e) => {
               if (e.key === 'Enter') handleAddLabel();
             }}
@@ -301,13 +303,13 @@ function LabelManagementTable({ labels, onLabelsChange }: LabelManagementTablePr
         </div>
         <Button size="sm" onClick={handleAddLabel} disabled={!newLabelName.trim()}>
           <Plus className="h-4 w-4 mr-1" />
-          Add Label
+          {t('settings.tickets.addLabel')}
         </Button>
       </div>
 
       {/* Color preset palette */}
       <div className="flex flex-wrap gap-1.5 pt-2">
-        <span className="text-xs text-muted-foreground mr-2">Quick colors:</span>
+        <span className="text-xs text-muted-foreground mr-2">{t('settings.tickets.quickColors')}</span>
         {DEFAULT_LABEL_COLORS.map((color) => (
           <button
             key={color}
@@ -323,15 +325,15 @@ function LabelManagementTable({ labels, onLabelsChange }: LabelManagementTablePr
       <AlertDialog open={labelDeleteDialogOpen} onOpenChange={setLabelDeleteDialogOpen}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Delete Label</AlertDialogTitle>
+            <AlertDialogTitle>{t('settings.tickets.deleteLabelTitle')}</AlertDialogTitle>
             <AlertDialogDescription>
-              Are you sure you want to delete "{labelToDelete?.name}"? This cannot be undone.
+              {t('settings.tickets.deleteLabelConfirm', { name: labelToDelete?.name })}
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogCancel>{t('common.cancel')}</AlertDialogCancel>
             <AlertDialogAction onClick={confirmLabelDelete} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
-              Delete
+              {t('common.delete')}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
@@ -374,6 +376,7 @@ const TicketSettings = ({
   moveFieldBetweenSections,
   visibleSection
 }: TicketSettingsProps) => {
+  const { t } = useTranslation();
   // User authentication and role information
   const { user: currentUser } = useAuth();
   
@@ -792,7 +795,7 @@ const TicketSettings = ({
   const quickResponsesContent = (
     <DndProvider backend={HTML5Backend}>
       <p className="text-sm text-muted-foreground mb-6">
-        Configure pre-written responses for different ticket categories and actions.
+        {t('settings.tickets.quickResponsesDesc')}
       </p>
 
       <div className="space-y-6">
@@ -803,7 +806,7 @@ const TicketSettings = ({
               <div>
                 <CardTitle className="text-base">{category.name}</CardTitle>
                 <p className="text-sm text-muted-foreground mt-1">
-                  {category.ticketTypes.join(', ')} - {category.actions.length} actions
+                  {category.ticketTypes.join(', ')} - {t('settings.tickets.actionsCount', { count: category.actions.length })}
                 </p>
               </div>
               <div className="flex items-center space-x-2">
@@ -859,7 +862,7 @@ const TicketSettings = ({
       )) : (
         <div className="text-center py-8 border-2 border-dashed border-muted rounded-lg">
           <MessageCircle className="h-8 w-8 mx-auto mb-3 text-muted-foreground" />
-          <p className="text-sm text-muted-foreground mb-4">No quick response categories configured yet</p>
+          <p className="text-sm text-muted-foreground mb-4">{t('settings.tickets.noCategoriesYet')}</p>
           <Button
             onClick={() => {
               setEditingCategory(null);
@@ -867,7 +870,7 @@ const TicketSettings = ({
             }}
           >
             <Plus className="h-4 w-4 mr-2" />
-            Create Category
+            {t('settings.tickets.createCategory')}
           </Button>
         </div>
       )}
@@ -882,7 +885,7 @@ const TicketSettings = ({
             }}
           >
             <Plus className="h-4 w-4 mr-2" />
-            Add Category
+            {t('settings.tickets.addCategory')}
           </Button>
         </div>
       )}
@@ -893,7 +896,7 @@ const TicketSettings = ({
   const labelManagementContent = (
     <div>
       <p className="text-sm text-muted-foreground mb-4">
-        Create labels to categorize and organize tickets. Labels can be applied to any ticket type and will appear with their assigned colors.
+        {t('settings.tickets.labelManagementDesc')}
       </p>
 
       <LabelManagementTable
@@ -911,12 +914,12 @@ const TicketSettings = ({
         <Dialog open={isAddAIPunishmentDialogOpen} onOpenChange={setIsAddAIPunishmentDialogOpen}>
           <DialogContent className="max-w-lg">
             <DialogHeader>
-              <DialogTitle>Enable AI Punishment Type</DialogTitle>
+              <DialogTitle>{t('settings.tickets.enableAIPunishmentType')}</DialogTitle>
               <DialogDescription>
                 {selectedPunishmentTypeId ? (() => {
-                  const selectedType = punishmentTypesState.find(t => t.id === selectedPunishmentTypeId);
-                  return selectedType ? `Configure AI description for "${selectedType.name}" punishment type.` : 'Configure AI description for the selected punishment type.';
-                })() : 'Select a punishment type to enable for AI analysis.'}
+                  const selectedType = punishmentTypesState.find(pt => pt.id === selectedPunishmentTypeId);
+                  return selectedType ? t('settings.tickets.configureAIDescFor', { name: selectedType.name }) : t('settings.tickets.configureAIDescSelected');
+                })() : t('settings.tickets.selectPunishmentTypeForAI')}
               </DialogDescription>
             </DialogHeader>
 
@@ -933,7 +936,7 @@ const TicketSettings = ({
                             {selectedType.category}
                           </Badge>
                           <Badge variant="secondary" className="text-xs">
-                            Ordinal: {selectedType.ordinal}
+                            {t('settings.tickets.ordinal')}: {selectedType.ordinal}
                           </Badge>
                         </div>
                       </div>
@@ -944,10 +947,10 @@ const TicketSettings = ({
 
               {!selectedPunishmentTypeId && (
                 <div className="space-y-2">
-                  <Label>Select Punishment Type</Label>
+                  <Label>{t('settings.tickets.selectPunishmentType')}</Label>
                   <Select value={selectedPunishmentTypeId?.toString() || ''} onValueChange={(value) => setSelectedPunishmentTypeId(parseInt(value))}>
                     <SelectTrigger>
-                      <SelectValue placeholder="Choose a punishment type..." />
+                      <SelectValue placeholder={t('settings.tickets.choosePunishmentType')} />
                     </SelectTrigger>
                     <SelectContent className="max-h-60 overflow-y-auto">
                       {punishmentTypesState
@@ -964,11 +967,11 @@ const TicketSettings = ({
 
               {selectedPunishmentTypeId && (
                 <div className="space-y-2">
-                  <Label htmlFor="ai-punishment-desc">AI Description</Label>
+                  <Label htmlFor="ai-punishment-desc">{t('settings.tickets.aiDescription')}</Label>
                   <Textarea
                     id="ai-punishment-desc"
                     className="min-h-[100px]"
-                    placeholder="Describe when this punishment type should be used."
+                    placeholder={t('settings.tickets.aiDescriptionPlaceholder')}
                     value={newAIPunishmentDescription}
                     onChange={(e) => setNewAIPunishmentDescription(e.target.value)}
                   />
@@ -985,7 +988,7 @@ const TicketSettings = ({
                   setNewAIPunishmentDescription('');
                 }}
               >
-                Cancel
+                {t('common.cancel')}
               </Button>
               <Button
                 onClick={() => {
@@ -1013,7 +1016,7 @@ const TicketSettings = ({
                 }}
                 disabled={!selectedPunishmentTypeId || !newAIPunishmentDescription.trim()}
               >
-                Enable for AI
+                {t('settings.tickets.enableForAI')}
               </Button>
             </DialogFooter>
           </DialogContent>
@@ -1024,15 +1027,15 @@ const TicketSettings = ({
       <AlertDialog open={tagDeleteDialogOpen} onOpenChange={setTagDeleteDialogOpen}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Delete Tag</AlertDialogTitle>
+            <AlertDialogTitle>{t('settings.tickets.deleteTagTitle')}</AlertDialogTitle>
             <AlertDialogDescription>
-              Are you sure you want to delete "{tagToDelete?.name}"? This cannot be undone.
+              {t('settings.tickets.deleteTagConfirm', { name: tagToDelete?.name })}
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogCancel>{t('common.cancel')}</AlertDialogCancel>
             <AlertDialogAction onClick={confirmTagDelete} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
-              Delete
+              {t('common.delete')}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
@@ -1042,15 +1045,15 @@ const TicketSettings = ({
       <AlertDialog open={fieldDeleteDialogOpen} onOpenChange={setFieldDeleteDialogOpen}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Delete Form Field</AlertDialogTitle>
+            <AlertDialogTitle>{t('settings.tickets.deleteFormFieldTitle')}</AlertDialogTitle>
             <AlertDialogDescription>
-              Are you sure you want to delete "{fieldToDelete?.label}"? This cannot be undone.
+              {t('settings.tickets.deleteFormFieldConfirm', { label: fieldToDelete?.label })}
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogCancel>{t('common.cancel')}</AlertDialogCancel>
             <AlertDialogAction onClick={confirmFieldDelete} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
-              Delete
+              {t('common.delete')}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
@@ -1060,15 +1063,15 @@ const TicketSettings = ({
       <AlertDialog open={sectionDeleteDialogOpen} onOpenChange={setSectionDeleteDialogOpen}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Delete Section</AlertDialogTitle>
+            <AlertDialogTitle>{t('settings.tickets.deleteSectionTitle')}</AlertDialogTitle>
             <AlertDialogDescription>
-              Are you sure you want to delete "{sectionToDelete?.title}"? All fields in this section will also be deleted.
+              {t('settings.tickets.deleteSectionConfirm', { title: sectionToDelete?.title })}
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogCancel>{t('common.cancel')}</AlertDialogCancel>
             <AlertDialogAction onClick={confirmSectionDelete} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
-              Delete
+              {t('common.delete')}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
@@ -1078,13 +1081,13 @@ const TicketSettings = ({
       <AlertDialog open={quickResponseDeleteDialogOpen} onOpenChange={setQuickResponseDeleteDialogOpen}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Delete Quick Response</AlertDialogTitle>
+            <AlertDialogTitle>{t('settings.tickets.deleteQuickResponseTitle')}</AlertDialogTitle>
             <AlertDialogDescription>
-              Are you sure you want to delete "{quickResponseToDelete?.actionName}"? This cannot be undone.
+              {t('settings.tickets.deleteQuickResponseConfirm', { name: quickResponseToDelete?.actionName })}
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogCancel>{t('common.cancel')}</AlertDialogCancel>
             <AlertDialogAction
               onClick={() => {
                 if (quickResponseToDelete) {
@@ -1103,7 +1106,7 @@ const TicketSettings = ({
               }}
               className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
             >
-              Delete
+              {t('common.delete')}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
@@ -1113,13 +1116,13 @@ const TicketSettings = ({
       <AlertDialog open={aiPunishmentDeleteDialogOpen} onOpenChange={setAiPunishmentDeleteDialogOpen}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Remove AI Punishment Type</AlertDialogTitle>
+            <AlertDialogTitle>{t('settings.tickets.removeAIPunishmentTitle')}</AlertDialogTitle>
             <AlertDialogDescription>
-              Are you sure you want to remove "{aiPunishmentToDelete?.name}" from AI moderation?
+              {t('settings.tickets.removeAIPunishmentConfirm', { name: aiPunishmentToDelete?.name })}
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogCancel>{t('common.cancel')}</AlertDialogCancel>
             <AlertDialogAction
               onClick={() => {
                 if (aiPunishmentToDelete) {
@@ -1134,7 +1137,7 @@ const TicketSettings = ({
               }}
               className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
             >
-              Remove
+              {t('common.remove')}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
@@ -1145,15 +1148,15 @@ const TicketSettings = ({
         <Dialog open={Boolean(selectedAIPunishmentType)} onOpenChange={() => setSelectedAIPunishmentType(null)}>
           <DialogContent className="max-w-lg">
             <DialogHeader>
-              <DialogTitle>Edit AI Punishment Configuration</DialogTitle>
+              <DialogTitle>{t('settings.tickets.editAIPunishmentConfig')}</DialogTitle>
               <DialogDescription>
-                Update the AI description for "{selectedAIPunishmentType.name}".
+                {t('settings.tickets.updateAIDescFor', { name: selectedAIPunishmentType.name })}
               </DialogDescription>
             </DialogHeader>
 
             <div className="space-y-4">
               <div className="space-y-2">
-                <Label htmlFor="edit-ai-punishment-desc">AI Description</Label>
+                <Label htmlFor="edit-ai-punishment-desc">{t('settings.tickets.aiDescription')}</Label>
                 <textarea
                   id="edit-ai-punishment-desc"
                   className="w-full rounded-md border border-border bg-background px-3 py-2 text-sm min-h-[100px]"
@@ -1161,7 +1164,7 @@ const TicketSettings = ({
                   onChange={(e) => setNewAIPunishmentDescription(e.target.value)}
                 />
                 <p className="text-xs text-muted-foreground">
-                  This description helps the AI understand when to suggest this punishment type.
+                  {t('settings.tickets.aiDescriptionHelp')}
                 </p>
               </div>
             </div>
@@ -1171,7 +1174,7 @@ const TicketSettings = ({
                 variant="outline"
                 onClick={() => setSelectedAIPunishmentType(null)}
               >
-                Cancel
+                {t('common.cancel')}
               </Button>
               <Button
                 onClick={() => {
@@ -1191,7 +1194,7 @@ const TicketSettings = ({
                 }}
                 disabled={!newAIPunishmentDescription.trim()}
               >
-                Save Changes
+                {t('common.saveChanges')}
               </Button>
             </DialogFooter>
           </DialogContent>
@@ -1202,7 +1205,7 @@ const TicketSettings = ({
       <Dialog open={showActionDialog} onOpenChange={setShowActionDialog}>
         <DialogContent className="max-w-2xl">
           <DialogHeader>
-            <DialogTitle>{editingAction ? 'Edit Quick Response' : 'Add Quick Response'}</DialogTitle>
+            <DialogTitle>{editingAction ? t('settings.tickets.editQuickResponse') : t('settings.tickets.addQuickResponse')}</DialogTitle>
           </DialogHeader>
           <QuickResponseActionForm
             action={editingAction}
@@ -1226,7 +1229,7 @@ const TicketSettings = ({
       <Dialog open={showCategoryDialog} onOpenChange={setShowCategoryDialog}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>{editingCategory ? 'Edit Category' : 'Add Category'}</DialogTitle>
+            <DialogTitle>{editingCategory ? t('settings.tickets.editCategory') : t('settings.tickets.addCategory')}</DialogTitle>
           </DialogHeader>
           <QuickResponseCategoryForm
             category={editingCategory}
@@ -1248,41 +1251,41 @@ const TicketSettings = ({
       <Dialog open={isAddTicketFormFieldDialogOpen} onOpenChange={setIsAddTicketFormFieldDialogOpen}>
         <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto">
           <DialogHeader>
-            <DialogTitle>{selectedTicketFormField ? 'Edit Form Field' : 'Add Form Field'}</DialogTitle>
+            <DialogTitle>{selectedTicketFormField ? t('settings.tickets.editFormField') : t('settings.tickets.addFormField')}</DialogTitle>
           </DialogHeader>
           <div className="space-y-4">
             <div className="space-y-2">
-              <Label>Field Label</Label>
+              <Label>{t('settings.tickets.fieldLabel')}</Label>
               <Input
                 value={newTicketFormFieldLabel}
                 onChange={(e) => setNewTicketFormFieldLabel(e.target.value)}
-                placeholder="Enter field label..."
+                placeholder={t('settings.tickets.fieldLabelPlaceholder')}
               />
             </div>
             <div className="space-y-2">
-              <Label>Field Type</Label>
+              <Label>{t('settings.tickets.fieldType')}</Label>
               <Select value={newTicketFormFieldType} onValueChange={(v: any) => setNewTicketFormFieldType(v)}>
                 <SelectTrigger>
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="text">Text</SelectItem>
-                  <SelectItem value="textarea">Textarea</SelectItem>
-                  <SelectItem value="dropdown">Dropdown</SelectItem>
-                  <SelectItem value="multiple_choice">Multiple Choice</SelectItem>
-                  <SelectItem value="checkbox">Checkbox</SelectItem>
-                  <SelectItem value="checkboxes">Checkboxes</SelectItem>
-                  <SelectItem value="file_upload">File Upload</SelectItem>
-                  <SelectItem value="description">Description</SelectItem>
+                  <SelectItem value="text">{t('settings.tickets.fieldTypeText')}</SelectItem>
+                  <SelectItem value="textarea">{t('settings.tickets.fieldTypeTextarea')}</SelectItem>
+                  <SelectItem value="dropdown">{t('settings.tickets.fieldTypeDropdown')}</SelectItem>
+                  <SelectItem value="multiple_choice">{t('settings.tickets.fieldTypeMultipleChoice')}</SelectItem>
+                  <SelectItem value="checkbox">{t('settings.tickets.fieldTypeCheckbox')}</SelectItem>
+                  <SelectItem value="checkboxes">{t('settings.tickets.fieldTypeCheckboxes')}</SelectItem>
+                  <SelectItem value="file_upload">{t('settings.tickets.fieldTypeFileUpload')}</SelectItem>
+                  <SelectItem value="description">{t('settings.tickets.fieldTypeDescription')}</SelectItem>
                 </SelectContent>
               </Select>
             </div>
             <div className="space-y-2">
-              <Label>Description (optional)</Label>
+              <Label>{t('settings.tickets.descriptionOptional')}</Label>
               <Input
                 value={newTicketFormFieldDescription}
                 onChange={(e) => setNewTicketFormFieldDescription(e.target.value)}
-                placeholder="Help text for this field..."
+                placeholder={t('settings.tickets.fieldDescriptionPlaceholder')}
               />
             </div>
             <div className="flex items-center gap-2">
@@ -1290,11 +1293,11 @@ const TicketSettings = ({
                 checked={newTicketFormFieldRequired}
                 onCheckedChange={setNewTicketFormFieldRequired}
               />
-              <Label>Required</Label>
+              <Label>{t('settings.tickets.required')}</Label>
             </div>
             {['dropdown', 'multiple_choice', 'checkboxes'].includes(newTicketFormFieldType) && (
               <div className="space-y-2">
-                <Label>Options</Label>
+                <Label>{t('settings.tickets.options')}</Label>
                 <div className="space-y-2">
                   {newTicketFormFieldOptions.map((opt, idx) => (
                     <div key={idx} className="flex gap-2">
@@ -1314,7 +1317,7 @@ const TicketSettings = ({
                     <Input
                       value={newTicketFormOption}
                       onChange={(e) => setNewTicketFormOption(e.target.value)}
-                      placeholder="Add option..."
+                      placeholder={t('settings.tickets.addOptionPlaceholder')}
                       onKeyDown={(e) => {
                         if (e.key === 'Enter' && newTicketFormOption.trim()) {
                           setNewTicketFormFieldOptions([...newTicketFormFieldOptions, newTicketFormOption.trim()]);
@@ -1336,11 +1339,11 @@ const TicketSettings = ({
             )}
           </div>
           <DialogFooter>
-            <Button variant="outline" onClick={() => setIsAddTicketFormFieldDialogOpen(false)}>Cancel</Button>
+            <Button variant="outline" onClick={() => setIsAddTicketFormFieldDialogOpen(false)}>{t('common.cancel')}</Button>
             <Button onClick={() => {
               addTicketFormField();
             }}>
-              {selectedTicketFormField ? 'Update' : 'Add'}
+              {selectedTicketFormField ? t('common.update') : t('common.add')}
             </Button>
           </DialogFooter>
         </DialogContent>
@@ -1350,23 +1353,23 @@ const TicketSettings = ({
       <Dialog open={isAddTicketFormSectionDialogOpen} onOpenChange={setIsAddTicketFormSectionDialogOpen}>
         <DialogContent className="max-w-md">
           <DialogHeader>
-            <DialogTitle>{selectedTicketFormSection ? 'Edit Section' : 'Add Section'}</DialogTitle>
+            <DialogTitle>{selectedTicketFormSection ? t('settings.tickets.editSection') : t('settings.tickets.addSection')}</DialogTitle>
           </DialogHeader>
           <div className="space-y-4">
             <div className="space-y-2">
-              <Label>Section Title</Label>
+              <Label>{t('settings.tickets.sectionTitle')}</Label>
               <Input
                 value={newTicketFormSectionTitle}
                 onChange={(e) => setNewTicketFormSectionTitle(e.target.value)}
-                placeholder="Enter section title..."
+                placeholder={t('settings.tickets.sectionTitlePlaceholder')}
               />
             </div>
             <div className="space-y-2">
-              <Label>Description (optional)</Label>
+              <Label>{t('settings.tickets.descriptionOptional')}</Label>
               <Input
                 value={newTicketFormSectionDescription}
                 onChange={(e) => setNewTicketFormSectionDescription(e.target.value)}
-                placeholder="Section description..."
+                placeholder={t('settings.tickets.sectionDescriptionPlaceholder')}
               />
             </div>
             <div className="flex items-center gap-2">
@@ -1374,18 +1377,18 @@ const TicketSettings = ({
                 checked={newTicketFormSectionHideByDefault}
                 onCheckedChange={setNewTicketFormSectionHideByDefault}
               />
-              <Label>Hide by default</Label>
+              <Label>{t('settings.tickets.hideByDefault')}</Label>
             </div>
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => {
               setIsAddTicketFormSectionDialogOpen(false);
               setSelectedTicketFormSection(null);
-            }}>Cancel</Button>
+            }}>{t('common.cancel')}</Button>
             <Button onClick={() => {
               addTicketFormSection();
             }}>
-              {selectedTicketFormSection ? 'Update' : 'Add'}
+              {selectedTicketFormSection ? t('common.update') : t('common.add')}
             </Button>
           </DialogFooter>
         </DialogContent>
@@ -1403,33 +1406,33 @@ const TicketSettings = ({
           <DndProvider backend={HTML5Backend}>
             <div className="space-y-4">
               <p className="text-sm text-muted-foreground">
-                Configure custom forms for bug reports, support requests, and applications.
+                {t('settings.tickets.ticketFormsDesc')}
               </p>
 
               {/* Form Type Selector */}
               <div className="space-y-3">
-                <Label className="text-sm font-medium">Form Type</Label>
+                <Label className="text-sm font-medium">{t('settings.tickets.formType')}</Label>
                 <div className="flex gap-2">
                   <Button
                     variant={selectedTicketFormType === 'bug' ? 'default' : 'outline'}
                     size="sm"
                     onClick={() => setSelectedTicketFormType('bug')}
                   >
-                    Bug Report
+                    {t('settings.tickets.bugReport')}
                   </Button>
                   <Button
                     variant={selectedTicketFormType === 'support' ? 'default' : 'outline'}
                     size="sm"
                     onClick={() => setSelectedTicketFormType('support')}
                   >
-                    Support Request
+                    {t('settings.tickets.supportRequest')}
                   </Button>
                   <Button
                     variant={selectedTicketFormType === 'application' ? 'default' : 'outline'}
                     size="sm"
                     onClick={() => setSelectedTicketFormType('application')}
                   >
-                    Staff Application
+                    {t('settings.tickets.staffApplication')}
                   </Button>
                 </div>
               </div>
@@ -1438,16 +1441,16 @@ const TicketSettings = ({
               <div className="space-y-4">
                 <div className="flex items-center justify-between">
                   <h5 className="text-sm font-medium">
-                    {selectedTicketFormType === 'bug' && 'Bug Report Form Structure'}
-                    {selectedTicketFormType === 'support' && 'Support Request Form Structure'}
-                    {selectedTicketFormType === 'application' && 'Application Form Structure'}
+                    {selectedTicketFormType === 'bug' && t('settings.tickets.bugReportFormStructure')}
+                    {selectedTicketFormType === 'support' && t('settings.tickets.supportRequestFormStructure')}
+                    {selectedTicketFormType === 'application' && t('settings.tickets.applicationFormStructure')}
                   </h5>
                   <Button
                     size="sm"
                     onClick={() => setIsAddTicketFormSectionDialogOpen(true)}
                   >
                     <Plus className="h-4 w-4 mr-2" />
-                    Create Section
+                    {t('settings.tickets.createSection')}
                   </Button>
                 </div>
 
@@ -1515,12 +1518,12 @@ const TicketSettings = ({
                   {(!ticketForms[selectedTicketFormType]?.sections || ticketForms[selectedTicketFormType]?.sections?.length === 0) && (
                     <div className="text-center py-8 border-2 border-dashed border-muted rounded-lg">
                       <Layers className="h-8 w-8 mx-auto mb-3 text-muted-foreground" />
-                      <p className="text-sm text-muted-foreground mb-4">No sections created yet</p>
+                      <p className="text-sm text-muted-foreground mb-4">{t('settings.tickets.noSectionsYet')}</p>
                       <Button
                         onClick={() => setIsAddTicketFormSectionDialogOpen(true)}
                       >
                         <Plus className="h-4 w-4 mr-2" />
-                        Create First Section
+                        {t('settings.tickets.createFirstSection')}
                       </Button>
                     </div>
                   )}
@@ -1532,14 +1535,14 @@ const TicketSettings = ({
         {visibleSection === 'ai-moderation' && isPremiumUser() && (
           <div>
             <p className="text-sm text-muted-foreground mb-4">
-              Configure AI-powered moderation to automatically analyze ticket content and suggest appropriate actions.
+              {t('settings.tickets.aiModerationDesc')}
             </p>
 
             <div className="space-y-4">
               <div className="flex items-center justify-between p-3 bg-muted/50 rounded-lg">
                 <div>
-                  <Label className="text-sm font-medium">Enable AI Moderation</Label>
-                  <p className="text-xs text-muted-foreground">Automatically analyze tickets and suggest actions</p>
+                  <Label className="text-sm font-medium">{t('settings.tickets.enableAIModeration')}</Label>
+                  <p className="text-xs text-muted-foreground">{t('settings.tickets.enableAIModerationDesc')}</p>
                 </div>
                 <Switch
                   checked={aiModerationSettings.enableAIReview !== false}
@@ -1553,8 +1556,8 @@ const TicketSettings = ({
                 <>
                   <div className="flex items-center justify-between p-3 bg-muted/50 rounded-lg">
                     <div>
-                      <Label className="text-sm font-medium">Enable Automated Actions</Label>
-                      <p className="text-xs text-muted-foreground">Automatically apply suggested punishments for clear violations</p>
+                      <Label className="text-sm font-medium">{t('settings.tickets.enableAutomatedActions')}</Label>
+                      <p className="text-xs text-muted-foreground">{t('settings.tickets.enableAutomatedActionsDesc')}</p>
                     </div>
                     <Switch
                       checked={aiModerationSettings.enableAutomatedActions}
@@ -1565,9 +1568,9 @@ const TicketSettings = ({
                   </div>
 
                   <div className="space-y-3">
-                    <Label className="text-sm font-medium">AI Punishment Types</Label>
+                    <Label className="text-sm font-medium">{t('settings.tickets.aiPunishmentTypes')}</Label>
                     <p className="text-xs text-muted-foreground mb-2">
-                      Configure which punishment types AI can suggest when analyzing reported players.
+                      {t('settings.tickets.aiPunishmentTypesDesc')}
                     </p>
 
                     {aiModerationSettings.aiPunishmentConfigs && Object.keys(aiModerationSettings.aiPunishmentConfigs).length > 0 ? (
@@ -1601,7 +1604,7 @@ const TicketSettings = ({
                                   setNewAIPunishmentDescription(config.aiDescription);
                                 }}
                               >
-                                Edit
+                                {t('common.edit')}
                               </Button>
                               <Button
                                 variant="destructive"
@@ -1611,7 +1614,7 @@ const TicketSettings = ({
                                   setAiPunishmentDeleteDialogOpen(true);
                                 }}
                               >
-                                Remove
+                                {t('common.remove')}
                               </Button>
                             </div>
                           </div>
@@ -1619,7 +1622,7 @@ const TicketSettings = ({
                       </div>
                     ) : (
                       <div className="text-center py-4 border-2 border-dashed border-muted rounded-lg">
-                        <p className="text-sm text-muted-foreground mb-2">No AI punishment types configured</p>
+                        <p className="text-sm text-muted-foreground mb-2">{t('settings.tickets.noAIPunishmentTypes')}</p>
                       </div>
                     )}
 
@@ -1628,7 +1631,7 @@ const TicketSettings = ({
                       onClick={() => setIsAddAIPunishmentDialogOpen(true)}
                     >
                       <Plus className="h-4 w-4 mr-2" />
-                      Add Punishment Type
+                      {t('settings.tickets.addPunishmentType')}
                     </Button>
                   </div>
                 </>
@@ -1646,9 +1649,9 @@ const TicketSettings = ({
   return (
     <div className="space-y-6 p-6">
       <div>
-        <h3 className="text-lg font-medium mb-4">Ticket Settings</h3>
+        <h3 className="text-lg font-medium mb-4">{t('settings.tickets.title')}</h3>
         <p className="text-sm text-muted-foreground mb-6">
-          Configure ticket tags, quick responses, and form settings.
+          {t('settings.tickets.titleDesc')}
         </p>
       </div>
 
@@ -1659,12 +1662,12 @@ const TicketSettings = ({
             <CollapsibleTrigger className="flex items-center justify-between w-full p-4 bg-muted/50 rounded-lg hover:bg-muted/70 transition-colors">
               <div className="flex items-center">
                 <MessageCircle className="h-4 w-4 mr-2" />
-                <h4 className="text-base font-medium">Quick Responses</h4>
+                <h4 className="text-base font-medium">{t('settings.tickets.quickResponses')}</h4>
               </div>
               <div className="flex items-center space-x-2">
                 {!isQuickResponsesExpanded && (
                   <span className="text-sm text-muted-foreground">
-                    {quickResponsesState?.categories?.length || 0} categories configured
+                    {t('settings.tickets.categoriesConfigured', { count: quickResponsesState?.categories?.length || 0 })}
                   </span>
                 )}
                 {isQuickResponsesExpanded ? (
@@ -1679,7 +1682,7 @@ const TicketSettings = ({
               <div className="border rounded-lg p-4">
                 <DndProvider backend={HTML5Backend}>
                   <p className="text-sm text-muted-foreground mb-6">
-                    Configure pre-written responses for different ticket categories and actions.
+                    {t('settings.tickets.quickResponsesDesc')}
                   </p>
                   
                   <div className="space-y-6">
@@ -1690,7 +1693,7 @@ const TicketSettings = ({
                           <div>
                             <CardTitle className="text-base">{category.name}</CardTitle>
                             <p className="text-sm text-muted-foreground mt-1">
-                              {category.ticketTypes.join(', ')} - {category.actions.length} actions
+                              {category.ticketTypes.join(', ')} - {t('settings.tickets.actionsCount', { count: category.actions.length })}
                             </p>
                           </div>
                           <div className="flex items-center space-x-2">
@@ -1743,10 +1746,10 @@ const TicketSettings = ({
                         ))}
                         {category.actions.length === 0 && (
                           <div className="text-center py-6 text-muted-foreground">
-                            <p className="text-sm">No quick responses configured</p>
-                            <Button 
-                              variant="outline" 
-                              size="sm" 
+                            <p className="text-sm">{t('settings.tickets.noQuickResponsesConfigured')}</p>
+                            <Button
+                              variant="outline"
+                              size="sm"
                               className="mt-2"
                               onClick={() => {
                                 setSelectedCategoryId(category.id);
@@ -1755,7 +1758,7 @@ const TicketSettings = ({
                               }}
                             >
                               <Plus className="h-4 w-4 mr-2" />
-                              Add First Response
+                              {t('settings.tickets.addFirstResponse')}
                             </Button>
                           </div>
                         )}
@@ -1763,7 +1766,7 @@ const TicketSettings = ({
                     </Card>
                   )) : (
                     <div className="text-center py-8 text-muted-foreground">
-                      <p className="text-sm">Loading quick response configuration...</p>
+                      <p className="text-sm">{t('settings.tickets.loadingQuickResponses')}</p>
                     </div>
                   )}
                   </div>
@@ -1779,12 +1782,12 @@ const TicketSettings = ({
             <CollapsibleTrigger className="flex items-center justify-between w-full p-4 bg-muted/50 rounded-lg hover:bg-muted/70 transition-colors">
               <div className="flex items-center">
                 <Tag className="h-4 w-4 mr-2" />
-                <h4 className="text-base font-medium">Label Management</h4>
+                <h4 className="text-base font-medium">{t('settings.tickets.labelManagement')}</h4>
               </div>
               <div className="flex items-center space-x-2">
                 {!isTagManagementExpanded && (
                   <span className="text-sm text-muted-foreground">
-                    {labels?.length || 0} labels configured
+                    {t('settings.tickets.labelsConfigured', { count: labels?.length || 0 })}
                   </span>
                 )}
                 {isTagManagementExpanded ? (
@@ -1798,7 +1801,7 @@ const TicketSettings = ({
             <CollapsibleContent className="pt-4">
               <div className="border rounded-lg p-4">
                 <p className="text-sm text-muted-foreground mb-6">
-                  Create labels to categorize and organize tickets. Labels can be applied to any ticket type and will appear with their assigned colors.
+                  {t('settings.tickets.labelManagementDesc')}
                 </p>
 
                 <LabelManagementTable
@@ -1816,12 +1819,12 @@ const TicketSettings = ({
             <CollapsibleTrigger className="flex items-center justify-between w-full p-4 bg-muted/50 rounded-lg hover:bg-muted/70 transition-colors">
               <div className="flex items-center">
                 <Layers className="h-4 w-4 mr-2" />
-                <h4 className="text-base font-medium">Ticket Form Configuration</h4>
+                <h4 className="text-base font-medium">{t('settings.tickets.ticketFormConfiguration')}</h4>
               </div>
               <div className="flex items-center space-x-2">
                 {!isTicketFormsExpanded && (
                   <span className="text-sm text-muted-foreground">
-                    {Object.entries(ticketForms || {}).reduce((acc, [, form]) => acc + (form && typeof form === 'object' && 'sections' in form && Array.isArray(form.sections) ? form.sections.length : 0), 0)} sections across {Object.keys(ticketForms || {}).length} forms
+                    {t('settings.tickets.sectionsAcrossForms', { sections: Object.entries(ticketForms || {}).reduce((acc, [, form]) => acc + (form && typeof form === 'object' && 'sections' in form && Array.isArray(form.sections) ? form.sections.length : 0), 0), forms: Object.keys(ticketForms || {}).length })}
                   </span>
                 )}
                 {isTicketFormsExpanded ? (
@@ -1837,33 +1840,33 @@ const TicketSettings = ({
                 <DndProvider backend={HTML5Backend}>
                   <div className="space-y-4">
                     <p className="text-sm text-muted-foreground">
-                      Configure custom forms for bug reports, support requests, and applications. These forms will be used when players submit tickets.
+                      {t('settings.tickets.ticketFormsLongDesc')}
                     </p>
 
                     {/* Form Type Selector */}
                     <div className="space-y-3">
-                      <Label className="text-sm font-medium">Form Type</Label>
+                      <Label className="text-sm font-medium">{t('settings.tickets.formType')}</Label>
                       <div className="flex gap-2">
                         <Button
                           variant={selectedTicketFormType === 'bug' ? 'default' : 'outline'}
                           size="sm"
                           onClick={() => setSelectedTicketFormType('bug')}
                         >
-                          Bug Report
+                          {t('settings.tickets.bugReport')}
                         </Button>
                         <Button
                           variant={selectedTicketFormType === 'support' ? 'default' : 'outline'}
                           size="sm"
                           onClick={() => setSelectedTicketFormType('support')}
                         >
-                          Support Request
+                          {t('settings.tickets.supportRequest')}
                         </Button>
                         <Button
                           variant={selectedTicketFormType === 'application' ? 'default' : 'outline'}
                           size="sm"
                           onClick={() => setSelectedTicketFormType('application')}
                         >
-                          Staff Application
+                          {t('settings.tickets.staffApplication')}
                         </Button>
                       </div>
                     </div>
@@ -1872,16 +1875,16 @@ const TicketSettings = ({
                     <div className="space-y-4">
                       <div className="flex items-center justify-between">
                         <h5 className="text-sm font-medium">
-                          {selectedTicketFormType === 'bug' && 'Bug Report Form Structure'}
-                          {selectedTicketFormType === 'support' && 'Support Request Form Structure'}
-                          {selectedTicketFormType === 'application' && 'Application Form Structure'}
+                          {selectedTicketFormType === 'bug' && t('settings.tickets.bugReportFormStructure')}
+                          {selectedTicketFormType === 'support' && t('settings.tickets.supportRequestFormStructure')}
+                          {selectedTicketFormType === 'application' && t('settings.tickets.applicationFormStructure')}
                         </h5>
                         <Button
                           size="sm"
                           onClick={() => setIsAddTicketFormSectionDialogOpen(true)}
                         >
                           <Plus className="h-4 w-4 mr-2" />
-                          Create Section
+                          {t('settings.tickets.createSection')}
                         </Button>
                       </div>
 
@@ -1950,15 +1953,15 @@ const TicketSettings = ({
                         {(!ticketForms[selectedTicketFormType]?.sections || ticketForms[selectedTicketFormType]?.sections?.length === 0) && (
                           <div className="text-center py-12 text-muted-foreground border-2 border-dashed border-muted rounded-lg">
                             <Layers className="h-8 w-8 mx-auto mb-3 opacity-50" />
-                            <p className="text-sm font-medium">No sections configured</p>
-                            <p className="text-xs mt-1 mb-3">Create sections to organize your form fields</p>
+                            <p className="text-sm font-medium">{t('settings.tickets.noSectionsConfigured')}</p>
+                            <p className="text-xs mt-1 mb-3">{t('settings.tickets.createSectionsHint')}</p>
                             <Button
                               size="sm"
                               variant="outline"
                               onClick={() => setIsAddTicketFormSectionDialogOpen(true)}
                             >
                               <Plus className="h-4 w-4 mr-2" />
-                              Create First Section
+                              {t('settings.tickets.createFirstSection')}
                             </Button>
                           </div>
                         )}
@@ -1977,7 +1980,7 @@ const TicketSettings = ({
             <CollapsibleTrigger className={`flex items-center justify-between w-full p-4 bg-muted/50 rounded-lg transition-colors ${isPremiumUser() ? 'hover:bg-muted/70' : 'cursor-not-allowed opacity-60'}`}>
               <div className="flex items-center">
                 <Shield className="h-4 w-4 mr-2" />
-                <h4 className="text-base font-medium">AI Moderation Settings</h4>
+                <h4 className="text-base font-medium">{t('settings.tickets.aiModerationSettings')}</h4>
                 {!isPremiumUser() && (
                   <Badge variant="secondary" className="ml-2 bg-orange-100 text-orange-800 dark:bg-orange-900 dark:text-orange-100">
                     <Crown className="h-3 w-3 mr-1" />
@@ -1988,11 +1991,11 @@ const TicketSettings = ({
               <div className="flex items-center space-x-2">
                 {!isAIModerationExpanded && isPremiumUser() && (
                   <span className="text-sm text-muted-foreground">
-                    {aiModerationSettings.enableAutomatedActions ? 'Automated' : 'Manual'} - {formatStrictnessLabel(aiModerationSettings.strictnessLevel)}
+                    {aiModerationSettings.enableAutomatedActions ? t('settings.tickets.automated') : t('settings.tickets.manual')} - {formatStrictnessLabel(aiModerationSettings.strictnessLevel)}
                   </span>
                 )}
                 {!isPremiumUser() && (
-                  <span className="text-sm text-muted-foreground">Premium Required</span>
+                  <span className="text-sm text-muted-foreground">{t('settings.tickets.premiumRequired')}</span>
                 )}
                 {isPremiumUser() && (isAIModerationExpanded ? (
                   <ChevronDown className="h-4 w-4" />
@@ -2007,19 +2010,19 @@ const TicketSettings = ({
                 {!isPremiumUser() ? (
                   <div className="text-center py-8">
                     <Crown className="h-12 w-12 mx-auto mb-4 text-orange-500" />
-                    <h3 className="text-lg font-medium mb-2">Premium Feature</h3>
+                    <h3 className="text-lg font-medium mb-2">{t('settings.tickets.premiumFeature')}</h3>
                     <p className="text-sm text-muted-foreground mb-4">
-                      AI moderation is available for Premium subscribers only. Upgrade to access AI-powered chat analysis, automated moderation, and intelligent punishment suggestions.
+                      {t('settings.tickets.aiModerationPremiumDesc')}
                     </p>
                     <Button variant="default" className="bg-orange-600 hover:bg-orange-700">
                       <Crown className="h-4 w-4 mr-2" />
-                      Upgrade to Premium
+                      {t('settings.tickets.upgradeToPremium')}
                     </Button>
                   </div>
                 ) : (
                   <>
                     <p className="text-sm text-muted-foreground">
-                      Configure how the AI analyzes and moderates chat reports. AI suggestions can help staff make faster, more consistent decisions.
+                      {t('settings.tickets.aiModerationConfigureDesc')}
                     </p>
 
                     <div className="space-y-6">
@@ -2027,10 +2030,10 @@ const TicketSettings = ({
                       <div className="flex items-center justify-between">
                         <div className="space-y-1">
                           <Label htmlFor="enable-ai-review" className="text-sm font-medium">
-                            Enable AI Review
+                            {t('settings.tickets.enableAIReview')}
                           </Label>
                           <p className="text-xs text-muted-foreground">
-                            Enable AI-powered analysis and moderation of chat reports. When disabled, all AI features are turned off.
+                            {t('settings.tickets.enableAIReviewDesc')}
                           </p>
                         </div>
                         <Switch
@@ -2051,10 +2054,10 @@ const TicketSettings = ({
                         <div className="flex items-center justify-between">
                           <div className="space-y-1">
                             <Label htmlFor="enable-automated-actions" className="text-sm font-medium">
-                              Enable Automated Actions
+                              {t('settings.tickets.enableAutomatedActions')}
                             </Label>
                             <p className="text-xs text-muted-foreground">
-                              When enabled, the AI will automatically apply suggested punishments for clear violations. When disabled, the AI will only provide suggestions for staff review.
+                              {t('settings.tickets.enableAutomatedActionsFullDesc')}
                             </p>
                           </div>
                           <Switch
@@ -2071,7 +2074,7 @@ const TicketSettings = ({
 
                         {/* Strictness Level */}
                         <div className="space-y-3">
-                          <Label className="text-sm font-medium">AI Strictness Level</Label>
+                          <Label className="text-sm font-medium">{t('settings.tickets.aiStrictnessLevel')}</Label>
                           <Select
                             value={normalizeStrictnessLevel(aiModerationSettings.strictnessLevel)}
                             onValueChange={(value) => {
@@ -2082,16 +2085,16 @@ const TicketSettings = ({
                             }}
                           >
                             <SelectTrigger className="w-full">
-                              <SelectValue placeholder="Select strictness level" />
+                              <SelectValue placeholder={t('settings.tickets.selectStrictnessLevel')} />
                             </SelectTrigger>
                             <SelectContent>
-                              <SelectItem value="LENIENT">Lenient - Only flagrant violations</SelectItem>
-                              <SelectItem value="STANDARD">Standard - Balanced approach</SelectItem>
-                              <SelectItem value="STRICT">Strict - Zero tolerance policy</SelectItem>
+                              <SelectItem value="LENIENT">{t('settings.tickets.strictnessLenient')}</SelectItem>
+                              <SelectItem value="STANDARD">{t('settings.tickets.strictnessStandard')}</SelectItem>
+                              <SelectItem value="STRICT">{t('settings.tickets.strictnessStrict')}</SelectItem>
                             </SelectContent>
                           </Select>
                           <p className="text-xs text-muted-foreground">
-                            Controls how sensitive the AI is to rule violations. Higher strictness means more actions will be flagged.
+                            {t('settings.tickets.aiStrictnessHelp')}
                           </p>
                         </div>
 
@@ -2099,9 +2102,9 @@ const TicketSettings = ({
                         <div className="space-y-4">
                           <div className="flex items-center justify-between">
                             <div>
-                              <h4 className="text-base font-medium">AI Punishment Types</h4>
+                              <h4 className="text-base font-medium">{t('settings.tickets.aiPunishmentTypes')}</h4>
                               <p className="text-sm text-muted-foreground">
-                                Manage which punishment types the AI can reference when analyzing reports. Only enabled punishment types will be available to the AI moderation system.
+                                {t('settings.tickets.aiPunishmentTypesManageDesc')}
                               </p>
                             </div>
                             <Button
@@ -2114,7 +2117,7 @@ const TicketSettings = ({
                               }}
                             >
                               <Plus className="mr-2 h-4 w-4" />
-                              Add Type
+                              {t('settings.tickets.addType')}
                             </Button>
                           </div>
 
@@ -2157,7 +2160,7 @@ const TicketSettings = ({
                                   setNewAIPunishmentDescription(punishmentType.aiDescription);
                                 }}
                               >
-                                Edit
+                                {t('common.edit')}
                               </Button>
                               <Button
                                 variant="destructive"
@@ -2170,7 +2173,7 @@ const TicketSettings = ({
                                   setAiPunishmentDeleteDialogOpen(true);
                                 }}
                               >
-                                Remove
+                                {t('common.remove')}
                               </Button>
                             </div>
                           </div>
@@ -2178,8 +2181,8 @@ const TicketSettings = ({
 
                               {Object.keys(aiModerationSettings.aiPunishmentConfigs || {}).length === 0 && (
                                 <div className="text-center py-8 text-muted-foreground">
-                                  <p className="text-sm">No AI punishment types configured.</p>
-                                  <p className="text-xs">Add punishment types for the AI to reference when analyzing reports.</p>
+                                  <p className="text-sm">{t('settings.tickets.noAIPunishmentTypes')}</p>
+                                  <p className="text-xs">{t('settings.tickets.addAIPunishmentTypesHint')}</p>
                                 </div>
                               )}
                             </div>
@@ -2219,6 +2222,7 @@ const QuickResponseActionForm = ({
   onSave: () => void;
   onCancel: () => void;
 }) => {
+  const { t } = useTranslation();
   const [formData, setFormData] = useState<Partial<QuickResponseAction>>({
     name: action?.name || '',
     message: action?.message || '',
@@ -2264,37 +2268,37 @@ const QuickResponseActionForm = ({
     <div className="space-y-6">
       <div className="space-y-4">
         <div className="space-y-2">
-          <Label htmlFor="action-name">Action Name</Label>
+          <Label htmlFor="action-name">{t('settings.tickets.actionName')}</Label>
           <Input
             id="action-name"
             value={formData.name}
             onChange={(e) => setFormData(prev => ({ ...prev, name: e.target.value }))}
-            placeholder="e.g., Accept & Punish"
+            placeholder={t('settings.tickets.actionNamePlaceholder')}
           />
         </div>
 
         <div className="space-y-2">
-          <Label htmlFor="action-message">Response Message</Label>
+          <Label htmlFor="action-message">{t('settings.tickets.responseMessage')}</Label>
           <Textarea
             id="action-message"
             value={formData.message}
             onChange={(e) => setFormData(prev => ({ ...prev, message: e.target.value }))}
-            placeholder="Enter the message that will be sent to the user..."
+            placeholder={t('settings.tickets.responseMessagePlaceholder')}
             className="min-h-[100px]"
           />
         </div>
 
         <div className="space-y-4">
           <Separator />
-          <h4 className="font-medium">Action Settings</h4>
-          
+          <h4 className="font-medium">{t('settings.tickets.actionSettings')}</h4>
+
           <div className="flex items-center space-x-2">
             <Switch
               id="close-ticket"
               checked={formData.closeTicket}
               onCheckedChange={(checked) => setFormData(prev => ({ ...prev, closeTicket: checked }))}
             />
-            <Label htmlFor="close-ticket">Close ticket when this response is used</Label>
+            <Label htmlFor="close-ticket">{t('settings.tickets.closeTicketOnResponse')}</Label>
           </div>
         </div>
 
@@ -2302,19 +2306,19 @@ const QuickResponseActionForm = ({
         {isReportCategory && (
           <div className="space-y-4">
             <Separator />
-            <h4 className="font-medium">Punishment Settings</h4>
-            
+            <h4 className="font-medium">{t('settings.tickets.punishmentSettings')}</h4>
+
             <div className="flex items-center space-x-2">
               <Switch
                 id="show-punishment"
                 checked={formData.showPunishment || false}
                 onCheckedChange={(checked) => setFormData(prev => ({ ...prev, showPunishment: checked }))}
               />
-              <Label htmlFor="show-punishment">Show punishment interface when this response is used</Label>
+              <Label htmlFor="show-punishment">{t('settings.tickets.showPunishmentInterface')}</Label>
             </div>
-            
+
             <p className="text-sm text-muted-foreground">
-              When enabled, staff will see the punishment interface when using this response, allowing them to apply punishments with full flexibility.
+              {t('settings.tickets.showPunishmentInterfaceDesc')}
             </p>
           </div>
         )}
@@ -2322,10 +2326,10 @@ const QuickResponseActionForm = ({
         {isAppealCategory && (
           <div className="space-y-4">
             <Separator />
-            <h4 className="font-medium">Appeal Action</h4>
-            
+            <h4 className="font-medium">{t('settings.tickets.appealAction')}</h4>
+
             <div className="space-y-2">
-              <Label>Appeal Decision</Label>
+              <Label>{t('settings.tickets.appealDecision')}</Label>
               <Select
                 value={formData.appealAction}
                 onValueChange={(value: 'pardon' | 'reduce' | 'reject' | 'none') => setFormData(prev => ({ ...prev, appealAction: value }))}
@@ -2334,10 +2338,10 @@ const QuickResponseActionForm = ({
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="none">No automatic action</SelectItem>
-                  <SelectItem value="pardon">Pardon (remove punishment)</SelectItem>
-                  <SelectItem value="reduce">Reduce punishment duration</SelectItem>
-                  <SelectItem value="reject">Reject appeal</SelectItem>
+                  <SelectItem value="none">{t('settings.tickets.appealNoAction')}</SelectItem>
+                  <SelectItem value="pardon">{t('settings.tickets.appealPardon')}</SelectItem>
+                  <SelectItem value="reduce">{t('settings.tickets.appealReduce')}</SelectItem>
+                  <SelectItem value="reject">{t('settings.tickets.appealReject')}</SelectItem>
                 </SelectContent>
               </Select>
             </div>
@@ -2345,7 +2349,7 @@ const QuickResponseActionForm = ({
             {formData.appealAction === 'reduce' && (
               <div className="space-y-2 pl-6">
                 <p className="text-sm text-muted-foreground">
-                  Duration reduction will be handled through the ticket form when this response is used.
+                  {t('settings.tickets.appealReduceDesc')}
                 </p>
               </div>
             )}
@@ -2355,11 +2359,11 @@ const QuickResponseActionForm = ({
 
       <DialogFooter>
         <Button variant="outline" onClick={onCancel}>
-          Cancel
+          {t('common.cancel')}
         </Button>
         <Button onClick={handleSave} disabled={!formData.name || !formData.message}>
           <Save className="h-4 w-4 mr-2" />
-          Save Response
+          {t('settings.tickets.saveResponse')}
         </Button>
       </DialogFooter>
     </div>
@@ -2380,6 +2384,7 @@ const QuickResponseCategoryForm = ({
   onSave: () => void;
   onCancel: () => void;
 }) => {
+  const { t } = useTranslation();
   const [formData, setFormData] = useState({
     name: category?.name || '',
     ticketTypes: category?.ticketTypes || []
@@ -2413,17 +2418,17 @@ const QuickResponseCategoryForm = ({
     <div className="space-y-6">
       <div className="space-y-4">
         <div className="space-y-2">
-          <Label htmlFor="category-name">Category Name</Label>
+          <Label htmlFor="category-name">{t('settings.tickets.categoryName')}</Label>
           <Input
             id="category-name"
             value={formData.name}
             onChange={(e) => setFormData(prev => ({ ...prev, name: e.target.value }))}
-            placeholder="e.g., Report Actions"
+            placeholder={t('settings.tickets.categoryNamePlaceholder')}
           />
         </div>
 
         <div className="space-y-2">
-          <Label>Ticket Types</Label>
+          <Label>{t('settings.tickets.ticketTypes')}</Label>
           <div className="grid grid-cols-2 gap-2">
             {availableTicketTypes.map(type => (
               <div key={type} className="flex items-center space-x-2">
@@ -2450,11 +2455,11 @@ const QuickResponseCategoryForm = ({
 
       <DialogFooter>
         <Button variant="outline" onClick={onCancel}>
-          Cancel
+          {t('common.cancel')}
         </Button>
         <Button onClick={handleSave} disabled={!formData.name || formData.ticketTypes.length === 0}>
           <Save className="h-4 w-4 mr-2" />
-          Save Category
+          {t('settings.tickets.saveCategory')}
         </Button>
       </DialogFooter>
     </div>
@@ -2468,6 +2473,7 @@ interface FieldDropZoneProps {
 }
 
 const FieldDropZone = ({ sectionId, moveFieldBetweenSections }: FieldDropZoneProps) => {
+  const { t } = useTranslation();
   const [{ isOver, canDrop }, drop] = useDrop({
     accept: 'field',
     drop: (item: { index: number; sectionId: string; fieldId: string }) => {
@@ -2498,11 +2504,11 @@ const FieldDropZone = ({ sectionId, moveFieldBetweenSections }: FieldDropZonePro
       }`}
     >
       {isOver && canDrop ? (
-        <span>Drop field here</span>
+        <span>{t('settings.tickets.dropFieldHere')}</span>
       ) : canDrop ? (
-        <span className="opacity-50">Drop fields from other sections here</span>
+        <span className="opacity-50">{t('settings.tickets.dropFieldsFromOtherSections')}</span>
       ) : (
-        <span className="opacity-0">Drop zone</span>
+        <span className="opacity-0">{t('settings.tickets.dropZone')}</span>
       )}
     </div>
   );
@@ -2519,15 +2525,16 @@ interface DraggableFieldCardProps {
   onDeleteField: (fieldId: string) => void;
 }
 
-const DraggableFieldCard = ({ 
-  field, 
-  index, 
-  sectionId, 
-  moveField, 
+const DraggableFieldCard = ({
+  field,
+  index,
+  sectionId,
+  moveField,
   moveFieldBetweenSections,
-  onEditField, 
-  onDeleteField 
+  onEditField,
+  onDeleteField
 }: DraggableFieldCardProps) => {
+  const { t } = useTranslation();
   // Add null check for field
   if (!field || !field.id) {
     return null;
@@ -2560,14 +2567,14 @@ const DraggableFieldCard = ({
 
   const getFieldTypeLabel = (type: string) => {
     switch (type) {
-      case 'text': return 'Text';
-      case 'textarea': return 'Textarea';
-      case 'dropdown': return 'Dropdown';
-      case 'multiple_choice': return 'Multiple Choice';
-      case 'checkbox': return 'Checkbox';
-      case 'file_upload': return 'File Upload';
-      case 'checkboxes': return 'Checkboxes';
-      case 'description': return 'Description';
+      case 'text': return t('settings.tickets.fieldTypeText');
+      case 'textarea': return t('settings.tickets.fieldTypeTextarea');
+      case 'dropdown': return t('settings.tickets.fieldTypeDropdown');
+      case 'multiple_choice': return t('settings.tickets.fieldTypeMultipleChoice');
+      case 'checkbox': return t('settings.tickets.fieldTypeCheckbox');
+      case 'file_upload': return t('settings.tickets.fieldTypeFileUpload');
+      case 'checkboxes': return t('settings.tickets.fieldTypeCheckboxes');
+      case 'description': return t('settings.tickets.fieldTypeDescription');
       default: return type;
     }
   };
@@ -2590,7 +2597,7 @@ const DraggableFieldCard = ({
               </Badge>
               {field.required && (
                 <Badge variant="destructive" className="text-xs">
-                  Required
+                  {t('settings.tickets.required')}
                 </Badge>
               )}
             </div>
@@ -2649,6 +2656,7 @@ const DraggableSectionCard = ({
   moveField,
   moveFieldBetweenSections
 }: DraggableSectionCardProps) => {
+  const { t } = useTranslation();
   const [{ isDragging }, drag] = useDrag({
     type: 'section',
     item: { index },
@@ -2687,7 +2695,7 @@ const DraggableSectionCard = ({
               <h6 className="font-medium">{section.title}</h6>
               {section.hideByDefault && (
                 <Badge variant="secondary" className="text-xs">
-                  Hidden by default
+                  {t('settings.tickets.hiddenByDefault')}
                 </Badge>
               )}
             </div>
@@ -2702,7 +2710,7 @@ const DraggableSectionCard = ({
             variant="outline"
             onClick={() => onEditSection(section)}
           >
-            Edit
+            {t('common.edit')}
           </Button>
           <Button
             size="sm"
@@ -2742,7 +2750,7 @@ const DraggableSectionCard = ({
           className="w-full"
         >
           <Plus className="h-4 w-4 mr-2" />
-          Add Field
+          {t('settings.tickets.addField')}
         </Button>
       </div>
     </div>
@@ -2759,14 +2767,15 @@ interface DraggableQuickResponseActionProps {
   onDelete: () => void;
 }
 
-const DraggableQuickResponseAction = ({ 
-  action, 
-  index, 
+const DraggableQuickResponseAction = ({
+  action,
+  index,
   categoryId,
   moveAction,
   onEdit,
   onDelete
 }: DraggableQuickResponseActionProps) => {
+  const { t } = useTranslation();
   const [{ isDragging }, drag] = useDrag({
     type: 'quick-response-action',
     item: { index, categoryId },
@@ -2800,16 +2809,16 @@ const DraggableQuickResponseAction = ({
               <h6 className="font-medium">{action.name}</h6>
               <div className="flex items-center space-x-1">
                 {action.closeTicket && (
-                  <Badge variant="secondary" className="text-xs">Close</Badge>
+                  <Badge variant="secondary" className="text-xs">{t('settings.tickets.badgeClose')}</Badge>
                 )}
                 {action.showPunishment && (
-                  <Badge variant="destructive" className="text-xs">Punish</Badge>
+                  <Badge variant="destructive" className="text-xs">{t('settings.tickets.badgePunish')}</Badge>
                 )}
                 {action.appealAction === 'pardon' && (
-                  <Badge variant="secondary" className="text-xs">Pardon</Badge>
+                  <Badge variant="secondary" className="text-xs">{t('settings.tickets.badgePardon')}</Badge>
                 )}
                 {action.appealAction === 'reduce' && (
-                  <Badge variant="outline" className="text-xs">Reduce</Badge>
+                  <Badge variant="outline" className="text-xs">{t('settings.tickets.badgeReduce')}</Badge>
                 )}
               </div>
             </div>
@@ -2819,14 +2828,14 @@ const DraggableQuickResponseAction = ({
           </div>
         </div>
         <div className="flex items-center gap-2">
-          <Button 
+          <Button
             size="sm"
             variant="outline"
             onClick={onEdit}
           >
-            Edit
+            {t('common.edit')}
           </Button>
-          <Button 
+          <Button
             size="sm"
             variant="outline"
             onClick={onDelete}

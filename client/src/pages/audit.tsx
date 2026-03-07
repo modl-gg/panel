@@ -306,7 +306,8 @@ const rollbackPunishment = async (id: string, reason?: string) => {
 // Staff performance modal
 const StaffPerformanceModal = () => {
   const [period, setPeriod] = useState('30d');
-  
+  const { t } = useTranslation();
+
   const { data: staffData = [], isLoading } = useQuery({
     queryKey: ['staff-performance', period],
     queryFn: () => fetchStaffPerformance(period),
@@ -317,7 +318,7 @@ const StaffPerformanceModal = () => {
       <DialogTrigger asChild>
         <Button variant="outline" size="sm">
           <Users className="h-4 w-4 mr-2" />
-          Staff Performance
+          {t('audit.staffPerformance')}
         </Button>
       </DialogTrigger>
       <DialogContent
@@ -327,16 +328,16 @@ const StaffPerformanceModal = () => {
       >
         <DialogHeader>
           <DialogTitle className="flex items-center justify-between">
-            Staff Performance Analytics
+            {t('audit.staffPerformanceAnalytics')}
             <Select value={period} onValueChange={setPeriod}>
               <SelectTrigger className="w-32">
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="7d">7 days</SelectItem>
-                <SelectItem value="30d">30 days</SelectItem>
-                <SelectItem value="90d">90 days</SelectItem>
-                <SelectItem value="all">All time</SelectItem>
+                <SelectItem value="7d">{t('audit.period7d')}</SelectItem>
+                <SelectItem value="30d">{t('audit.period30d')}</SelectItem>
+                <SelectItem value="90d">{t('audit.period90d')}</SelectItem>
+                <SelectItem value="all">{t('audit.periodAll')}</SelectItem>
               </SelectContent>
             </Select>
           </DialogTitle>
@@ -348,18 +349,18 @@ const StaffPerformanceModal = () => {
             </div>
           ) : (
             <>
-          
+
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             <Card>
               <CardHeader>
-                <CardTitle className="text-base">Actions by Staff Member</CardTitle>
+                <CardTitle className="text-base">{t('audit.actionsByStaff')}</CardTitle>
               </CardHeader>
               <CardContent>
                 {!staffData || staffData.length === 0 ? (
                   <div className="flex items-center justify-center h-[200px] text-muted-foreground">
                     <div className="text-center">
                       <Users className="h-8 w-8 mx-auto mb-2 opacity-50" />
-                      <p className="text-sm">No staff action data available</p>
+                      <p className="text-sm">{t('audit.noStaffActionData')}</p>
                     </div>
                   </div>
                 ) : (
@@ -378,14 +379,14 @@ const StaffPerformanceModal = () => {
             
             <Card>
               <CardHeader>
-                <CardTitle className="text-base">Response Times</CardTitle>
+                <CardTitle className="text-base">{t('audit.responseTimes')}</CardTitle>
               </CardHeader>
               <CardContent>
                 {!staffData || staffData.length === 0 ? (
                   <div className="flex items-center justify-center h-[200px] text-muted-foreground">
                     <div className="text-center">
                       <Clock className="h-8 w-8 mx-auto mb-2 opacity-50" />
-                      <p className="text-sm">No response time data available</p>
+                      <p className="text-sm">{t('audit.noResponseTimeData')}</p>
                     </div>
                   </div>
                 ) : (
@@ -405,14 +406,14 @@ const StaffPerformanceModal = () => {
           
           <Card>
             <CardHeader>
-              <CardTitle className="text-base">Staff Activity Details</CardTitle>
+              <CardTitle className="text-base">{t('audit.staffActivityDetails')}</CardTitle>
             </CardHeader>
             <CardContent>
               {!staffData || staffData.length === 0 ? (
                 <div className="flex items-center justify-center h-[200px] text-muted-foreground">
                   <div className="text-center">
                     <Shield className="h-8 w-8 mx-auto mb-2 opacity-50" />
-                    <p className="text-sm">No staff activity data available</p>
+                    <p className="text-sm">{t('audit.noStaffActivityData')}</p>
                   </div>
                 </div>
               ) : (
@@ -420,13 +421,13 @@ const StaffPerformanceModal = () => {
                   <table className="w-full text-sm">
                     <thead>
                       <tr className="border-b">
-                        <th className="text-left p-2">Username</th>
-                        <th className="text-left p-2">Role</th>
-                        <th className="text-left p-2">Total Actions</th>
-                        <th className="text-left p-2">Ticket Responses</th>
-                        <th className="text-left p-2">Punishments</th>
-                        <th className="text-left p-2">Avg Response</th>
-                        <th className="text-left p-2">Last Active</th>
+                        <th className="text-left p-2">{t('audit.colUsername')}</th>
+                        <th className="text-left p-2">{t('audit.colRole')}</th>
+                        <th className="text-left p-2">{t('audit.colTotalActions')}</th>
+                        <th className="text-left p-2">{t('audit.colTicketResponses')}</th>
+                        <th className="text-left p-2">{t('audit.colPunishments')}</th>
+                        <th className="text-left p-2">{t('audit.colAvgResponse')}</th>
+                        <th className="text-left p-2">{t('audit.colLastActive')}</th>
                       </tr>
                     </thead>
                     <tbody>
@@ -460,6 +461,7 @@ const StaffPerformanceModal = () => {
 // Punishment rollback modal
 const PunishmentRollbackModal = () => {
   const { toast } = useToast();
+  const { t } = useTranslation();
   const [bulkTimeRange, setBulkTimeRange] = useState('24h');
   
   const { data: punishments = [], isLoading, refetch } = useQuery({
@@ -472,47 +474,47 @@ const PunishmentRollbackModal = () => {
     try {
       await rollbackPunishment(punishment.id, `Rolled back by admin`);
       toast({
-        title: "Punishment Rolled Back",
-        description: `${punishment.type} for ${punishment.playerName} has been reversed.`
+        title: t('audit.punishmentRolledBack'),
+        description: t('audit.punishmentRolledBackDesc', { type: punishment.type, player: punishment.playerName })
       });
       refetch();
     } catch (error) {
       toast({
-        title: "Rollback Failed",
-        description: "Failed to rollback punishment. Please try again.",
+        title: t('audit.rollbackFailed'),
+        description: t('audit.rollbackFailedDesc'),
         variant: "destructive"
       });
     }
   };
-  
+
   const handleBulkRollback = async () => {
-    if (!confirm(`Are you sure you want to rollback ALL punishments from the last ${bulkTimeRange}? This action cannot be undone.`)) {
+    if (!confirm(t('audit.bulkRollbackConfirm', { timeRange: bulkTimeRange }))) {
       return;
     }
-    
+
     try {
       const csrfFetch = apiFetch;
       const response = await csrfFetch('/v1/panel/audit/punishments/bulk-rollback', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ 
+        body: JSON.stringify({
           timeRange: bulkTimeRange,
           reason: `Bulk rollback for ${bulkTimeRange} from audit panel`
         })
       });
-      
+
       if (!response.ok) throw new Error('Failed to bulk rollback');
-      
+
       const data = await response.json();
       toast({
-        title: "Bulk Rollback Completed",
-        description: `${data.count} punishments have been rolled back.`
+        title: t('audit.bulkRollbackCompleted'),
+        description: t('audit.bulkRollbackCompletedDesc', { count: data.count })
       });
       refetch();
     } catch (error) {
       toast({
-        title: "Bulk Rollback Failed",
-        description: "Failed to rollback punishments. Please try again.",
+        title: t('audit.bulkRollbackFailed'),
+        description: t('audit.rollbackFailedDesc'),
         variant: "destructive"
       });
     }
@@ -523,29 +525,29 @@ const PunishmentRollbackModal = () => {
       <DialogTrigger asChild>
         <Button variant="outline" size="sm">
           <Undo2 className="h-4 w-4 mr-2" />
-          Rollback Punishments
+          {t('audit.rollbackPunishments')}
         </Button>
       </DialogTrigger>
       <DialogContent className="max-w-4xl max-h-[80vh] overflow-hidden">
         <DialogHeader>
-          <DialogTitle>Punishment Rollback Center</DialogTitle>
+          <DialogTitle>{t('audit.rollbackCenter')}</DialogTitle>
         </DialogHeader>
-        
+
         {/* Bulk Rollback Controls */}
         <div className="flex items-center gap-4 p-4 bg-muted/50 rounded-lg border">
           <div className="flex items-center gap-2">
-            <span className="text-sm font-medium">Bulk Rollback:</span>
+            <span className="text-sm font-medium">{t('audit.bulkRollback')}:</span>
             <Select value={bulkTimeRange} onValueChange={setBulkTimeRange}>
               <SelectTrigger className="w-32">
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="1h">1 hour</SelectItem>
-                <SelectItem value="6h">6 hours</SelectItem>
-                <SelectItem value="24h">24 hours</SelectItem>
-                <SelectItem value="7d">7 days</SelectItem>
-                <SelectItem value="30d">30 days</SelectItem>
-                <SelectItem value="all">All time</SelectItem>
+                <SelectItem value="1h">{t('audit.period1h')}</SelectItem>
+                <SelectItem value="6h">{t('audit.period6h')}</SelectItem>
+                <SelectItem value="24h">{t('audit.period24h')}</SelectItem>
+                <SelectItem value="7d">{t('audit.period7d')}</SelectItem>
+                <SelectItem value="30d">{t('audit.period30d')}</SelectItem>
+                <SelectItem value="all">{t('audit.periodAll')}</SelectItem>
               </SelectContent>
             </Select>
             <Button
@@ -555,11 +557,11 @@ const PunishmentRollbackModal = () => {
               className="ml-2"
             >
               <Undo2 className="h-4 w-4 mr-2" />
-              Execute Bulk Rollback
+              {t('audit.executeBulkRollback')}
             </Button>
           </div>
         </div>
-        
+
         <div className="space-y-4 overflow-auto max-h-[50vh]">
           {isLoading ? (
             <div className="flex items-center justify-center py-8">
@@ -567,7 +569,7 @@ const PunishmentRollbackModal = () => {
             </div>
           ) : punishments.length === 0 ? (
             <div className="text-center py-8 text-muted-foreground">
-              No punishments available for rollback
+              {t('audit.noPunishmentsForRollback')}
             </div>
           ) : (
             punishments.filter(p => p.canRollback).map((punishment) => (
@@ -607,7 +609,7 @@ const PunishmentRollbackModal = () => {
                     onClick={() => handleRollback(punishment)}
                   >
                     <Undo2 className="h-4 w-4 mr-2" />
-                    Rollback
+                    {t('audit.rollback')}
                   </Button>
                 </div>
               </CardContent>
@@ -632,6 +634,7 @@ const StaffDetailModal = ({ staff, isOpen, onClose, initialPeriod = '30d' }: {
   const [rollbackStartDate, setRollbackStartDate] = useState<Date | undefined>(undefined);
   const [rollbackEndDate, setRollbackEndDate] = useState<Date | undefined>(undefined);
   const { toast } = useToast();
+  const { t } = useTranslation();
   const { openPlayerWindow, windows } = usePlayerWindow();
 
   // Sync selectedPeriod with initialPeriod when modal opens
@@ -664,8 +667,8 @@ const StaffDetailModal = ({ staff, isOpen, onClose, initialPeriod = '30d' }: {
   const handleBulkRollback = async () => {
     if (!rollbackStartDate || !rollbackEndDate) {
       toast({
-        title: "Invalid Date Range",
-        description: "Please select both start and end dates",
+        title: t('audit.invalidDateRange'),
+        description: t('audit.invalidDateRangeDesc'),
         variant: "destructive"
       });
       return;
@@ -673,8 +676,8 @@ const StaffDetailModal = ({ staff, isOpen, onClose, initialPeriod = '30d' }: {
 
     if (rollbackEndDate < rollbackStartDate) {
       toast({
-        title: "Invalid Date Range",
-        description: "End date must be after start date",
+        title: t('audit.invalidDateRange'),
+        description: t('audit.endDateBeforeStart'),
         variant: "destructive"
       });
       return;
@@ -685,21 +688,21 @@ const StaffDetailModal = ({ staff, isOpen, onClose, initialPeriod = '30d' }: {
       const response = await csrfFetch(`/v1/panel/audit/staff/${staff.username}/rollback-date-range`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ 
+        body: JSON.stringify({
           startDate: rollbackStartDate.toISOString(),
           endDate: rollbackEndDate.toISOString(),
           reason: `Bulk rollback for ${staff.username} from ${formatDateOnly(rollbackStartDate)} to ${formatDateOnly(rollbackEndDate)}`
         })
       });
-      
+
       if (!response.ok) throw new Error('Failed to rollback');
-      
+
       const data = await response.json();
       toast({
-        title: "Bulk Rollback Completed",
-        description: `Successfully rolled back ${data.count} punishments by ${staff.username}`
+        title: t('audit.bulkRollbackCompleted'),
+        description: t('audit.bulkRollbackCompletedByDesc', { count: data.count, username: staff.username })
       });
-      
+
       setShowBulkRollback(false);
       setRollbackStartDate(undefined);
       setRollbackEndDate(undefined);
@@ -707,8 +710,8 @@ const StaffDetailModal = ({ staff, isOpen, onClose, initialPeriod = '30d' }: {
       refetch();
     } catch (error) {
       toast({
-        title: "Bulk Rollback Failed",
-        description: "Failed to rollback punishments. Please try again.",
+        title: t('audit.bulkRollbackFailed'),
+        description: t('audit.rollbackFailedDesc'),
         variant: "destructive"
       });
     }
@@ -754,24 +757,24 @@ const StaffDetailModal = ({ staff, isOpen, onClose, initialPeriod = '30d' }: {
               <Button
                 variant="outline"
                 size="sm"
-                title={`Rollback punishments by ${staff.username}`}
+                title={t('audit.rollbackByStaff', { username: staff.username })}
               >
                 <Undo2 className="h-4 w-4 mr-2" />
-                Bulk Rollback
+                {t('audit.bulkRollback')}
               </Button>
             </PopoverTrigger>
             <PopoverContent className="w-80 p-4" align="end">
               <div className="space-y-4">
                 <div>
-                  <h4 className="font-medium mb-2">Bulk Rollback for {staff.username}</h4>
+                  <h4 className="font-medium mb-2">{t('audit.bulkRollbackFor', { username: staff.username })}</h4>
                   <p className="text-sm text-muted-foreground mb-3">
-                    Select the date range for punishments to rollback
+                    {t('audit.rollbackDateRangeDesc')}
                   </p>
                 </div>
-                
+
                 <div className="grid grid-cols-2 gap-2">
                   <div>
-                    <label className="text-xs font-medium text-muted-foreground">Start Date</label>
+                    <label className="text-xs font-medium text-muted-foreground">{t('audit.startDate')}</label>
                     <Popover>
                       <PopoverTrigger asChild>
                         <Button
@@ -779,7 +782,7 @@ const StaffDetailModal = ({ staff, isOpen, onClose, initialPeriod = '30d' }: {
                           className="w-full justify-start text-left font-normal h-8"
                         >
                           <Calendar className="mr-2 h-3 w-3" />
-                          {rollbackStartDate ? formatDateOnly(rollbackStartDate) : "Select start"}
+                          {rollbackStartDate ? formatDateOnly(rollbackStartDate) : t('audit.selectStart')}
                         </Button>
                       </PopoverTrigger>
                       <PopoverContent className="w-auto p-0" align="start">
@@ -794,7 +797,7 @@ const StaffDetailModal = ({ staff, isOpen, onClose, initialPeriod = '30d' }: {
                   </div>
                   
                   <div>
-                    <label className="text-xs font-medium text-muted-foreground">End Date</label>
+                    <label className="text-xs font-medium text-muted-foreground">{t('audit.endDate')}</label>
                     <Popover>
                       <PopoverTrigger asChild>
                         <Button
@@ -802,7 +805,7 @@ const StaffDetailModal = ({ staff, isOpen, onClose, initialPeriod = '30d' }: {
                           className="w-full justify-start text-left font-normal h-8"
                         >
                           <Calendar className="mr-2 h-3 w-3" />
-                          {rollbackEndDate ? formatDateOnly(rollbackEndDate) : "Select end"}
+                          {rollbackEndDate ? formatDateOnly(rollbackEndDate) : t('audit.selectEnd')}
                         </Button>
                       </PopoverTrigger>
                       <PopoverContent className="w-auto p-0" align="start">
@@ -828,7 +831,7 @@ const StaffDetailModal = ({ staff, isOpen, onClose, initialPeriod = '30d' }: {
                       setRollbackEndDate(undefined);
                     }}
                   >
-                    Cancel
+                    {t('common.cancel')}
                   </Button>
                   <Button
                     variant="destructive"
@@ -837,7 +840,7 @@ const StaffDetailModal = ({ staff, isOpen, onClose, initialPeriod = '30d' }: {
                     onClick={handleBulkRollback}
                     disabled={!rollbackStartDate || !rollbackEndDate}
                   >
-                    Apply Rollback
+                    {t('audit.applyRollback')}
                   </Button>
                 </div>
               </div>
@@ -848,16 +851,16 @@ const StaffDetailModal = ({ staff, isOpen, onClose, initialPeriod = '30d' }: {
         <div className="space-y-6">
           {/* Period Selector */}
           <div className="flex items-center gap-4">
-            <span className="text-sm font-medium">Time Period:</span>
+            <span className="text-sm font-medium">{t('audit.timePeriod')}:</span>
             <Select value={selectedPeriod} onValueChange={setSelectedPeriod}>
               <SelectTrigger className="w-32">
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="7d">7 days</SelectItem>
-                <SelectItem value="30d">30 days</SelectItem>
-                <SelectItem value="90d">90 days</SelectItem>
-                <SelectItem value="all">All time</SelectItem>
+                <SelectItem value="7d">{t('audit.period7d')}</SelectItem>
+                <SelectItem value="30d">{t('audit.period30d')}</SelectItem>
+                <SelectItem value="90d">{t('audit.period90d')}</SelectItem>
+                <SelectItem value="all">{t('audit.periodAll')}</SelectItem>
               </SelectContent>
             </Select>
           </div>
@@ -869,37 +872,37 @@ const StaffDetailModal = ({ staff, isOpen, onClose, initialPeriod = '30d' }: {
                 <div className="text-center">
                   <Gavel className="h-8 w-8 mx-auto mb-2 text-red-600" />
                   <p className="text-2xl font-bold">{staff.punishmentsIssued}</p>
-                  <p className="text-xs text-muted-foreground">Punishments Issued</p>
+                  <p className="text-xs text-muted-foreground">{t('audit.statPunishmentsIssued')}</p>
                 </div>
               </CardContent>
             </Card>
-            
+
             <Card>
               <CardContent className="p-4">
                 <div className="text-center">
                   <FileText className="h-8 w-8 mx-auto mb-2 text-blue-600" />
                   <p className="text-2xl font-bold">{staff.ticketResponses}</p>
-                  <p className="text-xs text-muted-foreground">Tickets Handled</p>
+                  <p className="text-xs text-muted-foreground">{t('audit.statTicketsHandled')}</p>
                 </div>
               </CardContent>
             </Card>
-            
+
             <Card>
               <CardContent className="p-4">
                 <div className="text-center">
                   <Eye className="h-8 w-8 mx-auto mb-2 text-green-600" />
                   <p className="text-2xl font-bold">{evidenceCount}</p>
-                  <p className="text-xs text-muted-foreground">Evidence Uploaded</p>
+                  <p className="text-xs text-muted-foreground">{t('audit.statEvidenceUploaded')}</p>
                 </div>
               </CardContent>
             </Card>
-            
+
             <Card>
               <CardContent className="p-4">
                 <div className="text-center">
                   <Clock className="h-8 w-8 mx-auto mb-2 text-purple-600" />
                   <p className="text-2xl font-bold">{staff.avgResponseTime}m</p>
-                  <p className="text-xs text-muted-foreground">Avg Response Time</p>
+                  <p className="text-xs text-muted-foreground">{t('audit.statAvgResponseTime')}</p>
                 </div>
               </CardContent>
             </Card>
@@ -909,14 +912,14 @@ const StaffDetailModal = ({ staff, isOpen, onClose, initialPeriod = '30d' }: {
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             <Card>
               <CardHeader>
-                <CardTitle className="text-base">Daily Activity Breakdown</CardTitle>
+                <CardTitle className="text-base">{t('audit.dailyActivityBreakdown')}</CardTitle>
               </CardHeader>
               <CardContent>
                 {!staffActivityData || staffActivityData.length === 0 ? (
                   <div className="flex items-center justify-center h-[300px] text-muted-foreground">
                     <div className="text-center">
                       <Activity className="h-8 w-8 mx-auto mb-2 opacity-50" />
-                      <p className="text-sm">No daily activity data available</p>
+                      <p className="text-sm">{t('audit.noDailyActivityData')}</p>
                     </div>
                   </div>
                 ) : (
@@ -937,14 +940,14 @@ const StaffDetailModal = ({ staff, isOpen, onClose, initialPeriod = '30d' }: {
 
             <Card>
               <CardHeader>
-                <CardTitle className="text-base">Punishment Types Issued</CardTitle>
+                <CardTitle className="text-base">{t('audit.punishmentTypesIssued')}</CardTitle>
               </CardHeader>
               <CardContent>
                 {!punishmentTypeData || punishmentTypeData.length === 0 ? (
                   <div className="flex items-center justify-center h-[300px] text-muted-foreground">
                     <div className="text-center">
                       <Shield className="h-8 w-8 mx-auto mb-2 opacity-50" />
-                      <p className="text-sm">No punishment type data available</p>
+                      <p className="text-sm">{t('audit.noPunishmentTypeData')}</p>
                     </div>
                   </div>
                 ) : (
@@ -975,20 +978,20 @@ const StaffDetailModal = ({ staff, isOpen, onClose, initialPeriod = '30d' }: {
           <div className="grid grid-cols-1 gap-6">
             <Card>
               <CardHeader>
-                <CardTitle className="text-base">Recent Punishments Issued</CardTitle>
+                <CardTitle className="text-base">{t('audit.recentPunishmentsIssued')}</CardTitle>
               </CardHeader>
               <CardContent>
                 <div className="overflow-x-auto">
                   <table className="w-full text-sm">
                     <thead>
                       <tr className="border-b">
-                        <th className="text-left p-2">Player</th>
-                        <th className="text-left p-2">Type</th>
-                        <th className="text-left p-2">Evidence</th>
-                        <th className="text-left p-2">Tickets</th>
-                        <th className="text-left p-2">Duration</th>
-                        <th className="text-left p-2">Date</th>
-                        <th className="text-left p-2">Status</th>
+                        <th className="text-left p-2">{t('audit.colPlayer')}</th>
+                        <th className="text-left p-2">{t('audit.colType')}</th>
+                        <th className="text-left p-2">{t('audit.colEvidence')}</th>
+                        <th className="text-left p-2">{t('audit.colTickets')}</th>
+                        <th className="text-left p-2">{t('audit.colDuration')}</th>
+                        <th className="text-left p-2">{t('audit.colDate')}</th>
+                        <th className="text-left p-2">{t('audit.colStatus')}</th>
                       </tr>
                     </thead>
                     <tbody>
@@ -996,7 +999,7 @@ const StaffDetailModal = ({ staff, isOpen, onClose, initialPeriod = '30d' }: {
                         // Format duration helper function
                         const formatDuration = (duration: any) => {
                           const durationNum = typeof duration === 'number' ? duration : Number(duration);
-                          if (!durationNum || durationNum === -1 || isNaN(durationNum)) return 'Permanent';
+                          if (!durationNum || durationNum === -1 || isNaN(durationNum)) return t('audit.permanent');
                           
                           const days = Math.floor(durationNum / (1000 * 60 * 60 * 24));
                           const hours = Math.floor((durationNum % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
@@ -1019,14 +1022,14 @@ const StaffDetailModal = ({ staff, isOpen, onClose, initialPeriod = '30d' }: {
                           );
                           
                           if (hasPardon || punishment.rolledBack) {
-                            return { status: 'Pardoned', variant: 'outline' as const, color: 'bg-green-100 dark:bg-green-900 text-green-800 dark:text-green-200 border-green-300 dark:border-green-700' };
+                            return { status: t('audit.pardoned'), isActive: false, variant: 'outline' as const, color: 'bg-green-100 dark:bg-green-900 text-green-800 dark:text-green-200 border-green-300 dark:border-green-700' };
                           }
 
                           if (punishment.active === false) {
-                            return { status: 'Inactive', variant: 'outline' as const, color: 'bg-gray-100 dark:bg-gray-800 text-gray-800 dark:text-gray-200 border-gray-300 dark:border-gray-700' };
+                            return { status: t('status.inactive'), isActive: false, variant: 'outline' as const, color: 'bg-gray-100 dark:bg-gray-800 text-gray-800 dark:text-gray-200 border-gray-300 dark:border-gray-700' };
                           }
 
-                          return { status: 'Active', variant: 'outline' as const, color: 'bg-red-100 dark:bg-red-900 text-red-800 dark:text-red-200 border-red-300 dark:border-red-700' };
+                          return { status: t('status.active'), isActive: true, variant: 'outline' as const, color: 'bg-red-100 dark:bg-red-900 text-red-800 dark:text-red-200 border-red-300 dark:border-red-700' };
                         };
 
                         const statusInfo = getPunishmentStatus(punishment);
@@ -1039,7 +1042,7 @@ const StaffDetailModal = ({ staff, isOpen, onClose, initialPeriod = '30d' }: {
                                 className="p-0 h-auto font-medium text-left"
                                 onClick={() => handleOpenPlayerWindow(punishment.playerId, punishment.playerName)}
                               >
-                                {punishment.playerName || 'Unknown'}
+                                {punishment.playerName || t('audit.unknown')}
                               </Button>
                             </td>
                             <td className="p-2">
@@ -1073,7 +1076,7 @@ const StaffDetailModal = ({ staff, isOpen, onClose, initialPeriod = '30d' }: {
                                     );
                                   })
                                 ) : (
-                                  <span className="text-muted-foreground text-xs">No evidence</span>
+                                  <span className="text-muted-foreground text-xs">{t('audit.noEvidence')}</span>
                                 )}
                               </div>
                             </td>
@@ -1098,7 +1101,7 @@ const StaffDetailModal = ({ staff, isOpen, onClose, initialPeriod = '30d' }: {
                                     );
                                   })
                                 ) : (
-                                  <span className="text-muted-foreground text-xs">No tickets</span>
+                                  <span className="text-muted-foreground text-xs">{t('audit.noTickets')}</span>
                                 )}
                               </div>
                             </td>
@@ -1109,7 +1112,7 @@ const StaffDetailModal = ({ staff, isOpen, onClose, initialPeriod = '30d' }: {
                                 <Badge variant={statusInfo.variant} className={`text-xs ${statusInfo.color}`}>
                                   {statusInfo.status}
                                 </Badge>
-                                {statusInfo.status === 'Active' && (
+                                {statusInfo.isActive && (
                                   <Button
                                     variant="outline"
                                     size="sm"
@@ -1133,22 +1136,22 @@ const StaffDetailModal = ({ staff, isOpen, onClose, initialPeriod = '30d' }: {
                                         
                                         // Show success message
                                         toast({
-                                          title: "Punishment Rolled Back",
-                                          description: `Punishment rolled back successfully: ${responseData.message}`
+                                          title: t('audit.punishmentRolledBack'),
+                                          description: t('audit.punishmentRolledBackSuccess', { message: responseData.message })
                                         });
-                                        
+
                                         // Refresh the modal data
                                         refetch();
                                       } catch (error) {
                                         console.error('Rollback error:', error);
                                         toast({
-                                          title: "Rollback Failed",
-                                          description: `Failed to rollback punishment: ${error instanceof Error ? error.message : 'Unknown error'}`,
+                                          title: t('audit.rollbackFailed'),
+                                          description: t('audit.rollbackFailedWithError', { error: error instanceof Error ? error.message : t('audit.unknownError') }),
                                           variant: "destructive"
                                         });
                                       }
                                     }}
-                                    title="Rollback this punishment"
+                                    title={t('audit.rollbackThisPunishment')}
                                   >
                                     <Undo2 className="h-3 w-3" />
                                   </Button>
@@ -1160,7 +1163,7 @@ const StaffDetailModal = ({ staff, isOpen, onClose, initialPeriod = '30d' }: {
                       }) : (
                         <tr>
                           <td colSpan={7} className="p-4 text-center text-muted-foreground">
-                            No recent punishments found
+                            {t('audit.noRecentPunishments')}
                           </td>
                         </tr>
                       )}
@@ -1172,19 +1175,19 @@ const StaffDetailModal = ({ staff, isOpen, onClose, initialPeriod = '30d' }: {
 
             <Card>
               <CardHeader>
-                <CardTitle className="text-base">Recent Ticket Responses</CardTitle>
+                <CardTitle className="text-base">{t('audit.recentTicketResponses')}</CardTitle>
               </CardHeader>
               <CardContent>
                 <div className="overflow-x-auto">
                   <table className="w-full text-sm">
                     <thead>
                       <tr className="border-b">
-                        <th className="text-left p-2">Ticket ID</th>
-                        <th className="text-left p-2">Subject</th>
-                        <th className="text-left p-2">Status</th>
-                        <th className="text-left p-2">Replies</th>
-                        <th className="text-left p-2">Time Since Opened</th>
-                        <th className="text-left p-2">Time Since Last Activity</th>
+                        <th className="text-left p-2">{t('audit.colTicketId')}</th>
+                        <th className="text-left p-2">{t('audit.colSubject')}</th>
+                        <th className="text-left p-2">{t('audit.colStatus')}</th>
+                        <th className="text-left p-2">{t('audit.colReplies')}</th>
+                        <th className="text-left p-2">{t('audit.colTimeSinceOpened')}</th>
+                        <th className="text-left p-2">{t('audit.colTimeSinceActivity')}</th>
                       </tr>
                     </thead>
                     <tbody>
@@ -1204,7 +1207,7 @@ const StaffDetailModal = ({ staff, isOpen, onClose, initialPeriod = '30d' }: {
                                 #{ticket.ticketId || ticket.id}
                               </Button>
                             </td>
-                            <td className="p-2">{ticket.subject || ticket.title || 'No subject'}</td>
+                            <td className="p-2">{ticket.subject || ticket.title || t('audit.noSubject')}</td>
                             <td className="p-2">
                               <Badge variant={ticket.status === 'closed' || ticket.status === 'Closed' ? 'outline' : 'secondary'}>
                                 {ticket.status}
@@ -1218,7 +1221,7 @@ const StaffDetailModal = ({ staff, isOpen, onClose, initialPeriod = '30d' }: {
                       }) : (
                         <tr>
                           <td colSpan={6} className="p-4 text-center text-muted-foreground">
-                            {staffDetails ? 'No recent ticket responses found' : 'Loading ticket responses...'}
+                            {staffDetails ? t('audit.noRecentTicketResponses') : t('audit.loadingTicketResponses')}
                           </td>
                         </tr>
                       )}
@@ -1279,6 +1282,7 @@ const fetchStaffDetails = async (username: string, period: string) => {
 
 // Ticket Analytics Section Component
 const TicketAnalyticsSection = ({ analyticsPeriod }: { analyticsPeriod: string }) => {
+  const { t } = useTranslation();
   const { data: ticketAnalytics } = useQuery({
     queryKey: ['ticket-analytics', analyticsPeriod],
     queryFn: () => fetchTicketAnalytics(analyticsPeriod),
@@ -1300,29 +1304,29 @@ const TicketAnalyticsSection = ({ analyticsPeriod }: { analyticsPeriod: string }
 
   return (
     <div className="space-y-6">
-      <h3 className="text-lg font-medium">Ticket Analytics</h3>
+      <h3 className="text-lg font-medium">{t('audit.ticketAnalytics')}</h3>
 
       {/* Summary Cards */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
         <Card>
           <CardContent className="p-4">
-            <div className="text-sm text-muted-foreground">Total Tickets</div>
+            <div className="text-sm text-muted-foreground">{t('audit.totalTickets')}</div>
             <div className="text-2xl font-bold">{totalTickets}</div>
-            <p className="text-xs text-muted-foreground">In selected period</p>
+            <p className="text-xs text-muted-foreground">{t('audit.inSelectedPeriod')}</p>
           </CardContent>
         </Card>
         <Card>
           <CardContent className="p-4">
-            <div className="text-sm text-muted-foreground">Avg Resolution Time</div>
+            <div className="text-sm text-muted-foreground">{t('audit.avgResolutionTime')}</div>
             <div className="text-2xl font-bold">{avgResolutionHours}h</div>
-            <p className="text-xs text-muted-foreground">Time to resolve tickets</p>
+            <p className="text-xs text-muted-foreground">{t('audit.timeToResolve')}</p>
           </CardContent>
         </Card>
         <Card>
           <CardContent className="p-4">
-            <div className="text-sm text-muted-foreground">Categories</div>
+            <div className="text-sm text-muted-foreground">{t('audit.categories')}</div>
             <div className="text-2xl font-bold">{(ticketAnalytics?.byCategory || []).length}</div>
-            <p className="text-xs text-muted-foreground">Different ticket types</p>
+            <p className="text-xs text-muted-foreground">{t('audit.differentTicketTypes')}</p>
           </CardContent>
         </Card>
       </div>
@@ -1332,14 +1336,14 @@ const TicketAnalyticsSection = ({ analyticsPeriod }: { analyticsPeriod: string }
         {/* Tickets by Status */}
         <Card>
           <CardHeader>
-            <CardTitle className="text-base">Tickets by Status</CardTitle>
+            <CardTitle className="text-base">{t('audit.ticketsByStatus')}</CardTitle>
           </CardHeader>
           <CardContent>
             {!ticketAnalytics?.byStatus || ticketAnalytics.byStatus.length === 0 ? (
               <div className="flex items-center justify-center h-[250px] text-muted-foreground">
                 <div className="text-center">
                   <FileText className="h-8 w-8 mx-auto mb-2 opacity-50" />
-                  <p className="text-sm">No status data available</p>
+                  <p className="text-sm">{t('audit.noStatusData')}</p>
                 </div>
               </div>
             ) : (
@@ -1368,14 +1372,14 @@ const TicketAnalyticsSection = ({ analyticsPeriod }: { analyticsPeriod: string }
         {/* Tickets by Category */}
         <Card>
           <CardHeader>
-            <CardTitle className="text-base">Tickets by Category</CardTitle>
+            <CardTitle className="text-base">{t('audit.ticketsByCategory')}</CardTitle>
           </CardHeader>
           <CardContent>
             {!ticketAnalytics?.byCategory || ticketAnalytics.byCategory.length === 0 ? (
               <div className="flex items-center justify-center h-[250px] text-muted-foreground">
                 <div className="text-center">
                   <FileText className="h-8 w-8 mx-auto mb-2 opacity-50" />
-                  <p className="text-sm">No category data available</p>
+                  <p className="text-sm">{t('audit.noCategoryData')}</p>
                 </div>
               </div>
             ) : (
@@ -1396,14 +1400,14 @@ const TicketAnalyticsSection = ({ analyticsPeriod }: { analyticsPeriod: string }
       {/* Daily Ticket Trend */}
       <Card>
         <CardHeader>
-          <CardTitle className="text-base">Daily Ticket Trend</CardTitle>
+          <CardTitle className="text-base">{t('audit.dailyTicketTrend')}</CardTitle>
         </CardHeader>
         <CardContent>
           {!ticketAnalytics?.dailyTickets || ticketAnalytics.dailyTickets.length === 0 ? (
             <div className="flex items-center justify-center h-[300px] text-muted-foreground">
               <div className="text-center">
                 <FileText className="h-8 w-8 mx-auto mb-2 opacity-50" />
-                <p className="text-sm">No ticket trend data available</p>
+                <p className="text-sm">{t('audit.noTicketTrendData')}</p>
               </div>
             </div>
           ) : (
@@ -1432,7 +1436,7 @@ const TicketAnalyticsSection = ({ analyticsPeriod }: { analyticsPeriod: string }
       {ticketAnalytics?.avgResolutionByCategory && ticketAnalytics.avgResolutionByCategory.length > 0 && (
         <Card>
           <CardHeader>
-            <CardTitle className="text-base">Average Resolution Time by Category</CardTitle>
+            <CardTitle className="text-base">{t('audit.avgResolutionByCategory')}</CardTitle>
           </CardHeader>
           <CardContent>
             <ResponsiveContainer width="100%" height={250}>
@@ -1456,6 +1460,7 @@ const TicketAnalyticsSection = ({ analyticsPeriod }: { analyticsPeriod: string }
 
 // Punishments List Card component
 const ActivePunishmentsCard = () => {
+  const { t } = useTranslation();
   const [statusFilter, setStatusFilter] = useState<string>('active');
   const [staffFilter, setStaffFilter] = useState<string>('all');
   const [typeFilter, setTypeFilter] = useState<string>('all');
@@ -1542,7 +1547,7 @@ const ActivePunishmentsCard = () => {
   };
 
   const formatDuration = (duration: number | null) => {
-    if (duration === null || duration === undefined || duration <= 0) return 'Permanent';
+    if (duration === null || duration === undefined || duration <= 0) return t('audit.permanent');
     const days = Math.floor(duration / (1000 * 60 * 60 * 24));
     const hours = Math.floor((duration % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
     const minutes = Math.floor((duration % (1000 * 60 * 60)) / (1000 * 60));
@@ -1552,17 +1557,17 @@ const ActivePunishmentsCard = () => {
   };
 
   const formatTimeRemaining = (expires: string | null) => {
-    if (!expires) return 'Permanent';
+    if (!expires) return t('audit.permanent');
     const expiryDate = new Date(expires);
     const now = new Date();
     const diffMs = expiryDate.getTime() - now.getTime();
-    if (diffMs <= 0) return 'Expiring...';
+    if (diffMs <= 0) return t('audit.expiring');
     const days = Math.floor(diffMs / (1000 * 60 * 60 * 24));
     const hours = Math.floor((diffMs % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
-    if (days > 0) return `${days}d ${hours}h left`;
-    if (hours > 0) return `${hours}h left`;
+    if (days > 0) return t('audit.daysHoursLeft', { days, hours });
+    if (hours > 0) return t('audit.hoursLeft', { hours });
     const minutes = Math.floor((diffMs % (1000 * 60 * 60)) / (1000 * 60));
-    return `${minutes}m left`;
+    return t('audit.minutesLeft', { minutes });
   };
 
   const SortHeader = ({ field, label }: { field: string; label: string }) => (
@@ -1583,7 +1588,7 @@ const ActivePunishmentsCard = () => {
         <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
           <CardTitle className="text-base flex items-center gap-2">
             <Shield className="h-4 w-4 text-red-600" />
-            Punishments List
+            {t('audit.punishmentsList')}
             <Badge variant="secondary" className="ml-1">{filteredPunishments.length}</Badge>
           </CardTitle>
 
@@ -1595,9 +1600,9 @@ const ActivePunishmentsCard = () => {
                   <SelectValue placeholder="Status" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="active">Active</SelectItem>
-                  <SelectItem value="inactive">Inactive</SelectItem>
-                  <SelectItem value="all">All</SelectItem>
+                  <SelectItem value="active">{t('status.active')}</SelectItem>
+                  <SelectItem value="inactive">{t('status.inactive')}</SelectItem>
+                  <SelectItem value="all">{t('audit.all')}</SelectItem>
                 </SelectContent>
               </Select>
             </div>
@@ -1607,7 +1612,7 @@ const ActivePunishmentsCard = () => {
                 <SelectValue placeholder="Staff" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="all">All Staff</SelectItem>
+                <SelectItem value="all">{t('audit.allStaff')}</SelectItem>
                 {staffNames.map(name => (
                   <SelectItem key={name} value={name}>{name}</SelectItem>
                 ))}
@@ -1619,7 +1624,7 @@ const ActivePunishmentsCard = () => {
                 <SelectValue placeholder="Type" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="all">All Types</SelectItem>
+                <SelectItem value="all">{t('audit.allTypes')}</SelectItem>
                 {punishmentTypes.map(type => (
                   <SelectItem key={type} value={type}>{type}</SelectItem>
                 ))}
@@ -1631,9 +1636,9 @@ const ActivePunishmentsCard = () => {
                 <SelectValue placeholder="Evidence" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="all">All</SelectItem>
-                <SelectItem value="yes">Has Evidence</SelectItem>
-                <SelectItem value="no">No Evidence</SelectItem>
+                <SelectItem value="all">{t('audit.all')}</SelectItem>
+                <SelectItem value="yes">{t('audit.hasEvidence')}</SelectItem>
+                <SelectItem value="no">{t('audit.noEvidenceFilter')}</SelectItem>
               </SelectContent>
             </Select>
           </div>
@@ -1649,7 +1654,7 @@ const ActivePunishmentsCard = () => {
             <div className="text-center">
               <Shield className="h-8 w-8 mx-auto mb-2 opacity-50" />
               <p className="text-sm">
-                {activePunishments.length === 0 ? 'No punishments found' : 'No punishments match the selected filters'}
+                {activePunishments.length === 0 ? t('audit.noPunishmentsFound') : t('audit.noPunishmentsMatchFilters')}
               </p>
             </div>
           </div>
@@ -1659,15 +1664,15 @@ const ActivePunishmentsCard = () => {
             <table className="w-full text-sm">
               <thead>
                 <tr className="border-b">
-                  <th className="text-left p-2">Player</th>
-                  <th className="text-left p-2">Type</th>
-                  {statusFilter !== 'active' && <th className="text-left p-2">Status</th>}
-                  <th className="text-left p-2">Staff</th>
-                  <SortHeader field="issued" label="Issued" />
-                  <SortHeader field="started" label="Started" />
-                  <SortHeader field="duration" label="Duration" />
-                  <th className="text-left p-2">Remaining</th>
-                  <th className="text-left p-2">Evidence</th>
+                  <th className="text-left p-2">{t('audit.colPlayer')}</th>
+                  <th className="text-left p-2">{t('audit.colType')}</th>
+                  {statusFilter !== 'active' && <th className="text-left p-2">{t('audit.colStatus')}</th>}
+                  <th className="text-left p-2">{t('audit.colStaff')}</th>
+                  <SortHeader field="issued" label={t('audit.colIssued')} />
+                  <SortHeader field="started" label={t('audit.colStarted')} />
+                  <SortHeader field="duration" label={t('audit.colDuration')} />
+                  <th className="text-left p-2">{t('audit.colRemaining')}</th>
+                  <th className="text-left p-2">{t('audit.colEvidence')}</th>
                 </tr>
               </thead>
               <tbody>
@@ -1698,7 +1703,7 @@ const ActivePunishmentsCard = () => {
                     {statusFilter !== 'active' && (
                       <td className="p-2">
                         <Badge variant={punishment.active ? 'destructive' : 'outline'} className="text-xs">
-                          {punishment.active ? 'Active' : 'Inactive'}
+                          {punishment.active ? t('status.active') : t('status.inactive')}
                         </Badge>
                       </td>
                     )}
@@ -1738,7 +1743,7 @@ const ActivePunishmentsCard = () => {
                           ))}
                         </div>
                       ) : (
-                        <span className="text-muted-foreground text-xs">None</span>
+                        <span className="text-muted-foreground text-xs">{t('audit.none')}</span>
                       )}
                     </td>
                   </tr>
@@ -1749,7 +1754,7 @@ const ActivePunishmentsCard = () => {
           {totalPages > 1 && (
             <div className="flex items-center justify-between pt-4">
               <span className="text-sm text-muted-foreground">
-                Showing {page * pageSize + 1}-{Math.min((page + 1) * pageSize, filteredPunishments.length)} of {filteredPunishments.length}
+                {t('audit.showingRange', { from: page * pageSize + 1, to: Math.min((page + 1) * pageSize, filteredPunishments.length), total: filteredPunishments.length })}
               </span>
               <div className="flex items-center gap-2">
                 <Button
@@ -1833,7 +1838,7 @@ const StatCard = ({
                 ) : trend === 'down' ? (
                   <TrendingDown className="h-3 w-3 mr-1 text-red-600" />
                 ) : null}
-                {Math.abs(trendValue)}% vs last period
+                {t('audit.vsLastPeriod', { pct: Math.abs(trendValue) })}
               </p>
             )}
           </div>
@@ -1940,10 +1945,10 @@ const AuditLog = () => {
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="7d">7 days</SelectItem>
-                <SelectItem value="30d">30 days</SelectItem>
-                <SelectItem value="90d">90 days</SelectItem>
-                <SelectItem value="all">All time</SelectItem>
+                <SelectItem value="7d">{t('audit.period7d')}</SelectItem>
+                <SelectItem value="30d">{t('audit.period30d')}</SelectItem>
+                <SelectItem value="90d">{t('audit.period90d')}</SelectItem>
+                <SelectItem value="all">{t('audit.periodAll')}</SelectItem>
               </SelectContent>
             </Select>
 
@@ -1954,7 +1959,7 @@ const AuditLog = () => {
               disabled={isRefetching}
             >
               <RefreshCw className={cn("h-4 w-4 mr-2", isRefetching && "animate-spin")} />
-              Refresh
+              {t('audit.refresh')}
             </Button>
           </div>
         </div>
@@ -1963,7 +1968,7 @@ const AuditLog = () => {
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
           {/* Tickets Opened */}
           <StatCard
-            title="Tickets Opened"
+            title={t('audit.ticketsOpened')}
             value={analyticsOverview?.overview.totalTickets || 0}
             icon={FileText}
             iconColor="text-blue-600"
@@ -1975,8 +1980,8 @@ const AuditLog = () => {
 
           {/* Punishments Issued */}
           <StatCard
-            title="Punishments Issued"
-            value={punishmentAnalytics?.byType?.reduce((sum: number, t: any) => sum + t.count, 0) || 0}
+            title={t('audit.punishmentsIssued')}
+            value={punishmentAnalytics?.byType?.reduce((sum: number, item: any) => sum + item.count, 0) || 0}
             icon={Gavel}
             iconColor="text-red-600"
             isExpanded={expandedSection === 'punishments'}
@@ -1985,9 +1990,9 @@ const AuditLog = () => {
 
           {/* Staff Members */}
           <StatCard
-            title="Staff Members"
+            title={t('audit.staffMembers')}
             value={analyticsOverview?.overview.totalStaff || 0}
-            subtitle={`Active: ${staffPerformanceData.filter((s: any) => new Date(s.lastActive) > subDays(new Date(), 7)).length}`}
+            subtitle={t('audit.activeStaff', { count: staffPerformanceData.filter((s: any) => new Date(s.lastActive) > subDays(new Date(), 7)).length })}
             icon={Users}
             iconColor="text-purple-600"
             isExpanded={expandedSection === 'staff'}
@@ -1996,7 +2001,7 @@ const AuditLog = () => {
 
           {/* Players Joined */}
           <StatCard
-            title="Players Joined"
+            title={t('audit.playersJoined')}
             value={analyticsOverview?.overview.totalPlayers || 0}
             icon={User}
             iconColor="text-green-600"
@@ -2011,7 +2016,7 @@ const AuditLog = () => {
         {!expandedSection && combinedMetricsData.length > 0 && (
           <Card>
             <CardHeader>
-              <CardTitle className="text-base">Activity Overview</CardTitle>
+              <CardTitle className="text-base">{t('audit.activityOverview')}</CardTitle>
             </CardHeader>
             <CardContent>
               <ResponsiveContainer width="100%" height={300}>
@@ -2023,9 +2028,9 @@ const AuditLog = () => {
                     content={<CustomTooltip
                       formatName={(name: string) => {
                         switch (name) {
-                          case 'tickets': return 'New Tickets';
-                          case 'punishments': return 'Punishments';
-                          case 'players': return 'New Players';
+                          case 'tickets': return t('audit.legendNewTickets');
+                          case 'punishments': return t('audit.legendPunishments');
+                          case 'players': return t('audit.legendNewPlayers');
                           default: return name;
                         }
                       }}
@@ -2063,15 +2068,15 @@ const AuditLog = () => {
               <div className="flex justify-center gap-6 mt-4 text-sm">
                 <div className="flex items-center gap-2">
                   <div className="w-3 h-3 rounded-full bg-blue-500" />
-                  <span className="text-muted-foreground">New Tickets</span>
+                  <span className="text-muted-foreground">{t('audit.legendNewTickets')}</span>
                 </div>
                 <div className="flex items-center gap-2">
                   <div className="w-3 h-3 rounded-full bg-red-500" />
-                  <span className="text-muted-foreground">Punishments</span>
+                  <span className="text-muted-foreground">{t('audit.legendPunishments')}</span>
                 </div>
                 <div className="flex items-center gap-2">
                   <div className="w-3 h-3 rounded-full bg-green-500" />
-                  <span className="text-muted-foreground">New Players</span>
+                  <span className="text-muted-foreground">{t('audit.legendNewPlayers')}</span>
                 </div>
               </div>
             </CardContent>
@@ -2091,14 +2096,14 @@ const AuditLog = () => {
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                     <Card>
                       <CardHeader>
-                        <CardTitle className="text-base">Punishments by Type</CardTitle>
+                        <CardTitle className="text-base">{t('audit.punishmentsByType')}</CardTitle>
                       </CardHeader>
                       <CardContent>
                         {!punishmentAnalytics?.byType || punishmentAnalytics.byType.length === 0 ? (
                           <div className="flex items-center justify-center h-[250px] text-muted-foreground">
                             <div className="text-center">
                               <Shield className="h-8 w-8 mx-auto mb-2 opacity-50" />
-                              <p className="text-sm">No punishment type data available</p>
+                              <p className="text-sm">{t('audit.noPunishmentTypeData')}</p>
                             </div>
                           </div>
                         ) : (
@@ -2117,14 +2122,14 @@ const AuditLog = () => {
 
                     <Card>
                       <CardHeader>
-                        <CardTitle className="text-base">Daily Punishment Trend</CardTitle>
+                        <CardTitle className="text-base">{t('audit.dailyPunishmentTrend')}</CardTitle>
                       </CardHeader>
                       <CardContent>
                         {!punishmentAnalytics?.dailyPunishments || punishmentAnalytics.dailyPunishments.length === 0 ? (
                           <div className="flex items-center justify-center h-[250px] text-muted-foreground">
                             <div className="text-center">
                               <TrendingUp className="h-8 w-8 mx-auto mb-2 opacity-50" />
-                              <p className="text-sm">No punishment trend data available</p>
+                              <p className="text-sm">{t('audit.noPunishmentTrendData')}</p>
                             </div>
                           </div>
                         ) : (
@@ -2144,14 +2149,14 @@ const AuditLog = () => {
 
                   <Card>
                     <CardHeader>
-                      <CardTitle className="text-base">Top Punishers (Staff)</CardTitle>
+                      <CardTitle className="text-base">{t('audit.topPunishers')}</CardTitle>
                     </CardHeader>
                     <CardContent>
                       {!punishmentAnalytics?.byStaff || punishmentAnalytics.byStaff.length === 0 ? (
                         <div className="flex items-center justify-center h-[200px] text-muted-foreground">
                           <div className="text-center">
                             <Shield className="h-8 w-8 mx-auto mb-2 opacity-50" />
-                            <p className="text-sm">No staff punishment data available</p>
+                            <p className="text-sm">{t('audit.noStaffPunishmentData')}</p>
                           </div>
                         </div>
                       ) : (
@@ -2179,14 +2184,14 @@ const AuditLog = () => {
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                     <Card>
                       <CardHeader>
-                        <CardTitle className="text-base">Actions by Staff Member</CardTitle>
+                        <CardTitle className="text-base">{t('audit.actionsByStaff')}</CardTitle>
                       </CardHeader>
                       <CardContent>
                         {!staffPerformanceData || staffPerformanceData.length === 0 ? (
                           <div className="flex items-center justify-center h-[250px] text-muted-foreground">
                             <div className="text-center">
                               <Users className="h-8 w-8 mx-auto mb-2 opacity-50" />
-                              <p className="text-sm">No staff performance data available</p>
+                              <p className="text-sm">{t('audit.noStaffPerformanceData')}</p>
                             </div>
                           </div>
                         ) : (
@@ -2205,14 +2210,14 @@ const AuditLog = () => {
 
                     <Card>
                       <CardHeader>
-                        <CardTitle className="text-base">Ticket Responses</CardTitle>
+                        <CardTitle className="text-base">{t('audit.ticketResponsesTitle')}</CardTitle>
                       </CardHeader>
                       <CardContent>
                         {!staffPerformanceData || staffPerformanceData.length === 0 ? (
                           <div className="flex items-center justify-center h-[250px] text-muted-foreground">
                             <div className="text-center">
                               <FileText className="h-8 w-8 mx-auto mb-2 opacity-50" />
-                              <p className="text-sm">No staff ticket response data available</p>
+                              <p className="text-sm">{t('audit.noStaffTicketResponseData')}</p>
                             </div>
                           </div>
                         ) : (
@@ -2232,14 +2237,14 @@ const AuditLog = () => {
 
                   <Card>
                     <CardHeader>
-                      <CardTitle className="text-base">Staff Activity Details</CardTitle>
+                      <CardTitle className="text-base">{t('audit.staffActivityDetails')}</CardTitle>
                     </CardHeader>
                     <CardContent>
                       {!staffPerformanceData || staffPerformanceData.length === 0 ? (
                         <div className="flex items-center justify-center h-[200px] text-muted-foreground">
                           <div className="text-center">
                             <Shield className="h-8 w-8 mx-auto mb-2 opacity-50" />
-                            <p className="text-sm">No staff activity data available</p>
+                            <p className="text-sm">{t('audit.noStaffActivityData')}</p>
                           </div>
                         </div>
                       ) : (
@@ -2247,11 +2252,11 @@ const AuditLog = () => {
                           <table className="w-full text-sm">
                             <thead>
                               <tr className="border-b">
-                                <th className="text-left p-2">Username</th>
-                                <th className="text-left p-2">Role</th>
-                                <th className="text-left p-2">Ticket Responses</th>
-                                <th className="text-left p-2">Punishments Issued</th>
-                                <th className="text-left p-2">Total Actions</th>
+                                <th className="text-left p-2">{t('audit.colUsername')}</th>
+                                <th className="text-left p-2">{t('audit.colRole')}</th>
+                                <th className="text-left p-2">{t('audit.colTicketResponses')}</th>
+                                <th className="text-left p-2">{t('audit.colPunishmentsIssued')}</th>
+                                <th className="text-left p-2">{t('audit.colTotalActions')}</th>
                               </tr>
                             </thead>
                             <tbody>
@@ -2272,7 +2277,7 @@ const AuditLog = () => {
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                     <Card>
                       <CardHeader>
-                        <CardTitle className="text-base">Player Login Activity</CardTitle>
+                        <CardTitle className="text-base">{t('audit.playerLoginActivity')}</CardTitle>
                       </CardHeader>
                       <CardContent>
                         {!playerActivity?.loginTrend || playerActivity.loginTrend.length === 0 ? (
@@ -2280,7 +2285,7 @@ const AuditLog = () => {
                             <div className="flex items-center justify-center h-[250px] text-muted-foreground">
                               <div className="text-center">
                                 <Activity className="h-8 w-8 mx-auto mb-2 opacity-50" />
-                                <p className="text-sm">No player activity data available</p>
+                                <p className="text-sm">{t('audit.noPlayerActivityData')}</p>
                               </div>
                             </div>
                           ) : (
@@ -2311,14 +2316,14 @@ const AuditLog = () => {
 
                     <Card>
                       <CardHeader>
-                        <CardTitle className="text-base">Logins by Country</CardTitle>
+                        <CardTitle className="text-base">{t('audit.loginsByCountry')}</CardTitle>
                       </CardHeader>
                       <CardContent>
                         {!playerActivity?.loginsByCountry || playerActivity.loginsByCountry.length === 0 ? (
                           <div className="flex items-center justify-center h-[250px] text-muted-foreground">
                             <div className="text-center">
                               <User className="h-8 w-8 mx-auto mb-2 opacity-50" />
-                              <p className="text-sm">No login data available</p>
+                              <p className="text-sm">{t('audit.noLoginData')}</p>
                             </div>
                           </div>
                         ) : (
@@ -2347,30 +2352,30 @@ const AuditLog = () => {
 
                   <Card>
                     <CardHeader>
-                      <CardTitle className="text-base">Security Alerts</CardTitle>
+                      <CardTitle className="text-base">{t('audit.securityAlerts')}</CardTitle>
                     </CardHeader>
                     <CardContent>
                       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                         <div className="p-4 border rounded bg-orange-50 dark:bg-orange-950/20">
                           <div className="flex items-center gap-2">
                             <AlertTriangle className="h-5 w-5 text-orange-600 dark:text-orange-400" />
-                            <span className="font-medium">Proxy Connections</span>
+                            <span className="font-medium">{t('audit.proxyConnections')}</span>
                           </div>
                           <p className="text-2xl font-bold text-orange-600 dark:text-orange-400">
                             {playerActivity?.suspiciousActivity?.proxyCount || 0}
                           </p>
-                          <p className="text-sm text-muted-foreground">In selected period</p>
+                          <p className="text-sm text-muted-foreground">{t('audit.inSelectedPeriod')}</p>
                         </div>
 
                         <div className="p-4 border rounded bg-red-50 dark:bg-red-950/20">
                           <div className="flex items-center gap-2">
                             <AlertCircle className="h-5 w-5 text-red-600 dark:text-red-400" />
-                            <span className="font-medium">Hosting IPs</span>
+                            <span className="font-medium">{t('audit.hostingIps')}</span>
                           </div>
                           <p className="text-2xl font-bold text-red-600 dark:text-red-400">
                             {playerActivity?.suspiciousActivity?.hostingCount || 0}
                           </p>
-                          <p className="text-sm text-muted-foreground">In selected period</p>
+                          <p className="text-sm text-muted-foreground">{t('audit.inSelectedPeriod')}</p>
                         </div>
                       </div>
                     </CardContent>
@@ -2386,15 +2391,16 @@ const AuditLog = () => {
 };
 
 export default function AuditPage() {
+  const { t } = useTranslation();
   return (
     <PermissionWrapper
       permissions={[PERMISSIONS.ADMIN_AUDIT_VIEW]}
       fallback={
-        <PageContainer title="Audit">
+        <PageContainer title={t('audit.title')}>
           <Alert variant="destructive">
             <AlertTriangle className="h-4 w-4" />
             <AlertDescription>
-              You do not have permission to view audit logs. Only administrators can access this page.
+              {t('audit.noPermission')}
             </AlertDescription>
           </Alert>
         </PageContainer>

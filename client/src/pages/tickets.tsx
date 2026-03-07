@@ -161,11 +161,11 @@ const Tickets = () => {
         ticketIds: Array.from(selectedTickets),
         locked: status === 'closed',
       });
-      toast({ title: t('toast.success'), description: `Marked ${selectedTickets.size} tickets as ${status}` });
+      toast({ title: t('toast.success'), description: t('tickets.bulkMarkedAs', { count: selectedTickets.size, status }) });
       setSelectedTickets(new Set());
       refetch();
     } catch (error) {
-      toast({ title: t('toast.error'), description: `Failed to mark tickets as ${status}`, variant: 'destructive' });
+      toast({ title: t('toast.error'), description: t('tickets.bulkMarkFailed', { status }), variant: 'destructive' });
     }
   };
 
@@ -175,11 +175,11 @@ const Tickets = () => {
         ticketIds: Array.from(selectedTickets),
         addLabels: labelsToAdd,
       });
-      toast({ title: t('toast.success'), description: `Added labels to ${selectedTickets.size} tickets` });
+      toast({ title: t('toast.success'), description: t('tickets.bulkLabelsAdded', { count: selectedTickets.size }) });
       setSelectedTickets(new Set());
       refetch();
     } catch (error) {
-      toast({ title: t('toast.error'), description: 'Failed to add labels', variant: 'destructive' });
+      toast({ title: t('toast.error'), description: t('tickets.bulkLabelsFailed'), variant: 'destructive' });
     }
   };
 
@@ -189,11 +189,11 @@ const Tickets = () => {
         ticketIds: Array.from(selectedTickets),
         assignTo: assignees.join(','),
       });
-      toast({ title: t('toast.success'), description: `Assigned ${selectedTickets.size} tickets to ${assignees.length} staff member(s)` });
+      toast({ title: t('toast.success'), description: t('tickets.bulkAssigned', { ticketCount: selectedTickets.size, staffCount: assignees.length }) });
       setSelectedTickets(new Set());
       refetch();
     } catch (error) {
-      toast({ title: t('toast.error'), description: 'Failed to assign tickets', variant: 'destructive' });
+      toast({ title: t('toast.error'), description: t('tickets.bulkAssignFailed'), variant: 'destructive' });
     }
   };
 
@@ -218,7 +218,7 @@ const Tickets = () => {
       });
       refetch();
     } catch (error) {
-      toast({ title: t('toast.error'), description: 'Failed to add label', variant: 'destructive' });
+      toast({ title: t('toast.error'), description: t('tickets.addLabelFailed'), variant: 'destructive' });
     }
   };
 
@@ -234,7 +234,7 @@ const Tickets = () => {
       });
       refetch();
     } catch (error) {
-      toast({ title: t('toast.error'), description: 'Failed to remove label', variant: 'destructive' });
+      toast({ title: t('toast.error'), description: t('tickets.removeLabelFailed'), variant: 'destructive' });
     }
   };
 
@@ -299,7 +299,7 @@ const Tickets = () => {
                 {ticket.hidden && (
                   <span className="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded text-xs font-medium bg-orange-50 text-orange-700 border border-orange-200">
                     <EyeOff className="h-3 w-3" />
-                    Hidden
+                    {t('tickets.hidden')}
                   </span>
                 )}
                 {ticketLabels.map((tagName) => {
@@ -345,7 +345,7 @@ const Tickets = () => {
                 )}
               </div>
               <div className="text-xs text-muted-foreground mt-0.5">
-                #{ticket.id} opened {formatTimeAgo(ticket.date)} by {ticket.reportedByName || ticket.reportedBy}
+                {t('tickets.ticketMeta', { id: ticket.id, timeAgo: formatTimeAgo(ticket.date), by: ticket.reportedByName || ticket.reportedBy })}
               </div>
             </div>
           </div>

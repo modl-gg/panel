@@ -3,13 +3,15 @@ import { Button } from "@modl-gg/shared-web/components/ui/button";
 import { AlertCircle, Home } from "lucide-react";
 import { useLocation } from "wouter";
 import { useEffect } from "react";
+import { useTranslation } from 'react-i18next';
 
 export default function NotFound() {
+  const { t } = useTranslation();
   const [, setLocation] = useLocation();
 
   useEffect(() => {
-    document.title = "Page Not Found";
-  }, []);
+    document.title = t('pages.notFound.title');
+  }, [t]);
 
   const handleReturnHome = () => {
     // Check if we're on a panel route, redirect to panel home, otherwise to public home
@@ -30,15 +32,15 @@ export default function NotFound() {
             
             <div className="space-y-2">
               <h1 className="text-3xl font-bold text-foreground">404</h1>
-              <h2 className="text-xl font-semibold text-foreground">Page Not Found</h2>
+              <h2 className="text-xl font-semibold text-foreground">{t('pages.notFound.title')}</h2>
               <p className="text-muted-foreground">
-                The page you're looking for doesn't exist or has been moved.
+                {t('pages.notFound.description')}
               </p>
             </div>
 
             <Button onClick={handleReturnHome} className="mt-6">
               <Home className="h-4 w-4 mr-2" />
-              Return Home
+              {t('pages.notFound.returnHome')}
             </Button>
           </div>
         </CardContent>
