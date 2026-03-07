@@ -793,7 +793,7 @@ export default function StaffRolesCard() {
                       </div>
                     </div>
 
-                    <div className="space-y-3 pl-4">
+                    <div className={parentPermissions.some((p: Permission) => getChildren(p.id).length > 0) ? "space-y-3 pl-4" : "grid grid-cols-1 md:grid-cols-2 gap-3 pl-4"}>
                       {parentPermissions.map((permission: Permission) => {
                         const children = getChildren(permission.id);
                         const parentChecked = isParentEnabled(permission.id);
@@ -856,7 +856,7 @@ export default function StaffRolesCard() {
                       })}
                     </div>
 
-                    {category !== 'admin' && <Separator />}
+                    {category !== 'staff' && <Separator />}
                   </div>
                 );
               })}
