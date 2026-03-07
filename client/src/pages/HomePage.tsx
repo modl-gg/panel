@@ -1,5 +1,4 @@
 import React, { useState, useEffect } from 'react';
-import { useTranslation } from 'react-i18next';
 import { Link } from 'wouter';
 import { Search, Shield, MessageCircle, Phone, UserPlus, FileText, ExternalLink, ChevronRight, BookOpen, ChevronDown, LogIn, Sun, Moon } from 'lucide-react';
 import { Button } from '@modl-gg/shared-web/components/ui/button';
@@ -52,7 +51,6 @@ interface HomepageCard {
 }
 
 const HomePage: React.FC = () => {
-  const { t } = useTranslation();
   const [categories, setCategories] = useState<CategoryWithArticles[]>([]);
   const [homepageCards, setHomepageCards] = useState<HomepageCard[]>([]);
   const [searchTerm, setSearchTerm] = useState('');
@@ -243,8 +241,8 @@ const HomePage: React.FC = () => {
         <Link href={user ? "/panel" : "/panel/auth"}>
           <Button variant="secondary" size="sm" className="bg-card/80 hover:bg-card/90 text-foreground border-muted text-xs sm:text-sm">
             <LogIn className="h-4 w-4 mr-1 sm:mr-2" />
-            <span className="hidden sm:inline">{user ? t('home.goToPanel') : t('home.staffLogin')}</span>
-            <span className="sm:hidden">{user ? t('home.panel') : t('home.staffLogin')}</span>
+            <span className="hidden sm:inline">{user ? 'Go To Panel' : 'Staff Login'}</span>
+            <span className="sm:hidden">{user ? 'Panel' : 'Login'}</span>
           </Button>
         </Link>
       </div>
@@ -262,7 +260,7 @@ const HomePage: React.FC = () => {
           </div>
           
           {/* Descriptive Text */}
-          <p className="text-foreground text-base sm:text-lg mb-6 sm:mb-8 px-2">{t('home.searchDesc')}</p>
+          <p className="text-foreground text-base sm:text-lg mb-6 sm:mb-8 px-2">Search our knowledgebase or contact us here</p>
 
           {/* Search Bar */}
           <div className="max-w-xl mx-auto mb-4 px-2">
@@ -270,19 +268,19 @@ const HomePage: React.FC = () => {
               <Search className="absolute left-4 top-1/2 transform -translate-y-1/2 text-muted-foreground h-4 w-4" />
               <Input
                 type="text"
-                placeholder={t('home.searchPlaceholder')}
+                placeholder="Search knowledgebase..."
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
                 className="pl-12 py-2 sm:py-3 rounded-full border-2 focus:border-primary shadow-md text-sm sm:text-base"
               />
             </div>
-            
+
             {/* Search Results */}
             {searchTerm.trim().length >= 2 && (
               <Card className="mt-3 text-left max-h-48 overflow-y-auto">
                 <CardContent className="p-3">
                   {isSearching ? (
-                    <p className="text-center text-muted-foreground text-sm">{t('home.searching')}</p>
+                    <p className="text-center text-muted-foreground text-sm">Searching...</p>
                   ) : searchResults.length > 0 ? (
                     <div className="space-y-1">
                       {searchResults.map(article => (
@@ -295,7 +293,7 @@ const HomePage: React.FC = () => {
                     </div>
                   ) : (
                     <p className="text-center text-muted-foreground text-sm">
-                      {t('home.noArticlesFound', { term: searchTerm })}
+                      No articles found for &quot;{searchTerm}&quot;
                     </p>
                   )}
                 </CardContent>
@@ -330,12 +328,12 @@ const HomePage: React.FC = () => {
                         <div className="w-14 h-14 bg-amber-500/10 rounded-full flex items-center justify-center mx-auto mb-4 group-hover:bg-amber-500/20 transition-colors">
                           <Shield className="h-7 w-7 text-amber-600" />
                         </div>
-                        <h3 className="font-medium text-lg mb-3">{t('home.appealPunishment')}</h3>
-                        <p className="text-sm text-muted-foreground mb-4">{t('home.appealPunishmentDesc')}</p>
+                        <h3 className="font-medium text-lg mb-3">Appeal Punishment</h3>
+                        <p className="text-sm text-muted-foreground mb-4">Submit an appeal if you believe you were unfairly banned or punished</p>
                       </div>
                       <Link href="/appeal">
                         <Button variant="outline" size="sm" className="w-full">
-                          {t('home.submitAppeal')}
+                          Submit Appeal
                         </Button>
                       </Link>
                     </CardContent>
@@ -347,11 +345,11 @@ const HomePage: React.FC = () => {
                         <div className="w-14 h-14 bg-blue-500/10 rounded-full flex items-center justify-center mx-auto mb-4 group-hover:bg-blue-500/20 transition-colors">
                           <UserPlus className="h-7 w-7 text-blue-600" />
                         </div>
-                        <h3 className="font-medium text-lg mb-3">{t('home.applyForStaff')}</h3>
-                        <p className="text-sm text-muted-foreground mb-4">{t('home.applyForStaffDesc')}</p>
+                        <h3 className="font-medium text-lg mb-3">Apply for Staff</h3>
+                        <p className="text-sm text-muted-foreground mb-4">Join our staff team and help manage the community</p>
                       </div>
                       <Button variant="outline" size="sm" className="w-full">
-                        {t('home.applyNow')}
+                        Apply Now
                       </Button>
                     </CardContent>
                   </Card>
@@ -362,11 +360,11 @@ const HomePage: React.FC = () => {
                         <div className="w-14 h-14 bg-green-500/10 rounded-full flex items-center justify-center mx-auto mb-4 group-hover:bg-green-500/20 transition-colors">
                           <MessageCircle className="h-7 w-7 text-green-600" />
                         </div>
-                        <h3 className="font-medium text-lg mb-3">{t('home.contactUs')}</h3>
-                        <p className="text-sm text-muted-foreground mb-4">{t('home.contactUsDesc')}</p>
+                        <h3 className="font-medium text-lg mb-3">Contact Us</h3>
+                        <p className="text-sm text-muted-foreground mb-4">Get help from our support team for any issues</p>
                       </div>
                       <Button variant="outline" size="sm" className="w-full">
-                        {t('home.contactSupport')}
+                        Contact Support
                       </Button>
                     </CardContent>
                   </Card>
@@ -377,12 +375,12 @@ const HomePage: React.FC = () => {
                         <div className="w-14 h-14 bg-purple-500/10 rounded-full flex items-center justify-center mx-auto mb-4 group-hover:bg-purple-500/20 transition-colors">
                           <BookOpen className="h-7 w-7 text-purple-600" />
                         </div>
-                        <h3 className="font-medium text-lg mb-3">{t('home.rulesPolicies')}</h3>
-                        <p className="text-sm text-muted-foreground mb-4">{t('home.rulesPoliciesDesc')}</p>
+                        <h3 className="font-medium text-lg mb-3">Rules & Policies</h3>
+                        <p className="text-sm text-muted-foreground mb-4">Browse server rules, community guidelines, and policies</p>
                       </div>
                       <Link href="/knowledgebase?category=rules-policies">
                         <Button variant="outline" size="sm" className="w-full">
-                          {t('home.viewRules')}
+                          View Rules
                         </Button>
                       </Link>
                     </CardContent>
@@ -394,12 +392,12 @@ const HomePage: React.FC = () => {
                         <div className="w-14 h-14 bg-orange-500/10 rounded-full flex items-center justify-center mx-auto mb-4 group-hover:bg-orange-500/20 transition-colors">
                           <Search className="h-7 w-7 text-orange-600" />
                         </div>
-                        <h3 className="font-medium text-lg mb-3">{t('home.guidesTitle')}</h3>
-                        <p className="text-sm text-muted-foreground mb-4">{t('home.guidesDesc')}</p>
+                        <h3 className="font-medium text-lg mb-3">Guides & Troubleshooting</h3>
+                        <p className="text-sm text-muted-foreground mb-4">Find helpful guides and troubleshooting resources</p>
                       </div>
                       <Link href="/knowledgebase?category=guides-troubleshooting">
                         <Button variant="outline" size="sm" className="w-full">
-                          {t('home.viewGuides')}
+                          View Guides
                         </Button>
                       </Link>
                     </CardContent>
@@ -411,12 +409,12 @@ const HomePage: React.FC = () => {
                         <div className="w-14 h-14 bg-indigo-500/10 rounded-full flex items-center justify-center mx-auto mb-4 group-hover:bg-indigo-500/20 transition-colors">
                           <FileText className="h-7 w-7 text-indigo-600" />
                         </div>
-                        <h3 className="font-medium text-lg mb-3">{t('home.newsUpdates')}</h3>
-                        <p className="text-sm text-muted-foreground mb-4">{t('home.newsUpdatesDesc')}</p>
+                        <h3 className="font-medium text-lg mb-3">News & Updates</h3>
+                        <p className="text-sm text-muted-foreground mb-4">Stay up to date with the latest announcements and changes</p>
                       </div>
                       <Link href="/knowledgebase?category=news-updates">
                         <Button variant="outline" size="sm" className="w-full">
-                          {t('home.viewNews')}
+                          View News
                         </Button>
                       </Link>
                     </CardContent>
@@ -439,7 +437,7 @@ const HomePage: React.FC = () => {
                         <CardHeader>
                           <CardTitle className="flex items-center gap-2">
                             <IconComponent className="h-5 w-5" style={{ color: iconColor }} />
-                            {t('home.categoryArticles', { name: card.category!.name })}
+                            {card.category!.name} Articles
                           </CardTitle>
                         </CardHeader>
                         <CardContent>
@@ -460,7 +458,7 @@ const HomePage: React.FC = () => {
                           {card.category!.articles.length === 0 && (
                             <div className="text-center py-8 text-muted-foreground">
                               <FileText className="h-12 w-12 mx-auto mb-3 opacity-50" />
-                              <p>{t('home.noArticlesInCategory')}</p>
+                              <p>No articles available in this category yet.</p>
                             </div>
                           )}
                         </CardContent>

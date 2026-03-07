@@ -1808,6 +1808,7 @@ const StatCard = ({
   isExpanded: boolean;
   onToggle: () => void;
 }) => {
+  const { t } = useTranslation();
   return (
     <Card
       className={cn(
