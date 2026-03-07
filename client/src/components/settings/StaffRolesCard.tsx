@@ -22,7 +22,7 @@ interface Permission {
   id: string;
   name: string;
   description: string;
-  category: 'punishment' | 'ticket' | 'admin';
+  category: 'punishment' | 'ticket' | 'admin' | 'staff';
   parentId: string | null;
 }
 
@@ -40,7 +40,8 @@ interface StaffRole {
 const PERMISSION_CATEGORIES = {
   punishment: 'Punishment Permissions',
   ticket: 'Ticket Permissions',
-  admin: 'Administrative Permissions'
+  admin: 'Administrative Permissions',
+  staff: 'Staff Tool Permissions'
 };
 
 const DEFAULT_PERMISSIONS: Permission[] = [
@@ -87,6 +88,16 @@ const DEFAULT_PERMISSIONS: Permission[] = [
   { id: 'ticket.manage.hide', name: 'Hide Tickets', description: 'Hide tickets from public view', category: 'ticket', parentId: 'ticket.manage' },
   { id: 'ticket.manage.subscribe', name: 'Manage Subscriptions', description: 'Manage ticket notification subscriptions', category: 'ticket', parentId: 'ticket.manage' },
   { id: 'ticket.delete.all', name: 'Delete Tickets', description: 'Delete tickets from the system', category: 'ticket', parentId: null },
+
+  // Staff tool permissions
+  { id: 'staff.chat.toggle', name: 'Toggle Chat', description: 'Toggle server chat on/off', category: 'staff', parentId: null },
+  { id: 'staff.chat.clear', name: 'Clear Chat', description: 'Clear server chat', category: 'staff', parentId: null },
+  { id: 'staff.chat.slow', name: 'Slow Chat', description: 'Set slow mode on server chat', category: 'staff', parentId: null },
+  { id: 'staff.maintenance', name: 'Maintenance Mode', description: 'Toggle server maintenance mode', category: 'staff', parentId: null },
+  { id: 'staff.modactions', name: 'Moderation Actions', description: 'Staff mode, vanish, freeze, and target players', category: 'staff', parentId: null },
+  { id: 'staff.intercept', name: 'Intercept Chat', description: 'Intercept and view all network chat', category: 'staff', parentId: null },
+  { id: 'staff.chatlogs', name: 'Chat Logs', description: 'View player chat history', category: 'staff', parentId: null },
+  { id: 'staff.commandlogs', name: 'Command Logs', description: 'View player command history', category: 'staff', parentId: null },
 ];
 
 const DEFAULT_ROLES: StaffRole[] = [

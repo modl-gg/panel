@@ -55,6 +55,16 @@ export const PERMISSIONS = {
   PUNISHMENT_MODIFY_EVIDENCE: 'punishment.modify.evidence',
   PUNISHMENT_MODIFY_OPTIONS: 'punishment.modify.options',
 
+  // Staff tool permissions
+  STAFF_CHAT_TOGGLE: 'staff.chat.toggle',
+  STAFF_CHAT_CLEAR: 'staff.chat.clear',
+  STAFF_CHAT_SLOW: 'staff.chat.slow',
+  STAFF_MAINTENANCE: 'staff.maintenance',
+  STAFF_MODACTIONS: 'staff.modactions',
+  STAFF_INTERCEPT: 'staff.intercept',
+  STAFF_CHATLOGS: 'staff.chatlogs',
+  STAFF_COMMANDLOGS: 'staff.commandlogs',
+
   // Ticket permissions
   TICKET_VIEW_ALL: 'ticket.view.all',
   TICKET_VIEW_ALL_NOTES: 'ticket.view.all.notes',
