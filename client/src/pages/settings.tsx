@@ -1455,7 +1455,7 @@ const Settings = () => {
     } catch (error) {
       console.error('Error saving AI moderation settings:', error);
       toast({
-        title: "Error",
+        title: t('toast.error'),
         description: "Failed to save AI moderation settings. Please try again.",
         variant: "destructive",
       });
@@ -1527,14 +1527,14 @@ const Settings = () => {
       
       if (response.ok) {
         toast({
-          title: "AI Punishment Type Added",
-          description: "The punishment type has been configured for AI services.",
+          title: t('settings.page.aiTypeAdded'),
+          description: t('settings.page.aiTypeAddedDesc'),
         });
         await loadAvailablePunishmentTypes();
       } else {
         const errorData = await response.json();
         toast({
-          title: "Error",
+          title: t('toast.error'),
           description: errorData.message || "Failed to add AI punishment type.",
           variant: "destructive",
         });
@@ -1542,7 +1542,7 @@ const Settings = () => {
     } catch (error) {
       console.error('Error adding AI punishment type:', error);
       toast({
-        title: "Error",
+        title: t('toast.error'),
         description: "An unexpected error occurred. Please try again.",
         variant: "destructive",
       });
@@ -1566,8 +1566,8 @@ const Settings = () => {
           loadAvailablePunishmentTypes();
         }
         toast({
-          title: "AI Punishment Type Updated",
-          description: "The punishment type configuration has been updated.",
+          title: t('settings.page.aiTypeUpdated'),
+          description: t('settings.page.aiTypeUpdatedDesc'),
         });
       } else {
         throw new Error('Failed to update AI punishment type');
@@ -1575,7 +1575,7 @@ const Settings = () => {
     } catch (error) {
       console.error('Error updating AI punishment type:', error);
       toast({
-        title: "Error",
+        title: t('toast.error'),
         description: "Failed to update AI punishment type. Please try again.",
         variant: "destructive",
       });
@@ -1593,8 +1593,8 @@ const Settings = () => {
       if (response.ok) {
         loadAvailablePunishmentTypes();
         toast({
-          title: "AI Punishment Type Removed",
-          description: "The punishment type has been disabled for AI use.",
+          title: t('settings.page.aiTypeRemoved'),
+          description: t('settings.page.aiTypeRemovedDesc'),
         });
       } else {
         throw new Error('Failed to remove AI punishment type');
@@ -1602,7 +1602,7 @@ const Settings = () => {
     } catch (error) {
       console.error('Error removing AI punishment type:', error);
       toast({
-        title: "Error",
+        title: t('toast.error'),
         description: "Failed to remove AI punishment type. Please try again.",
         variant: "destructive",
       });
@@ -1851,8 +1851,8 @@ const Settings = () => {
 
         if (response.status === 409) {
           toast({
-            title: "Update Conflict",
-            description: `Someone else changed ${sectionLabel}. Reloaded latest values.`,
+            title: t('settings.page.updateConflict'),
+            description: t('settings.page.updateConflictDesc', { section: sectionLabel }),
             variant: "destructive"
           });
           if (sectionKey === 'general') {
@@ -1864,7 +1864,7 @@ const Settings = () => {
 
         if (response.status === 403) {
           toast({
-            title: "Permission Denied",
+            title: t('toast.permissionDenied'),
             description: errorData.error || errorData.message || 'You do not have permission to modify these settings.',
             variant: "destructive"
           });
@@ -1878,7 +1878,7 @@ const Settings = () => {
         failedSections.add(sectionKey);
 
         toast({
-          title: "Error",
+          title: t('toast.error'),
           description: `Failed to save ${sectionLabel}: ${errorData.error || response.statusText}`,
           variant: "destructive"
         });
@@ -2066,7 +2066,7 @@ const Settings = () => {
       dirty.forEach(section => dirtyCategoriesRef.current.add(section));
       pendingChangesRef.current = true;
       toast({
-        title: "Error",
+        title: t('toast.error'),
         description: "An unexpected error occurred while saving",
         variant: "destructive"
       });
@@ -2452,13 +2452,13 @@ const Settings = () => {
         // Show specific error toast based on status code
         if (response.status === 403) {
           toast({
-            title: "Permission Denied",
+            title: t('toast.permissionDenied'),
             description: errorData.error || errorData.message || 'You do not have permission to modify your profile.',
             variant: "destructive",
           });
         } else {
           toast({
-            title: "Save Failed",
+            title: t('toast.saveFailed'),
             description: `Failed to save profile: ${errorData.error || errorData.message || 'Unknown error'}`,
             variant: "destructive",
           });
@@ -2469,7 +2469,7 @@ const Settings = () => {
       
       // Show error toast
       toast({
-        title: "Save Failed",
+        title: t('toast.saveFailed'),
         description: "Failed to save profile. Please try again.",        variant: "destructive",
       });
     }
@@ -2526,13 +2526,13 @@ const Settings = () => {
           // Show specific error toast based on status code
           if (response.status === 403) {
             toast({
-              title: "Permission Denied",
+              title: t('toast.permissionDenied'),
               description: errorData.error || errorData.message || 'You do not have permission to modify your profile.',
               variant: "destructive",
             });
           } else {
             toast({
-              title: "Save Failed",
+              title: t('toast.saveFailed'),
               description: `Failed to save profile: ${errorData.error || errorData.message || 'Unknown error'}`,
               variant: "destructive",
             });
@@ -2543,7 +2543,7 @@ const Settings = () => {
         
         // Show error toast
         toast({
-          title: "Save Failed",
+          title: t('toast.saveFailed'),
           description: "Failed to save profile. Please try again.",          variant: "destructive",
         });
       }
@@ -2630,7 +2630,7 @@ const Settings = () => {
         } else {
           const errorData = await response.json().catch(() => ({ error: 'Unknown error' }));
           toast({
-            title: "Error",
+            title: t('toast.error'),
             description: errorData.error || 'Failed to create punishment type',
             variant: "destructive"
           });
@@ -2638,7 +2638,7 @@ const Settings = () => {
       } catch (error) {
         console.error('Failed to create punishment type:', error);
         toast({
-          title: "Error",
+          title: t('toast.error'),
           description: 'Failed to create punishment type',
           variant: "destructive"
         });
@@ -2665,7 +2665,7 @@ const Settings = () => {
       } else {
         const errorData = await response.json().catch(() => ({ error: 'Unknown error' }));
         toast({
-          title: "Error",
+          title: t('toast.error'),
           description: errorData.error || 'Failed to delete punishment type',
           variant: "destructive"
         });
@@ -2673,7 +2673,7 @@ const Settings = () => {
     } catch (error) {
       console.error("Error deleting punishment type:", error);
       toast({
-        title: "Error",
+        title: t('toast.error'),
         description: "Failed to delete punishment type",
         variant: "destructive"
       });

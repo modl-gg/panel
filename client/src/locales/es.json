@@ -120,7 +120,7 @@
     "displayNameDescription": "Tu nombre mostrado en conversaciones de tickets e interacciones.",
     "emailDescription": "Usado para iniciar sesión y recibir notificaciones de tickets.",
     "emailUpdated": "Correo actualizado",
-    "emailUpdatedDesc": "Tu correo ha sido actualizado. Por favor inicia sesión con tu nueva dirección de correo.",
+    "emailUpdatedDesc": "Tu correo electrónico ha sido actualizado correctamente.",
     "emailUpdateFailed": "Error al actualizar el correo.",
     "minecraftChangeAdmin": "Cambia esto en la configuración de Gestión de Staff.",
     "minecraftChangeContact": "Contacta a un administrador para cambiarlo.",
@@ -841,7 +841,7 @@
       "billing": "Facturación",
       "usage": "Uso",
       "serverConfig": "Configuración del servidor",
-      "domain": "Dominio",
+      "domain": "Costumbre Dominio",
       "webhooks": "Webhooks",
       "migrationTool": "Herramienta de migración",
       "punishments": "Sanciones",
@@ -926,7 +926,15 @@
       "revealApiKeyFailed": "No se pudo mostrar la clave API. Por favor inténtalo de nuevo.",
       "apiKeyCopied": "Clave API copiada al portapapeles",
       "cannotCopyMaskedKey": "No se puede copiar la clave enmascarada",
-      "cannotCopyMaskedKeyDesc": "Por favor haz clic en el icono del ojo para revelar la clave primero, o regenera una nueva clave para copiarla."
+      "cannotCopyMaskedKeyDesc": "Por favor haz clic en el icono del ojo para revelar la clave primero, o regenera una nueva clave para copiarla.",
+      "aiTypeAdded": "Tipo de castigo de IA añadido",
+      "aiTypeAddedDesc": "El tipo de castigo ha sido configurado para los servicios de IA.",
+      "aiTypeUpdated": "Tipo de castigo de IA actualizado",
+      "aiTypeUpdatedDesc": "La configuración del tipo de castigo ha sido actualizada.",
+      "aiTypeRemoved": "Tipo de castigo de IA eliminado",
+      "aiTypeRemovedDesc": "El tipo de castigo ha sido desactivado para uso de IA.",
+      "updateConflict": "Conflicto de actualización",
+      "updateConflictDesc": "Alguien más cambió {{section}}. Se recargaron los últimos valores."
     }
   },
   "dashboard": {

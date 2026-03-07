@@ -120,7 +120,7 @@
     "displayNameDescription": "Dein Anzeigename in Ticket-Konversationen und Interaktionen.",
     "emailDescription": "Wird für die Anmeldung und den Empfang von Ticket-Benachrichtigungen verwendet.",
     "emailUpdated": "E-Mail aktualisiert",
-    "emailUpdatedDesc": "Ihre E-Mail wurde aktualisiert. Bitte melden Sie sich mit Ihrer neuen E-Mail-Adresse an.",
+    "emailUpdatedDesc": "Ihre E-Mail-Adresse wurde erfolgreich aktualisiert.",
     "emailUpdateFailed": "E-Mail konnte nicht aktualisiert werden.",
     "minecraftChangeAdmin": "Dies kann in den Personalverwaltungseinstellungen geändert werden.",
     "minecraftChangeContact": "Kontaktiere einen Administrator, um dies zu ändern.",
@@ -841,7 +841,7 @@
       "billing": "Abrechnung",
       "usage": "Nutzung",
       "serverConfig": "Serverkonfiguration",
-      "domain": "Domain",
+      "domain": "Brauch Domain",
       "webhooks": "Webhooks",
       "migrationTool": "Migrationstool",
       "punishments": "Strafen",
@@ -926,7 +926,15 @@
       "revealApiKeyFailed": "API-Schlüssel konnte nicht angezeigt werden. Bitte versuche es erneut.",
       "apiKeyCopied": "API-Schlüssel in die Zwischenablage kopiert",
       "cannotCopyMaskedKey": "Maskierter Schlüssel kann nicht kopiert werden",
-      "cannotCopyMaskedKeyDesc": "Bitte klicke zuerst auf das Augen-Symbol, um den Schlüssel anzuzeigen, oder generiere einen neuen Schlüssel zum Kopieren."
+      "cannotCopyMaskedKeyDesc": "Bitte klicke zuerst auf das Augen-Symbol, um den Schlüssel anzuzeigen, oder generiere einen neuen Schlüssel zum Kopieren.",
+      "aiTypeAdded": "KI-Straftyp hinzugefügt",
+      "aiTypeAddedDesc": "Der Straftyp wurde für KI-Dienste konfiguriert.",
+      "aiTypeUpdated": "KI-Straftyp aktualisiert",
+      "aiTypeUpdatedDesc": "Die Konfiguration des Straftyps wurde aktualisiert.",
+      "aiTypeRemoved": "KI-Straftyp entfernt",
+      "aiTypeRemovedDesc": "Der Straftyp wurde für die KI-Nutzung deaktiviert.",
+      "updateConflict": "Aktualisierungskonflikt",
+      "updateConflictDesc": "Jemand anderes hat {{section}} geändert. Neueste Werte wurden geladen."
     }
   },
   "dashboard": {

@@ -120,7 +120,7 @@
     "displayNameDescription": "Je weergavenaam in ticketgesprekken en interacties.",
     "emailDescription": "Gebruikt voor inloggen en ontvangen van ticketmeldingen.",
     "emailUpdated": "E-mail bijgewerkt",
-    "emailUpdatedDesc": "Je e-mail is bijgewerkt. Log in met je nieuwe e-mailadres.",
+    "emailUpdatedDesc": "Je e-mailadres is succesvol bijgewerkt.",
     "emailUpdateFailed": "E-mail bijwerken mislukt.",
     "minecraftChangeAdmin": "Wijzig dit in de instellingen voor stafinstellingen.",
     "minecraftChangeContact": "Neem contact op met een beheerder om dit te wijzigen.",
@@ -841,7 +841,7 @@
       "billing": "Facturering",
       "usage": "Gebruik",
       "serverConfig": "Serverconfiguratie",
-      "domain": "Domein",
+      "domain": "AangepastDomein",
       "webhooks": "Webhooks",
       "migrationTool": "Migratietool",
       "punishments": "Straffen",
@@ -926,7 +926,15 @@
       "revealApiKeyFailed": "API-sleutel kon niet worden weergegeven. Probeer het opnieuw.",
       "apiKeyCopied": "API-sleutel gekopieerd naar klembord",
       "cannotCopyMaskedKey": "Gemaskeerde sleutel kan niet worden gekopieerd",
-      "cannotCopyMaskedKeyDesc": "Klik eerst op het oogpictogram om de sleutel te tonen, of genereer een nieuwe sleutel om te kopiëren."
+      "cannotCopyMaskedKeyDesc": "Klik eerst op het oogpictogram om de sleutel te tonen, of genereer een nieuwe sleutel om te kopiëren.",
+      "aiTypeAdded": "AI-straftype toegevoegd",
+      "aiTypeAddedDesc": "Het straftype is geconfigureerd voor AI-services.",
+      "aiTypeUpdated": "AI-straftype bijgewerkt",
+      "aiTypeUpdatedDesc": "De configuratie van het straftype is bijgewerkt.",
+      "aiTypeRemoved": "AI-straftype verwijderd",
+      "aiTypeRemovedDesc": "Het straftype is uitgeschakeld voor AI-gebruik.",
+      "updateConflict": "Updateconflict",
+      "updateConflictDesc": "Iemand anders heeft {{section}} gewijzigd. Nieuwste waarden herladen."
     }
   },
   "dashboard": {

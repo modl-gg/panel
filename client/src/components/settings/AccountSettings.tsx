@@ -45,8 +45,7 @@ const AccountSettings = ({
     try {
       const response = await apiFetch('/v1/panel/auth/email', {
         method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ newEmail: currentEmail }),
+        body: { newEmail: currentEmail },
       });
       const data = await response.json();
       if (!response.ok) {
@@ -56,9 +55,8 @@ const AccountSettings = ({
         title: t('settings.emailUpdated'),
         description: t('settings.emailUpdatedDesc'),
       });
-      setTimeout(() => {
-        window.location.href = '/auth';
-      }, 1500);
+      // Reload to refresh the user context with the new email
+      setTimeout(() => window.location.reload(), 1000);
     } catch (error) {
       toast({
         title: t('common.error'),
