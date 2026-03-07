@@ -7,7 +7,6 @@ import MobileNavbar from "@/components/layout/MobileNavbar";
 import { SidebarProvider } from "@/hooks/use-sidebar";
 import { DashboardProvider } from "@/contexts/DashboardContext";
 import { AuthProvider, useAuth } from "@/hooks/use-auth";
-import { usePermissions } from "@/hooks/use-permissions";
 import { ProtectedRoute, AuthRoute } from "@/lib/protected-route";
 import { useIsMobile } from '@modl-gg/shared-web/hooks/use-mobile';
 import { useDocumentTitle } from "@/hooks/use-document-title";
@@ -200,10 +199,8 @@ function AppContent() {
   useDocumentTitle();
   useProvisioningStatusCheck();
 
-  // Must call hooks before any conditional returns to maintain hook order
-  const { hasPermission } = usePermissions();
-  // Safe permission check - returns false if user is not loaded yet
-  const isAdmin = user ? hasPermission('admin.settings.view') : false;
+  // Simple role check for maintenance bypass — no need to fetch permission nodes here
+  const isAdmin = user?.role === 'Super Admin' || user?.role === 'Admin';
 
   useEffect(() => {
     const hasSeenModal = localStorage.getItem("hasSeenWelcomeModal");
