@@ -77,8 +77,7 @@ const AccountSettings = ({
         </Button>
       </div>
 
-      <div className="flex gap-6 items-start">
-        <div className="flex-1 space-y-5">
+      <div className="space-y-5">
           <div className="flex gap-3">
             <Label htmlFor="username" className="w-36 text-sm pt-2.5 shrink-0">{t('settings.panelDisplayName')}</Label>
             <div className="flex-1 max-w-xs">
@@ -178,12 +177,10 @@ const AccountSettings = ({
               </p>
             </div>
           </div>
-        </div>
-
-        <div className="w-72 shrink-0 rounded-md border">
-          <PasskeySettings />
-        </div>
       </div>
+
+      <PasskeySettings />
+
     </div>
   );
 };
