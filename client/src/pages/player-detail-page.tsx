@@ -12,8 +12,8 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@modl-gg/shared-web/co
 import { usePlayer, useApplyPunishment, useSettings, usePunishmentTypes, usePlayerTickets, usePlayerAllTickets, useModifyPunishment, useAddPunishmentNote, useModifyPunishmentTickets, useLinkedAccounts, useFindLinkedAccounts, useLinkedBansForPunishment } from '@/hooks/use-data';
 import { ClickablePlayer } from '@/components/ui/clickable-player';
 import { useAuth } from '@/hooks/use-auth';
-import { useIsMobile } from '@/hooks/use-mobile';
-import { toast } from '@/hooks/use-toast';
+import { useIsMobile } from '@modl-gg/shared-web/hooks/use-mobile';
+import { toast } from '@modl-gg/shared-web/hooks/use-toast';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@modl-gg/shared-web/components/ui/select';
 import PlayerPunishment, { PlayerPunishmentData } from '@/components/ui/player-punishment';
 import MediaUpload from '@/components/MediaUpload';

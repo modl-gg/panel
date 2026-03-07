@@ -2,25 +2,7 @@ import { useMemo } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { useAuth } from './use-auth';
 import { buildRoleHierarchy, canModifyRole, canRemoveUser, canAssignMinecraftPlayer } from '@/utils/role-hierarchy';
-import { getApiUrl, getCurrentDomain } from '@/lib/api';
-
-async function apiFetch(url: string, options: RequestInit = {}): Promise<Response> {
-  const fullUrl = getApiUrl(url);
-  const response = await fetch(fullUrl, {
-    ...options,
-    credentials: "include",
-    headers: {
-      ...options.headers,
-      "X-Server-Domain": getCurrentDomain(),
-    },
-  });
-  if (response.status === 429) {
-    const { handleRateLimitResponse, getCurrentPath } = await import('../utils/rate-limit-handler');
-    await handleRateLimitResponse(response, getCurrentPath());
-    throw new Error('Rate limit exceeded');
-  }
-  return response;
-}
+import { apiFetch } from '@/lib/api';
 
 // Define permissions that match the backend permission system
 export const PERMISSIONS = {

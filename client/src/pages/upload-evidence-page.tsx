@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback, useRef } from "react";
 import { useParams } from "wouter";
-import { getApiUrl, getCurrentDomain } from "@/lib/api";
+import { apiFetch } from "@/lib/api";
 import { Loader2, Upload, X, CheckCircle, AlertCircle, FileIcon } from "lucide-react";
 
 interface TokenInfo {
@@ -19,18 +19,6 @@ interface UploadedFile {
   progress: number;
   status: "pending" | "uploading" | "uploaded" | "error";
   error?: string;
-}
-
-function apiFetch(url: string, options: RequestInit = {}): Promise<Response> {
-  const fullUrl = getApiUrl(url);
-  return fetch(fullUrl, {
-    ...options,
-    credentials: "include",
-    headers: {
-      ...options.headers,
-      "X-Server-Domain": getCurrentDomain(),
-    },
-  });
 }
 
 export default function UploadEvidencePage() {

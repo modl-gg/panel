@@ -30,7 +30,7 @@ import MediaUpload from '@/components/MediaUpload';
 import { apiRequest } from '@/lib/queryClient';
 import { getAvatarUrl } from '@/lib/api';
 import { queryClient } from '@/lib/queryClient';
-import { toast } from '@/hooks/use-toast';
+import { toast } from '@modl-gg/shared-web/hooks/use-toast';
 import MarkdownRenderer from '@/components/ui/markdown-renderer';
 import MarkdownHelp from '@/components/ui/markdown-help';
 import { formatDate } from '@/utils/date-utils';

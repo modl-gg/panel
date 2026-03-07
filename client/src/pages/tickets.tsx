@@ -22,7 +22,7 @@ import { Checkbox } from '@modl-gg/shared-web/components/ui/checkbox';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@modl-gg/shared-web/components/ui/table';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@modl-gg/shared-web/components/ui/select';
 import { useTickets, useTicketStatusCounts, useBulkUpdateTickets, useLabels, useStaff, useUpdateTicket } from '@/hooks/use-data';
-import { useIsMobile } from '@/hooks/use-mobile';
+import { useIsMobile } from '@modl-gg/shared-web/hooks/use-mobile';
 import PageContainer from '@/components/layout/PageContainer';
 import { FilterDropdown } from '@/components/tickets/FilterDropdown';
 import { BulkActionBar } from '@/components/tickets/BulkActionBar';

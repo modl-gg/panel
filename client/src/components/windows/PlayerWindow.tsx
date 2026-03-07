@@ -12,7 +12,7 @@ import ResizableWindow from '@/components/layout/ResizableWindow';
 import { usePlayer, useApplyPunishment, useSettings, usePunishmentTypes, usePlayerTickets, usePlayerAllTickets, useModifyPunishment, useAddPunishmentNote, useModifyPunishmentTickets, useLinkedAccounts, useFindLinkedAccounts, useLinkedBansForPunishment } from '@/hooks/use-data';
 import { ClickablePlayer } from '@/components/ui/clickable-player';
 import { useAuth } from '@/hooks/use-auth';
-import { toast } from '@/hooks/use-toast';
+import { toast } from '@modl-gg/shared-web/hooks/use-toast';
 import PlayerPunishment, { PlayerPunishmentData } from '@/components/ui/player-punishment';
 import MediaUpload from '@/components/MediaUpload';
 import { formatDateWithTime } from '@/utils/date-utils';

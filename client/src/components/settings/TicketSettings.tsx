@@ -16,45 +16,10 @@ import { Separator } from '@modl-gg/shared-web/components/ui/separator';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@modl-gg/shared-web/components/ui/dialog';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@modl-gg/shared-web/components/ui/alert-dialog';
 import { QuickResponseAction, QuickResponseCategory, QuickResponsesConfiguration, defaultQuickResponsesConfig } from '@/types/quickResponses';
+import { TicketFormField, TicketFormSection, TicketFormSettings, TicketFormsConfiguration } from '@/types/forms';
 import { useBillingStatus } from '@/hooks/use-data';
 import { useAuth } from '@/hooks/use-auth';
 import { formatStrictnessLabel, hasPremiumAccess, normalizeStrictnessLevel } from '@/lib/backend-enums';
-
-// Import the types we need for the form builder
-interface TicketFormField {
-  id: string;
-  type: 'text' | 'textarea' | 'dropdown' | 'multiple_choice' | 'checkbox' | 'file_upload' | 'checkboxes' | 'description';
-  label: string;
-  description?: string;
-  required: boolean;
-  options?: string[];
-  order: number;
-  sectionId?: string;
-  goToSection?: string;
-  optionSectionMapping?: Record<string, string>;
-}
-
-interface TicketFormSection {
-  id: string;
-  title: string;
-  description?: string;
-  order: number;
-  showIfFieldId?: string;
-  showIfValue?: string;
-  showIfValues?: string[];
-  hideByDefault?: boolean;
-}
-
-interface TicketFormSettings {
-  fields: TicketFormField[];
-  sections: TicketFormSection[];
-}
-
-interface TicketFormsConfiguration {
-  bug: TicketFormSettings;
-  support: TicketFormSettings;
-  application: TicketFormSettings;
-}
 
 // Label type definition
 interface Label {

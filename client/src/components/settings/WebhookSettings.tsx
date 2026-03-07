@@ -9,7 +9,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@modl
 import { Badge } from '@modl-gg/shared-web/components/ui/badge';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@modl-gg/shared-web/components/ui/collapsible';
 import { usePermissions } from '@/hooks/use-permissions';
-import { toast } from '@/hooks/use-toast';
+import { toast } from '@modl-gg/shared-web/hooks/use-toast';
 import { apiFetch } from '@/lib/api';
 import EmbedTemplateEditor from './EmbedTemplateEditor';
 

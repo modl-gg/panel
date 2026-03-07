@@ -8,7 +8,7 @@ import {
   CheckSquare,
   ArrowLeft,
 } from 'lucide-react';
-import { getApiUrl, getCurrentDomain } from '@/lib/api';
+import { apiFetch } from '@/lib/api';
 import { Button } from "@modl-gg/shared-web/components/ui/button";
 import {
   Card,
@@ -22,25 +22,12 @@ import { Label } from "@modl-gg/shared-web/components/ui/label";
 import { Textarea } from "@modl-gg/shared-web/components/ui/textarea";
 import { Checkbox } from "@modl-gg/shared-web/components/ui/checkbox";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@modl-gg/shared-web/components/ui/select";
-import { useToast } from "@/hooks/use-toast";
+import { useToast } from '@modl-gg/shared-web/hooks/use-toast';
 import { useSettings } from "@/hooks/use-data";
 import MediaUpload from '@/components/MediaUpload';
 import { getCreatorIdentifier } from '@/utils/creator-verification';
 import { useMediaUpload } from '@/hooks/use-media-upload';
 import { getApiErrorMessage, isValidEmail, normalizeEmail } from '@/utils/email-validation';
-
-async function apiFetch(url: string, options: RequestInit = {}): Promise<Response> {
-  const fullUrl = getApiUrl(url);
-  return fetch(fullUrl, {
-    ...options,
-    credentials: "include",
-    headers: {
-      ...options.headers,
-      "X-Server-Domain": getCurrentDomain(),
-      "Content-Type": "application/json",
-    },
-  });
-}
 
 // Map URL types to internal ticket types
 const typeMapping: Record<string, string> = {

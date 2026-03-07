@@ -26,7 +26,7 @@ import { useBeforeUnload } from 'react-router-dom';
 import { useLocation } from "wouter"; // For wouter navigation
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@modl-gg/shared-web/components/ui/tooltip";
 import { useAuth } from '@/hooks/use-auth';
-import { useIsMobile } from '@/hooks/use-mobile';
+import { useIsMobile } from '@modl-gg/shared-web/hooks/use-mobile';
 import { PERMISSIONS, usePermissions } from '@/hooks/use-permissions';
 import StaffManagementPanel from '@/components/settings/StaffManagementPanel';
 import StaffRolesCard from '@/components/settings/StaffRolesCard';
@@ -48,73 +48,15 @@ import {
   normalizeStrictnessLevel,
   normalizeSubscriptionStatus,
 } from '@/lib/backend-enums';
-
-// Type definitions for appeal form fields
-interface AppealFormField {
-  id: string;
-  type: 'text' | 'textarea' | 'dropdown' | 'multiple_choice' | 'checkbox' | 'file_upload' | 'checkboxes';
-  label: string;
-  description?: string;
-  required: boolean;
-  options?: string[];
-  order: number;
-  sectionId?: string;
-  goToSection?: string;
-  optionSectionMapping?: Record<string, string>; // Maps option values to section IDs
-}
-
-interface AppealFormSection {
-  id: string;
-  title: string;
-  description?: string;
-  order: number;
-  showIfFieldId?: string;
-  showIfValue?: string;
-  showIfValues?: string[];
-  hideByDefault?: boolean;
-}
-
-interface AppealFormSettings {
-  fields: AppealFormField[];
-  sections: AppealFormSection[];
-}
-
-// Type definitions for configurable ticket forms with sections
-interface TicketFormField {
-  id: string;
-  type: 'text' | 'textarea' | 'dropdown' | 'multiple_choice' | 'checkbox' | 'file_upload' | 'checkboxes';
-  label: string;
-  description?: string;
-  required: boolean;
-  options?: string[]; // For dropdown, multiple_choice, and checkboxes fields
-  order: number;
-  sectionId?: string; // Which section this field belongs to
-  goToSection?: string; // Legacy: Section to show when this field has a value
-  optionSectionMapping?: Record<string, string>; // Maps option values to section IDs
-}
-
-interface TicketFormSection {
-  id: string;
-  title: string;
-  description?: string;
-  order: number;
-  // Conditional display based on field values
-  showIfFieldId?: string; // Field ID to watch for conditions
-  showIfValue?: string; // Value that triggers showing this section
-  showIfValues?: string[]; // Multiple values that can trigger showing this section
-}
-
-interface TicketFormSettings {
-  fields: TicketFormField[];
-  sections: TicketFormSection[];
-}
-
-// Configuration for all ticket form types
-interface TicketFormsConfiguration {
-  bug: TicketFormSettings;
-  support: TicketFormSettings;
-  application: TicketFormSettings;
-}
+import {
+  AppealFormField,
+  AppealFormSection,
+  AppealFormSettings,
+  TicketFormField,
+  TicketFormSection,
+  TicketFormSettings,
+  TicketFormsConfiguration,
+} from '@/types/forms';
 
 // Type definitions for punishment types
 interface PunishmentType {

@@ -14,7 +14,7 @@ import UsageSettings from './UsageSettings';
 import WebhookSettings from './WebhookSettings';
 import MigrationTool from './MigrationTool';
 import { queryClient } from '@/lib/queryClient';
-import { toast } from '@/hooks/use-toast';
+import { toast } from '@modl-gg/shared-web/hooks/use-toast';
 
 interface GeneralSettingsProps {
   // Server Configuration

@@ -1,17 +1,5 @@
 import { useQuery } from '@tanstack/react-query';
-import { getApiUrl, getCurrentDomain } from '@/lib/api';
-
-async function apiFetch(url: string, options: RequestInit = {}): Promise<Response> {
-  const fullUrl = getApiUrl(url);
-  return fetch(fullUrl, {
-    ...options,
-    credentials: "include",
-    headers: {
-      ...options.headers,
-      "X-Server-Domain": getCurrentDomain(),
-    },
-  });
-}
+import { apiFetch } from '@/lib/api';
 
 // Helper function to extract UUID from username or return UUID if already a UUID
 export function extractPlayerIdentifier(playerText: string): string {

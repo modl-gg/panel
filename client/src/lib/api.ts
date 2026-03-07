@@ -49,6 +49,11 @@ function resolveCredentials(path: string, options?: RequestOptions): RequestCred
 function createHeaders(options?: RequestOptions): Headers {
   const headers = new Headers(options?.headers);
 
+  // Always include the server domain for multi-tenancy
+  if (!headers.has('X-Server-Domain')) {
+    headers.set('X-Server-Domain', getCurrentDomain());
+  }
+
   // Set Content-Type for JSON bodies (object or already-stringified JSON)
   if (options?.body && (typeof options.body === 'object' || typeof options.body === 'string')) {
     if (!headers.has('Content-Type')) {
@@ -117,6 +122,11 @@ export async function apiUpload(
 ): Promise<Response> {
   const fullUrl = getApiUrl(path);
   const headers = new Headers(options?.headers);
+
+  // Always include the server domain for multi-tenancy
+  if (!headers.has('X-Server-Domain')) {
+    headers.set('X-Server-Domain', getCurrentDomain());
+  }
 
   const response = await fetch(fullUrl, {
     ...options,

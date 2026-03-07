@@ -48,7 +48,7 @@ import { Checkbox } from '@modl-gg/shared-web/components/ui/checkbox';
 import { useTicket, usePanelTicket, useUpdateTicket, useSettings, useStaff, useModifyPunishment, useApplyPunishment, useQuickResponses, usePunishmentTypes, useLabels } from '@/hooks/use-data';
 import { LabelBadge } from '@/components/ui/label-badge';
 import { QuickResponsesConfiguration, defaultQuickResponsesConfig } from '@/types/quickResponses';
-import { useToast } from '@/hooks/use-toast';
+import { useToast } from '@modl-gg/shared-web/hooks/use-toast';
 import PageContainer from '@/components/layout/PageContainer';
 import { apiFetch } from '@/lib/api';
 import { Card, CardHeader, CardTitle, CardDescription, CardContent, CardFooter } from '@modl-gg/shared-web/components/ui/card';

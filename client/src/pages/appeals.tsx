@@ -5,19 +5,7 @@ import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { AlertTriangle, SearchIcon, ShieldCheck, ShieldX, Send, Paperclip, File, Image, Video, FileText, Eye, X } from 'lucide-react';
 import { formatDate } from '../utils/date-utils';
-import { getApiUrl, getCurrentDomain, getAvatarUrl } from '@/lib/api';
-
-async function apiFetch(url: string, options: RequestInit = {}): Promise<Response> {
-  const fullUrl = getApiUrl(url);
-  return fetch(fullUrl, {
-    ...options,
-    credentials: "include",
-    headers: {
-      ...options.headers,
-      "X-Server-Domain": getCurrentDomain(),
-    },
-  });
-}
+import { apiFetch, getAvatarUrl } from '@/lib/api';
 import { Label } from "@modl-gg/shared-web/components/ui/label";
 import { Button } from "@modl-gg/shared-web/components/ui/button";
 import { Input } from "@modl-gg/shared-web/components/ui/input";
@@ -48,41 +36,12 @@ import {
   AlertDescription,
   AlertTitle,
 } from "@modl-gg/shared-web/components/ui/alert";
-import { useToast } from "@/hooks/use-toast";
+import { useToast } from '@modl-gg/shared-web/hooks/use-toast';
 import { Separator } from '@modl-gg/shared-web/components/ui/separator';
 import { Badge } from '@modl-gg/shared-web/components/ui/badge';
 import { useSettings, useCreateAppeal } from '@/hooks/use-data';
 import TicketAttachments from '@/components/TicketAttachments';
-
-// Appeal form field interfaces
-interface AppealFormField {
-  id: string;
-  type: 'text' | 'textarea' | 'dropdown' | 'multiple_choice' | 'checkbox' | 'file_upload' | 'checkboxes';
-  label: string;
-  description?: string;
-  required: boolean;
-  options?: string[];
-  order: number;
-  sectionId?: string;
-  goToSection?: string;
-  optionSectionMapping?: Record<string, string>;
-}
-
-interface AppealFormSection {
-  id: string;
-  title: string;
-  description?: string;
-  order: number;
-  showIfFieldId?: string;
-  showIfValue?: string;
-  showIfValues?: string[];
-  hideByDefault?: boolean;
-}
-
-interface AppealFormSettings {
-  fields: AppealFormField[];
-  sections: AppealFormSection[];
-}
+import { AppealFormField, AppealFormSection, AppealFormSettings } from '@/types/forms';
 
 // Format date to MM/dd/yy HH:mm in browser's timezone
 

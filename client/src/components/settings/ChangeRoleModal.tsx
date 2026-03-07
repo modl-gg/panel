@@ -15,7 +15,7 @@ import { Label } from '@modl-gg/shared-web/components/ui/label';
 import { useQueryClient } from '@tanstack/react-query';
 import { useAuth } from '@/hooks/use-auth';
 import { useToast } from '@modl-gg/shared-web/hooks/use-toast';
-import { useQuery } from '@tanstack/react-query';
+import { useRoles } from '@/hooks/use-data';
 import { apiFetch } from '@/lib/api';
 
 interface StaffMember {
@@ -44,20 +44,8 @@ const ChangeRoleModal: React.FC<ChangeRoleModalProps> = ({ isOpen, onClose, staf
   const queryClient = useQueryClient();
   const [selectedRole, setSelectedRole] = useState<string>('');
   
-  // Fetch available roles from the API
-  const { data: rolesData } = useQuery({
-    queryKey: ['/v1/panel/roles'],
-    queryFn: async () => {
-      const { getApiUrl, getCurrentDomain } = await import('@/lib/api');
-      const response = await fetch(getApiUrl('/v1/panel/roles'), {
-        credentials: 'include',
-        headers: { 'X-Server-Domain': getCurrentDomain() }
-      });
-      if (!response.ok) throw new Error('Failed to fetch roles');
-      return response.json();
-    },
-    enabled: isOpen
-  });
+  // Fetch available roles from the shared hook
+  const { data: rolesData } = useRoles();
   
   // Filter out Super Admin role from available roles
   const availableRoles = (rolesData?.roles || []).filter((role: StaffRole) => role.name !== 'Super Admin');
