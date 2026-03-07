@@ -77,107 +77,110 @@ const AccountSettings = ({
         </Button>
       </div>
 
-      <div className="space-y-5">
-        <div className="flex gap-3">
-          <Label htmlFor="username" className="w-36 text-sm pt-2.5 shrink-0">{t('settings.panelDisplayName')}</Label>
-          <div className="flex-1 max-w-xs">
-            <Input
-              id="username"
-              type="text"
-              value={profileUsername}
-              onChange={(e) => setProfileUsername(e.target.value)}
-              placeholder="Enter display name"
-            />
-            <p className="text-xs text-muted-foreground mt-1.5">
-              {t('settings.displayNameDescription')}
-            </p>
-          </div>
-        </div>
-
-        {minecraftUsername && (
+      <div className="flex gap-6 items-start">
+        <div className="flex-1 space-y-5">
           <div className="flex gap-3">
-            <Label htmlFor="minecraft-username" className="w-36 text-sm pt-2.5 shrink-0">{t('settings.minecraftUsername')}</Label>
+            <Label htmlFor="username" className="w-36 text-sm pt-2.5 shrink-0">{t('settings.panelDisplayName')}</Label>
             <div className="flex-1 max-w-xs">
               <Input
-                id="minecraft-username"
+                id="username"
                 type="text"
-                value={minecraftUsername}
-                disabled
-                className="bg-muted text-muted-foreground"
+                value={profileUsername}
+                onChange={(e) => setProfileUsername(e.target.value)}
+                placeholder="Enter display name"
               />
               <p className="text-xs text-muted-foreground mt-1.5">
-                Your linked Minecraft account. {userRole === 'Super Admin' || userRole === 'Admin' ? t('settings.minecraftChangeAdmin') : t('settings.minecraftChangeContact')}
+                {t('settings.displayNameDescription')}
               </p>
             </div>
           </div>
-        )}
 
-        <div className="flex gap-3">
-          <Label htmlFor="email-address" className="w-36 text-sm pt-2.5 shrink-0">{t('settings.email')}</Label>
-          <div className="flex-1">
-            <div className="flex items-center gap-3">
-              <Input
-                id="email-address"
-                type="email"
-                value={currentEmail}
-                onChange={(e) => setCurrentEmail(e.target.value)}
-                placeholder="Enter email"
-                className="max-w-xs"
-              />
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={handleUpdateEmail}
-                disabled={isUpdatingEmail}
-              >
-                {isUpdatingEmail ? t('common.saving') : t('common.update')}
-              </Button>
+          {minecraftUsername && (
+            <div className="flex gap-3">
+              <Label htmlFor="minecraft-username" className="w-36 text-sm pt-2.5 shrink-0">{t('settings.minecraftUsername')}</Label>
+              <div className="flex-1 max-w-xs">
+                <Input
+                  id="minecraft-username"
+                  type="text"
+                  value={minecraftUsername}
+                  disabled
+                  className="bg-muted text-muted-foreground"
+                />
+                <p className="text-xs text-muted-foreground mt-1.5">
+                  Your linked Minecraft account. {userRole === 'Super Admin' || userRole === 'Admin' ? t('settings.minecraftChangeAdmin') : t('settings.minecraftChangeContact')}
+                </p>
+              </div>
             </div>
-            <p className="text-xs text-muted-foreground mt-1.5">
-              {t('settings.emailDescription')}
-            </p>
+          )}
+
+          <div className="flex gap-3">
+            <Label htmlFor="email-address" className="w-36 text-sm pt-2.5 shrink-0">{t('settings.email')}</Label>
+            <div className="flex-1">
+              <div className="flex items-center gap-3">
+                <Input
+                  id="email-address"
+                  type="email"
+                  value={currentEmail}
+                  onChange={(e) => setCurrentEmail(e.target.value)}
+                  placeholder="Enter email"
+                  className="max-w-xs"
+                />
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={handleUpdateEmail}
+                  disabled={isUpdatingEmail}
+                >
+                  {isUpdatingEmail ? t('common.saving') : t('common.update')}
+                </Button>
+              </div>
+              <p className="text-xs text-muted-foreground mt-1.5">
+                {t('settings.emailDescription')}
+              </p>
+            </div>
+          </div>
+
+          <div className="flex gap-3">
+            <Label htmlFor="language" className="w-36 text-sm pt-2.5 shrink-0">{t('settings.language')}</Label>
+            <div className="flex-1 max-w-xs">
+              <Select value={language} onValueChange={setLanguage}>
+                <SelectTrigger id="language">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="en">English</SelectItem>
+                  <SelectItem value="de">Deutsch</SelectItem>
+                  <SelectItem value="es">Español</SelectItem>
+                  <SelectItem value="nl">Nederlands</SelectItem>
+                </SelectContent>
+              </Select>
+              <p className="text-xs text-muted-foreground mt-1.5">
+                {t('settings.languageDescription')}
+              </p>
+            </div>
+          </div>
+
+          <div className="flex gap-3">
+            <Label htmlFor="date-format" className="w-36 text-sm pt-2.5 shrink-0">{t('settings.dateFormat')}</Label>
+            <div className="flex-1 max-w-xs">
+              <Select value={dateFormat} onValueChange={setDateFormat}>
+                <SelectTrigger id="date-format">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="MM/DD/YYYY">MM/DD/YYYY HH:mm</SelectItem>
+                  <SelectItem value="DD/MM/YYYY">DD/MM/YYYY HH:mm</SelectItem>
+                  <SelectItem value="YYYY-MM-DD">YYYY-MM-DD HH:mm</SelectItem>
+                </SelectContent>
+              </Select>
+              <p className="text-xs text-muted-foreground mt-1.5">
+                {t('settings.dateFormatDescription')}
+              </p>
+            </div>
           </div>
         </div>
 
-        <div className="flex gap-3">
-          <Label htmlFor="language" className="w-36 text-sm pt-2.5 shrink-0">{t('settings.language')}</Label>
-          <div className="flex-1 max-w-xs">
-            <Select value={language} onValueChange={setLanguage}>
-              <SelectTrigger id="language">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="en">English</SelectItem>
-                <SelectItem value="de">Deutsch</SelectItem>
-                <SelectItem value="es">Español</SelectItem>
-                <SelectItem value="nl">Nederlands</SelectItem>
-              </SelectContent>
-            </Select>
-            <p className="text-xs text-muted-foreground mt-1.5">
-              {t('settings.languageDescription')}
-            </p>
-          </div>
-        </div>
-
-        <div className="flex gap-3">
-          <Label htmlFor="date-format" className="w-36 text-sm pt-2.5 shrink-0">{t('settings.dateFormat')}</Label>
-          <div className="flex-1 max-w-xs">
-            <Select value={dateFormat} onValueChange={setDateFormat}>
-              <SelectTrigger id="date-format">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="MM/DD/YYYY">MM/DD/YYYY HH:mm</SelectItem>
-                <SelectItem value="DD/MM/YYYY">DD/MM/YYYY HH:mm</SelectItem>
-                <SelectItem value="YYYY-MM-DD">YYYY-MM-DD HH:mm</SelectItem>
-              </SelectContent>
-            </Select>
-            <p className="text-xs text-muted-foreground mt-1.5">
-              {t('settings.dateFormatDescription')}
-            </p>
-          </div>
-        </div>
-        <div className="rounded-md border">
+        <div className="w-72 shrink-0 rounded-md border">
           <PasskeySettings />
         </div>
       </div>
