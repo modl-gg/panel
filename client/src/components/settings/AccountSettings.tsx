@@ -123,7 +123,6 @@ function SessionsSection({ onSignOutAll }: { onSignOutAll: () => void }) {
         size="sm"
         onClick={handleSignOutAll}
         disabled={signingOut}
-        className="text-destructive hover:text-destructive"
       >
         <LogOut className="h-4 w-4 mr-2" />
         Sign out all
@@ -186,7 +185,7 @@ const AccountSettings = ({
         </Button>
       </div>
 
-      <div className="grid grid-cols-2 gap-0">
+      <div className="grid grid-cols-3 gap-0">
         {/* LEFT: form fields */}
         <div className="space-y-5 pr-6">
           <div className="flex gap-3">
@@ -290,11 +289,14 @@ const AccountSettings = ({
           </div>
         </div>
 
-        {/* RIGHT: passkeys + sessions */}
-        <div className="border-l border-border pl-6 space-y-6">
+        {/* MIDDLE: passkeys + sessions */}
+        <div className="border-l border-border px-6 space-y-6">
           <PasskeySettings />
           <SessionsSection onSignOutAll={logout} />
         </div>
+
+        {/* RIGHT: empty column aligned with sign-out button */}
+        <div className="border-l border-border" />
       </div>
     </div>
   );

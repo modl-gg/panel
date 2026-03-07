@@ -185,7 +185,7 @@ const PasskeySettings = () => {
   };
 
   return (
-    <div className="space-y-4 p-2 pt-0">
+    <div className="space-y-4">
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-3">
           <Fingerprint className="h-4 w-4 text-muted-foreground shrink-0" />
