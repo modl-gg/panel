@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
+import { useTranslation } from 'react-i18next';
 import {
   Eye, TriangleAlert, Ban, Search, LockOpen, History,
   Link2, StickyNote, Ticket, UserRound, Shield, FileText, Upload, Loader2,
@@ -12,7 +13,7 @@ import ResizableWindow from '@/components/layout/ResizableWindow';
 import { usePlayer, useApplyPunishment, useSettings, usePunishmentTypes, usePlayerTickets, usePlayerAllTickets, useModifyPunishment, useAddPunishmentNote, useModifyPunishmentTickets, useLinkedAccounts, useFindLinkedAccounts, useLinkedBansForPunishment } from '@/hooks/use-data';
 import { ClickablePlayer } from '@/components/ui/clickable-player';
 import { useAuth } from '@/hooks/use-auth';
-import { toast } from '@/hooks/use-toast';
+import { toast } from '@modl-gg/shared-web/hooks/use-toast';
 import PlayerPunishment, { PlayerPunishmentData } from '@/components/ui/player-punishment';
 import MediaUpload from '@/components/MediaUpload';
 import { formatDateWithTime } from '@/utils/date-utils';
@@ -205,6 +206,7 @@ const LinkedBansDisplay = ({ punishmentId, onPlayerClick }: { punishmentId: stri
 };
 
 const PlayerWindow = ({ playerId, isOpen, onClose, initialPosition }: PlayerWindowProps) => {
+  const { t } = useTranslation();
   const [activeTab, setActiveTab] = useState('history');
   const [banSearchResults, setBanSearchResults] = useState<{id: string; player: string}[]>([]);
   const [showBanSearchResults, setShowBanSearchResults] = useState(false);
@@ -263,8 +265,8 @@ const PlayerWindow = ({ playerId, isOpen, onClose, initialPosition }: PlayerWind
     // Validate required fields
     if (!playerInfo.selectedPunishmentCategory) {
       toast({
-        title: "Missing information",
-        description: "Please select a punishment category",
+        title: t('punishment.missingInfo'),
+        description: t('punishment.selectCategory'),
         variant: "destructive"
       });
       return;
@@ -274,8 +276,8 @@ const PlayerWindow = ({ playerId, isOpen, onClose, initialPosition }: PlayerWind
     const needsReason = ['Kick', 'Manual Mute', 'Manual Ban'].includes(playerInfo.selectedPunishmentCategory);
     if (needsReason && !playerInfo.reason?.trim()) {
       toast({
-        title: "Missing information",
-        description: "Please provide a reason for this punishment",
+        title: t('punishment.missingInfo'),
+        description: t('punishment.provideReason'),
         variant: "destructive"
       });
       return;
@@ -285,8 +287,8 @@ const PlayerWindow = ({ playerId, isOpen, onClose, initialPosition }: PlayerWind
     // For multi-severity punishments, severity is required
     if (punishmentType?.singleSeverityPunishment && !playerInfo.selectedOffenseLevel) {
       toast({
-        title: "Missing information",
-        description: "Please select an offense level",
+        title: t('punishment.missingInfo'),
+        description: t('punishment.selectOffenseLevel'),
         variant: "destructive"
       });
       return;
@@ -295,8 +297,8 @@ const PlayerWindow = ({ playerId, isOpen, onClose, initialPosition }: PlayerWind
     if (!punishmentType?.singleSeverityPunishment && !playerInfo.selectedSeverity && 
         !['Kick', 'Manual Mute', 'Manual Ban', 'Security Ban', 'Linked Ban', 'Blacklist'].includes(playerInfo.selectedPunishmentCategory)) {
       toast({
-        title: "Missing information",
-        description: "Please select a severity level",
+        title: t('punishment.missingInfo'),
+        description: t('punishment.selectSeverityLevel'),
         variant: "destructive"
       });
       return;
@@ -308,8 +310,8 @@ const PlayerWindow = ({ playerId, isOpen, onClose, initialPosition }: PlayerWind
                           
     if (needsDuration && !playerInfo.isPermanent && (!playerInfo.duration?.value || playerInfo.duration.value <= 0 || !playerInfo.duration?.unit)) {
       toast({
-        title: "Invalid duration",
-        description: "Please specify a valid duration (greater than 0) or select 'Permanent'",
+        title: t('punishment.invalidDuration'),
+        description: t('punishment.invalidDurationDesc'),
         variant: "destructive"
       });
       return;
@@ -319,8 +321,8 @@ const PlayerWindow = ({ playerId, isOpen, onClose, initialPosition }: PlayerWind
     const typeOrdinal = getPunishmentOrdinal(playerInfo.selectedPunishmentCategory);
     if (typeOrdinal === -1) {
       toast({
-        title: "Invalid punishment type",
-        description: "Unknown punishment type selected",
+        title: t('punishment.invalidType'),
+        description: t('punishment.unknownType'),
         variant: "destructive"
       });
       return;
@@ -551,6 +553,7 @@ const PlayerWindow = ({ playerId, isOpen, onClose, initialPosition }: PlayerWind
       // Use minecraftUsername for consistency with in-game punishments, fall back to panel username
       const punishmentData: { [key: string]: any } = {
         issuerName: user?.minecraftUsername || user?.username || 'Admin',
+        issuerId: user?.id,
         typeOrdinal: typeOrdinal,
         notes: notes,
         evidence: evidence,
@@ -571,8 +574,8 @@ const PlayerWindow = ({ playerId, isOpen, onClose, initialPosition }: PlayerWind
       
       // Show success message
       toast({
-        title: "Punishment applied",
-        description: `Successfully applied ${playerInfo.selectedPunishmentCategory} to ${playerInfo.username}`
+        title: t('punishment.applied'),
+        description: t('punishment.appliedToPlayer', { type: playerInfo.selectedPunishmentCategory, player: playerInfo.username })
       });
       
       // Reset the punishment form
@@ -600,8 +603,8 @@ const PlayerWindow = ({ playerId, isOpen, onClose, initialPosition }: PlayerWind
     } catch (error) {
       console.error('Error applying punishment:', error);
       toast({
-        title: "Failed to apply punishment",
-        description: error instanceof Error ? error.message : "An unknown error occurred",
+        title: t('punishment.applyFailed'),
+        description: error instanceof Error ? error.message : t('common.unknownError'),
         variant: "destructive"
       });
     } finally {
@@ -1007,10 +1010,11 @@ const PlayerWindow = ({ playerId, isOpen, onClose, initialPosition }: PlayerWind
           region: player.latestIPData?.region || player.region || 'Unknown',
           country: player.latestIPData?.country || player.country || 'Unknown',
           firstJoined: firstJoined,
-          lastOnline: getPlayerData(player, 'isOnline') ? 'Online' : 
-            (getPlayerData(player, 'lastDisconnect') ? 
-              formatDateWithTime(getPlayerData(player, 'lastDisconnect')) : 
-              'Unknown'),
+          lastOnline: getPlayerData(player, 'isOnline') ? 'Online' :
+            (getPlayerData(player, 'lastLogout') || getPlayerData(player, 'lastDisconnect') ?
+              formatDateWithTime(getPlayerData(player, 'lastLogout') || getPlayerData(player, 'lastDisconnect')) :
+              (player.ipAddresses?.length ? formatDateWithTime(player.ipAddresses[player.ipAddresses.length - 1].logins?.slice(-1)[0] || player.ipAddresses[player.ipAddresses.length - 1].firstLogin) :
+              'Unknown')),
           lastServer: player.lastServer || 'Unknown',
           playtime: (() => {
             const totalSeconds = getPlayerData(player, 'totalPlaytimeSeconds') || player.totalPlaytimeSeconds || 0;
@@ -1093,7 +1097,7 @@ const PlayerWindow = ({ playerId, isOpen, onClose, initialPosition }: PlayerWind
     return (
       <ResizableWindow
         id={`player-${playerId}`}
-        title="Loading Player Info..."
+        title={t('player.loadingInfo')}
         isOpen={isOpen}
         onClose={onClose}
         initialPosition={initialPosition}
@@ -1111,15 +1115,15 @@ const PlayerWindow = ({ playerId, isOpen, onClose, initialPosition }: PlayerWind
     return (
       <ResizableWindow
         id={`player-${playerId}`}
-        title="Player Not Found"
+        title={t('player.notFound')}
         isOpen={isOpen}
         onClose={onClose}
         initialPosition={initialPosition}
         initialSize={{ width: 650, height: 550 }}
       >
         <div className="flex flex-col items-center justify-center h-64">
-          <p className="text-destructive">Could not find player data.</p>
-          <Button onClick={onClose} className="mt-4">Close</Button>
+          <p className="text-destructive">{t('player.notFoundDesc')}</p>
+          <Button onClick={onClose} className="mt-4">{t('common.close')}</Button>
         </div>
       </ResizableWindow>
     );
@@ -1455,9 +1459,9 @@ const PlayerWindow = ({ playerId, isOpen, onClose, initialPosition }: PlayerWind
                     "bg-success/10 text-success border-success/20" : 
                     "bg-muted/50 text-muted-foreground border-muted/30"
                   }>
-                    {playerInfo.status === 'Online' ? 
-                      "Online" : 
-                      "Offline"
+                    {playerInfo.status === 'Online' ?
+                      t('player.online') :
+                      t('player.offline')
                     }
                   </Badge>
                   <Badge variant="outline" className={
@@ -1467,7 +1471,7 @@ const PlayerWindow = ({ playerId, isOpen, onClose, initialPosition }: PlayerWind
                       "bg-warning/10 text-warning border-warning/20" : 
                       "bg-destructive/10 text-destructive border-destructive/20"
                   }>
-                    Social: {playerInfo.social.toLowerCase()}
+                    {t('player.social')}: {playerInfo.social.toLowerCase()}
                   </Badge>
                   <Badge variant="outline" className={
                     playerInfo.gameplay.toLowerCase() === 'low' ? 
@@ -1476,7 +1480,7 @@ const PlayerWindow = ({ playerId, isOpen, onClose, initialPosition }: PlayerWind
                       "bg-warning/10 text-warning border-warning/20" : 
                       "bg-destructive/10 text-destructive border-destructive/20"
                   }>
-                    Gameplay: {playerInfo.gameplay.toLowerCase()}
+                    {t('player.gameplay')}: {playerInfo.gameplay.toLowerCase()}
                   </Badge>
                   {playerInfo.punishmentStatus && (
                     <Badge variant="outline" className={
@@ -1484,40 +1488,40 @@ const PlayerWindow = ({ playerId, isOpen, onClose, initialPosition }: PlayerWind
                         ? "bg-destructive/10 text-destructive border-destructive/20"
                         : "bg-warning/10 text-warning border-warning/20"
                     }>
-                      {playerInfo.punishmentStatus === 'banned' ? 'Currently banned' : 'Currently muted'}
+                      {playerInfo.punishmentStatus === 'banned' ? t('player.currentlyBanned') : t('player.currentlyMuted')}
                     </Badge>
                   )}
                 </div>
                 
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-x-4 gap-y-2 mt-4 text-sm">
                   <div>
-                    <span className="text-muted-foreground">Region:</span>
+                    <span className="text-muted-foreground">{t('player.region')}:</span>
                     <span className="ml-1">{playerInfo.region}</span>
                     {playerInfo.region && playerInfo.region !== 'Unknown' && (
-                      <span className="text-xs text-muted-foreground ml-1">(from latest IP)</span>
+                      <span className="text-xs text-muted-foreground ml-1">({t('player.fromLatestIp')})</span>
                     )}
                   </div>
                   <div>
-                    <span className="text-muted-foreground">Country:</span>
+                    <span className="text-muted-foreground">{t('player.country')}:</span>
                     <span className="ml-1">{playerInfo.country}</span>
                     {playerInfo.country && playerInfo.country !== 'Unknown' && (
-                      <span className="text-xs text-muted-foreground ml-1">(from latest IP)</span>
+                      <span className="text-xs text-muted-foreground ml-1">({t('player.fromLatestIp')})</span>
                     )}
                   </div>
                   <div>
-                    <span className="text-muted-foreground">First Join:</span>
+                    <span className="text-muted-foreground">{t('player.firstJoin')}:</span>
                     <span className="ml-1">{playerInfo.firstJoined}</span>
                   </div>
                   <div>
-                    <span className="text-muted-foreground">Last Join:</span>
+                    <span className="text-muted-foreground">{t('player.lastJoin')}:</span>
                     <span className="ml-1">{playerInfo.lastOnline}</span>
                   </div>
                   <div>
-                    <span className="text-muted-foreground">Playtime:</span>
+                    <span className="text-muted-foreground">{t('player.playtime')}:</span>
                     <span className="ml-1">{playerInfo.playtime}</span>
                   </div>
                   <div>
-                    <span className="text-muted-foreground">{playerInfo.status === 'Online' ? 'Current Server:' : 'Last Server:'}</span>
+                    <span className="text-muted-foreground">{playerInfo.status === 'Online' ? t('player.currentServer') : t('player.lastServer')}:</span>
                     <span className="ml-1">{playerInfo.lastServer}</span>
                   </div>
                 </div>
@@ -1530,32 +1534,32 @@ const PlayerWindow = ({ playerId, isOpen, onClose, initialPosition }: PlayerWind
           <TabsList className="grid grid-cols-6 gap-1 px-1">
             <TabsTrigger value="history" className="text-xs py-2">
               <History className="h-3.5 w-3.5 mr-1.5" />
-              History
+              {t('player.tabs.history')}
             </TabsTrigger>
             <TabsTrigger value="linked" className="text-xs py-2">
               <Link2 className="h-3.5 w-3.5 mr-1.5 flex-shrink-0" />
-              Connected
+              {t('player.tabs.connected')}
             </TabsTrigger>
             <TabsTrigger value="notes" className="text-xs py-2">
               <StickyNote className="h-3.5 w-3.5 mr-1.5" />
-              Notes
+              {t('player.tabs.notes')}
             </TabsTrigger>
             <TabsTrigger value="tickets" className="text-xs py-2">
               <Ticket className="h-3.5 w-3.5 mr-1.5" />
-              Tickets
+              {t('player.tabs.tickets')}
             </TabsTrigger>
             <TabsTrigger value="names" className="text-xs py-2">
               <UserRound className="h-3.5 w-3.5 mr-1.5" />
-              Names
+              {t('player.tabs.names')}
             </TabsTrigger>
             <TabsTrigger value="punishment" className="text-xs py-2">
               <Shield className="h-3.5 w-3.5 mr-1.5" />
-              Punish
+              {t('player.tabs.punish')}
             </TabsTrigger>
           </TabsList>
           
           <TabsContent value="history" className="space-y-2 mx-1 mt-3">
-            <h4 className="font-medium">Player History</h4>
+            <h4 className="font-medium">{t('player.playerHistory')}</h4>
             <div className="space-y-2">              {playerInfo.warnings.length > 0 ? playerInfo.warnings.map((warning, index) => {
                 const isExpanded = expandedPunishments.has(warning.id || `warning-${index}`);
                 const isPunishment = warning.id && (
@@ -1586,7 +1590,7 @@ const PlayerWindow = ({ playerId, isOpen, onClose, initialPosition }: PlayerWind
                             if (!warning.started) {
                               return (
                                 <Badge variant="outline" className="text-xs bg-yellow-100 dark:bg-yellow-900 text-yellow-800 dark:text-yellow-200 border-yellow-300 dark:border-yellow-700">
-                                  Unstarted
+                                  {t('player.unstarted')}
                                 </Badge>
                               );
                             }
@@ -1603,7 +1607,7 @@ const PlayerWindow = ({ playerId, isOpen, onClose, initialPosition }: PlayerWind
                             if (pardonModification) {
                               return (
                                 <Badge variant="outline" className="text-xs bg-blue-100 dark:bg-blue-900 text-blue-800 dark:text-blue-200 border-blue-300 dark:border-blue-700">
-                                  Pardoned
+                                  {t('player.pardoned')}
                                 </Badge>
                               );
                             }
@@ -1611,7 +1615,7 @@ const PlayerWindow = ({ playerId, isOpen, onClose, initialPosition }: PlayerWind
                             if (isInactive) {
                               return (
                                 <Badge variant="outline" className="text-xs bg-gray-100 dark:bg-gray-800 text-gray-800 dark:text-gray-200 border-gray-300 dark:border-gray-600">
-                                  Inactive
+                                  {t('player.inactive')}
                                 </Badge>
                               );
                             }
@@ -1619,7 +1623,7 @@ const PlayerWindow = ({ playerId, isOpen, onClose, initialPosition }: PlayerWind
                             // Punishment is active
                             return (
                               <Badge variant="outline" className="text-xs bg-green-100 dark:bg-green-900 text-green-800 dark:text-green-200 border-green-300 dark:border-green-700">
-                                Active
+                                {t('player.active')}
                               </Badge>
                             );
                           })()}
@@ -1665,7 +1669,7 @@ const PlayerWindow = ({ playerId, isOpen, onClose, initialPosition }: PlayerWind
                               if (isPunishment && !warning.started) {
                                 return (
                                   <div className="text-muted-foreground">
-                                    Waiting for server execution
+                                    {t('player.waitingExecution')}
                                   </div>
                                 );
                               }
@@ -1880,7 +1884,7 @@ const PlayerWindow = ({ playerId, isOpen, onClose, initialPosition }: PlayerWind
                       <div className="mt-3 pt-3 border-t border-border/50 space-y-2">
                         <div>
                           <div className="flex items-center justify-between mb-1">
-                            <p className="text-xs font-medium text-muted-foreground">Evidence:</p>
+                            <p className="text-xs font-medium text-muted-foreground">{t('punishment.evidence')}:</p>
                           </div>
                           {warning.evidence && warning.evidence.length > 0 ? (
                             <ul className="text-xs space-y-2">
@@ -1941,7 +1945,7 @@ const PlayerWindow = ({ playerId, isOpen, onClose, initialPosition }: PlayerWind
                                         {evidenceType === 'file' ? (
                                           <div className="space-y-2">
                                             <div className="flex items-center gap-2">
-                                              <span className="font-medium">File:</span>
+                                              <span className="font-medium">{t('player.file')}:</span>
                                               <a 
                                                 href={fileUrl} 
                                                 target="_blank" 
@@ -1977,7 +1981,7 @@ const PlayerWindow = ({ playerId, isOpen, onClose, initialPosition }: PlayerWind
                                                 rel="noopener noreferrer"
                                                 className="text-blue-600 hover:text-blue-800 underline break-all"
                                               >
-                                                Download File
+                                                {t('upload.downloadFile')}
                                               </a>
                                             )}
                                           </div>
@@ -2017,13 +2021,13 @@ const PlayerWindow = ({ playerId, isOpen, onClose, initialPosition }: PlayerWind
                               })}
                             </ul>
                           ) : (
-                            <p className="text-xs text-muted-foreground">No evidence added</p>
+                            <p className="text-xs text-muted-foreground">{t('player.noEvidence')}</p>
                           )}
                         </div>
                         
                         {warning.notes && warning.notes.length > 0 && (
                           <div>
-                            <p className="text-xs font-medium text-muted-foreground mb-1">Staff Notes:</p>
+                            <p className="text-xs font-medium text-muted-foreground mb-1">{t('punishment.staffNotes')}:</p>
                             <ul className="text-xs space-y-1">
                               {warning.notes.map((note, idx) => {
                                 // For manual punishments, skip the first note as it's displayed as the reason
@@ -2051,7 +2055,7 @@ const PlayerWindow = ({ playerId, isOpen, onClose, initialPosition }: PlayerWind
                         
                         {warning.attachedTicketIds && warning.attachedTicketIds.length > 0 && (
                           <div>
-                            <p className="text-xs font-medium text-muted-foreground mb-1">Attached Tickets:</p>
+                            <p className="text-xs font-medium text-muted-foreground mb-1">{t('player.attachedTickets')}:</p>
                             <div className="flex flex-wrap gap-1">
                               {warning.attachedTicketIds.map((ticketId, idx) => (
                                 <Button
@@ -2087,7 +2091,7 @@ const PlayerWindow = ({ playerId, isOpen, onClose, initialPosition }: PlayerWind
                         {/* Modification History */}
                         {effectiveState.hasModifications && (
                           <div>
-                            <p className="text-xs font-medium text-muted-foreground mb-1">Modification History:</p>                            <div className="space-y-1">
+                            <p className="text-xs font-medium text-muted-foreground mb-1">{t('player.modificationHistory')}:</p>                            <div className="space-y-1">
                               {effectiveState.modifications.map((mod: any, idx: number) => (
                                 <div key={idx} className="bg-muted/20 p-2 rounded text-xs border-l-2 border-blue-500">
                                   <div className="flex justify-between items-start mb-1">
@@ -2130,7 +2134,7 @@ const PlayerWindow = ({ playerId, isOpen, onClose, initialPosition }: PlayerWind
                         
                         {warning.data && Object.keys(warning.data).length > 0 && (
                           <div>
-                            <p className="text-xs font-medium text-muted-foreground mb-1">Additional Data:</p>
+                            <p className="text-xs font-medium text-muted-foreground mb-1">{t('player.additionalData')}:</p>
                             <div className="text-xs bg-muted/20 p-2 rounded font-mono">
                               {Object.entries(warning.data).map(([key, value]) => (
                                 <div key={key}>
@@ -2164,7 +2168,7 @@ const PlayerWindow = ({ playerId, isOpen, onClose, initialPosition }: PlayerWind
                             }}
                           >
                             <StickyNote className="h-3 w-3 mr-1" />
-                            Add Note
+                            {t('player.addNote')}
                           </Button>
                           <Button
                             variant="outline"
@@ -2181,7 +2185,7 @@ const PlayerWindow = ({ playerId, isOpen, onClose, initialPosition }: PlayerWind
                             }}
                           >
                             <FileText className="h-3 w-3 mr-1" />
-                            Add Evidence
+                            {t('player.addEvidence')}
                           </Button>
                             <Button
                             variant="outline"
@@ -2198,7 +2202,7 @@ const PlayerWindow = ({ playerId, isOpen, onClose, initialPosition }: PlayerWind
                             }}
                           >
                             <Settings className="h-3 w-3 mr-1" />
-                            Modify                          </Button>
+                            {t('player.modify')}                          </Button>
                           <Button
                             variant="outline"
                             size="sm"
@@ -2216,13 +2220,13 @@ const PlayerWindow = ({ playerId, isOpen, onClose, initialPosition }: PlayerWind
                             }}
                           >
                             <Ticket className="h-3 w-3 mr-1" />
-                            Tickets
+                            {t('player.tabs.tickets')}
                           </Button>
                         </div>
                         )}                        {/* Add Note Form */}
                         {warning.id && playerInfo.isAddingPunishmentNote && playerInfo.punishmentNoteTarget === (warning.id || `warning-${index}`) && (
                           <div className="mt-3 p-3 bg-muted/20 rounded-lg border">
-                            <p className="text-xs font-medium mb-2">Add Note to Punishment</p>
+                            <p className="text-xs font-medium mb-2">{t('player.addNoteToTitle')}</p>
                             <textarea
                               className="w-full rounded-md border border-border bg-background px-3 py-2 text-sm h-16 resize-none"
                               placeholder="Enter your note here..."
@@ -2240,7 +2244,7 @@ const PlayerWindow = ({ playerId, isOpen, onClose, initialPosition }: PlayerWind
                                   newPunishmentNote: ''
                                 }))}
                               >
-                                Cancel
+                                {t('common.cancel')}
                               </Button>
                               <Button
                                 size="sm"
@@ -2253,8 +2257,8 @@ const PlayerWindow = ({ playerId, isOpen, onClose, initialPosition }: PlayerWind
                                       noteText: playerInfo.newPunishmentNote
                                     });
                                       toast({
-                                      title: "Note added",
-                                      description: "Note has been added to the punishment successfully"
+                                      title: t('player.noteAdded'),
+                                      description: t('player.noteAddedDesc')
                                     });
                                     
                                     // Refetch player data to update the UI
@@ -2270,14 +2274,14 @@ const PlayerWindow = ({ playerId, isOpen, onClose, initialPosition }: PlayerWind
                                   } catch (error) {
                                     console.error('Error adding note to punishment:', error);
                                     toast({
-                                      title: "Failed to add note",
-                                      description: error instanceof Error ? error.message : "An unknown error occurred",
+                                      title: t('player.addNoteFailed'),
+                                      description: error instanceof Error ? error.message : t('common.unknownError'),
                                       variant: "destructive"
                                     });
                                   }
                                 }}
                               >
-                                Add Note
+                                {t('player.addNote')}
                               </Button>
                             </div>
                           </div>                        )}
@@ -2285,7 +2289,7 @@ const PlayerWindow = ({ playerId, isOpen, onClose, initialPosition }: PlayerWind
                         {/* Add Evidence Form */}
                         {warning.id && playerInfo.isAddingPunishmentEvidence && playerInfo.punishmentEvidenceTarget === (warning.id || `warning-${index}`) && (
                           <div className="mt-3 p-3 bg-muted/20 rounded-lg border">
-                            <p className="text-xs font-medium mb-2">Add Evidence to Punishment</p>
+                            <p className="text-xs font-medium mb-2">{t('player.addEvidenceToTitle')}</p>
                             <div className="flex items-center space-x-2">
                               <textarea
                                 className={`flex-1 rounded-md border border-border px-3 py-2 text-sm h-10 resize-none ${
@@ -2337,7 +2341,7 @@ const PlayerWindow = ({ playerId, isOpen, onClose, initialPosition }: PlayerWind
                                   uploadedEvidenceFile: null
                                 }))}
                               >
-                                Cancel
+                                {t('common.cancel')}
                               </Button>
                               <Button
                                 size="sm"
@@ -2354,6 +2358,7 @@ const PlayerWindow = ({ playerId, isOpen, onClose, initialPosition }: PlayerWind
                                       evidenceData = {
                                         text: playerInfo.uploadedEvidenceFile.fileName,
                                         issuerName: user?.minecraftUsername || user?.username || 'Admin',
+                                        issuerId: user?.id,
                                         type: 'file',
                                         url: playerInfo.uploadedEvidenceFile.url,
                                         fileName: playerInfo.uploadedEvidenceFile.fileName,
@@ -2367,6 +2372,7 @@ const PlayerWindow = ({ playerId, isOpen, onClose, initialPosition }: PlayerWind
                                       evidenceData = {
                                         text: trimmedEvidence,
                                         issuerName: user?.minecraftUsername || user?.username || 'Admin',
+                                        issuerId: user?.id,
                                         type: isUrl ? 'url' : 'text',
                                         url: isUrl ? trimmedEvidence : null
                                       };
@@ -2386,8 +2392,8 @@ const PlayerWindow = ({ playerId, isOpen, onClose, initialPosition }: PlayerWind
                                     }
                                     
                                     toast({
-                                      title: 'Evidence Added',
-                                      description: `Evidence has been added to the punishment successfully`
+                                      title: t('player.evidenceAdded'),
+                                      description: t('player.evidenceAddedDesc')
                                     });
                                     
                                     // Refetch player data to update the UI
@@ -2404,14 +2410,14 @@ const PlayerWindow = ({ playerId, isOpen, onClose, initialPosition }: PlayerWind
                                   } catch (error) {
                                     console.error('Error adding evidence to punishment:', error);
                                     toast({
-                                      title: "Failed to add evidence",
-                                      description: error instanceof Error ? error.message : "An unknown error occurred",
+                                      title: t('player.addEvidenceFailed'),
+                                      description: error instanceof Error ? error.message : t('common.unknownError'),
                                       variant: "destructive"
                                     });
                                   }
                                 }}
                               >
-                                Add Evidence
+                                {t('player.addEvidence')}
                               </Button>
                             </div>
                           </div>
@@ -2420,11 +2426,11 @@ const PlayerWindow = ({ playerId, isOpen, onClose, initialPosition }: PlayerWind
                         {/* Modify Punishment Form */}
                         {warning.id && playerInfo.isModifyingPunishment && playerInfo.modifyPunishmentTarget === (warning.id || `warning-${index}`) && (
                           <div className="mt-3 p-3 bg-muted/20 rounded-lg border">
-                            <p className="text-xs font-medium mb-2">Modify Punishment</p>
+                            <p className="text-xs font-medium mb-2">{t('player.modifyPunishment')}</p>
                             
                             <div className="space-y-2 mb-3">
                               <div>
-                                <label className="text-xs text-muted-foreground">Modification Type</label>
+                                <label className="text-xs text-muted-foreground">{t('player.modificationType')}</label>
                                 <select
                                   className="w-full rounded-md border border-border bg-background px-2 py-1 text-sm"
                                   value={playerInfo.selectedModificationType || ''}
@@ -2433,9 +2439,9 @@ const PlayerWindow = ({ playerId, isOpen, onClose, initialPosition }: PlayerWind
                                     selectedModificationType: e.target.value as any
                                   }))}
                                 >
-                                  <option value="">Select modification type...</option>
-                                  <option value="MANUAL_DURATION_CHANGE">Change Duration</option>
-                                  <option value="MANUAL_PARDON">Pardon</option>
+                                  <option value="">{t('player.selectModType')}</option>
+                                  <option value="MANUAL_DURATION_CHANGE">{t('player.changeDuration')}</option>
+                                  <option value="MANUAL_PARDON">{t('player.pardon')}</option>
                                   {(() => {
                                     const punishmentType = findPunishmentTypeForWarning(warning);
                                     const options = [];
@@ -2444,9 +2450,9 @@ const PlayerWindow = ({ playerId, isOpen, onClose, initialPosition }: PlayerWind
                                     if (punishmentType?.canBeAltBlocking) {
                                       const currentAltBlocking = warning.altBlocking;
                                       if (!currentAltBlocking) {
-                                        options.push(<option key="alt-true" value="SET_ALT_BLOCKING_TRUE">Enable Alt Blocking</option>);
+                                        options.push(<option key="alt-true" value="SET_ALT_BLOCKING_TRUE">{t('player.enableAltBlocking')}</option>);
                                       } else {
-                                        options.push(<option key="alt-false" value="SET_ALT_BLOCKING_FALSE">Disable Alt Blocking</option>);
+                                        options.push(<option key="alt-false" value="SET_ALT_BLOCKING_FALSE">{t('player.disableAltBlocking')}</option>);
                                       }
                                     }
                                     
@@ -2454,9 +2460,9 @@ const PlayerWindow = ({ playerId, isOpen, onClose, initialPosition }: PlayerWind
                                     if (punishmentType?.canBeStatWiping) {
                                       const currentStatWiping = warning.data?.wiping || warning.data?.statWiping || false;
                                       if (!currentStatWiping) {
-                                        options.push(<option key="wipe-true" value="SET_WIPING_TRUE">Enable Wiping</option>);
+                                        options.push(<option key="wipe-true" value="SET_WIPING_TRUE">{t('player.enableWiping')}</option>);
                                       } else {
-                                        options.push(<option key="wipe-false" value="SET_WIPING_FALSE">Disable Wiping</option>);
+                                        options.push(<option key="wipe-false" value="SET_WIPING_FALSE">{t('player.disableWiping')}</option>);
                                       }
                                     }
                                     
@@ -2467,7 +2473,7 @@ const PlayerWindow = ({ playerId, isOpen, onClose, initialPosition }: PlayerWind
                                 {playerInfo.selectedModificationType === 'MANUAL_DURATION_CHANGE' && (
                                 <div className="grid grid-cols-2 gap-2">
                                   <div>
-                                    <label className="text-xs text-muted-foreground">New Duration</label>
+                                    <label className="text-xs text-muted-foreground">{t('player.newDuration')}</label>
                                     <input
                                       type="number"
                                       min="0"
@@ -2485,7 +2491,7 @@ const PlayerWindow = ({ playerId, isOpen, onClose, initialPosition }: PlayerWind
                                     />
                                   </div>
                                   <div>
-                                    <label className="text-xs text-muted-foreground">Unit</label>
+                                    <label className="text-xs text-muted-foreground">{t('player.unit')}</label>
                                     <select
                                       className="w-full rounded-md border border-border bg-background px-2 py-1 text-sm"
                                       value={playerInfo.newDuration?.unit || 'minutes'}
@@ -2498,12 +2504,12 @@ const PlayerWindow = ({ playerId, isOpen, onClose, initialPosition }: PlayerWind
                                         }
                                       }))}
                                     >
-                                      <option value="seconds">Seconds</option>
-                                      <option value="minutes">Minutes</option>
-                                      <option value="hours">Hours</option>
-                                      <option value="days">Days</option>
-                                      <option value="weeks">Weeks</option>
-                                      <option value="months">Months</option>
+                                      <option value="seconds">{t('punishment.seconds')}</option>
+                                      <option value="minutes">{t('punishment.minutes')}</option>
+                                      <option value="hours">{t('punishment.hours')}</option>
+                                      <option value="days">{t('punishment.days')}</option>
+                                      <option value="weeks">{t('punishment.weeks')}</option>
+                                      <option value="months">{t('punishment.months')}</option>
                                     </select>
                                   </div>
                                 </div>
@@ -2511,7 +2517,7 @@ const PlayerWindow = ({ playerId, isOpen, onClose, initialPosition }: PlayerWind
                             </div>
                             
                             <div className="mb-3">
-                              <label className="text-xs text-muted-foreground">Reason</label>
+                              <label className="text-xs text-muted-foreground">{t('punishment.reason')}</label>
                               <textarea
                                 className="w-full rounded-md border border-border bg-background px-3 py-2 text-sm h-16 resize-none"
                                 placeholder="Reason for modification..."
@@ -2534,10 +2540,10 @@ const PlayerWindow = ({ playerId, isOpen, onClose, initialPosition }: PlayerWind
                                   newDuration: undefined
                                 }))}
                               >
-                                Cancel
+                                {t('common.cancel')}
                               </Button>
                               <Button
-                                size="sm"                                disabled={!playerInfo.modifyPunishmentReason?.trim() || 
+                                size="sm"                                disabled={!playerInfo.modifyPunishmentReason?.trim() ||
                                          !playerInfo.selectedModificationType ||
                                          (playerInfo.selectedModificationType === 'MANUAL_DURATION_CHANGE' && 
                                           playerInfo.newDuration?.value === undefined)}
@@ -2553,8 +2559,8 @@ const PlayerWindow = ({ playerId, isOpen, onClose, initialPosition }: PlayerWind
                                       newDuration: playerInfo.newDuration
                                     });
                                       toast({
-                                      title: 'Punishment Modified',
-                                      description: `Punishment has been modified successfully`
+                                      title: t('player.punishmentModified'),
+                                      description: t('player.punishmentModifiedDesc')
                                     });
                                     
                                     // Refetch player data to update the UI
@@ -2573,14 +2579,14 @@ const PlayerWindow = ({ playerId, isOpen, onClose, initialPosition }: PlayerWind
                                   } catch (error) {
                                     console.error('Error modifying punishment:', error);
                                     toast({
-                                      title: 'Failed to modify punishment',
-                                      description: error instanceof Error ? error.message : "An unknown error occurred",
+                                      title: t('player.modifyPunishmentFailed'),
+                                      description: error instanceof Error ? error.message : t('common.unknownError'),
                                       variant: "destructive"
                                     });
                                   }
                                 }}
                               >
-                                Apply Modification
+                                {t('player.applyModification')}
                               </Button>
                             </div>
                           </div>
@@ -2589,11 +2595,11 @@ const PlayerWindow = ({ playerId, isOpen, onClose, initialPosition }: PlayerWind
                         {/* Modify Tickets Form */}
                         {warning.id && playerInfo.isModifyingTickets && playerInfo.modifyTicketsTarget === (warning.id || `warning-${index}`) && (
                           <div className="mt-3 p-3 bg-muted/20 rounded-lg border">
-                            <p className="text-xs font-medium mb-2">Modify Linked Tickets</p>
+                            <p className="text-xs font-medium mb-2">{t('player.modifyLinkedTickets')}</p>
 
                             {/* Currently attached tickets */}
                             <div className="mb-3">
-                              <label className="text-xs text-muted-foreground mb-1 block">Attached Tickets</label>
+                              <label className="text-xs text-muted-foreground mb-1 block">{t('player.attachedTickets')}</label>
                               {(() => {
                                 const currentIds = warning.attachedTicketIds || [];
                                 const pendingAdd = playerInfo.modifyTicketsAdd || [];
@@ -2601,7 +2607,7 @@ const PlayerWindow = ({ playerId, isOpen, onClose, initialPosition }: PlayerWind
                                 const effectiveIds = [...currentIds.filter(id => !pendingRemove.includes(id)), ...pendingAdd];
 
                                 if (effectiveIds.length === 0) {
-                                  return <p className="text-xs text-muted-foreground italic">No tickets attached</p>;
+                                  return <p className="text-xs text-muted-foreground italic">{t('player.noTicketsAttached')}</p>;
                                 }
 
                                 return (
@@ -2649,7 +2655,7 @@ const PlayerWindow = ({ playerId, isOpen, onClose, initialPosition }: PlayerWind
 
                             {/* Available tickets to add */}
                             <div className="mb-3">
-                              <label className="text-xs text-muted-foreground mb-1 block">Add Tickets</label>
+                              <label className="text-xs text-muted-foreground mb-1 block">{t('player.addTickets')}</label>
                               {(() => {
                                 const currentIds = warning.attachedTicketIds || [];
                                 const pendingAdd = playerInfo.modifyTicketsAdd || [];
@@ -2662,7 +2668,7 @@ const PlayerWindow = ({ playerId, isOpen, onClose, initialPosition }: PlayerWind
                                 );
 
                                 if (available.length === 0) {
-                                  return <p className="text-xs text-muted-foreground italic">No open reports available for this player</p>;
+                                  return <p className="text-xs text-muted-foreground italic">{t('player.noOpenReports')}</p>;
                                 }
 
                                 return (
@@ -2700,7 +2706,7 @@ const PlayerWindow = ({ playerId, isOpen, onClose, initialPosition }: PlayerWind
                                 onChange={(e) => setPlayerInfo(prev => ({...prev, modifyTicketsAssociated: e.target.checked}))}
                                 className="rounded border-border"
                               />
-                              <span>Modify associated tickets (close added / reopen removed)</span>
+                              <span>{t('player.modifyAssociatedTickets')}</span>
                             </label>
 
                             <div className="flex justify-end gap-2">
@@ -2715,7 +2721,7 @@ const PlayerWindow = ({ playerId, isOpen, onClose, initialPosition }: PlayerWind
                                   modifyTicketsRemove: [],
                                 }))}
                               >
-                                Cancel
+                                {t('common.cancel')}
                               </Button>
                               <Button
                                 size="sm"
@@ -2733,8 +2739,8 @@ const PlayerWindow = ({ playerId, isOpen, onClose, initialPosition }: PlayerWind
                                       modifyAssociatedTickets: playerInfo.modifyTicketsAssociated ?? true
                                     });
                                     toast({
-                                      title: 'Tickets Updated',
-                                      description: 'Punishment ticket associations have been updated'
+                                      title: t('player.ticketsUpdated'),
+                                      description: t('player.ticketsUpdatedDesc')
                                     });
                                     refetch();
                                     setPlayerInfo(prev => ({
@@ -2747,17 +2753,17 @@ const PlayerWindow = ({ playerId, isOpen, onClose, initialPosition }: PlayerWind
                                   } catch (error) {
                                     console.error('Error modifying punishment tickets:', error);
                                     toast({
-                                      title: 'Failed to modify tickets',
-                                      description: error instanceof Error ? error.message : "An unknown error occurred",
+                                      title: t('player.modifyTicketsFailed'),
+                                      description: error instanceof Error ? error.message : t('common.unknownError'),
                                       variant: "destructive"
                                     });
                                   }
                                 }}
                               >
                                 {modifyPunishmentTickets.isPending ? (
-                                  <><Loader2 className="h-3 w-3 mr-1 animate-spin" />Applying...</>
+                                  <><Loader2 className="h-3 w-3 mr-1 animate-spin" />{t('punishment.applying')}</>
                                 ) : (
-                                  'Apply Changes'
+                                  t('player.applyChanges')
                                 )}
                               </Button>
                             </div>
@@ -2769,23 +2775,23 @@ const PlayerWindow = ({ playerId, isOpen, onClose, initialPosition }: PlayerWind
                 );
               }) : (
                 <div className="bg-muted/30 p-3 rounded-lg">
-                  <p className="text-sm">No moderation history found for this player.</p>
+                  <p className="text-sm">{t('player.noHistory')}</p>
                 </div>
               )}
             </div>
           </TabsContent>
           
           <TabsContent value="linked" className="space-y-2 mx-1 mt-3">
-            <h4 className="font-medium">Connected Accounts</h4>
+            <h4 className="font-medium">{t('player.connectedAccounts')}</h4>
             <p className="text-xs text-muted-foreground mb-3">
-              Accounts sharing IPs (excluding proxy/hosting IPs unless within 6 hours of each other)
+              {t('player.connectedAccountsDesc')}
             </p>
             <div className="bg-muted/30 p-3 rounded-lg">
               {/* Show error if linked account search failed */}
               {findLinkedAccountsMutation.isError && (
                 <div className="text-sm text-destructive mb-3 p-2 bg-destructive/10 rounded border border-destructive/20">
                   <TriangleAlert className="h-4 w-4 inline mr-2" />
-                  Failed to search for linked accounts. Please try reopening the player window.
+                  {t('player.linkedSearchFailed')}
                 </div>
               )}
               
@@ -2793,7 +2799,7 @@ const PlayerWindow = ({ playerId, isOpen, onClose, initialPosition }: PlayerWind
               {findLinkedAccountsMutation.isPending && (
                 <div className="text-sm text-muted-foreground mb-3 p-2 bg-muted/20 rounded flex items-center">
                   <Loader2 className="h-4 w-4 inline mr-2 animate-spin" />
-                  Searching for linked accounts...
+                  {t('player.searchingLinked')}
                 </div>
               )}
               
@@ -2813,9 +2819,9 @@ const PlayerWindow = ({ playerId, isOpen, onClose, initialPosition }: PlayerWind
                   ))
                 ) : (
                   <li className="text-sm text-muted-foreground">
-                    {findLinkedAccountsMutation.isPending ? 
-                      'Searching...' : 
-                      'No linked accounts found'
+                    {findLinkedAccountsMutation.isPending ?
+                      t('common.searching') :
+                      t('player.noLinkedAccounts')
                     }
                   </li>
                 )}
@@ -2824,9 +2830,9 @@ const PlayerWindow = ({ playerId, isOpen, onClose, initialPosition }: PlayerWind
           </TabsContent>
           
           <TabsContent value="notes" className="space-y-2 mx-1 mt-3">
-            <h4 className="font-medium">Staff Notes</h4>
+            <h4 className="font-medium">{t('player.staffNotes')}</h4>
             <p className="text-xs text-muted-foreground mb-3">
-              Staff notes are administrative comments about this player.
+              {t('player.staffNotesDesc')}
             </p>
             <div className="bg-muted/30 p-3 rounded-lg">
               <ul className="space-y-2">
@@ -2838,7 +2844,7 @@ const PlayerWindow = ({ playerId, isOpen, onClose, initialPosition }: PlayerWind
                     </li>
                   ))
                 ) : (
-                  <li className="text-sm text-muted-foreground">No staff notes</li>
+                  <li className="text-sm text-muted-foreground">{t('player.noStaffNotes')}</li>
                 )}
               </ul>
               
@@ -2860,9 +2866,9 @@ const PlayerWindow = ({ playerId, isOpen, onClose, initialPosition }: PlayerWind
                         newNote: ''
                       }))}
                     >
-                      Cancel
+                      {t('common.cancel')}
                     </Button>
-                    <Button 
+                    <Button
                       size="sm"
                       disabled={!playerInfo.newNote?.trim()}
                       onClick={async () => {
@@ -2906,14 +2912,14 @@ const PlayerWindow = ({ playerId, isOpen, onClose, initialPosition }: PlayerWind
                           refetch(); // Refetch player data after adding note
                         } catch (error) {
                           toast({
-                            title: "Error",
-                            description: "Failed to add note. Please try again.",
+                            title: t('common.error'),
+                            description: t('player.addNoteFailed'),
                             variant: "destructive",
                           });
                         }
                       }}
                     >
-                      Save Note
+                      {t('player.saveNote')}
                     </Button>
                   </div>
                 </div>
@@ -2927,17 +2933,17 @@ const PlayerWindow = ({ playerId, isOpen, onClose, initialPosition }: PlayerWind
                 className="mt-2"
                 onClick={() => setPlayerInfo(prev => ({...prev, isAddingNote: true}))}
               >
-                <StickyNote className="h-3.5 w-3.5 mr-1" /> Add Note
+                <StickyNote className="h-3.5 w-3.5 mr-1" /> {t('player.addNote')}
               </Button>
             )}
           </TabsContent>
           
           <TabsContent value="tickets" className="space-y-2 mx-1 mt-3">
-            <h4 className="font-medium">Player Tickets</h4>
+            <h4 className="font-medium">{t('player.playerTickets')}</h4>
             {isLoadingTickets ? (
               <div className="bg-muted/30 p-3 rounded-lg flex items-center justify-center">
                 <Loader2 className="h-4 w-4 animate-spin mr-2" />
-                <span className="text-sm">Loading tickets...</span>
+                <span className="text-sm">{t('player.loadingTickets')}</span>
               </div>
             ) : playerTickets && playerTickets.length > 0 ? (
               <div className="space-y-2">
@@ -3011,13 +3017,13 @@ const PlayerWindow = ({ playerId, isOpen, onClose, initialPosition }: PlayerWind
               </div>
             ) : (
               <div className="bg-muted/30 p-3 rounded-lg">
-                <p className="text-sm">No tickets found for this player.</p>
+                <p className="text-sm">{t('player.noTickets')}</p>
               </div>
             )}
           </TabsContent>
           
           <TabsContent value="names" className="space-y-2 mx-1 mt-3">
-            <h4 className="font-medium">Previous Names</h4>
+            <h4 className="font-medium">{t('player.previousNames')}</h4>
             <div className="bg-muted/30 p-3 rounded-lg">
               <ul className="space-y-2">
                 {playerInfo.previousNames.map((name, idx) => (

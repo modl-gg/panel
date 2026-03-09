@@ -7,9 +7,8 @@ import MobileNavbar from "@/components/layout/MobileNavbar";
 import { SidebarProvider } from "@/hooks/use-sidebar";
 import { DashboardProvider } from "@/contexts/DashboardContext";
 import { AuthProvider, useAuth } from "@/hooks/use-auth";
-import { usePermissions } from "@/hooks/use-permissions";
 import { ProtectedRoute, AuthRoute } from "@/lib/protected-route";
-import { useIsMobile } from "@/hooks/use-mobile";
+import { useIsMobile } from '@modl-gg/shared-web/hooks/use-mobile';
 import { useDocumentTitle } from "@/hooks/use-document-title";
 import { useProvisioningStatusCheck } from "@/hooks/use-provisioning-status";
 import { usePublicSettings } from "@/hooks/use-public-settings";
@@ -38,6 +37,7 @@ const RateLimitPage = lazy(() => import("@/pages/RateLimitPage"));
 const SetupPage = lazy(() => import("@/pages/SetupPage"));
 const ServerNotFoundPage = lazy(() => import("@/pages/ServerNotFoundPage"));
 const UploadEvidencePage = lazy(() => import("@/pages/upload-evidence-page"));
+const VerifyPage = lazy(() => import("@/pages/VerifyPage"));
 
 // Knowledgebase Pages
 const KnowledgebasePage = lazy(() => import("@/pages/KnowledgebasePage"));
@@ -66,8 +66,9 @@ function Router() {
   const isAcceptInvitationPage = location.startsWith('/accept-invitation');
   const isVerifyEmailPage = location.startsWith('/verify-email');
   const isUploadEvidencePage = location.startsWith('/upload-evidence');
+  const isVerifyPage = location.startsWith('/verify/');
 
-  if (!isAdminPanelRoute && !isAuthPage && !isAppealsPage && !isPlayerTicketPage && !isSubmitTicketPage && !isProvisioningPage && !isAcceptInvitationPage && !isVerifyEmailPage && !isUploadEvidencePage) {
+  if (!isAdminPanelRoute && !isAuthPage && !isAppealsPage && !isPlayerTicketPage && !isSubmitTicketPage && !isProvisioningPage && !isAcceptInvitationPage && !isVerifyEmailPage && !isUploadEvidencePage && !isVerifyPage) {
     return (
       <main className="h-full bg-background"> {/* Basic wrapper for public pages */}
         <Suspense fallback={<PageLoader />}>
@@ -85,7 +86,7 @@ function Router() {
   
   // Don't show navigation on auth page, appeals page, player ticket page, or provisioning page
   // Note: isAuthPage now covers /auth and /panel/auth
-  if (isAuthPage || isAppealsPage || isPlayerTicketPage || isSubmitTicketPage || isProvisioningPage || isAcceptInvitationPage || isVerifyEmailPage || isUploadEvidencePage) {
+  if (isAuthPage || isAppealsPage || isPlayerTicketPage || isSubmitTicketPage || isProvisioningPage || isAcceptInvitationPage || isVerifyEmailPage || isUploadEvidencePage || isVerifyPage) {
     return (
       <main className="h-full bg-background">
         <Suspense fallback={<PageLoader />}>
@@ -100,6 +101,7 @@ function Router() {
             <Route path="/accept-invitation" component={AcceptInvitationPage} />
             <Route path="/verify-email" component={SetupPage} />
             <Route path="/upload-evidence/:token" component={UploadEvidencePage} />
+            <Route path="/verify/:token" component={VerifyPage} />
           </Switch>
         </Suspense>
       </main>
@@ -131,6 +133,7 @@ function Router() {
               <Route path="/provisioning-in-progress" component={ProvisioningInProgressPage} />
               <Route path="/accept-invitation" component={AcceptInvitationPage} />
               <Route path="/verify-email" component={SetupPage} />
+              <Route path="/verify/:token" component={VerifyPage} />
               <Route path="/rate-limit" component={RateLimitPage} />
               {/* Public KB routes for mobile, if accessed directly and not caught by earlier block */}
               <Route path="/knowledgebase" component={KnowledgebasePage} />
@@ -170,6 +173,7 @@ function Router() {
             <Route path="/provisioning-in-progress" component={ProvisioningInProgressPage} />
             <Route path="/accept-invitation" component={AcceptInvitationPage} />
             <Route path="/verify-email" component={SetupPage} />
+            <Route path="/verify/:token" component={VerifyPage} />
             <Route path="/rate-limit" component={RateLimitPage} />
             {/* Public KB routes for desktop, if accessed directly and not caught by earlier block */}
             <Route path="/knowledgebase" component={KnowledgebasePage} />
@@ -194,11 +198,6 @@ function AppContent() {
 
   useDocumentTitle();
   useProvisioningStatusCheck();
-
-  // Must call hooks before any conditional returns to maintain hook order
-  const { hasPermission } = usePermissions();
-  // Safe permission check - returns false if user is not loaded yet
-  const isAdmin = user ? hasPermission('admin.settings.view') : false;
 
   useEffect(() => {
     const hasSeenModal = localStorage.getItem("hasSeenWelcomeModal");
@@ -235,7 +234,7 @@ function AppContent() {
 
   // Show server not found page if server doesn't exist
   // Skip this check for verify-email page (needed for email verification flow)
-  if (publicSettings?.serverExists === false && !location.startsWith('/verify-email')) {
+  if (publicSettings?.serverExists === false && !location.startsWith('/verify-email') && !location.startsWith('/verify/')) {
     return (
       <Suspense fallback={<div className="flex items-center justify-center min-h-screen"><Loader2 className="h-8 w-8 animate-spin text-primary" /></div>}>
         <ServerNotFoundPage />
@@ -243,7 +242,7 @@ function AppContent() {
     );
   }
 
-  if (maintenanceMode && !isAdmin) {
+  if (maintenanceMode) {
     return <MaintenancePage message={maintenanceMessage} />;
   }
 

@@ -5,6 +5,7 @@ import { Button } from '@modl-gg/shared-web/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@modl-gg/shared-web/components/ui/card';
 import { getApiUrl, getCurrentDomain } from '@/lib/api';
 import { normalizeProvisioningStatus } from '@/lib/backend-enums';
+import { useTranslation } from 'react-i18next';
 
 type SetupState = 'verifying' | 'verified' | 'provisioning' | 'completing' | 'complete' | 'error';
 
@@ -88,6 +89,7 @@ function StepIndicator({ step, currentStep, label, icon }: StepIndicatorProps) {
 }
 
 export default function SetupPage() {
+  const { t } = useTranslation();
   const [, navigate] = useLocation();
   const searchString = useSearch();
   const [state, setState] = useState<SetupState>('verifying');
@@ -122,29 +124,29 @@ export default function SetupPage() {
 
       if (provisioningStatus === 'COMPLETED') {
         setState('completing');
-        setMessage('Setup complete! Logging you in...');
+        setMessage(t('pages.setup.setupComplete'));
 
         const loginResult = await performAutoLogin(token);
         if (loginResult.success) {
           setState('complete');
-          setMessage('Welcome! Redirecting to your panel...');
+          setMessage(t('pages.setup.welcome'));
           setTimeout(() => {
             // Use full page reload to ensure auth context refreshes with new session
             window.location.href = loginResult.redirectUrl || '/panel';
           }, 1500);
         } else {
-          setMessage(loginResult.message || 'Auto-login failed. Please sign in manually.');
+          setMessage(loginResult.message || t('pages.setup.autoLoginFailed'));
           setState('error');
         }
       } else if (provisioningStatus === 'FAILED') {
-        setMessage('Server setup failed. Please contact support.');
+        setMessage(t('pages.setup.setupFailed'));
         setState('error');
       } else {
-        setMessage(status.message || 'Setting up your server...');
+        setMessage(status.message || t('pages.setup.settingUpServer'));
         setTimeout(() => pollSetupStatus(token), 3000);
       }
     } catch {
-      setMessage('Unable to check setup status. Please try again.');
+      setMessage(t('pages.setup.unableToCheckStatus'));
       setState('error');
     }
   }, [navigate]);
@@ -158,18 +160,18 @@ export default function SetupPage() {
     // If accessed without token but with status=check, show appropriate message
     if (!token && status === 'check') {
       if (reason === 'email_not_verified') {
-        setMessage('Please verify your email address. Check your inbox for the verification link.');
+        setMessage(t('pages.setup.emailNotVerified'));
       } else if (reason === 'provisioning_incomplete') {
-        setMessage('Your server is still being set up. Please wait or check your email for updates.');
+        setMessage(t('pages.setup.provisioningIncomplete'));
       } else {
-        setMessage('Your server is not yet ready. Please check your email for the verification link.');
+        setMessage(t('pages.setup.serverNotReady'));
       }
       setState('error');
       return;
     }
 
     if (!token) {
-      setMessage('No verification token provided.');
+      setMessage(t('pages.setup.noToken'));
       setState('error');
       return;
     }
@@ -179,7 +181,7 @@ export default function SetupPage() {
       .then((response) => {
         if (response.success && response.autoLoginToken) {
           setState('verified');
-          setMessage('Email verified! Setting up your server...');
+          setMessage(t('pages.setup.emailVerifiedSettingUp'));
           setAutoLoginToken(response.autoLoginToken);
 
           // Short delay to show the verified state, then start polling
@@ -190,15 +192,15 @@ export default function SetupPage() {
         } else if (response.success) {
           // Email verified but no auto-login token (shouldn't happen normally)
           setState('verified');
-          setMessage('Email verified! Please sign in to access your panel.');
+          setMessage(t('pages.setup.emailVerifiedSignIn'));
         } else {
           setState('error');
-          setMessage(response.message || 'Verification failed.');
+          setMessage(response.message || t('pages.setup.verificationFailed'));
         }
       })
       .catch(() => {
         setState('error');
-        setMessage('Failed to verify email. Please try again later.');
+        setMessage(t('pages.setup.failedToVerifyEmail'));
       });
   }, [searchString, pollSetupStatus]);
 
@@ -224,12 +226,12 @@ export default function SetupPage() {
             )}
           </div>
           <CardTitle>
-            {state === 'error' && 'Setup Error'}
-            {state === 'verifying' && 'Verifying Email...'}
-            {state === 'verified' && 'Email Verified!'}
-            {state === 'provisioning' && 'Setting Up Server...'}
-            {state === 'completing' && 'Almost Done...'}
-            {state === 'complete' && 'Welcome!'}
+            {state === 'error' && t('pages.setup.stateError')}
+            {state === 'verifying' && t('pages.setup.stateVerifying')}
+            {state === 'verified' && t('pages.setup.stateVerified')}
+            {state === 'provisioning' && t('pages.setup.stateProvisioning')}
+            {state === 'completing' && t('pages.setup.stateCompleting')}
+            {state === 'complete' && t('pages.setup.stateComplete')}
           </CardTitle>
           {serverName && state !== 'error' && (
             <CardDescription className="mt-1 font-medium">
@@ -247,19 +249,19 @@ export default function SetupPage() {
               <StepIndicator
                 step={1}
                 currentStep={currentStep}
-                label="Verify email"
+                label={t('pages.setup.stepVerifyEmail')}
                 icon={<Mail className="h-5 w-5" />}
               />
               <StepIndicator
                 step={2}
                 currentStep={currentStep}
-                label="Set up server"
+                label={t('pages.setup.stepSetupServer')}
                 icon={<Server className="h-5 w-5" />}
               />
               <StepIndicator
                 step={3}
                 currentStep={currentStep}
-                label="Sign in"
+                label={t('pages.setup.stepSignIn')}
                 icon={<LogIn className="h-5 w-5" />}
               />
             </div>
@@ -272,14 +274,14 @@ export default function SetupPage() {
                 className="w-full"
                 onClick={() => navigate('/panel/auth')}
               >
-                Sign In Manually
+                {t('pages.setup.signInManually')}
               </Button>
               <Button
                 variant="ghost"
                 className="w-full"
                 onClick={() => navigate('/')}
               >
-                Go to Home
+                {t('pages.setup.goToHome')}
               </Button>
             </div>
           )}

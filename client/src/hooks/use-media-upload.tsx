@@ -1,27 +1,6 @@
 import { useQuery, useQueryClient } from '@tanstack/react-query';
-import { getApiUrl, getCurrentDomain } from '@/lib/api';
+import { apiFetch } from '@/lib/api';
 import { isPublicPage } from '@/utils/routes';
-
-async function apiFetch(url: string, options: RequestInit = {}): Promise<Response> {
-  const credentials = options.credentials
-    ?? (url.startsWith('/v1/public/') ? 'omit' : 'include');
-
-  const fullUrl = getApiUrl(url);
-  const response = await fetch(fullUrl, {
-    ...options,
-    credentials,
-    headers: {
-      ...options.headers,
-      "X-Server-Domain": getCurrentDomain(),
-    },
-  });
-  if (response.status === 429) {
-    const { handleRateLimitResponse, getCurrentPath } = await import('../utils/rate-limit-handler');
-    await handleRateLimitResponse(response, getCurrentPath());
-    throw new Error('Rate limit exceeded');
-  }
-  return response;
-}
 
 export interface MediaUploadConfig {
   backblazeConfigured: boolean;

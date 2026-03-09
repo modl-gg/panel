@@ -3,6 +3,7 @@ import { Link } from 'wouter';
 import SearchBar from '@/components/knowledgebase/SearchBar';
 import CategoryDisplay from '@/components/knowledgebase/CategoryDisplay';
 import PageContainer from '@/components/layout/PageContainer';
+import { useTranslation } from 'react-i18next';
 
 // Mock types - replace with actual types from API
 interface ArticleStub {
@@ -22,6 +23,7 @@ interface CategoryWithArticles {
 }
 
 const KnowledgebasePage: React.FC = () => {
+  const { t } = useTranslation();
   const [categories, setCategories] = useState<CategoryWithArticles[]>([]);
   const [searchTerm, setSearchTerm] = useState('');
   const [searchResults, setSearchResults] = useState<ArticleStub[]>([]);
@@ -86,11 +88,11 @@ const KnowledgebasePage: React.FC = () => {
   }, [searchTerm]);
 
   if (isLoading) {
-    return <PageContainer><p>Loading knowledgebase...</p></PageContainer>;
+    return <PageContainer><p>{t('pages.knowledgebase.loading')}</p></PageContainer>;
   }
 
   if (error) {
-    return <PageContainer><p>Error loading knowledgebase: {error}</p></PageContainer>;
+    return <PageContainer><p>{t('pages.knowledgebase.loadError', { error })}</p></PageContainer>;
   }
 
   const contentToDisplay = searchTerm.trim().length >=2 ? searchResults : categories;
@@ -98,13 +100,13 @@ const KnowledgebasePage: React.FC = () => {
   return (
     <PageContainer>
       <div className="container mx-auto p-4">
-        <h1 className="text-3xl font-bold mb-6 text-center">Knowledge Base</h1>
+        <h1 className="text-3xl font-bold mb-6 text-center">{t('pages.knowledgebase.title')}</h1>
         
         <SearchBar searchTerm={searchTerm} onSearchTermChange={setSearchTerm} />
 
         {searchTerm.trim().length >= 2 && searchResults.length > 0 && (
           <div className="mb-8">
-            <h2 className="text-2xl font-semibold mb-4">Search Results</h2>
+            <h2 className="text-2xl font-semibold mb-4">{t('pages.knowledgebase.searchResults')}</h2>
             {searchResults.map(article => (
               <div key={article.id} className="mb-2 p-3 border rounded hover:bg-muted/50">
                 <Link href={`/article/${article.slug}`} className="text-primary hover:underline">
@@ -117,12 +119,12 @@ const KnowledgebasePage: React.FC = () => {
         )}
 
         {searchTerm.trim().length >= 2 && searchResults.length === 0 && (
-            <p>No articles found for "{searchTerm}".</p>
+            <p>{t('pages.knowledgebase.noArticlesFound', { searchTerm })}</p>
         )}
 
 
         {!searchTerm && categories.length === 0 && (
-          <p className="text-center text-muted-foreground">No categories available at the moment.</p>
+          <p className="text-center text-muted-foreground">{t('pages.knowledgebase.noCategories')}</p>
         )}
 
         {!searchTerm && categories.map(category => (

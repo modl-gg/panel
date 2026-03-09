@@ -6,6 +6,7 @@ import { Ticket, Clock, User } from 'lucide-react';
 import { useLocation } from 'wouter';
 import { formatTimeAgo } from '@/utils/date-utils';
 import { stripMarkdown } from '@/utils/markdown-utils';
+import { useTranslation } from 'react-i18next';
 
 export interface RecentTicket {
   id: string;
@@ -38,6 +39,7 @@ const priorityColors: Record<string, string> = {
 };
 
 export function RecentTicketsSection({ tickets, loading }: RecentTicketsSectionProps) {
+  const { t } = useTranslation();
   const [, setLocation] = useLocation();
 
   const handleTicketClick = (ticketId: string) => {
@@ -45,7 +47,7 @@ export function RecentTicketsSection({ tickets, loading }: RecentTicketsSectionP
   };
 
   const truncateMessage = (message: string | undefined | null, maxLength: number = 120) => {
-    if (!message) return 'No message available';
+    if (!message) return t('dashboard.recentTickets.noMessage');
     const messageStr = stripMarkdown(String(message));
     if (messageStr.length <= maxLength) return messageStr;
     return messageStr.substring(0, maxLength) + '...';
@@ -58,7 +60,7 @@ export function RecentTicketsSection({ tickets, loading }: RecentTicketsSectionP
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
             <Ticket className="h-5 w-5" />
-            Recently Opened Tickets
+            {t('dashboard.recentTickets.title')}
           </CardTitle>
         </CardHeader>
         <CardContent>
@@ -83,14 +85,14 @@ export function RecentTicketsSection({ tickets, loading }: RecentTicketsSectionP
       <CardHeader>
         <CardTitle className="flex items-center gap-2">
           <Ticket className="h-5 w-5" />
-          Recently Opened Tickets
+          {t('dashboard.recentTickets.title')}
         </CardTitle>
       </CardHeader>
       <CardContent>
         <div className="space-y-4">
           {tickets.length === 0 ? (
             <div className="text-center py-8 text-muted-foreground">
-              No recent tickets to display
+              {t('dashboard.recentTickets.empty')}
             </div>
           ) : (
             tickets.map((ticket) => (
@@ -123,7 +125,7 @@ export function RecentTicketsSection({ tickets, loading }: RecentTicketsSectionP
                   <div className="flex items-center gap-4">
                     <div className="flex items-center gap-1">
                       <User className="h-3 w-3" />
-                      <span>{ticket.playerName || 'Unknown'}</span>
+                      <span>{ticket.playerName || t('search.unknown')}</span>
                     </div>
                     <div className="flex items-center gap-1">
                       <Clock className="h-3 w-3" />

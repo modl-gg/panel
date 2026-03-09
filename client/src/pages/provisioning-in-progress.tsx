@@ -2,10 +2,12 @@ import React, { useEffect, useState, useCallback } from 'react';
 import { useLocation } from 'wouter';
 import PageContainer from '@/components/layout/PageContainer'; // Import PageContainer
 import { Loader2 } from 'lucide-react'; // Import a loader icon
+import { useTranslation } from 'react-i18next';
 
 const ProvisioningInProgressPage: React.FC = () => {
+  const { t } = useTranslation();
   const [, navigate] = useLocation();
-  const [statusMessage, setStatusMessage] = useState('Initializing server setup...');
+  const [statusMessage, setStatusMessage] = useState('');
   const [error, setError] = useState<string | null>(null);
   const [retryCount, setRetryCount] = useState(0);
   const maxRetries = 3;
@@ -17,8 +19,8 @@ const ProvisioningInProgressPage: React.FC = () => {
 
   const checkStatus = useCallback(async () => {
     if (!serverName) {
-      setError('Server name not found in URL. Cannot check provisioning status.');
-      setStatusMessage('Configuration error.');
+      setError(t('pages.provisioning.errorNoServerName'));
+      setStatusMessage(t('pages.provisioning.configError'));
       return;
     }
     try {
@@ -51,9 +53,9 @@ const ProvisioningInProgressPage: React.FC = () => {
       const data = await response.json();
 
       // Use the message from the server directly, as it now includes auto-login status
-      setStatusMessage(data.message || `Server '${serverName}' status: ${data.status}`);      if (data.status === 'completed') {
+      setStatusMessage(data.message || t('pages.provisioning.statusFallback', { serverName, status: data.status }));      if (data.status === 'completed') {
         // Provisioning is complete - always redirect to auth page for login
-        setStatusMessage(data.message + ' Redirecting to login...');
+        setStatusMessage((data.message || '') + ' ' + t('pages.provisioning.redirectingToLogin'));
         setTimeout(() => {
           window.location.href = '/panel/auth?message=provisioning_complete_login_required';
         }, 3000);
@@ -62,7 +64,7 @@ const ProvisioningInProgressPage: React.FC = () => {
         setRetryCount(0);
         setTimeout(checkStatus, 3000);
       } else if (data.status === 'failed') {
-        setError(data.message || 'Provisioning failed. Please contact support or try again.');
+        setError(data.message || t('pages.provisioning.errorProvisioningFailed'));
         // No automatic retry for failed status, user can click "Try Again"
       } else {
         // Handle other statuses or unexpected responses
@@ -73,12 +75,12 @@ const ProvisioningInProgressPage: React.FC = () => {
     } catch (err: any) {
       console.error('Error checking provisioning status:', err);
       if (retryCount < maxRetries) {
-        setStatusMessage(`Connection issue. Retrying (${retryCount + 1}/${maxRetries})...`);
+        setStatusMessage(t('pages.provisioning.retrying', { current: retryCount + 1, max: maxRetries }));
         setRetryCount(prev => prev + 1);
         setTimeout(checkStatus, 5000 * (retryCount + 1)); // Exponential backoff for retries
       } else {
-        setError(err.message || 'An unexpected error occurred while checking server status. Please try refreshing or contact support.');
-        setStatusMessage('Failed to complete server setup.');
+        setError(err.message || t('pages.provisioning.errorUnexpected'));
+        setStatusMessage(t('pages.provisioning.setupFailed'));
       }
     }
   }, [navigate, retryCount, serverName, signInToken]); // Added signInToken to dependencies
@@ -87,43 +89,43 @@ const ProvisioningInProgressPage: React.FC = () => {
     if (serverName) {
       checkStatus(); // Initial check only if serverName is present
     } else {
-      setError('Critical: Server identifier is missing from the URL.');
-      setStatusMessage('Cannot proceed with server setup check.');
+      setError(t('pages.provisioning.errorCriticalNoServer'));
+      setStatusMessage(t('pages.provisioning.cannotProceed'));
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps 
   }, [serverName, checkStatus]); // Added checkStatus to dependencies
 
   return (
-    <PageContainer title="Server Setup">
+    <PageContainer title={t('pages.provisioning.pageTitle')}>
       <div className="flex flex-col items-center justify-center text-center p-4">
-        <h1 className="text-2xl font-semibold mb-4">Setting Up Your Server: {serverName || "Unknown"}</h1>
-        <p className="text-lg mb-6 text-muted-foreground">{statusMessage}</p>
-        
+        <h1 className="text-2xl font-semibold mb-4">{t('pages.provisioning.heading', { serverName: serverName || t('pages.provisioning.unknownServer') })}</h1>
+        <p className="text-lg mb-6 text-muted-foreground">{statusMessage || t('pages.provisioning.initializing')}</p>
+
         {error && (
           <div className="bg-destructive/10 border border-destructive text-destructive p-4 rounded-md mb-6 w-full max-w-md">
-            <p className="font-semibold">Error:</p>
+            <p className="font-semibold">{t('pages.provisioning.errorLabel')}</p>
             <p>{error}</p>
           </div>
         )}
-        
+
         {!error && !statusMessage.includes("Redirecting") && !statusMessage.includes("Failed") && (
           <div className="flex flex-col items-center mt-6">
             <Loader2 className="h-12 w-12 animate-spin text-primary mb-4" />
-            <p className="text-muted-foreground">This may take a few moments...</p>
+            <p className="text-muted-foreground">{t('pages.provisioning.takeMoments')}</p>
           </div>
         )}
 
         {error && (
-          <button 
+          <button
             onClick={() => {
               setRetryCount(0);
               setError(null);
-              setStatusMessage('Retrying setup...');
+              setStatusMessage(t('pages.provisioning.retryingSetup'));
               checkStatus();
             }}
             className="mt-4 px-6 py-2 bg-primary text-primary-foreground rounded-md hover:bg-primary/90 transition-colors"
           >
-            Try Again
+            {t('common.tryAgain')}
           </button>
         )}
       </div>

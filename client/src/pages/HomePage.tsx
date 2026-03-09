@@ -10,19 +10,7 @@ import serverLogo from '@/assets/server-logo.png';
 import * as LucideIcons from 'lucide-react';
 import { usePublicSettings } from '@/hooks/use-public-settings';
 import { useAuth } from '@/hooks/use-auth';
-import { getApiUrl, getCurrentDomain } from '@/lib/api';
-
-async function apiFetch(url: string, options: RequestInit = {}): Promise<Response> {
-  const fullUrl = getApiUrl(url);
-  return fetch(fullUrl, {
-    ...options,
-    credentials: "include",
-    headers: {
-      ...options.headers,
-      "X-Server-Domain": getCurrentDomain(),
-    },
-  });
-}
+import { apiFetch } from '@/lib/api';
 
 // Types for knowledgebase data
 interface ArticleStub {
@@ -253,8 +241,8 @@ const HomePage: React.FC = () => {
         <Link href={user ? "/panel" : "/panel/auth"}>
           <Button variant="secondary" size="sm" className="bg-card/80 hover:bg-card/90 text-foreground border-muted text-xs sm:text-sm">
             <LogIn className="h-4 w-4 mr-1 sm:mr-2" />
-            <span className="hidden sm:inline">{user ? "Go To Panel" : "Staff Login"}</span>
-            <span className="sm:hidden">{user ? "Panel" : "Staff Login"}</span>
+            <span className="hidden sm:inline">{user ? 'Go To Panel' : 'Staff Login'}</span>
+            <span className="sm:hidden">{user ? 'Panel' : 'Login'}</span>
           </Button>
         </Link>
       </div>
@@ -286,7 +274,7 @@ const HomePage: React.FC = () => {
                 className="pl-12 py-2 sm:py-3 rounded-full border-2 focus:border-primary shadow-md text-sm sm:text-base"
               />
             </div>
-            
+
             {/* Search Results */}
             {searchTerm.trim().length >= 2 && (
               <Card className="mt-3 text-left max-h-48 overflow-y-auto">
@@ -305,7 +293,7 @@ const HomePage: React.FC = () => {
                     </div>
                   ) : (
                     <p className="text-center text-muted-foreground text-sm">
-                      No articles found for "{searchTerm}"
+                      No articles found for &quot;{searchTerm}&quot;
                     </p>
                   )}
                 </CardContent>

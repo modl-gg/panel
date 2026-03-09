@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { useTranslation } from 'react-i18next';
 import { HardDrive, Search, Trash2, Download, FolderOpen, Calendar, AlertCircle, Settings, CreditCard, Brain } from 'lucide-react';
 import { getApiUrl, getCurrentDomain, apiFetch } from '@/lib/api';
 import { Button } from '@modl-gg/shared-web/components/ui/button';
@@ -94,6 +95,7 @@ interface StorageSettings {
 
 const UsageSettings = () => {
   const { toast } = useToast();
+  const { t } = useTranslation();
   const [storageUsage, setStorageUsage] = useState<StorageUsage | null>(null);
   const [storageSettings, setStorageSettings] = useState<StorageSettings | null>(null);
   const [files, setFiles] = useState<StorageFile[]>([]);
@@ -299,8 +301,8 @@ const fetchStorageData = async () => {
     } catch (error) {
       console.error('Error fetching storage data:', error);
       toast({
-        title: "Error",
-        description: "Failed to fetch storage data. Please try again.",
+        title: t('toast.error'),
+        description: t('settings.usage.fetchFailed'),
         variant: "destructive",
       });
     } finally {
@@ -343,8 +345,8 @@ const fetchStorageData = async () => {
       // For now, show a message that storage settings updates are not implemented
       // since there's no PUT endpoint for storage settings in the current implementation
       toast({
-        title: "Feature Not Available",
-        description: "Storage settings updates are not currently implemented. Please contact support to modify your storage limits.",
+        title: t('settings.usage.featureNotAvailable'),
+        description: t('settings.usage.storageSettingsNotImplemented'),
         variant: "destructive",
       });
       
@@ -352,8 +354,8 @@ const fetchStorageData = async () => {
     } catch (error) {
       console.error('Error updating storage settings:', error);
       toast({
-        title: "Error",
-        description: "Failed to update storage settings. Please try again.",
+        title: t('toast.error'),
+        description: t('settings.usage.storageUpdateFailed'),
         variant: "destructive",
       });
     } finally {
@@ -492,8 +494,8 @@ const fetchStorageData = async () => {
           body: JSON.stringify({ keys: [fileToDeleteKey] }),
         });
         toast({
-          title: "Success",
-          description: "File deleted successfully.",
+          title: t('toast.success'),
+          description: t('settings.usage.fileDeleted'),
         });
       } else {
         // For bulk delete, we need to get the keys for all selected files
@@ -508,8 +510,8 @@ const fetchStorageData = async () => {
           body: JSON.stringify({ keys: fileKeys }),
         });
         toast({
-          title: "Success",
-          description: `${selectedFiles.size} files deleted successfully.`,
+          title: t('toast.success'),
+          description: t('settings.usage.filesDeleted', { count: selectedFiles.size }),
         });
         setSelectedFiles(new Set());
       }
@@ -519,8 +521,8 @@ const fetchStorageData = async () => {
     } catch (error) {
       console.error('Error deleting files:', error);
       toast({
-        title: "Error",
-        description: "Failed to delete files. Please try again.",
+        title: t('toast.error'),
+        description: t('settings.usage.deleteFailed'),
         variant: "destructive",
       });
     }
@@ -531,7 +533,7 @@ const fetchStorageData = async () => {
       <div className="flex items-center justify-center py-12">
         <div className="text-center">
           <div className="animate-spin h-8 w-8 border-b-2 border-primary mx-auto mb-4"></div>
-          <p className="text-muted-foreground">Loading storage usage...</p>
+          <p className="text-muted-foreground">{t('settings.usage.loadingStorage')}</p>
         </div>
       </div>
     );
@@ -545,13 +547,12 @@ const fetchStorageData = async () => {
           <div className="flex items-start gap-3">
             <AlertCircle className="h-5 w-5 text-amber-600 dark:text-amber-400 mt-0.5 flex-shrink-0" />
             <div>
-              <h3 className="font-medium text-amber-800 dark:text-amber-200">Storage Overage Alert</h3>
+              <h3 className="font-medium text-amber-800 dark:text-amber-200">{t('settings.usage.storageOverageAlert')}</h3>
               <p className="text-sm text-amber-700 dark:text-amber-300 mt-1">
-                You're using <strong>{storageUsage.quota.overageUsedFormatted}</strong> over your {storageUsage.quota.baseLimitFormatted} base storage limit. 
-                This will cost <strong>${storageUsage.quota.overageCost}</strong> this month at $0.08/GB.
+                {t('settings.usage.storageOverageDesc', { overageUsed: storageUsage.quota.overageUsedFormatted, baseLimit: storageUsage.quota.baseLimitFormatted, cost: storageUsage.quota.overageCost })}
               </p>
               <p className="text-xs text-amber-600 dark:text-amber-400 mt-2">
-                Consider cleaning up unused files or increasing your storage limit to avoid future charges.
+                {t('settings.usage.storageOverageTip')}
               </p>
             </div>
           </div>
@@ -564,12 +565,12 @@ const fetchStorageData = async () => {
           <div className="flex items-start gap-3">
             <AlertCircle className="h-5 w-5 text-blue-600 dark:text-blue-400 mt-0.5 flex-shrink-0" />
             <div>
-              <h3 className="font-medium text-blue-800 dark:text-blue-200">Storage Limit Warning</h3>
+              <h3 className="font-medium text-blue-800 dark:text-blue-200">{t('settings.usage.storageLimitWarning')}</h3>
               <p className="text-sm text-blue-700 dark:text-blue-300 mt-1">
-                You're using <strong>{storageUsage.quota.baseUsagePercentage}%</strong> of your {storageUsage.quota.baseLimitFormatted} free storage limit.
+                {t('settings.usage.storageLimitWarningDesc', { percentage: storageUsage.quota.baseUsagePercentage, limit: storageUsage.quota.baseLimitFormatted })}
               </p>
               <p className="text-xs text-blue-600 dark:text-blue-400 mt-2">
-                Upgrade to premium for 200GB of storage plus overage protection.
+                {t('settings.usage.upgradePremiumStorage')}
               </p>
             </div>
           </div>
@@ -584,7 +585,7 @@ const fetchStorageData = async () => {
               <CardTitle className="flex items-center justify-between">
                 <div className="flex items-center">
                   <HardDrive className="h-5 w-5 mr-2" />
-                  Storage Usage
+                  {t('settings.usage.storageUsage')}
                 </div>
                 {storageUsage.quota?.isPaid && (
                   <Button
@@ -593,7 +594,7 @@ const fetchStorageData = async () => {
                     onClick={() => setShowStorageSettings(true)}
                   >
                     <Settings className="h-4 w-4 mr-2" />
-                    Settings
+                    {t('common.settings')}
                   </Button>
                 )}
               </CardTitle>
@@ -604,41 +605,41 @@ const fetchStorageData = async () => {
                   <>
                     <div>
                       <div className="flex justify-between text-sm mb-2">
-                        <span>Used: {storageUsage.quota.totalUsedFormatted}</span>
-                        <span>Limit: {storageUsage.quota.totalLimitFormatted}</span>
+                        <span>{t('settings.usage.used')}: {storageUsage.quota.totalUsedFormatted}</span>
+                        <span>{t('settings.usage.limit')}: {storageUsage.quota.totalLimitFormatted}</span>
                       </div>
                       <Progress 
                         value={storageUsage.quota.usagePercentage}
                         className="h-2"
                       />
                       <div className="text-xs text-muted-foreground mt-1">
-                        {storageUsage.quota.usagePercentage}% used
+                        {t('settings.usage.percentUsed', { percent: storageUsage.quota.usagePercentage })}
                       </div>
                     </div>
                     
                     {storageUsage.quota.isPaid && (
                       <div className="space-y-2">
                         <div className="flex justify-between text-sm">
-                          <span>Base Storage:</span>
+                          <span>{t('settings.usage.baseStorage')}:</span>
                           <span>{storageUsage.quota.baseLimitFormatted}</span>
                         </div>
                         {storageUsage.quota.overageUsed > 0 && (
                           <div className="flex justify-between text-sm">
-                            <span>Overage Used:</span>
+                            <span>{t('settings.usage.overageUsed')}:</span>
                             <span>{storageUsage.quota.overageUsedFormatted}</span>
                           </div>
                         )}
                         <div className="flex justify-between text-sm">
-                          <span>Overage Limit:</span>
+                          <span>{t('settings.usage.overageLimit')}:</span>
                           <span>{storageUsage.quota.overageLimitFormatted}</span>
                         </div>
                         <p className="text-xs text-muted-foreground pt-1">
-                          To configure your maximum storage limit, go to{' '}
+                          {t('settings.usage.configureStoragePrefix')}{' '}
                           <a
                             href="?category=general&sub=billing"
                             className="text-primary hover:underline"
                           >
-                            Billing Settings
+                            {t('settings.usage.billingSettings')}
                           </a>.
                         </p>
                       </div>
@@ -647,8 +648,8 @@ const fetchStorageData = async () => {
                 ) : (
                   <div>
                     <div className="flex justify-between text-sm mb-2">
-                      <span>Used: {formatFileSize(storageUsage.totalUsed)}</span>
-                      <span>Total: {formatFileSize(storageUsage.totalQuota)}</span>
+                      <span>{t('settings.usage.used')}: {formatFileSize(storageUsage.totalUsed)}</span>
+                      <span>{t('settings.usage.total')}: {formatFileSize(storageUsage.totalQuota)}</span>
                     </div>
                     <Progress
                       value={(storageUsage.totalUsed / storageUsage.totalQuota) * 100}
@@ -659,7 +660,7 @@ const fetchStorageData = async () => {
 
                 {/* Storage Breakdown */}
                 <div className="border-t pt-4 mt-4">
-                  <div className="text-xs font-medium text-muted-foreground mb-2">Storage Breakdown</div>
+                  <div className="text-xs font-medium text-muted-foreground mb-2">{t('settings.usage.storageBreakdown')}</div>
                   <div className="space-y-2">
                     {Object.entries(storageUsage.byType).map(([type, size]) => (
                       <div key={type} className="flex items-center justify-between text-sm">
@@ -681,7 +682,7 @@ const fetchStorageData = async () => {
             <CardHeader>
               <CardTitle className="flex items-center">
                 <Brain className="h-5 w-5 mr-2" />
-                AI Usage
+                {t('settings.usage.aiUsage')}
               </CardTitle>
             </CardHeader>
             <CardContent>
@@ -690,33 +691,33 @@ const fetchStorageData = async () => {
                   <>
                     <div>
                       <div className="flex justify-between text-sm mb-2">
-                        <span>Used: {formatRequestCount(storageUsage.aiQuota.totalUsed)} requests</span>
-                        <span>Limit: {formatRequestCount(storageUsage.aiQuota.baseLimit)} requests</span>
+                        <span>{t('settings.usage.used')}: {formatRequestCount(storageUsage.aiQuota.totalUsed)} {t('settings.billing.requests')}</span>
+                        <span>{t('settings.usage.limit')}: {formatRequestCount(storageUsage.aiQuota.baseLimit)} {t('settings.billing.requests')}</span>
                       </div>
                       <Progress 
                         value={storageUsage.aiQuota.usagePercentage}
                         className="h-2"
                       />
                       <div className="text-xs text-muted-foreground mt-1">
-                        {storageUsage.aiQuota.usagePercentage}% used
+                        {t('settings.usage.percentUsed', { percent: storageUsage.aiQuota.usagePercentage })}
                       </div>
                     </div>
                     
                     {storageUsage.aiQuota.overageUsed > 0 && (
                       <div className="space-y-2">
                         <div className="flex justify-between text-sm">
-                          <span>Overage Used:</span>
-                          <span>{formatRequestCount(storageUsage.aiQuota.overageUsed)} requests</span>
+                          <span>{t('settings.usage.overageUsed')}:</span>
+                          <span>{formatRequestCount(storageUsage.aiQuota.overageUsed)} {t('settings.billing.requests')}</span>
                         </div>
                         <div className="flex justify-between text-sm">
-                          <span>Overage Cost:</span>
+                          <span>{t('settings.usage.overageCost')}:</span>
                           <span className="font-semibold">${storageUsage.aiQuota.overageCost.toFixed(2)}</span>
                         </div>
                       </div>
                     )}
                     
                     <div className="border-t pt-4 mt-4 space-y-1">
-                      <div className="text-xs font-medium text-muted-foreground">AI Breakdown</div>
+                      <div className="text-xs font-medium text-muted-foreground">{t('settings.usage.aiBreakdown')}</div>
                       {Object.entries(storageUsage.aiQuota.byService).map(([service, count]) => (
                         <div key={service} className="flex justify-between text-xs">
                           <span className="capitalize">{service.replace('_', ' ')}: </span>
@@ -728,24 +729,24 @@ const fetchStorageData = async () => {
                 ) : storageUsage.isPremium ? (
                   <div className="space-y-2">
                     <div className="flex justify-between text-sm">
-                      <span>Status:</span>
-                      <span className="text-muted-foreground">Not available</span>
+                      <span>{t('settings.usage.status')}:</span>
+                      <span className="text-muted-foreground">{t('settings.usage.notAvailable')}</span>
                     </div>
                     <p className="text-xs text-muted-foreground">
-                      AI usage tracking is not enabled for this server.
+                      {t('settings.usage.aiTrackingNotEnabled')}
                     </p>
                   </div>
                 ) : (
                   <div className="space-y-2">
                     <div className="flex justify-between text-sm">
-                      <span>Status:</span>
-                      <span className="text-muted-foreground">Premium only</span>
+                      <span>{t('settings.usage.status')}:</span>
+                      <span className="text-muted-foreground">{t('settings.usage.premiumOnly')}</span>
                     </div>
                     <p className="text-xs text-muted-foreground">
-                      AI is only available for Premium users.
+                      {t('settings.usage.aiPremiumOnly')}
                     </p>
                     <p className="text-xs text-muted-foreground">
-                      Upgrade to Premium to access AI moderation and analysis features.
+                      {t('settings.usage.upgradePremiumAI')}
                     </p>
                   </div>
                 )}
@@ -759,21 +760,21 @@ const fetchStorageData = async () => {
               <CardHeader>
                 <CardTitle className="flex items-center">
                   <CreditCard className="h-5 w-5 mr-2" />
-                  Storage Overage
+                  {t('settings.usage.storageOverage')}
                 </CardTitle>
               </CardHeader>
               <CardContent>
                 <div className="space-y-2">
                   <div className="flex justify-between text-sm">
-                    <span>Overage Used:</span>
+                    <span>{t('settings.usage.overageUsed')}:</span>
                     <span>{storageUsage.quota.overageUsedFormatted}</span>
                   </div>
                   <div className="flex justify-between text-sm">
-                    <span>Cost This Month:</span>
+                    <span>{t('settings.usage.costThisMonth')}:</span>
                     <span className="font-semibold">${storageUsage.quota.overageCost}</span>
                   </div>
                   <div className="text-xs text-muted-foreground">
-                    $0.08/GB/month
+                    {t('settings.usage.storageRate')}
                   </div>
                 </div>
               </CardContent>
@@ -782,32 +783,32 @@ const fetchStorageData = async () => {
 
           <Card>
             <CardHeader>
-              <CardTitle>System Status</CardTitle>
+              <CardTitle>{t('settings.usage.systemStatus')}</CardTitle>
             </CardHeader>
             <CardContent>
               <div className="space-y-2">
                 <div className="flex justify-between text-sm">
-                  <span>Total Files:</span>
+                  <span>{t('settings.usage.totalFiles')}:</span>
                   <span>{files.length}</span>
                 </div>
                 <div className="flex justify-between text-sm">
-                  <span>Selected:</span>
+                  <span>{t('settings.usage.selected')}:</span>
                   <span>{selectedFiles.size}</span>
                 </div>
                 <div className="flex justify-between text-sm">
-                  <span>Filtered:</span>
+                  <span>{t('settings.usage.filtered')}:</span>
                   <span>{filteredAndSortedFiles.length}</span>
                 </div>
                 <div className="flex justify-between text-sm">
-                  <span>Can Upload:</span>
+                  <span>{t('settings.usage.canUpload')}:</span>
                   <span className={storageUsage.quota?.canUpload ? 'text-green-600' : 'text-red-600'}>
-                    {storageUsage.quota?.canUpload ? 'Yes' : 'No'}
+                    {storageUsage.quota?.canUpload ? t('common.yes') : t('common.no')}
                   </span>
                 </div>
                 <div className="flex justify-between text-sm">
-                  <span>AI Available:</span>
+                  <span>{t('settings.usage.aiAvailable')}:</span>
                   <span className={storageUsage.isPremium && storageUsage.aiQuota ? 'text-green-600' : 'text-red-600'}>
-                    {storageUsage.isPremium && storageUsage.aiQuota ? 'Yes' : 'No'}
+                    {storageUsage.isPremium && storageUsage.aiQuota ? t('common.yes') : t('common.no')}
                   </span>
                 </div>
               </div>
@@ -819,17 +820,17 @@ const fetchStorageData = async () => {
       {/* File Management Controls */}
       <Card>
         <CardHeader>
-          <CardTitle>File Management</CardTitle>
+          <CardTitle>{t('settings.usage.fileManagement')}</CardTitle>
         </CardHeader>
         <CardContent>
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
             <div>
-              <Label htmlFor="search">Search Files</Label>
+              <Label htmlFor="search">{t('settings.usage.searchFiles')}</Label>
               <div className="relative">
                 <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                 <Input
                   id="search"
-                  placeholder="Search by name or path..."
+                  placeholder={t('settings.usage.searchPlaceholder')}
                   value={searchTerm}
                   onChange={(e) => setSearchTerm(e.target.value)}
                   className="pl-10"
@@ -838,45 +839,45 @@ const fetchStorageData = async () => {
             </div>
 
             <div>
-              <Label htmlFor="filter-type">Filter by Type</Label>
+              <Label htmlFor="filter-type">{t('settings.usage.filterByType')}</Label>
               <Select value={filterType} onValueChange={setFilterType}>
                 <SelectTrigger>
-                  <SelectValue placeholder="All types" />
+                  <SelectValue placeholder={t('settings.usage.allTypes')} />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="all">All Types</SelectItem>
-                  <SelectItem value="ticket">Tickets</SelectItem>
-                  <SelectItem value="evidence">Evidence</SelectItem>
-                  <SelectItem value="logs">Logs</SelectItem>
-                  <SelectItem value="backup">Backups</SelectItem>
-                  <SelectItem value="other">Other</SelectItem>
+                  <SelectItem value="all">{t('settings.usage.allTypes')}</SelectItem>
+                  <SelectItem value="ticket">{t('settings.usage.typeTickets')}</SelectItem>
+                  <SelectItem value="evidence">{t('settings.usage.typeEvidence')}</SelectItem>
+                  <SelectItem value="logs">{t('settings.usage.typeLogs')}</SelectItem>
+                  <SelectItem value="backup">{t('settings.usage.typeBackups')}</SelectItem>
+                  <SelectItem value="other">{t('common.other')}</SelectItem>
                 </SelectContent>
               </Select>
             </div>
 
             <div>
-              <Label htmlFor="sort-by">Sort By</Label>
+              <Label htmlFor="sort-by">{t('settings.usage.sortBy')}</Label>
               <Select value={sortBy} onValueChange={(value: any) => setSortBy(value)}>
                 <SelectTrigger>
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="name">Name</SelectItem>
-                  <SelectItem value="size">Size</SelectItem>
-                  <SelectItem value="date">Date Modified</SelectItem>
+                  <SelectItem value="name">{t('table.name')}</SelectItem>
+                  <SelectItem value="size">{t('settings.usage.size')}</SelectItem>
+                  <SelectItem value="date">{t('settings.usage.dateModified')}</SelectItem>
                 </SelectContent>
               </Select>
             </div>
 
             <div>
-              <Label htmlFor="sort-order">Order</Label>
+              <Label htmlFor="sort-order">{t('settings.usage.order')}</Label>
               <Select value={sortOrder} onValueChange={(value: any) => setSortOrder(value)}>
                 <SelectTrigger>
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="asc">Ascending</SelectItem>
-                  <SelectItem value="desc">Descending</SelectItem>
+                  <SelectItem value="asc">{t('settings.usage.ascending')}</SelectItem>
+                  <SelectItem value="desc">{t('settings.usage.descending')}</SelectItem>
                 </SelectContent>
               </Select>
             </div>
@@ -890,9 +891,9 @@ const fetchStorageData = async () => {
                 onClick={handleSelectAll}
                 disabled={filteredAndSortedFiles.length === 0}
               >
-                {selectedFiles.size === filteredAndSortedFiles.length && filteredAndSortedFiles.length > 0 
-                  ? 'Deselect All' 
-                  : 'Select All'}
+                {selectedFiles.size === filteredAndSortedFiles.length && filteredAndSortedFiles.length > 0
+                  ? t('settings.usage.deselectAll')
+                  : t('settings.usage.selectAll')}
               </Button>
               {selectedFiles.size > 0 && (
                 <Button
@@ -901,7 +902,7 @@ const fetchStorageData = async () => {
                   onClick={handleDeleteSelected}
                 >
                   <Trash2 className="h-4 w-4 mr-2" />
-                  Delete Selected ({selectedFiles.size})
+                  {t('settings.usage.deleteSelected', { count: selectedFiles.size })}
                 </Button>
               )}
             </div>
@@ -910,7 +911,7 @@ const fetchStorageData = async () => {
               size="sm"
               onClick={fetchStorageData}
             >
-              Refresh
+              {t('common.refresh')}
             </Button>
           </div>
 
@@ -925,12 +926,12 @@ const fetchStorageData = async () => {
                       onCheckedChange={handleSelectAll}
                     />
                   </TableHead>
-                  <TableHead>Name</TableHead>
-                  <TableHead>Category</TableHead>
-                  <TableHead>Type</TableHead>
-                  <TableHead>Size</TableHead>
-                  <TableHead>Modified</TableHead>
-                  <TableHead>Actions</TableHead>
+                  <TableHead>{t('table.name')}</TableHead>
+                  <TableHead>{t('settings.usage.category')}</TableHead>
+                  <TableHead>{t('settings.usage.type')}</TableHead>
+                  <TableHead>{t('settings.usage.size')}</TableHead>
+                  <TableHead>{t('settings.usage.modified')}</TableHead>
+                  <TableHead>{t('table.actions')}</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -994,7 +995,7 @@ const fetchStorageData = async () => {
             <div className="flex items-center justify-between mt-4">
               <div className="flex items-center gap-2 text-sm text-muted-foreground">
                 <span>
-                  Showing {(safePage - 1) * itemsPerPage + 1}-{Math.min(safePage * itemsPerPage, filteredAndSortedFiles.length)} of {filteredAndSortedFiles.length} files
+                  {t('settings.usage.showingFiles', { from: (safePage - 1) * itemsPerPage + 1, to: Math.min(safePage * itemsPerPage, filteredAndSortedFiles.length), total: filteredAndSortedFiles.length })}
                 </span>
                 <Select value={String(itemsPerPage)} onValueChange={(value) => { setItemsPerPage(Number(value)); setCurrentPage(1); }}>
                   <SelectTrigger className="w-[80px] h-8">
@@ -1006,7 +1007,7 @@ const fetchStorageData = async () => {
                     <SelectItem value="50">50</SelectItem>
                   </SelectContent>
                 </Select>
-                <span>per page</span>
+                <span>{t('settings.usage.perPage')}</span>
               </div>
               <div className="flex items-center gap-2">
                 <Button
@@ -1015,10 +1016,10 @@ const fetchStorageData = async () => {
                   onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
                   disabled={safePage <= 1}
                 >
-                  Previous
+                  {t('common.previous')}
                 </Button>
                 <span className="text-sm text-muted-foreground">
-                  Page {safePage} of {totalPages}
+                  {t('settings.usage.pageOf', { page: safePage, total: totalPages })}
                 </span>
                 <Button
                   variant="outline"
@@ -1026,7 +1027,7 @@ const fetchStorageData = async () => {
                   onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
                   disabled={safePage >= totalPages}
                 >
-                  Next
+                  {t('common.next')}
                 </Button>
               </div>
             </div>
@@ -1035,11 +1036,11 @@ const fetchStorageData = async () => {
           {filteredAndSortedFiles.length === 0 && (
             <div className="text-center py-12">
               <HardDrive className="h-12 w-12 mx-auto mb-4 text-muted-foreground" />
-              <h3 className="text-lg font-medium mb-2">No files found</h3>
+              <h3 className="text-lg font-medium mb-2">{t('settings.usage.noFilesFound')}</h3>
               <p className="text-muted-foreground">
-                {searchTerm || filterType !== 'all' 
-                  ? 'Try adjusting your search or filter criteria.'
-                  : 'No files have been uploaded yet.'}
+                {searchTerm || filterType !== 'all'
+                  ? t('settings.usage.adjustSearchFilter')
+                  : t('settings.usage.noFilesUploaded')}
               </p>
             </div>
           )}
@@ -1050,17 +1051,17 @@ const fetchStorageData = async () => {
       <AlertDialog open={showDeleteDialog} onOpenChange={setShowDeleteDialog}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Are you sure?</AlertDialogTitle>
+            <AlertDialogTitle>{t('common.areYouSure')}</AlertDialogTitle>
             <AlertDialogDescription>
-              {deleteTarget === 'single' 
-                ? 'This will permanently delete the selected file. This action cannot be undone.'
-                : `This will permanently delete ${selectedFiles.size} selected files. This action cannot be undone.`}
+              {deleteTarget === 'single'
+                ? t('settings.usage.deleteFileConfirm')
+                : t('settings.usage.deleteFilesConfirm', { count: selectedFiles.size })}
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogCancel>{t('common.cancel')}</AlertDialogCancel>
             <AlertDialogAction onClick={confirmDelete} className="bg-destructive text-destructive-foreground">
-              Delete
+              {t('common.delete')}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
@@ -1070,44 +1071,44 @@ const fetchStorageData = async () => {
       <AlertDialog open={showStorageSettings} onOpenChange={setShowStorageSettings}>
         <AlertDialogContent className="max-w-md">
           <AlertDialogHeader>
-            <AlertDialogTitle>Storage Settings</AlertDialogTitle>
+            <AlertDialogTitle>{t('settings.usage.storageSettingsTitle')}</AlertDialogTitle>
             <AlertDialogDescription>
-              Configure your storage overage limits. You'll be charged ${storageUsage?.pricing?.storage?.overagePricePerGB}/GB/month for storage above your base limit.
+              {t('settings.usage.storageSettingsDesc', { rate: storageUsage?.pricing?.storage?.overagePricePerGB })}
             </AlertDialogDescription>
           </AlertDialogHeader>
           <div className="space-y-4">
             <div>
-              <Label htmlFor="overage-limit">Overage Limit</Label>
+              <Label htmlFor="overage-limit">{t('settings.usage.overageLimit')}</Label>
               <div className="mt-2">
                 <Input
                   id="overage-limit"
                   type="number"
-                  placeholder="Enter overage limit in GB"
+                  placeholder={t('settings.usage.overageLimitPlaceholder')}
                   value={Math.round(newOverageLimit / (1024 * 1024 * 1024))}
                   onChange={(e) => setNewOverageLimit(parseInt(e.target.value) * 1024 * 1024 * 1024)}
                   min="0"
                   max="1000"
                 />
                 <p className="text-sm text-muted-foreground mt-1">
-                  Maximum additional storage allowed beyond your base {storageUsage?.quota?.baseLimitFormatted} limit
+                  {t('settings.usage.overageLimitHelp', { baseLimit: storageUsage?.quota?.baseLimitFormatted })}
                 </p>
               </div>
             </div>
 
             {storageSettings && (
               <div className="bg-muted/50 p-3 rounded-lg">
-                <h4 className="font-medium text-sm mb-2">Current Limits</h4>
+                <h4 className="font-medium text-sm mb-2">{t('settings.usage.currentLimits')}</h4>
                 <div className="space-y-1 text-sm">
                   <div className="flex justify-between">
-                    <span>Base Storage:</span>
+                    <span>{t('settings.usage.baseStorage')}:</span>
                     <span>{storageUsage?.quota?.baseLimitFormatted}</span>
                   </div>
                   <div className="flex justify-between">
-                    <span>Overage Limit:</span>
+                    <span>{t('settings.usage.overageLimit')}:</span>
                     <span>{formatFileSize(newOverageLimit)}</span>
                   </div>
                   <div className="flex justify-between font-medium">
-                    <span>Total Limit:</span>
+                    <span>{t('settings.usage.total')}:</span>
                     <span>{formatFileSize((storageUsage?.quota?.baseLimit || 0) + newOverageLimit)}</span>
                   </div>
                 </div>
@@ -1116,17 +1117,17 @@ const fetchStorageData = async () => {
 
             <div className="bg-amber-50 dark:bg-amber-900/10 p-3 rounded-lg">
               <p className="text-sm text-amber-800 dark:text-amber-200">
-                <strong>Important:</strong> Setting a higher overage limit will allow more storage usage, which may result in additional charges. Monitor your usage regularly.
+                <strong>{t('common.important')}:</strong> {t('settings.usage.overageLimitWarning')}
               </p>
             </div>
           </div>
           <AlertDialogFooter>
-            <AlertDialogCancel>Cancel</AlertDialogCancel>
-            <AlertDialogAction 
+            <AlertDialogCancel>{t('common.cancel')}</AlertDialogCancel>
+            <AlertDialogAction
               onClick={updateStorageSettings}
               disabled={settingsLoading}
             >
-              {settingsLoading ? 'Saving...' : 'Save Settings'}
+              {settingsLoading ? t('common.saving') : t('settings.usage.saveSettings')}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

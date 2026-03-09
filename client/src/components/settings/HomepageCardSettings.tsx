@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { useTranslation } from 'react-i18next';
 import { Button } from '@modl-gg/shared-web/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@modl-gg/shared-web/components/ui/card';
 import { Input } from '@modl-gg/shared-web/components/ui/input';
@@ -106,6 +107,7 @@ const fetchCategories = async (): Promise<KnowledgebaseCategory[]> => {
 
 const HomepageCardSettings: React.FC = () => {
   const { toast } = useToast();
+  const { t } = useTranslation();
   const [editingCard, setEditingCard] = useState<HomepageCard | null>(null);
   const [isCreating, setIsCreating] = useState(false);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
@@ -154,13 +156,13 @@ const HomepageCardSettings: React.FC = () => {
       return response.json();
     },
     onSuccess: () => {
-      toast({ title: 'Success', description: 'Homepage card created successfully.' });
+      toast({ title: t('toast.success'), description: t('settings.homepage.cardCreated') });
       queryClient.invalidateQueries({ queryKey: ['homepageCards'] });
       resetForm();
       setIsCreating(false);
     },
     onError: (error) => {
-      toast({ title: 'Error', description: error.message, variant: 'destructive' });
+      toast({ title: t('toast.error'), description: error.message, variant: 'destructive' });
     },
   });
 
@@ -180,13 +182,13 @@ const HomepageCardSettings: React.FC = () => {
       return response.json();
     },
     onSuccess: () => {
-      toast({ title: 'Success', description: 'Homepage card updated successfully.' });
+      toast({ title: t('toast.success'), description: t('settings.homepage.cardUpdated') });
       queryClient.invalidateQueries({ queryKey: ['homepageCards'] });
       setEditingCard(null);
       setIsCreating(false);
     },
     onError: (error) => {
-      toast({ title: 'Error', description: error.message, variant: 'destructive' });
+      toast({ title: t('toast.error'), description: error.message, variant: 'destructive' });
     },
   });
 
@@ -202,11 +204,11 @@ const HomepageCardSettings: React.FC = () => {
       }
     },
     onSuccess: () => {
-      toast({ title: 'Success', description: 'Homepage card deleted successfully.' });
+      toast({ title: t('toast.success'), description: t('settings.homepage.cardDeleted') });
       queryClient.invalidateQueries({ queryKey: ['homepageCards'] });
     },
     onError: (error) => {
-      toast({ title: 'Error', description: error.message, variant: 'destructive' });
+      toast({ title: t('toast.error'), description: error.message, variant: 'destructive' });
     },
   });
 
@@ -227,17 +229,17 @@ const HomepageCardSettings: React.FC = () => {
 
   const handleCreateCard = () => {
     if (!formData.title.trim() || !formData.description.trim()) {
-      toast({ title: 'Error', description: 'Title and description are required.', variant: 'destructive' });
+      toast({ title: t('toast.error'), description: t('settings.homepage.titleDescRequired'), variant: 'destructive' });
       return;
     }
 
     if (formData.actionType === 'url' && !formData.actionUrl.trim()) {
-      toast({ title: 'Error', description: 'URL is required for URL actions.', variant: 'destructive' });
+      toast({ title: t('toast.error'), description: t('settings.homepage.urlRequired'), variant: 'destructive' });
       return;
     }
 
     if (formData.actionType === 'category_dropdown' && !formData.categoryId) {
-      toast({ title: 'Error', description: 'Category is required for category dropdown actions.', variant: 'destructive' });
+      toast({ title: t('toast.error'), description: t('settings.homepage.categoryRequired'), variant: 'destructive' });
       return;
     }
 
@@ -248,7 +250,7 @@ const HomepageCardSettings: React.FC = () => {
     if (!editingCard) return;
 
     if (!formData.title.trim() || !formData.description.trim()) {
-      toast({ title: 'Error', description: 'Title and description are required.', variant: 'destructive' });
+      toast({ title: t('toast.error'), description: t('settings.homepage.titleDescRequired'), variant: 'destructive' });
       return;
     }
 
@@ -294,31 +296,31 @@ const HomepageCardSettings: React.FC = () => {
     <div className="space-y-6">
       <Card>
         <CardHeader>
-          <CardTitle>Homepage Cards</CardTitle>
+          <CardTitle>{t('settings.homepage.title')}</CardTitle>
           <CardDescription>
-            Customize the action cards displayed on your homepage. Choose between URL actions or category dropdowns.
+            {t('settings.homepage.description')}
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
           {!isCreating ? (
             <Button onClick={() => setIsCreating(true)} className="w-full">
-              <Plus className="mr-2 h-4 w-4" /> Add New Card
+              <Plus className="mr-2 h-4 w-4" /> {t('settings.homepage.addNewCard')}
             </Button>
           ) : (
             <Card className="p-4 border-2 border-dashed">
               <div className="space-y-4">
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div>
-                    <Label htmlFor="title">Title</Label>
+                    <Label htmlFor="title">{t('settings.homepage.cardTitle')}</Label>
                     <Input
                       id="title"
-                      placeholder="Card title"
+                      placeholder={t('settings.homepage.cardTitlePlaceholder')}
                       value={formData.title}
                       onChange={(e) => setFormData({ ...formData, title: e.target.value })}
                     />
                   </div>
                   <div>
-                    <Label htmlFor="icon">Icon</Label>
+                    <Label htmlFor="icon">{t('settings.homepage.icon')}</Label>
                     <Select value={formData.icon} onValueChange={(value) => setFormData({ ...formData, icon: value })}>
                       <SelectTrigger>
                         <SelectValue />
@@ -338,7 +340,7 @@ const HomepageCardSettings: React.FC = () => {
                 </div>
 
                 <div>
-                  <Label htmlFor="iconColor">Icon Color</Label>
+                  <Label htmlFor="iconColor">{t('settings.homepage.iconColor')}</Label>
                   <div className="flex items-center gap-3">
                     <Input
                       id="iconColor"
@@ -356,23 +358,23 @@ const HomepageCardSettings: React.FC = () => {
                     />
                     <div className="flex items-center gap-2 px-3 py-2 border rounded-md bg-muted/30">
                       <IconPreview iconName={formData.icon} color={formData.iconColor} />
-                      <span className="text-sm text-muted-foreground">Preview</span>
+                      <span className="text-sm text-muted-foreground">{t('common.preview')}</span>
                     </div>
                   </div>
                 </div>
 
                 <div>
-                  <Label htmlFor="description">Description</Label>
+                  <Label htmlFor="description">{t('settings.homepage.cardDescription')}</Label>
                   <Textarea
                     id="description"
-                    placeholder="Card description"
+                    placeholder={t('settings.homepage.cardDescriptionPlaceholder')}
                     value={formData.description}
                     onChange={(e) => setFormData({ ...formData, description: e.target.value })}
                   />
                 </div>
 
                 <div>
-                  <Label htmlFor="actionType">Action Type</Label>
+                  <Label htmlFor="actionType">{t('settings.homepage.actionType')}</Label>
                   <Select 
                     value={formData.actionType} 
                     onValueChange={(value: 'url' | 'category_dropdown') => setFormData({ ...formData, actionType: value })}
@@ -381,8 +383,8 @@ const HomepageCardSettings: React.FC = () => {
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="url">URL Action</SelectItem>
-                      <SelectItem value="category_dropdown">Category Dropdown</SelectItem>
+                      <SelectItem value="url">{t('settings.homepage.urlAction')}</SelectItem>
+                      <SelectItem value="category_dropdown">{t('settings.homepage.categoryDropdown')}</SelectItem>
                     </SelectContent>
                   </Select>
                 </div>
@@ -390,7 +392,7 @@ const HomepageCardSettings: React.FC = () => {
                 {formData.actionType === 'url' ? (
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div>
-                      <Label htmlFor="actionUrl">URL</Label>
+                      <Label htmlFor="actionUrl">{t('settings.homepage.url')}</Label>
                       <Input
                         id="actionUrl"
                         placeholder="https://example.com or /internal-page"
@@ -399,10 +401,10 @@ const HomepageCardSettings: React.FC = () => {
                       />
                     </div>
                     <div>
-                      <Label htmlFor="actionButtonText">Button Text</Label>
+                      <Label htmlFor="actionButtonText">{t('settings.homepage.buttonText')}</Label>
                       <Input
                         id="actionButtonText"
-                        placeholder="Learn More"
+                        placeholder={t('settings.homepage.buttonTextPlaceholder')}
                         value={formData.actionButtonText}
                         onChange={(e) => setFormData({ ...formData, actionButtonText: e.target.value })}
                       />
@@ -410,13 +412,13 @@ const HomepageCardSettings: React.FC = () => {
                   </div>
                 ) : (
                   <div>
-                    <Label htmlFor="categoryId">Category</Label>
-                    <Select 
-                      value={formData.categoryId} 
+                    <Label htmlFor="categoryId">{t('settings.homepage.category')}</Label>
+                    <Select
+                      value={formData.categoryId}
                       onValueChange={(value) => setFormData({ ...formData, categoryId: value })}
                     >
                       <SelectTrigger>
-                        <SelectValue placeholder="Select a category" />
+                        <SelectValue placeholder={t('settings.homepage.selectCategory')} />
                       </SelectTrigger>
                       <SelectContent>
                         {categories?.map(category => (
@@ -435,7 +437,7 @@ const HomepageCardSettings: React.FC = () => {
                     checked={formData.isEnabled}
                     onCheckedChange={(checked) => setFormData({ ...formData, isEnabled: checked })}
                   />
-                  <Label htmlFor="isEnabled">Enabled</Label>
+                  <Label htmlFor="isEnabled">{t('common.enabled')}</Label>
                 </div>
 
                 <div className="flex gap-2">
@@ -443,17 +445,17 @@ const HomepageCardSettings: React.FC = () => {
                     onClick={editingCard ? handleUpdateCard : handleCreateCard}
                     disabled={createCardMutation.isPending || updateCardMutation.isPending}
                   >
-                    {editingCard ? 'Update Card' : 'Create Card'}
+                    {editingCard ? t('settings.homepage.updateCard') : t('settings.homepage.createCard')}
                   </Button>
-                  <Button 
-                    variant="outline" 
+                  <Button
+                    variant="outline"
                     onClick={() => {
                       setIsCreating(false);
                       setEditingCard(null);
                       resetForm();
                     }}
                   >
-                    Cancel
+                    {t('common.cancel')}
                   </Button>
                 </div>
               </div>
@@ -463,7 +465,7 @@ const HomepageCardSettings: React.FC = () => {
           {/* List existing cards */}
           <div className="space-y-2">
             {isLoadingCards ? (
-              <div className="text-center py-4">Loading cards...</div>
+              <div className="text-center py-4">{t('settings.homepage.loadingCards')}</div>
             ) : homepageCards?.length ? (
               homepageCards.map((card) => (
                 <Card key={card.id} className="p-4">
@@ -475,7 +477,7 @@ const HomepageCardSettings: React.FC = () => {
                         <h4 className="font-medium">{card.title}</h4>
                         <p className="text-sm text-muted-foreground">{card.description}</p>
                         <p className="text-xs text-muted-foreground">
-                          {card.actionType === 'url' ? `URL: ${card.actionUrl}` : `Category: ${card.category?.name}`}
+                          {card.actionType === 'url' ? `URL: ${card.actionUrl}` : `${t('settings.homepage.category')}: ${card.category?.name}`}
                         </p>
                       </div>
                     </div>
@@ -506,7 +508,7 @@ const HomepageCardSettings: React.FC = () => {
               ))
             ) : (
               <div className="text-center py-8 text-muted-foreground">
-                No homepage cards configured. Add your first card to get started.
+                {t('settings.homepage.noCards')}
               </div>
             )}
           </div>
@@ -517,15 +519,15 @@ const HomepageCardSettings: React.FC = () => {
       <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Delete Homepage Card</AlertDialogTitle>
+            <AlertDialogTitle>{t('settings.homepage.deleteCardTitle')}</AlertDialogTitle>
             <AlertDialogDescription>
-              Are you sure you want to delete this homepage card? This action cannot be undone.
+              {t('settings.homepage.deleteCardConfirm')}
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogCancel>{t('common.cancel')}</AlertDialogCancel>
             <AlertDialogAction onClick={confirmDeleteCard} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
-              Delete
+              {t('common.delete')}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

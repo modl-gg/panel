@@ -6,6 +6,7 @@ import { Bell, Clock, User, MessageSquare, X, UserMinus } from 'lucide-react';
 import { useLocation } from 'wouter';
 import { useToast } from '@modl-gg/shared-web/hooks/use-toast';
 import { formatTimeAgo } from '@/utils/date-utils';
+import { useTranslation } from 'react-i18next';
 
 export interface TicketSubscriptionUpdate {
   id: string;
@@ -33,6 +34,7 @@ export function TicketSubscriptionsSection({
   onUnsubscribe,
   onDismissTicket
 }: TicketSubscriptionsSectionProps) {
+  const { t } = useTranslation();
   const [, setLocation] = useLocation();
   const { toast } = useToast();
 
@@ -44,13 +46,13 @@ export function TicketSubscriptionsSection({
     try {
       await onUnsubscribe(ticketId);
       toast({
-        title: "Unsubscribed",
-        description: `You've been unsubscribed from "${ticketTitle}"`,
+        title: t('dashboard.subscriptions.unsubscribed'),
+        description: t('dashboard.subscriptions.unsubscribedDesc', { title: ticketTitle }),
       });
     } catch (error) {
       toast({
-        title: "Error",
-        description: "Failed to unsubscribe from ticket",
+        title: t('toast.error'),
+        description: t('dashboard.subscriptions.unsubscribeError'),
         variant: "destructive",
       });
     }
@@ -65,7 +67,7 @@ export function TicketSubscriptionsSection({
   };
 
   const truncateContent = (content: string | undefined | null, maxLength: number = 100) => {
-    if (!content) return 'No content available';
+    if (!content) return t('dashboard.subscriptions.noContent');
     const contentStr = String(content);
     if (contentStr.length <= maxLength) return contentStr;
     return contentStr.substring(0, maxLength) + '...';
@@ -78,7 +80,7 @@ export function TicketSubscriptionsSection({
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
             <Bell className="h-5 w-5" />
-            Ticket Subscription Updates
+            {t('dashboard.subscriptions.title')}
           </CardTitle>
         </CardHeader>
         <CardContent>
@@ -107,10 +109,10 @@ export function TicketSubscriptionsSection({
         <div className="flex justify-between items-center">
           <CardTitle className="flex items-center gap-2">
             <Bell className="h-5 w-5" />
-            Ticket Subscription Updates
+            {t('dashboard.subscriptions.title')}
             {hasUnreadUpdates && (
               <Badge variant="destructive" className="text-xs">
-                {updates.length} new
+                {t('dashboard.subscriptions.newCount', { count: updates.length })}
               </Badge>
             )}
           </CardTitle>
@@ -120,11 +122,11 @@ export function TicketSubscriptionsSection({
         <div className="space-y-4">
           {/* Recent Updates */}
           <div>
-            <h4 className="text-sm font-medium mb-3">Recent Replies</h4>
+            <h4 className="text-sm font-medium mb-3">{t('dashboard.subscriptions.recentReplies')}</h4>
             <div className="space-y-3">
               {updates.length === 0 ? (
                 <div className="text-center py-4 text-muted-foreground text-sm">
-                  No recent updates to your subscribed tickets
+                  {t('dashboard.subscriptions.empty')}
                 </div>
               ) : (
                 updates.slice(0, 5).map((update) => (
@@ -149,7 +151,7 @@ export function TicketSubscriptionsSection({
                               : 'bg-blue-500/20 text-blue-500'
                           }`}
                         >
-                          {update.isStaffReply ? 'STAFF' : 'PLAYER'}
+                          {update.isStaffReply ? t('dashboard.subscriptions.staff') : t('dashboard.subscriptions.player')}
                         </Badge>
                         <Button
                           variant="ghost"
@@ -185,7 +187,7 @@ export function TicketSubscriptionsSection({
                     {update.additionalCount && update.additionalCount > 0 && (
                       <div className="mb-2">
                         <Badge variant="outline" className="text-xs">
-                          and {update.additionalCount} more
+                          {t('dashboard.subscriptions.andMore', { count: update.additionalCount })}
                         </Badge>
                       </div>
                     )}
@@ -203,7 +205,7 @@ export function TicketSubscriptionsSection({
                       </div>
                       <div className="flex items-center gap-1">
                         <MessageSquare className="h-3 w-3" />
-                        <span>Reply</span>
+                        <span>{t('dashboard.subscriptions.reply')}</span>
                       </div>
                     </div>
                   </div>

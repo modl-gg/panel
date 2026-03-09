@@ -5,6 +5,7 @@ import { Input } from '@modl-gg/shared-web/components/ui/input';
 import { Button } from '@modl-gg/shared-web/components/ui/button';
 import { usePlayerSearch } from '@/hooks/use-data';
 import { getAvatarUrl } from '@/lib/api';
+import { useTranslation } from 'react-i18next';
 
 interface Player {
   username?: string;
@@ -20,6 +21,7 @@ interface Player {
 }
 
 const LookupPage = () => {
+  const { t } = useTranslation();
   const [location, navigate] = useLocation();
   const [searchQuery, setSearchQuery] = useState('');
   
@@ -83,7 +85,7 @@ const LookupPage = () => {
 
   return (
     <div className="transition-all duration-300 bg-background/50 border rounded-xl shadow-sm md:p-8 md:my-8 md:mx-8 p-4 my-0 mx-0 mb-20">
-      <h1 className="text-2xl font-bold mb-6">Player Lookup</h1>
+      <h1 className="text-2xl font-bold mb-6">{t('pages.lookup.title')}</h1>
       
       <div className="relative mb-6">
         <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none z-10">
@@ -92,7 +94,7 @@ const LookupPage = () => {
         
         <Input
           type="text"
-          placeholder="Search by username..."
+          placeholder={t('pages.lookup.searchPlaceholder')}
           className="pl-10 pr-10"
           value={searchQuery}
           onChange={(e) => setSearchQuery(e.target.value)}
@@ -120,7 +122,7 @@ const LookupPage = () => {
         </div>
       ) : searchQuery ? (
         <div className="space-y-3">
-          <h2 className="text-sm font-medium text-muted-foreground mb-4">Search Results</h2>
+          <h2 className="text-sm font-medium text-muted-foreground mb-4">{t('pages.lookup.searchResults')}</h2>
           
           {filteredPlayers.length > 0 ? (
             filteredPlayers.map((player: Player) => (
@@ -145,19 +147,19 @@ const LookupPage = () => {
                     </span>
                   </div>
                   <div>
-                    <p className="font-medium text-sm">{player.username || 'Unknown'}</p>
+                    <p className="font-medium text-sm">{player.username || t('pages.lookup.unknownPlayer')}</p>
                     <p className="text-xs text-muted-foreground">
-                      {isPlayerOnline(player) ? 'Online' : 'Offline'}
+                      {isPlayerOnline(player) ? t('pages.lookup.online') : t('pages.lookup.offline')}
                     </p>
                   </div>
                 </div>
-                
+
                 <ChevronRight className="h-4 w-4 text-muted-foreground" />
               </div>
             ))
           ) : (
             <div className="text-center py-6">
-              <p className="text-muted-foreground">No players found</p>
+              <p className="text-muted-foreground">{t('search.noPlayersFound')}</p>
             </div>
           )}
         </div>
@@ -165,7 +167,7 @@ const LookupPage = () => {
         <div>
           {recentSearches.length > 0 && (
             <div className="space-y-3">
-              <h2 className="text-sm font-medium text-muted-foreground mb-4">Recent Lookups</h2>
+              <h2 className="text-sm font-medium text-muted-foreground mb-4">{t('pages.lookup.recentLookups')}</h2>
               
               {recentSearches
                 .sort((a, b) => b.timestamp - a.timestamp)
@@ -192,13 +194,13 @@ const LookupPage = () => {
                       </span>
                     </div>
                     <div>
-                      <p className="font-medium text-sm">{player.username || 'Unknown'}</p>
+                      <p className="font-medium text-sm">{player.username || t('pages.lookup.unknownPlayer')}</p>
                       <p className="text-xs text-muted-foreground">
-                        {isPlayerOnline(player) ? 'Online' : 'Offline'}
+                        {isPlayerOnline(player) ? t('pages.lookup.online') : t('pages.lookup.offline')}
                       </p>
                     </div>
                   </div>
-                  
+
                   <ChevronRight className="h-4 w-4 text-muted-foreground" />
                 </div>
               ))}

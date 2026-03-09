@@ -1,5 +1,6 @@
 import { ReactNode } from 'react';
 import { usePermissions } from '@/hooks/use-permissions';
+import { useTranslation } from 'react-i18next';
 
 interface PermissionWrapperProps {
   children: ReactNode;
@@ -31,16 +32,17 @@ export function withPermissionCheck<T extends object>(
   settingsTab?: string
 ) {
   return function PermissionCheckedComponent(props: T) {
+    const { t } = useTranslation();
     const { hasAllPermissions, canAccessSettingsTab } = usePermissions();
-    
-    const hasAccess = settingsTab 
+
+    const hasAccess = settingsTab
       ? canAccessSettingsTab(settingsTab as any)
       : (requiredPermissions && requiredPermissions.length === 0) || hasAllPermissions(requiredPermissions || []);
 
     if (!hasAccess) {
       return (
         <div className="flex items-center justify-center h-64 border-2 border-dashed border-muted rounded-lg">
-          <p className="text-muted-foreground">You do not have permission to view this content.</p>
+          <p className="text-muted-foreground">{t('permissions.noPermission')}</p>
         </div>
       );
     }

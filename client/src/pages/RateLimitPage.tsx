@@ -3,6 +3,7 @@ import { useLocation, useRouter } from 'wouter';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@modl-gg/shared-web/components/ui/card';
 import { Button } from '@modl-gg/shared-web/components/ui/button';
 import { AlertCircle, Clock, RefreshCw } from 'lucide-react';
+import { useTranslation } from 'react-i18next';
 
 interface RateLimitInfo {
   retryAfter?: number;
@@ -14,6 +15,7 @@ interface RateLimitInfo {
 }
 
 export default function RateLimitPage() {
+  const { t } = useTranslation();
   const [, setLocation] = useLocation();
   const [, navigate] = useRouter();
   const [timeLeft, setTimeLeft] = useState<number>(0);
@@ -94,10 +96,10 @@ export default function RateLimitPage() {
             <AlertCircle className="w-8 h-8 text-orange-600 dark:text-orange-400" />
           </div>
           <CardTitle className="text-2xl font-bold text-gray-900 dark:text-gray-100">
-            Rate Limit Exceeded
+            {t('pages.rateLimit.title')}
           </CardTitle>
           <CardDescription className="text-gray-600 dark:text-gray-400">
-            You've made too many requests. Please wait before trying again.
+            {t('pages.rateLimit.description')}
           </CardDescription>
         </CardHeader>
         
@@ -108,7 +110,7 @@ export default function RateLimitPage() {
               <div className="flex items-center justify-center gap-2 mb-2">
                 <Clock className="w-5 h-5 text-orange-600 dark:text-orange-400" />
                 <span className="font-semibold text-orange-800 dark:text-orange-300">
-                  Time Remaining
+                  {t('pages.rateLimit.timeRemaining')}
                 </span>
               </div>
               <div className="text-3xl font-mono font-bold text-orange-600 dark:text-orange-400">
@@ -120,7 +122,7 @@ export default function RateLimitPage() {
           {/* Rate limit details */}
           {rateLimitInfo.rateLimit && (
             <div className="text-center text-sm text-gray-600 dark:text-gray-400">
-              <strong>Rate Limit:</strong> {rateLimitInfo.rateLimit}
+              <strong>{t('pages.rateLimit.rateLimitLabel')}</strong> {rateLimitInfo.rateLimit}
             </div>
           )}
 
@@ -134,47 +136,46 @@ export default function RateLimitPage() {
           {/* Security note */}
           {rateLimitInfo.securityNote && (
             <div className="text-sm text-blue-700 dark:text-blue-300 bg-blue-50 dark:bg-blue-900/20 rounded-lg p-3">
-              <strong>Security Info:</strong> {rateLimitInfo.securityNote}
+              <strong>{t('pages.rateLimit.securityInfo')}</strong> {rateLimitInfo.securityNote}
             </div>
           )}
 
           {/* Action buttons */}
           <div className="space-y-3">
             {timeLeft <= 0 ? (
-              <Button 
-                onClick={handleRetry} 
+              <Button
+                onClick={handleRetry}
                 className="w-full"
                 size="lg"
               >
                 <RefreshCw className="w-4 h-4 mr-2" />
-                Try Again
+                {t('common.tryAgain')}
               </Button>
             ) : (
-              <Button 
-                disabled 
-                className="w-full" 
+              <Button
+                disabled
+                className="w-full"
                 size="lg"
                 variant="secondary"
               >
                 <Clock className="w-4 h-4 mr-2" />
-                Wait {formatTime(timeLeft)}
+                {t('pages.rateLimit.wait', { time: formatTime(timeLeft) })}
               </Button>
             )}
-            
-            <Button 
+
+            <Button
               onClick={handleDashboard}
-              variant="outline" 
+              variant="outline"
               className="w-full"
               size="lg"
             >
-              Return to Dashboard
+              {t('pages.rateLimit.returnToDashboard')}
             </Button>
           </div>
 
           {/* Help text */}
           <div className="text-xs text-gray-500 dark:text-gray-400 text-center">
-            Rate limiting helps protect the server and ensures fair usage for all users. 
-            If you continue to experience issues, please contact support.
+            {t('pages.rateLimit.helpText')}
           </div>
         </CardContent>
       </Card>

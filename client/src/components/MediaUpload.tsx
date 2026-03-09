@@ -1,5 +1,6 @@
 import React, { useState, useRef, useCallback, useMemo } from 'react';
 import { Upload, X, FileText, Image, Video, File, Loader2, Check, AlertCircle } from 'lucide-react';
+import { useTranslation } from 'react-i18next';
 import { Button } from '@modl-gg/shared-web/components/ui/button';
 import { useToast } from '@modl-gg/shared-web/hooks/use-toast';
 import { Progress } from '@modl-gg/shared-web/components/ui/progress';
@@ -81,6 +82,7 @@ export function MediaUpload({
   autoUpload = true,
   onFilesSelected
 }: MediaUploadProps) {
+  const { t } = useTranslation();
   const [uploadedFiles, setUploadedFiles] = useState<UploadedFile[]>([]);
   const [isDragging, setIsDragging] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -154,7 +156,7 @@ export function MediaUpload({
         const validationError = validateFile(file);
         if (validationError) {
           toast({
-            title: "Invalid File",
+            title: t('upload.invalidFile'),
             description: `${file.name}: ${validationError}`,
             variant: "destructive"
           });
@@ -219,8 +221,8 @@ export function MediaUpload({
           onUploadComplete?.(result, file);
           
           toast({
-            title: "Upload Successful",
-            description: `${file.name} has been uploaded successfully.`,
+            title: t('upload.uploadSuccessful'),
+            description: t('upload.uploadedSuccess', { name: file.name }),
           });
         }
       } catch (error) {
@@ -236,8 +238,8 @@ export function MediaUpload({
         onUploadError?.(errorMessage);
         
         toast({
-          title: "Upload Failed",
-          description: `Failed to upload ${file.name}: ${errorMessage}`,
+          title: t('upload.uploadFailed'),
+          description: t('upload.uploadFailedDesc', { name: file.name, error: errorMessage }),
           variant: "destructive",
         });
       }
@@ -304,7 +306,7 @@ export function MediaUpload({
           ) : (
             <Upload className="h-4 w-4 mr-1.5" />
           )}
-          {isUploading ? 'Uploading...' : 'Attach Files'}
+          {isUploading ? t('upload.uploading') : t('upload.attachFiles')}
         </Button>
         <input
           ref={fileInputRef}
@@ -344,7 +346,7 @@ export function MediaUpload({
           ) : (
             <Upload className="h-4 w-4 mr-2" />
           )}
-          {isUploading ? 'Uploading...' : 'Upload Files'}
+          {isUploading ? t('upload.uploading') : t('upload.uploadFiles')}
         </Button>
       ) : (
         <Card 
@@ -362,17 +364,17 @@ export function MediaUpload({
             {isUploading ? (
               <div className="flex flex-col items-center justify-center py-2">
                 <Loader2 className="h-10 w-10 text-primary animate-spin mb-3" />
-                <p className="text-sm font-medium">Uploading files...</p>
-                <p className="text-xs text-muted-foreground mt-1">Please wait while we process your files</p>
+                <p className="text-sm font-medium">{t('upload.uploadingFiles')}</p>
+                <p className="text-xs text-muted-foreground mt-1">{t('upload.pleaseWait')}</p>
               </div>
             ) : (
               <>
                 <Upload className="h-12 w-12 mx-auto mb-4 text-muted-foreground" />
                 <p className="text-sm text-muted-foreground mb-2">
-                  Drag and drop files here, or click to select files
+                  {t('upload.dragAndDrop')}
                 </p>
                 <p className="text-xs text-muted-foreground">
-                  Maximum {maxFiles} files, up to {formatFileSize(sizeLimit)} each
+                  {t('upload.maxFiles', { count: maxFiles, size: formatFileSize(sizeLimit) })}
                 </p>
               </>
             )}

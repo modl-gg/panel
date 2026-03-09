@@ -5,6 +5,7 @@ import { Button } from '@modl-gg/shared-web/components/ui/button';
 import { Shield, Clock, User, AlertTriangle, ChevronDown, ChevronUp } from 'lucide-react';
 import { usePlayerWindow } from '@/contexts/PlayerWindowContext';
 import { formatTimeAgo } from '@/utils/date-utils';
+import { useTranslation } from 'react-i18next';
 
 export interface RecentPunishment {
   id: string;
@@ -32,6 +33,7 @@ const punishmentColors = {
 };
 
 export function RecentPunishmentsSection({ punishments, loading }: RecentPunishmentsSectionProps) {
+  const { t } = useTranslation();
   const { openPlayerWindow } = usePlayerWindow();
   const [expandedPunishments, setExpandedPunishments] = useState<Set<string>>(new Set());
 
@@ -50,7 +52,7 @@ export function RecentPunishmentsSection({ punishments, loading }: RecentPunishm
   };
 
   const truncateReason = (reason: string | undefined | null, maxLength: number = 80) => {
-    if (!reason) return 'No reason provided';
+    if (!reason) return t('dashboard.recentPunishments.noReason');
     const reasonStr = String(reason);
     if (reasonStr.length <= maxLength) return reasonStr;
     return reasonStr.substring(0, maxLength) + '...';
@@ -58,7 +60,7 @@ export function RecentPunishmentsSection({ punishments, loading }: RecentPunishm
 
 
   const formatDuration = (duration?: string | number) => {
-    if (!duration) return 'Permanent';
+    if (!duration) return t('dashboard.recentPunishments.permanent');
     
     // Convert to string if it's a number
     const durationStr = String(duration);
@@ -80,7 +82,7 @@ export function RecentPunishmentsSection({ punishments, loading }: RecentPunishm
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
             <Shield className="h-5 w-5" />
-            Recently Issued Punishments
+            {t('dashboard.recentPunishments.title')}
           </CardTitle>
         </CardHeader>
         <CardContent>
@@ -105,14 +107,14 @@ export function RecentPunishmentsSection({ punishments, loading }: RecentPunishm
       <CardHeader>
         <CardTitle className="flex items-center gap-2">
           <Shield className="h-5 w-5" />
-          Recently Issued Punishments
+          {t('dashboard.recentPunishments.title')}
         </CardTitle>
       </CardHeader>
       <CardContent>
         <div className="space-y-3">
           {punishments.length === 0 ? (
             <div className="text-center py-8 text-muted-foreground">
-              No recent punishments to display
+              {t('dashboard.recentPunishments.empty')}
             </div>
           ) : (
             punishments.map((punishment) => {
@@ -170,7 +172,7 @@ export function RecentPunishmentsSection({ punishments, loading }: RecentPunishm
                         {punishment.playerName}
                       </Button>
                       <span className="text-sm text-muted-foreground">
-                        {punishment.type || 'Punishment'} by {punishment.issuerName || 'Unknown'}
+                        {punishment.type || t('dashboard.recentPunishments.punishment')} {t('dashboard.recentPunishments.by')} {punishment.issuerName || t('search.unknown')}
                       </span>
                     </div>
                   </div>
@@ -179,13 +181,13 @@ export function RecentPunishmentsSection({ punishments, loading }: RecentPunishm
                     <div className="px-3 pb-3 border-t border-border bg-muted/20">
                       <div className="pt-3 space-y-2">
                         <div>
-                          <span className="text-xs font-medium text-muted-foreground">REASON:</span>
-                          <p className="text-sm mt-1">{punishment.reason || 'No reason provided'}</p>
+                          <span className="text-xs font-medium text-muted-foreground">{t('dashboard.recentPunishments.reason')}</span>
+                          <p className="text-sm mt-1">{punishment.reason || t('dashboard.recentPunishments.noReason')}</p>
                         </div>
                         
                         {punishment.duration && (
                           <div>
-                            <span className="text-xs font-medium text-muted-foreground">DURATION:</span>
+                            <span className="text-xs font-medium text-muted-foreground">{t('dashboard.recentPunishments.duration')}</span>
                             <div className="flex items-center gap-1 text-sm mt-1">
                               <Clock className="h-3 w-3" />
                               <span>{formatDuration(punishment.duration)}</span>
@@ -196,12 +198,12 @@ export function RecentPunishmentsSection({ punishments, loading }: RecentPunishm
                         <div className="flex justify-between items-center pt-2">
                           <div className="flex items-center gap-1 text-xs text-muted-foreground">
                             <User className="h-3 w-3" />
-                            <span>Issued by {punishment.issuerName}</span>
+                            <span>{t('dashboard.recentPunishments.issuedBy', { name: punishment.issuerName })}</span>
                           </div>
                           {punishment.active && (
                             <div className="flex items-center gap-1 text-red-500 text-xs">
                               <AlertTriangle className="h-3 w-3" />
-                              <span>Active</span>
+                              <span>{t('status.active')}</span>
                             </div>
                           )}
                         </div>

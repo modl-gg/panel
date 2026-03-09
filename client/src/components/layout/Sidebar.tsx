@@ -464,7 +464,7 @@ const Sidebar = () => {
                 onBlur={() => setIsFocused(false)}
               />
               <div className="text-xs text-muted-foreground mb-3 px-1">
-                Use <span className="font-mono bg-muted px-1 rounded">#</span> to search punishment IDs
+                {t('search.searchPunishmentIds')}
               </div>
 
               {(isLoading || isPunishmentLoading) ? (
@@ -479,7 +479,7 @@ const Sidebar = () => {
                     return (
                     <div className="mb-3">
                       <div className="py-1 px-2 mb-2 text-xs text-muted-foreground">
-                        Punishment Found
+                        {t('search.punishmentFound')}
                       </div>
                       <Button
                         variant="ghost"
@@ -513,10 +513,10 @@ const Sidebar = () => {
                   {isPunishmentLookup && punishmentError && (
                     <div className="mb-3">
                       <div className="py-1 px-2 mb-2 text-xs text-muted-foreground">
-                        Punishment Lookup
+                        {t('search.punishmentLookup')}
                       </div>
                       <div className="py-3 px-3 text-center text-xs text-destructive bg-destructive/10 border border-destructive/20 rounded">
-                        Punishment ID '{punishmentQuery}' not found
+                        {t('search.punishmentNotFound', { id: punishmentQuery })}
                       </div>
                     </div>
                   )}
@@ -525,7 +525,7 @@ const Sidebar = () => {
                   {!isPunishmentLookup && filteredLookups.length > 0 && (
                     <div>
                       <div className="py-1 px-2 mb-2 text-xs text-muted-foreground">
-                        Players Found
+                        {t('search.playersFound')}
                       </div>
                       {filteredLookups.map((player: Player, index: number) => (
                         <Button
@@ -535,27 +535,27 @@ const Sidebar = () => {
                           onClick={() => handlePlayerSelect(player)}
                         >
                           <div className="flex flex-col items-start">
-                            <span className="font-medium">{player.username || 'Unknown'}</span>
+                            <span className="font-medium">{player.username || t('search.unknown')}</span>
                             <span className="text-muted-foreground text-[10px]">
-                              {isPlayerOnline(player) ? 'Online' : 'Offline'}
+                              {isPlayerOnline(player) ? t('search.online') : t('search.offline')}
                             </span>
                           </div>
                         </Button>
                       ))}
                     </div>
                   )}
-                  
+
                   {/* Show punishment ID prompt when # is typed but no ID yet */}
                   {isPunishmentLookup && punishmentQuery.length === 0 && (
                     <div className="py-3 px-3 text-center text-xs text-muted-foreground bg-muted/10 border border-muted/20 rounded">
-                      Enter a punishment ID after the # symbol
+                      {t('search.enterPunishmentId')}
                     </div>
                   )}
-                  
+
                   {/* Show no results message */}
                   {!isPunishmentLookup && filteredLookups.length === 0 && !punishmentLookupResult && (
                     <div className="py-3 text-center text-xs text-muted-foreground">
-                      No players found matching '{searchQuery}'
+                      {t('search.noPlayersFound')}
                     </div>
                   )}
                 </div>
@@ -564,7 +564,7 @@ const Sidebar = () => {
                   {recentSearches.length > 0 ? (
                     <>
                       <div className="py-1 px-2 mb-2 text-xs text-muted-foreground">
-                        Recent Searches
+                        {t('search.recentSearches')}
                       </div>
                       {recentSearches
                         .sort((a, b) => b.timestamp - a.timestamp)
@@ -577,9 +577,9 @@ const Sidebar = () => {
                           onClick={() => handlePlayerSelect(player)}
                         >
                           <div className="flex flex-col items-start">
-                            <span className="font-medium">{player.username || 'Unknown'}</span>
+                            <span className="font-medium">{player.username || t('search.unknown')}</span>
                             <span className="text-muted-foreground text-[10px]">
-                              {isPlayerOnline(player) ? 'Online' : 'Offline'}
+                              {isPlayerOnline(player) ? t('search.online') : t('search.offline')}
                             </span>
                           </div>
                         </Button>
@@ -587,8 +587,8 @@ const Sidebar = () => {
                     </>
                   ) : (
                     <div className="py-6 text-center text-xs text-muted-foreground">
-                      <p>Start typing to search for players</p>
-                      <p className="mt-2">Use # for punishment IDs</p>
+                      <p>{t('search.startTyping')}</p>
+                      <p className="mt-2">{t('search.searchPunishmentIds')}</p>
                     </div>
                   )}
                 </div>

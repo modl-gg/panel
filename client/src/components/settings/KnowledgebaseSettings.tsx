@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
+import { useTranslation } from 'react-i18next';
 import { Button } from '@modl-gg/shared-web/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@modl-gg/shared-web/components/ui/card';
 import { Input } from '@modl-gg/shared-web/components/ui/input';
@@ -93,6 +94,7 @@ const CategoryItem: React.FC<CategoryItemProps> = ({
   reorderArticlesMutation,
   fetchArticleForEditing
 }) => {
+  const { t } = useTranslation();
   const ref = React.useRef<HTMLDivElement>(null);
   const [displayedCategoryArticles, setDisplayedCategoryArticles] = useState<KnowledgebaseArticle[]>([]);
 
@@ -163,7 +165,7 @@ const CategoryItem: React.FC<CategoryItemProps> = ({
                   type="text"
                   value={editingCategory.name}
                   onChange={(e) => setEditingCategory({ ...editingCategory, name: e.target.value })}
-                  placeholder="Category name"
+                  placeholder={t('settings.knowledgebase.categoryName')}
                   className="h-8"
                   autoFocus
                 />
@@ -171,7 +173,7 @@ const CategoryItem: React.FC<CategoryItemProps> = ({
                   type="text"
                   value={editingCategory.description || ''}
                   onChange={(e) => setEditingCategory({ ...editingCategory, description: e.target.value })}
-                  placeholder="Category description (optional)"
+                  placeholder={t('settings.knowledgebase.categoryDescriptionOptional')}
                   className="h-8"
                 />
               </div>
@@ -187,8 +189,8 @@ const CategoryItem: React.FC<CategoryItemProps> = ({
           <div className={`space-x-2 ${editingCategory?.id === category.id ? 'ml-4' : ''}`}>
             {editingCategory?.id === category.id ? (
               <>
-                <Button size="sm" onClick={handleUpdateCategory} disabled={updateCategoryMutation.isPending}>Save</Button>
-                <Button variant="ghost" size="sm" onClick={() => setEditingCategory(null)}>Cancel</Button>
+                <Button size="sm" onClick={handleUpdateCategory} disabled={updateCategoryMutation.isPending}>{t('common.save')}</Button>
+                <Button variant="ghost" size="sm" onClick={() => setEditingCategory(null)}>{t('common.cancel')}</Button>
               </>
             ) : (
               <Button variant="ghost" size="sm" onClick={() => onEdit(category)}><Edit className="h-4 w-4" /></Button>
@@ -197,7 +199,7 @@ const CategoryItem: React.FC<CategoryItemProps> = ({
           </div>
         </div>
         <div className="mt-4 pl-6 space-y-3">
-          <h4 className="font-semibold text-sm">Articles in "{category.name}"</h4>
+          <h4 className="font-semibold text-sm">{t('settings.knowledgebase.articlesIn', { category: category.name })}</h4>
           <div className="space-y-1"> {/* Wrapper for consistent spacing */}
             {(displayedCategoryArticles || []).map((article, articleIndex) => (
               <ArticleListItem
@@ -218,7 +220,7 @@ const CategoryItem: React.FC<CategoryItemProps> = ({
             className="mt-3" // Adjusted margin for consistency
             onClick={() => onAddArticle(category.id)}
           >
-            <Plus className="mr-1.5 h-3.5 w-3.5" /> Add Article
+            <Plus className="mr-1.5 h-3.5 w-3.5" /> {t('settings.knowledgebase.addArticle')}
           </Button>
         </div>
       </Card>
@@ -228,6 +230,7 @@ const CategoryItem: React.FC<CategoryItemProps> = ({
 
 const KnowledgebaseSettings: React.FC = () => {
   const { toast } = useToast();
+  const { t } = useTranslation();
   const [newCategoryName, setNewCategoryName] = useState('');
   const [newCategoryDescription, setNewCategoryDescription] = useState('');
   // editingCategory state is now part of KnowledgebaseSettings
@@ -266,13 +269,13 @@ const KnowledgebaseSettings: React.FC = () => {
       return response.json();
     },
     onSuccess: () => {
-      toast({ title: 'Success', description: 'Category created successfully.' });
+      toast({ title: t('toast.success'), description: t('settings.knowledgebase.categoryCreated') });
       queryClient.invalidateQueries({ queryKey: ['knowledgebaseCategories'] });
       setNewCategoryName('');
       setNewCategoryDescription('');
     },
     onError: (error) => {
-      toast({ title: 'Error', description: error.message, variant: 'destructive' });
+      toast({ title: t('toast.error'), description: error.message, variant: 'destructive' });
     },
   });
 
@@ -291,12 +294,12 @@ const KnowledgebaseSettings: React.FC = () => {
       return response.json();
     },
     onSuccess: () => {
-      toast({ title: 'Success', description: 'Category updated successfully.' });
+      toast({ title: t('toast.success'), description: t('settings.knowledgebase.categoryUpdated') });
       queryClient.invalidateQueries({ queryKey: ['knowledgebaseCategories'] });
       setEditingCategoryState(null); // Use renamed state setter
     },
     onError: (error) => {
-      toast({ title: 'Error', description: error.message, variant: 'destructive' });
+      toast({ title: t('toast.error'), description: error.message, variant: 'destructive' });
     },
   });
 
@@ -312,11 +315,11 @@ const KnowledgebaseSettings: React.FC = () => {
       }
     },
     onSuccess: () => {
-      toast({ title: 'Success', description: 'Category deleted successfully.' });
+      toast({ title: t('toast.success'), description: t('settings.knowledgebase.categoryDeleted') });
       queryClient.invalidateQueries({ queryKey: ['knowledgebaseCategories'] });
     },
     onError: (error) => {
-      toast({ title: 'Error', description: error.message, variant: 'destructive' });
+      toast({ title: t('toast.error'), description: error.message, variant: 'destructive' });
     },
   });
 
@@ -334,11 +337,11 @@ const KnowledgebaseSettings: React.FC = () => {
       }
     },
     onSuccess: () => {
-      toast({ title: 'Success', description: 'Categories reordered successfully.' });
+      toast({ title: t('toast.success'), description: t('settings.knowledgebase.categoriesReordered') });
       queryClient.invalidateQueries({ queryKey: ['knowledgebaseCategories'] });
     },
     onError: (error) => {
-      toast({ title: 'Error', description: error.message, variant: 'destructive' });
+      toast({ title: t('toast.error'), description: error.message, variant: 'destructive' });
     },
   });
 
@@ -419,13 +422,13 @@ const KnowledgebaseSettings: React.FC = () => {
       return response.json();
     },
     onSuccess: () => {
-      toast({ title: 'Success', description: 'Article created successfully.' });
+      toast({ title: t('toast.success'), description: t('settings.knowledgebase.articleCreated') });
       queryClient.invalidateQueries({ queryKey: ['knowledgebaseCategories'] }); // Refetch categories to update articles list
       setEditingArticle(null); // Clear editing article if open
       setNewArticleForModal(null); // Clear new article form
     },
     onError: (error) => {
-      toast({ title: 'Error', description: error.message, variant: 'destructive' });
+      toast({ title: t('toast.error'), description: error.message, variant: 'destructive' });
     },
   });
 
@@ -444,12 +447,12 @@ const KnowledgebaseSettings: React.FC = () => {
       return response.json();
     },
     onSuccess: () => {
-      toast({ title: 'Success', description: 'Article updated successfully.' });
+      toast({ title: t('toast.success'), description: t('settings.knowledgebase.articleUpdated') });
       queryClient.invalidateQueries({ queryKey: ['knowledgebaseCategories'] });
       setEditingArticle(null);
     },
     onError: (error) => {
-      toast({ title: 'Error', description: error.message, variant: 'destructive' });
+      toast({ title: t('toast.error'), description: error.message, variant: 'destructive' });
     },
   });
 
@@ -465,11 +468,11 @@ const KnowledgebaseSettings: React.FC = () => {
       }
     },
     onSuccess: () => {
-      toast({ title: 'Success', description: 'Article deleted successfully.' });
+      toast({ title: t('toast.success'), description: t('settings.knowledgebase.articleDeleted') });
       queryClient.invalidateQueries({ queryKey: ['knowledgebaseCategories'] });
     },
     onError: (error) => {
-      toast({ title: 'Error', description: error.message, variant: 'destructive' });
+      toast({ title: t('toast.error'), description: error.message, variant: 'destructive' });
     },
   });
 
@@ -487,11 +490,11 @@ const KnowledgebaseSettings: React.FC = () => {
       }
     },
     onSuccess: (data, variables) => {
-      toast({ title: 'Success', description: `Articles in category reordered successfully.` });
+      toast({ title: t('toast.success'), description: t('settings.knowledgebase.articlesReordered') });
       queryClient.invalidateQueries({ queryKey: ['knowledgebaseCategories'] });
     },
     onError: (error) => {
-      toast({ title: 'Error', description: error.message, variant: 'destructive' });
+      toast({ title: t('toast.error'), description: error.message, variant: 'destructive' });
     },
   });
 
@@ -521,7 +524,7 @@ const KnowledgebaseSettings: React.FC = () => {
         isVisible: newArticleForModal.isVisible,
       });
     } else {
-      toast({ title: "Error", description: "Title and content are required.", variant: "destructive" });
+      toast({ title: t('toast.error'), description: t('settings.knowledgebase.titleContentRequired'), variant: "destructive" });
     }
   };
 
@@ -549,7 +552,7 @@ const KnowledgebaseSettings: React.FC = () => {
       }, 100);
     } catch (error) {
       console.error('Error fetching article for editing:', error);
-      toast({ title: "Error", description: "Failed to load article for editing.", variant: "destructive" });
+      toast({ title: t('toast.error'), description: t('settings.knowledgebase.articleLoadFailed'), variant: "destructive" });
     }
   };
 
@@ -587,11 +590,11 @@ const KnowledgebaseSettings: React.FC = () => {
     // items.splice(result.destination.index, 0, reorderedItem);
     // const orderedArticleIds = items.map(item => item.id);
     // reorderArticlesMutation.mutate({ categoryId, orderedArticleIds });
-    toast({ title: "Drag & Drop", description: "Article drag & drop reordering is not yet implemented.", variant: "default" });
+    toast({ title: t('settings.knowledgebase.dragDrop'), description: t('settings.knowledgebase.dragDropNotImplemented'), variant: "default" });
   };
 
   if (isLoadingCategories) {
-    return <p>Loading knowledgebase settings...</p>;
+    return <p>{t('settings.knowledgebase.loading')}</p>;
   }
 
   return (
@@ -599,26 +602,26 @@ const KnowledgebaseSettings: React.FC = () => {
       <div className="space-y-6">
         <Card>
           <CardHeader>
-            <CardTitle>Manage Categories</CardTitle>
-            <CardDescription>Create, edit, delete, and reorder knowledgebase categories.</CardDescription>
+            <CardTitle>{t('settings.knowledgebase.manageCategories')}</CardTitle>
+            <CardDescription>{t('settings.knowledgebase.manageCategoriesDesc')}</CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
             <div className="space-y-2">
               <div className="flex flex-col md:flex-row gap-2">
                 <Input
                   type="text"
-                  placeholder="New category name"
+                  placeholder={t('settings.knowledgebase.newCategoryName')}
                   value={newCategoryName}
                   onChange={(e) => setNewCategoryName(e.target.value)}
                   className="flex-grow"
                 />
                 <Button onClick={handleCreateCategory} disabled={createCategoryMutation.isPending} className="w-full md:w-auto">
-                  <Plus className="mr-2 h-4 w-4" /> Add Category
+                  <Plus className="mr-2 h-4 w-4" /> {t('settings.knowledgebase.addCategory')}
                 </Button>
               </div>
               <Input
                 type="text"
-                placeholder="Category description (optional)"
+                placeholder={t('settings.knowledgebase.categoryDescriptionOptional')}
                 value={newCategoryDescription}
                 onChange={(e) => setNewCategoryDescription(e.target.value)}
                 className="w-full"
@@ -662,18 +665,18 @@ const KnowledgebaseSettings: React.FC = () => {
         {editingArticle && !newArticleForModal && ( // Ensure only one modal is trying to render if states overlap by mistake
             <Card className="mt-6" data-article-edit-form="true">
                 <CardHeader>
-                    <CardTitle>Edit Article: {editingArticle.title}</CardTitle>
+                    <CardTitle>{t('settings.knowledgebase.editArticle', { title: editingArticle.title })}</CardTitle>
                 </CardHeader>
                 <CardContent className="space-y-3">
                     <Input
-                        placeholder="Article Title"
+                        placeholder={t('settings.knowledgebase.articleTitle')}
                         value={editingArticle.title}
                         onChange={(e) => setEditingArticle(prev => prev ? {...prev, title: e.target.value} : null)}
                     />
                     <MarkdownEditor
                         value={editingArticle.content}
                         onChange={(value) => setEditingArticle(prev => prev ? { ...prev, content: value } : null)}
-                        placeholder="Article Content (Markdown)"
+                        placeholder={t('settings.knowledgebase.articleContent')}
                     />
                     <div className="flex items-center space-x-2">
                         <input
@@ -682,15 +685,15 @@ const KnowledgebaseSettings: React.FC = () => {
                             checked={editingArticle.isVisible}
                             onChange={(e) => setEditingArticle(prev => prev ? {...prev, isVisible: e.target.checked} : null)}
                         />
-                        <label htmlFor={`article-visible-${editingArticle.id}`}>Visible to users</label>
+                        <label htmlFor={`article-visible-${editingArticle.id}`}>{t('settings.knowledgebase.visibleToUsers')}</label>
                     </div>
                     <div className="flex justify-end space-x-2">
-                        <Button variant="outline" onClick={() => setEditingArticle(null)}>Cancel</Button>
+                        <Button variant="outline" onClick={() => setEditingArticle(null)}>{t('common.cancel')}</Button>
                         <Button
                             onClick={handleUpdateArticle}
                             disabled={updateArticleMutation.isPending || !editingArticle?.title.trim() || !editingArticle?.content.trim()}
                         >
-                            Save Article
+                            {t('settings.knowledgebase.saveArticle')}
                         </Button>
                     </div>
                 </CardContent>
@@ -701,19 +704,19 @@ const KnowledgebaseSettings: React.FC = () => {
         {newArticleForModal && (
           <Card className="mt-6" data-article-form="true">
             <CardHeader>
-              <CardTitle>Create New Article</CardTitle>
-              <CardDescription>In category: {categories?.find(c => c.id === newArticleForModal.categoryId)?.name || 'Unknown'}</CardDescription>
+              <CardTitle>{t('settings.knowledgebase.createNewArticle')}</CardTitle>
+              <CardDescription>{t('settings.knowledgebase.inCategory', { category: categories?.find(c => c.id === newArticleForModal.categoryId)?.name || t('common.unknown') })}</CardDescription>
             </CardHeader>
             <CardContent className="space-y-3">
               <Input
-                placeholder="Article Title"
+                placeholder={t('settings.knowledgebase.articleTitle')}
                 value={newArticleForModal.title}
                 onChange={(e) => setNewArticleForModal(prev => prev ? { ...prev, title: e.target.value } : null)}
               />
               <MarkdownEditor
                 value={newArticleForModal.content}
                 onChange={(value) => setNewArticleForModal(prev => prev ? { ...prev, content: value } : null)}
-                placeholder="Article Content (Markdown)"
+                placeholder={t('settings.knowledgebase.articleContent')}
               />
               <div className="flex items-center space-x-2">
                 <input
@@ -722,15 +725,15 @@ const KnowledgebaseSettings: React.FC = () => {
                   checked={newArticleForModal.isVisible}
                   onChange={(e) => setNewArticleForModal(prev => prev ? { ...prev, isVisible: e.target.checked } : null)}
                 />
-                <label htmlFor="new-article-visible">Visible to users</label>
+                <label htmlFor="new-article-visible">{t('settings.knowledgebase.visibleToUsers')}</label>
               </div>
               <div className="flex justify-end space-x-2">
-                <Button variant="outline" onClick={() => setNewArticleForModal(null)}>Cancel</Button>
+                <Button variant="outline" onClick={() => setNewArticleForModal(null)}>{t('common.cancel')}</Button>
                 <Button
                   onClick={handleCreateArticleFromModal}
                   disabled={createArticleMutation.isPending || !newArticleForModal?.title.trim() || !newArticleForModal?.content.trim()}
                 >
-                  {createArticleMutation.isPending ? "Creating..." : "Create Article"}
+                  {createArticleMutation.isPending ? t('settings.knowledgebase.creating') : t('settings.knowledgebase.createArticle')}
                 </Button>
               </div>
             </CardContent>
@@ -743,19 +746,19 @@ const KnowledgebaseSettings: React.FC = () => {
       <AlertDialog open={deleteCategoryDialogOpen} onOpenChange={setDeleteCategoryDialogOpen}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Delete Category?</AlertDialogTitle>
+            <AlertDialogTitle>{t('settings.knowledgebase.deleteCategoryTitle')}</AlertDialogTitle>
             <AlertDialogDescription>
-              Are you sure you want to delete "{categoryToDelete?.name}" and all {categoryToDelete?.articles?.length || 0} articles? This action cannot be undone.
+              {t('settings.knowledgebase.deleteCategoryConfirm', { name: categoryToDelete?.name, count: categoryToDelete?.articles?.length || 0 })}
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel onClick={() => setCategoryToDelete(null)}>Cancel</AlertDialogCancel>
+            <AlertDialogCancel onClick={() => setCategoryToDelete(null)}>{t('common.cancel')}</AlertDialogCancel>
             <AlertDialogAction
               onClick={confirmDeleteCategory}
               disabled={deleteCategoryMutation.isPending}
               className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
             >
-              {deleteCategoryMutation.isPending ? 'Deleting...' : 'Delete'}
+              {deleteCategoryMutation.isPending ? t('common.deleting') : t('common.delete')}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
@@ -765,19 +768,19 @@ const KnowledgebaseSettings: React.FC = () => {
       <AlertDialog open={deleteArticleDialogOpen} onOpenChange={setDeleteArticleDialogOpen}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Delete Article?</AlertDialogTitle>
+            <AlertDialogTitle>{t('settings.knowledgebase.deleteArticleTitle')}</AlertDialogTitle>
             <AlertDialogDescription>
-              Are you sure you want to delete "{articleToDelete?.title}"? This action cannot be undone.
+              {t('settings.knowledgebase.deleteArticleConfirm', { title: articleToDelete?.title })}
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel onClick={() => setArticleToDelete(null)}>Cancel</AlertDialogCancel>
+            <AlertDialogCancel onClick={() => setArticleToDelete(null)}>{t('common.cancel')}</AlertDialogCancel>
             <AlertDialogAction
               onClick={confirmDeleteArticle}
               disabled={deleteArticleMutation.isPending}
               className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
             >
-              {deleteArticleMutation.isPending ? 'Deleting...' : 'Delete'}
+              {deleteArticleMutation.isPending ? t('common.deleting') : t('common.delete')}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

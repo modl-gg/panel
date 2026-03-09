@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { useTranslation } from 'react-i18next';
 import { Save } from 'lucide-react';
 import { Button } from '@modl-gg/shared-web/components/ui/button';
 import { Input } from '@modl-gg/shared-web/components/ui/input';
@@ -8,6 +9,7 @@ import { useAuth } from '@/hooks/use-auth';
 import { apiFetch } from '@/lib/api';
 
 const ProfileSettings = () => {
+  const { t } = useTranslation();
   const { user } = useAuth();
   const { toast } = useToast();
   
@@ -36,8 +38,8 @@ const ProfileSettings = () => {
       
       if (response.ok) {
         toast({
-          title: "Profile Updated",
-          description: "Your profile information has been successfully updated."
+          title: t('settings.account.profileUpdated'),
+          description: t('settings.account.profileUpdatedDesc')
         });
         // Refresh the page to update the user context
         setTimeout(() => {
@@ -45,12 +47,12 @@ const ProfileSettings = () => {
         }, 1000);
       } else {
         const errorData = await response.json();
-        throw new Error(errorData.message || 'Failed to update profile');
+        throw new Error(errorData.message || t('settings.account.updateProfileFailed'));
       }
     } catch (error) {
       toast({
-        title: "Update Failed",
-        description: error instanceof Error ? error.message : "There was an error updating your profile. Please try again.",
+        title: t('settings.account.updateFailed'),
+        description: error instanceof Error ? error.message : t('settings.account.updateProfileError'),
         variant: "destructive"
       });
     } finally {
@@ -61,29 +63,29 @@ const ProfileSettings = () => {
   return (
     <div className="space-y-6">
       <div>
-        <h3 className="text-lg font-medium mb-4">Profile Information</h3>
+        <h3 className="text-lg font-medium mb-4">{t('settings.account.profileInformation')}</h3>
         <div className="space-y-6">
           <div className="space-y-4">
             <div className="space-y-2">
-              <Label htmlFor="username">Username</Label>
+              <Label htmlFor="username">{t('settings.account.username')}</Label>
               <Input
                 id="username"
                 type="text"
                 value={profileUsername}
                 onChange={(e) => setProfileUsername(e.target.value)}
-                placeholder="Enter your username"
+                placeholder={t('settings.account.enterUsername')}
               />
               <p className="text-sm text-muted-foreground">
-                This name will appear in ticket conversations and other interactions.
+                {t('settings.account.usernameHelp')}
               </p>
             </div>
-            
+
             <Button
               onClick={handleSaveProfile}
               disabled={isUpdating}
             >
               <Save className="h-4 w-4 mr-2" />
-              {isUpdating ? 'Saving...' : 'Save Profile Changes'}
+              {isUpdating ? t('common.saving') : t('settings.account.saveProfileChanges')}
             </Button>
           </div>
         </div>

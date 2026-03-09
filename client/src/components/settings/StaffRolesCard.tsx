@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { useTranslation } from 'react-i18next';
 import { Shield, Plus, Edit, Trash2, Save, X, Check, GripVertical } from 'lucide-react';
 import { DndProvider, useDrag, useDrop } from 'react-dnd';
 import { HTML5Backend } from 'react-dnd-html5-backend';
@@ -22,7 +23,7 @@ interface Permission {
   id: string;
   name: string;
   description: string;
-  category: 'punishment' | 'ticket' | 'admin';
+  category: 'punishment' | 'ticket' | 'admin' | 'staff';
   parentId: string | null;
 }
 
@@ -38,9 +39,10 @@ interface StaffRole {
 }
 
 const PERMISSION_CATEGORIES = {
-  punishment: 'Punishment Permissions',
-  ticket: 'Ticket Permissions',
-  admin: 'Administrative Permissions'
+  punishment: 'punishment',
+  ticket: 'ticket',
+  admin: 'admin',
+  staff: 'staff'
 };
 
 const DEFAULT_PERMISSIONS: Permission[] = [
@@ -87,6 +89,16 @@ const DEFAULT_PERMISSIONS: Permission[] = [
   { id: 'ticket.manage.hide', name: 'Hide Tickets', description: 'Hide tickets from public view', category: 'ticket', parentId: 'ticket.manage' },
   { id: 'ticket.manage.subscribe', name: 'Manage Subscriptions', description: 'Manage ticket notification subscriptions', category: 'ticket', parentId: 'ticket.manage' },
   { id: 'ticket.delete.all', name: 'Delete Tickets', description: 'Delete tickets from the system', category: 'ticket', parentId: null },
+
+  // Staff tool permissions
+  { id: 'staff.chat.toggle', name: 'Toggle Chat', description: 'Toggle server chat on/off', category: 'staff', parentId: null },
+  { id: 'staff.chat.clear', name: 'Clear Chat', description: 'Clear server chat', category: 'staff', parentId: null },
+  { id: 'staff.chat.slow', name: 'Slow Chat', description: 'Set slow mode on server chat', category: 'staff', parentId: null },
+  { id: 'staff.maintenance', name: 'Maintenance Mode', description: 'Toggle server maintenance mode', category: 'staff', parentId: null },
+  { id: 'staff.modactions', name: 'Moderation Actions', description: 'Staff mode, vanish, freeze, and target players', category: 'staff', parentId: null },
+  { id: 'staff.intercept', name: 'Intercept Chat', description: 'Intercept and view all network chat', category: 'staff', parentId: null },
+  { id: 'staff.chatlogs', name: 'Chat Logs', description: 'View player chat history', category: 'staff', parentId: null },
+  { id: 'staff.commandlogs', name: 'Command Logs', description: 'View player command history', category: 'staff', parentId: null },
 ];
 
 const DEFAULT_ROLES: StaffRole[] = [
@@ -159,6 +171,7 @@ const DraggableRoleCard: React.FC<DraggableRoleCardProps> = ({
   getPermissionsByCategory,
   hasPermission
 }) => {
+  const { t } = useTranslation();
   const currentUserOrder = roleOrderMap.get(currentUserRole || '') ?? 999;
   const roleOrder = getRoleOrder(role);
   // User can drag roles that have higher order number (lower authority) and not super admin
@@ -243,17 +256,17 @@ const DraggableRoleCard: React.FC<DraggableRoleCardProps> = ({
           <h4 className="font-medium">{role.name}</h4>
           {role.isDefault && (
             <Badge variant="outline" className="text-xs">
-              Default
+              {t('settings.roles.default')}
             </Badge>
           )}
           {role.userCount !== undefined && (
             <Badge variant="secondary" className="text-xs">
-              {role.userCount} users
+              {t('settings.roles.usersCount', { count: role.userCount })}
             </Badge>
           )}
           {role.name === 'Super Admin' && (
             <Badge variant="default" className="text-xs bg-yellow-500">
-              Highest Rank
+              {t('settings.roles.highestRank')}
             </Badge>
           )}
         </div>
@@ -281,7 +294,7 @@ const DraggableRoleCard: React.FC<DraggableRoleCardProps> = ({
       
       {/* Permission Summary */}
       <div className="space-y-2">
-        <div className="text-xs font-medium text-muted-foreground">Permissions:</div>
+        <div className="text-xs font-medium text-muted-foreground">{t('settings.roles.permissions')}:</div>
         <div className="flex flex-wrap gap-1">
           {Object.entries(PERMISSION_CATEGORIES).map(([category, label]) => {
             const categoryPermissions = getPermissionsByCategory(category);
@@ -300,7 +313,7 @@ const DraggableRoleCard: React.FC<DraggableRoleCardProps> = ({
                 variant={granted === total ? "default" : granted > 0 ? "secondary" : "outline"}
                 className="text-xs"
               >
-                {label}: {granted}/{total}
+                {t(`settings.roles.category.${label}`)}: {granted}/{total}
               </Badge>
             );
           })}
@@ -311,6 +324,7 @@ const DraggableRoleCard: React.FC<DraggableRoleCardProps> = ({
 };
 
 export default function StaffRolesCard() {
+  const { t } = useTranslation();
   const [selectedRole, setSelectedRole] = useState<StaffRole | null>(null);
   const [isEditingRole, setIsEditingRole] = useState(false);
   const [isCreatingRole, setIsCreatingRole] = useState(false);
@@ -358,7 +372,7 @@ export default function StaffRolesCard() {
   // Safety check for currentUser
   if (!currentUser) {
     console.warn('currentUser is undefined - this should not happen');
-    return <div>Loading user information...</div>;
+    return <div>{t('common.loadingUser')}</div>;
   }
 
   // Update local roles when server data changes
@@ -437,8 +451,8 @@ export default function StaffRolesCard() {
       }
       
       toast({
-        title: "Role Order Updated",
-        description: "The role hierarchy has been saved successfully.",
+        title: t('settings.roles.roleOrderUpdated'),
+        description: t('settings.roles.roleHierarchySaved'),
       });
       
       // Update original roles to the new order so future cancellations work correctly
@@ -449,8 +463,8 @@ export default function StaffRolesCard() {
       // Revert the local change if the API call fails
       setLocalRoles(originalRoles);
       toast({
-        title: "Error",
-        description: "Failed to save role order. Please try again.",
+        title: t('toast.error'),
+        description: t('settings.roles.saveOrderFailed'),
         variant: "destructive"
       });
       setPendingReorder(null);
@@ -473,9 +487,9 @@ export default function StaffRolesCard() {
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
             <Shield className="h-5 w-5" />
-            Staff Roles & Permissions
+            {t('settings.roles.staffRolesPermissions')}
           </CardTitle>
-          <CardDescription>Loading roles and permissions...</CardDescription>
+          <CardDescription>{t('settings.roles.loadingRoles')}</CardDescription>
         </CardHeader>
       </Card>
     );
@@ -490,8 +504,8 @@ export default function StaffRolesCard() {
   const handleEditRole = (role: StaffRole) => {
     if (role.name === 'Super Admin') {
       toast({
-        title: "Cannot Edit Super Admin Role",
-        description: "The highest authority role cannot be modified.",
+        title: t('settings.roles.cannotEditSuperAdmin'),
+        description: t('settings.roles.cannotEditSuperAdminDesc'),
         variant: "destructive"
       });
       return;
@@ -501,8 +515,8 @@ export default function StaffRolesCard() {
     const currentUserOrder = roleOrderMap.get(currentUser.role || '') ?? 999;
     if (currentUserOrder >= getRoleOrder(role)) {
       toast({
-        title: "Cannot Edit Role",
-        description: "You can only edit roles with lower authority than your own.",
+        title: t('settings.roles.cannotEditRole'),
+        description: t('settings.roles.cannotEditRoleDesc'),
         variant: "destructive"
       });
       return;
@@ -515,8 +529,8 @@ export default function StaffRolesCard() {
   const handleSaveRole = async () => {
     if (!roleFormData.name.trim()) {
       toast({
-        title: "Invalid Role Name",
-        description: "Role name cannot be empty.",
+        title: t('settings.roles.invalidRoleName'),
+        description: t('settings.roles.roleNameEmpty'),
         variant: "destructive"
       });
       return;
@@ -524,8 +538,8 @@ export default function StaffRolesCard() {
 
     if (!roleFormData.description.trim()) {
       toast({
-        title: "Invalid Role Description",
-        description: "Role description cannot be empty.",
+        title: t('settings.roles.invalidRoleDescription'),
+        description: t('settings.roles.roleDescriptionEmpty'),
         variant: "destructive"
       });
       return;
@@ -539,8 +553,8 @@ export default function StaffRolesCard() {
           permissions: roleFormData.permissions
         });
         toast({
-          title: "Role Created",
-          description: `Role "${roleFormData.name}" has been created successfully.`,
+          title: t('settings.roles.roleCreated'),
+          description: t('settings.roles.roleCreatedDesc', { name: roleFormData.name }),
         });
       } else if (selectedRole && isEditingRole) {
         await updateRoleMutation.mutateAsync({
@@ -550,8 +564,8 @@ export default function StaffRolesCard() {
           permissions: roleFormData.permissions
         });
         toast({
-          title: "Role Updated",
-          description: `Role "${roleFormData.name}" has been updated successfully.`,
+          title: t('settings.roles.roleUpdated'),
+          description: t('settings.roles.roleUpdatedDesc', { name: roleFormData.name }),
         });
       }
 
@@ -560,8 +574,8 @@ export default function StaffRolesCard() {
       setSelectedRole(null);
     } catch (error) {
       toast({
-        title: "Error",
-        description: error instanceof Error ? error.message : "Failed to save role",
+        title: t('toast.error'),
+        description: error instanceof Error ? error.message : t('settings.roles.saveRoleFailed'),
         variant: "destructive"
       });
     }
@@ -570,8 +584,8 @@ export default function StaffRolesCard() {
   const handleDeleteRole = (role: StaffRole) => {
     if (role.name === 'Super Admin') {
       toast({
-        title: "Cannot Delete Super Admin Role",
-        description: "The highest authority role cannot be deleted.",
+        title: t('settings.roles.cannotDeleteSuperAdmin'),
+        description: t('settings.roles.cannotDeleteSuperAdminDesc'),
         variant: "destructive"
       });
       return;
@@ -581,8 +595,8 @@ export default function StaffRolesCard() {
     const currentUserOrder = roleOrderMap.get(currentUser.role || '') ?? 999;
     if (currentUserOrder >= getRoleOrder(role)) {
       toast({
-        title: "Cannot Delete Role",
-        description: "You can only delete roles with lower authority than your own.",
+        title: t('settings.roles.cannotDeleteRole'),
+        description: t('settings.roles.cannotDeleteRoleDesc'),
         variant: "destructive"
       });
       return;
@@ -595,14 +609,14 @@ export default function StaffRolesCard() {
       try {
         await deleteRoleMutation.mutateAsync(deleteConfirmRole.id);
         toast({
-          title: "Role Deleted",
-          description: `Role "${deleteConfirmRole.name}" has been deleted successfully.`,
+          title: t('settings.roles.roleDeleted'),
+          description: t('settings.roles.roleDeletedDesc', { name: deleteConfirmRole.name }),
         });
         setDeleteConfirmRole(null);
       } catch (error) {
         toast({
-          title: "Error",
-          description: error instanceof Error ? error.message : "Failed to delete role",
+          title: t('toast.error'),
+          description: error instanceof Error ? error.message : t('settings.roles.deleteRoleFailed'),
           variant: "destructive"
         });
       }
@@ -652,15 +666,15 @@ export default function StaffRolesCard() {
             <div>
               <CardTitle className="flex items-center gap-2">
                 <Shield className="h-5 w-5" />
-                Staff Roles & Permissions
+                {t('settings.roles.staffRolesPermissions')}
               </CardTitle>
               <CardDescription>
-                Configure staff roles and their permissions for punishments, tickets, and administrative features.
+                {t('settings.roles.staffRolesDesc')}
               </CardDescription>
             </div>
             <Button onClick={handleCreateRole} className="flex items-center gap-2">
               <Plus className="h-4 w-4" />
-              Create Role
+              {t('settings.roles.createRole')}
             </Button>
           </div>
         </CardHeader>
@@ -701,10 +715,10 @@ export default function StaffRolesCard() {
         <DialogContent className="max-w-4xl max-h-[80vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>
-              {isCreatingRole ? 'Create New Role' : 'Edit Role'}
+              {isCreatingRole ? t('settings.roles.createNewRole') : t('settings.roles.editRole')}
             </DialogTitle>
             <DialogDescription>
-              Configure the role name, description, and permissions.
+              {t('settings.roles.configureRoleDesc')}
             </DialogDescription>
           </DialogHeader>
 
@@ -712,22 +726,22 @@ export default function StaffRolesCard() {
             {/* Basic Info */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div className="space-y-2">
-                <Label htmlFor="role-name">Role Name <span className="text-destructive">*</span></Label>
+                <Label htmlFor="role-name">{t('settings.roles.roleName')} <span className="text-destructive">*</span></Label>
                 <Input
                   id="role-name"
                   value={roleFormData.name}
                   onChange={(e) => setRoleFormData(prev => ({ ...prev, name: e.target.value }))}
-                  placeholder="Enter role name"
+                  placeholder={t('settings.roles.roleNamePlaceholder')}
                   required
                 />
               </div>
               <div className="space-y-2">
-                <Label htmlFor="role-description">Description <span className="text-destructive">*</span></Label>
+                <Label htmlFor="role-description">{t('settings.tickets.description')} <span className="text-destructive">*</span></Label>
                 <Input
                   id="role-description"
                   value={roleFormData.description}
                   onChange={(e) => setRoleFormData(prev => ({ ...prev, description: e.target.value }))}
-                  placeholder="Enter role description"
+                  placeholder={t('settings.roles.roleDescriptionPlaceholder')}
                   required
                 />
               </div>
@@ -735,7 +749,7 @@ export default function StaffRolesCard() {
 
             {/* Permissions */}
             <div className="space-y-4">
-              <h4 className="font-medium">Permissions</h4>
+              <h4 className="font-medium">{t('settings.roles.permissions')}</h4>
               
               {Object.entries(PERMISSION_CATEGORIES).map(([category, label]) => {
                 const categoryPermissions = getPermissionsByCategory(category);
@@ -749,7 +763,7 @@ export default function StaffRolesCard() {
                 return (
                   <div key={category} className="space-y-3">
                     <div className="flex items-center gap-2">
-                      <h5 className="font-medium text-sm">{label}</h5>
+                      <h5 className="font-medium text-sm">{t(`settings.roles.category.${label}`)}</h5>
                       <div className="flex gap-2">
                         <Button
                           type="button"
@@ -763,7 +777,7 @@ export default function StaffRolesCard() {
                             }));
                           }}
                         >
-                          Select All
+                          {t('common.selectAll')}
                         </Button>
                         <Button
                           type="button"
@@ -777,12 +791,12 @@ export default function StaffRolesCard() {
                             }));
                           }}
                         >
-                          Clear All
+                          {t('common.clearAll')}
                         </Button>
                       </div>
                     </div>
 
-                    <div className="space-y-3 pl-4">
+                    <div className={parentPermissions.some((p: Permission) => getChildren(p.id).length > 0) ? "space-y-3 pl-4" : "grid grid-cols-1 md:grid-cols-2 gap-3 pl-4"}>
                       {parentPermissions.map((permission: Permission) => {
                         const children = getChildren(permission.id);
                         const parentChecked = isParentEnabled(permission.id);
@@ -805,7 +819,7 @@ export default function StaffRolesCard() {
                                   {permission.name}
                                 </Label>
                                 <p className="text-xs text-muted-foreground">
-                                  {!canGrantPermission(permission.id) ? "You don't have this permission" : permission.description}
+                                  {!canGrantPermission(permission.id) ? t('settings.roles.noPermission') : permission.description}
                                 </p>
                               </div>
                             </div>
@@ -832,7 +846,7 @@ export default function StaffRolesCard() {
                                           {child.name}
                                         </Label>
                                         <p className="text-xs text-muted-foreground">
-                                          {cantGrant ? "You don't have this permission" : parentChecked ? 'Granted by parent' : child.description}
+                                          {cantGrant ? t('settings.roles.noPermission') : parentChecked ? t('settings.roles.grantedByParent') : child.description}
                                         </p>
                                       </div>
                                     </div>
@@ -845,7 +859,7 @@ export default function StaffRolesCard() {
                       })}
                     </div>
 
-                    {category !== 'admin' && <Separator />}
+                    {category !== 'staff' && <Separator />}
                   </div>
                 );
               })}
@@ -859,16 +873,16 @@ export default function StaffRolesCard() {
               setSelectedRole(null);
             }}>
               <X className="h-4 w-4 mr-2" />
-              Cancel
+              {t('common.cancel')}
             </Button>
-            <Button 
+            <Button
               onClick={handleSaveRole}
               disabled={createRoleMutation.isPending || updateRoleMutation.isPending || !isRoleFormValid()}
             >
               <Save className="h-4 w-4 mr-2" />
-              {createRoleMutation.isPending || updateRoleMutation.isPending 
-                ? 'Saving...' 
-                : isCreatingRole ? 'Create Role' : 'Save Changes'
+              {createRoleMutation.isPending || updateRoleMutation.isPending
+                ? t('common.saving')
+                : isCreatingRole ? t('settings.roles.createRole') : t('common.saveChanges')
               }
             </Button>
           </DialogFooter>
@@ -879,23 +893,22 @@ export default function StaffRolesCard() {
       <Dialog open={!!deleteConfirmRole} onOpenChange={(open) => !open && setDeleteConfirmRole(null)}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>Delete Role</DialogTitle>
+            <DialogTitle>{t('settings.roles.deleteRoleTitle')}</DialogTitle>
             <DialogDescription>
-              Are you sure you want to delete the role "{deleteConfirmRole?.name}"? This action cannot be undone.
-              All staff members with this role will need to be reassigned to a different role.
+              {t('settings.roles.deleteRoleConfirm', { name: deleteConfirmRole?.name })}
             </DialogDescription>
           </DialogHeader>
           <DialogFooter>
             <Button variant="outline" onClick={() => setDeleteConfirmRole(null)}>
-              Cancel
+              {t('common.cancel')}
             </Button>
-            <Button 
-              variant="destructive" 
+            <Button
+              variant="destructive"
               onClick={confirmDeleteRole}
               disabled={deleteRoleMutation.isPending}
             >
               <Trash2 className="h-4 w-4 mr-2" />
-              {deleteRoleMutation.isPending ? 'Deleting...' : 'Delete Role'}
+              {deleteRoleMutation.isPending ? t('common.deleting') : t('settings.roles.deleteRole')}
             </Button>
           </DialogFooter>
         </DialogContent>
@@ -905,17 +918,17 @@ export default function StaffRolesCard() {
       <AlertDialog open={showReorderConfirm} onOpenChange={setShowReorderConfirm}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Confirm Role Reordering</AlertDialogTitle>
+            <AlertDialogTitle>{t('settings.roles.confirmRoleReordering')}</AlertDialogTitle>
             <AlertDialogDescription>
-              Are you sure you want to save the new role hierarchy? This will change the authority levels of staff members with these roles.
+              {t('settings.roles.confirmRoleReorderingDesc')}
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel onClick={cancelRoleOrder}>
-              Cancel
+              {t('common.cancel')}
             </AlertDialogCancel>
             <AlertDialogAction onClick={saveRoleOrder}>
-              Save New Order
+              {t('settings.roles.saveNewOrder')}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

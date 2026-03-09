@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback, useRef } from "react";
+import { useTranslation } from 'react-i18next';
 import { useParams } from "wouter";
-import { getApiUrl, getCurrentDomain } from "@/lib/api";
+import { apiFetch } from "@/lib/api";
 import { Loader2, Upload, X, CheckCircle, AlertCircle, FileIcon } from "lucide-react";
 
 interface TokenInfo {
@@ -21,21 +22,10 @@ interface UploadedFile {
   error?: string;
 }
 
-function apiFetch(url: string, options: RequestInit = {}): Promise<Response> {
-  const fullUrl = getApiUrl(url);
-  return fetch(fullUrl, {
-    ...options,
-    credentials: "include",
-    headers: {
-      ...options.headers,
-      "X-Server-Domain": getCurrentDomain(),
-    },
-  });
-}
-
 export default function UploadEvidencePage() {
   const params = useParams<{ token: string }>();
   const token = params.token;
+  const { t } = useTranslation();
 
   const [tokenInfo, setTokenInfo] = useState<TokenInfo | null>(null);
   const [loading, setLoading] = useState(true);
@@ -315,7 +305,7 @@ export default function UploadEvidencePage() {
       <div className="flex items-center justify-center min-h-screen bg-background">
         <div className="text-center max-w-md p-8">
           <AlertCircle className="h-12 w-12 text-destructive mx-auto mb-4" />
-          <h1 className="text-xl font-semibold mb-2">Upload Unavailable</h1>
+          <h1 className="text-xl font-semibold mb-2">{t('evidence.uploadUnavailable')}</h1>
           <p className="text-muted-foreground">{error}</p>
         </div>
       </div>
@@ -327,10 +317,9 @@ export default function UploadEvidencePage() {
       <div className="flex items-center justify-center min-h-screen bg-background">
         <div className="text-center max-w-md p-8">
           <CheckCircle className="h-12 w-12 text-green-500 mx-auto mb-4" />
-          <h1 className="text-xl font-semibold mb-2">Evidence Uploaded</h1>
+          <h1 className="text-xl font-semibold mb-2">{t('evidence.evidenceUploaded')}</h1>
           <p className="text-muted-foreground">
-            {uploadedCount} file(s) have been attached to punishment #
-            {tokenInfo?.punishmentId}. You can close this page.
+            {t('evidence.evidenceUploadedDesc', { count: uploadedCount, id: tokenInfo?.punishmentId })}
           </p>
         </div>
       </div>
@@ -341,20 +330,20 @@ export default function UploadEvidencePage() {
     <div className="min-h-screen bg-background">
       <div className="max-w-2xl mx-auto p-6 pt-12">
         <div className="mb-8">
-          <h1 className="text-2xl font-bold mb-2">Upload Evidence</h1>
+          <h1 className="text-2xl font-bold mb-2">{t('evidence.uploadEvidence')}</h1>
           <div className="text-muted-foreground space-y-1">
             <p>
-              Punishment:{" "}
+              {t('evidence.punishment')}:{" "}
               <span className="text-foreground font-mono">
                 #{tokenInfo?.punishmentId}
               </span>
             </p>
             <p>
-              Player:{" "}
+              {t('evidence.player')}:{" "}
               <span className="text-foreground">{tokenInfo?.playerName}</span>
             </p>
             <p>
-              Uploaded by:{" "}
+              {t('evidence.uploadedBy')}:{" "}
               <span className="text-foreground">{tokenInfo?.issuerName}</span>
             </p>
           </div>
@@ -374,10 +363,10 @@ export default function UploadEvidencePage() {
         >
           <Upload className="h-8 w-8 mx-auto mb-3 text-muted-foreground" />
           <p className="text-sm text-muted-foreground mb-1">
-            Drag and drop files here, or click to browse
+            {t('evidence.dragAndDrop')}
           </p>
           <p className="text-xs text-muted-foreground">
-            Images, videos, PDFs up to 1GB
+            {t('evidence.fileTypes')}
           </p>
           <input
             ref={fileInputRef}
@@ -407,7 +396,7 @@ export default function UploadEvidencePage() {
                   <p className="text-xs text-muted-foreground">
                     {(f.fileSize / 1024 / 1024).toFixed(2)} MB
                     {f.status === "uploading" && ` - ${f.progress}%`}
-                    {f.status === "uploaded" && " - Uploaded"}
+                    {f.status === "uploaded" && ` - ${t('evidence.uploaded')}`}
                     {f.status === "error" && ` - ${f.error}`}
                   </p>
                   {f.status === "uploading" && (
@@ -461,18 +450,15 @@ export default function UploadEvidencePage() {
               {submitting ? (
                 <>
                   <Loader2 className="h-4 w-4 animate-spin" />
-                  Saving Evidence...
+                  {t('evidence.savingEvidence')}
                 </>
               ) : (
-                <>
-                  Save {uploadedCount} Evidence File
-                  {uploadedCount !== 1 ? "s" : ""}
-                </>
+                t('evidence.saveEvidence', { count: uploadedCount })
               )}
             </button>
             {hasErrors && (
               <p className="text-xs text-muted-foreground mt-2 text-center">
-                Files with errors will not be included
+                {t('evidence.filesWithErrorsExcluded')}
               </p>
             )}
           </div>

@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { useTranslation } from 'react-i18next';
 import { Eye, EyeOff, Save, TestTube, MessageCircle, ChevronDown, ChevronRight } from 'lucide-react';
 import { Button } from '@modl-gg/shared-web/components/ui/button';
 import { Input } from '@modl-gg/shared-web/components/ui/input';
@@ -9,7 +10,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@modl
 import { Badge } from '@modl-gg/shared-web/components/ui/badge';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@modl-gg/shared-web/components/ui/collapsible';
 import { usePermissions } from '@/hooks/use-permissions';
-import { toast } from '@/hooks/use-toast';
+import { toast } from '@modl-gg/shared-web/hooks/use-toast';
 import { apiFetch } from '@/lib/api';
 import EmbedTemplateEditor from './EmbedTemplateEditor';
 
@@ -58,6 +59,7 @@ const WebhookSettings: React.FC<WebhookSettingsProps> = ({
   panelIconUrl
 }) => {
   const { hasPermission } = usePermissions();
+  const { t } = useTranslation();
   const defaultTemplate: EmbedTemplate = {
     title: 'New {{type}}',
     description: 'A new **{{type}}** has been created.',
@@ -220,8 +222,8 @@ const WebhookSettings: React.FC<WebhookSettingsProps> = ({
         setLastSaved(new Date());
       } catch (error) {
         toast({
-          title: 'Auto-save Failed',
-          description: 'Failed to save webhook settings. Please check your connection.',
+          title: t('settings.webhook.autoSaveFailed'),
+          description: t('settings.webhook.autoSaveFailedDesc'),
           variant: 'destructive',
         });
       } finally {
@@ -274,8 +276,8 @@ const WebhookSettings: React.FC<WebhookSettingsProps> = ({
   const handleTestWebhook = async () => {
     if (!settings.discordWebhookUrl || !settings.enabled) {
       toast({
-        title: 'Cannot Test Webhook',
-        description: 'Please configure and enable the webhook first.',
+        title: t('settings.webhook.cannotTest'),
+        description: t('settings.webhook.cannotTestDesc'),
         variant: 'destructive',
       });
       return;
@@ -300,8 +302,8 @@ const WebhookSettings: React.FC<WebhookSettingsProps> = ({
 
       if (response.ok) {
         toast({
-          title: 'Test Successful',
-          description: 'Test notification sent to Discord successfully!',
+          title: t('settings.webhook.testSuccessful'),
+          description: t('settings.webhook.testSuccessfulDesc'),
         });
       } else {
         const errorData = await response.json().catch(() => ({ error: 'Unknown error' }));
@@ -309,8 +311,8 @@ const WebhookSettings: React.FC<WebhookSettingsProps> = ({
       }
     } catch (error) {
       toast({
-        title: 'Test Failed',
-        description: error instanceof Error ? error.message : 'Failed to send test notification. Please check your webhook URL.',
+        title: t('settings.webhook.testFailed'),
+        description: error instanceof Error ? error.message : t('settings.webhook.testFailedDesc'),
         variant: 'destructive',
       });
     } finally {
@@ -326,10 +328,10 @@ const WebhookSettings: React.FC<WebhookSettingsProps> = ({
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
             <MessageCircle className="h-5 w-5" />
-            Discord Webhook Configuration
+            {t('settings.webhook.title')}
           </CardTitle>
           <CardDescription>
-            Configure Discord webhooks for receiving notifications from your modl panel.
+            {t('settings.webhook.description')}
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
@@ -337,10 +339,10 @@ const WebhookSettings: React.FC<WebhookSettingsProps> = ({
           <div className="flex items-center justify-between">
             <div>
               <Label htmlFor="webhook-enabled" className="text-base font-medium">
-                Enable Webhook Notifications
+                {t('settings.webhook.enableWebhook')}
               </Label>
               <p className="text-sm text-muted-foreground">
-                Turn webhook notifications on or off
+                {t('settings.webhook.enableWebhookDesc')}
               </p>
             </div>
             <div className="flex items-center gap-3">
@@ -358,7 +360,7 @@ const WebhookSettings: React.FC<WebhookSettingsProps> = ({
                   disabled={isTesting || isLoading || !settings.enabled}
                 >
                   <TestTube className="h-4 w-4 mr-2" />
-                  {isTesting ? 'Testing...' : 'Test'}
+                  {isTesting ? t('settings.webhook.testing') : t('settings.webhook.test')}
                 </Button>
               )}
             </div>
@@ -368,7 +370,7 @@ const WebhookSettings: React.FC<WebhookSettingsProps> = ({
 
           {/* Discord Webhook URL */}
           <div className="space-y-2">
-            <Label htmlFor="webhook-url">Discord Webhook URL</Label>
+            <Label htmlFor="webhook-url">{t('settings.webhook.webhookUrl')}</Label>
             <div className="flex gap-2">
               <div className="flex-1 relative">
                 <Input
@@ -392,13 +394,13 @@ const WebhookSettings: React.FC<WebhookSettingsProps> = ({
               </div>
             </div>
             <p className="text-sm text-muted-foreground">
-              Create a webhook in your Discord server's channel settings
+              {t('settings.webhook.webhookUrlHelp')}
             </p>
           </div>
 
           {/* Admin Role ID */}
           <div className="space-y-2">
-            <Label htmlFor="admin-role-id">Admin Role ID (Optional)</Label>
+            <Label htmlFor="admin-role-id">{t('settings.webhook.adminRoleId')}</Label>
             <Input
               id="admin-role-id"
               placeholder="123456789012345678"
@@ -407,13 +409,13 @@ const WebhookSettings: React.FC<WebhookSettingsProps> = ({
               disabled={!canModify}
             />
             <p className="text-sm text-muted-foreground">
-              Role ID to ping for critical notifications. Right-click role in Discord → Copy ID
+              {t('settings.webhook.adminRoleIdHelp')}
             </p>
           </div>
 
           {/* Bot Name */}
           <div className="space-y-2">
-            <Label htmlFor="bot-name">Bot Name</Label>
+            <Label htmlFor="bot-name">{t('settings.webhook.botName')}</Label>
             <Input
               id="bot-name"
               placeholder="modl Panel"
@@ -422,13 +424,13 @@ const WebhookSettings: React.FC<WebhookSettingsProps> = ({
               disabled={!canModify}
             />
             <p className="text-sm text-muted-foreground">
-              Name to display for webhook messages
+              {t('settings.webhook.botNameHelp')}
             </p>
           </div>
 
           {/* Avatar URL */}
           <div className="space-y-2">
-            <Label htmlFor="avatar-url">Avatar URL (Optional)</Label>
+            <Label htmlFor="avatar-url">{t('settings.webhook.avatarUrl')}</Label>
             <Input
               id="avatar-url"
               placeholder="https://cdn.discordapp.com/avatars/123456789/avatar.png"
@@ -437,7 +439,7 @@ const WebhookSettings: React.FC<WebhookSettingsProps> = ({
               disabled={!canModify}
             />
             <p className="text-sm text-muted-foreground">
-              URL of image to display as webhook avatar. Defaults to your server icon if configured.
+              {t('settings.webhook.avatarUrlHelp')}
             </p>
           </div>
         </CardContent>
@@ -446,19 +448,19 @@ const WebhookSettings: React.FC<WebhookSettingsProps> = ({
       {/* Notification Settings */}
       <Card>
         <CardHeader>
-          <CardTitle>Notification Types</CardTitle>
+          <CardTitle>{t('settings.webhook.notificationTypes')}</CardTitle>
           <CardDescription>
-            Choose which events trigger webhook notifications.
+            {t('settings.webhook.notificationTypesDesc')}
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
           <div className="flex items-center justify-between">
             <div>
               <Label htmlFor="notify-tickets" className="text-base font-medium">
-                New Tickets
+                {t('settings.webhook.notifyNewTickets')}
               </Label>
               <p className="text-sm text-muted-foreground">
-                Receive notifications when new tickets are created
+                {t('settings.webhook.notifyNewTicketsDesc')}
               </p>
             </div>
             <Switch
@@ -472,10 +474,10 @@ const WebhookSettings: React.FC<WebhookSettingsProps> = ({
           <div className="flex items-center justify-between">
             <div>
               <Label htmlFor="notify-punishments" className="text-base font-medium">
-                New Punishments
+                {t('settings.webhook.notifyNewPunishments')}
               </Label>
               <p className="text-sm text-muted-foreground">
-                Receive notifications when new punishments are issued
+                {t('settings.webhook.notifyNewPunishmentsDesc')}
               </p>
             </div>
             <Switch
@@ -489,10 +491,10 @@ const WebhookSettings: React.FC<WebhookSettingsProps> = ({
           <div className="flex items-center justify-between">
             <div>
               <Label htmlFor="notify-audit" className="text-base font-medium">
-                Audit Log Entries
+                {t('settings.webhook.notifyAuditLogs')}
               </Label>
               <p className="text-sm text-muted-foreground">
-                Receive notifications for important audit log events
+                {t('settings.webhook.notifyAuditLogsDesc')}
               </p>
             </div>
             <Switch
@@ -508,18 +510,18 @@ const WebhookSettings: React.FC<WebhookSettingsProps> = ({
       {/* Embed Template Customization */}
       <Card>
         <CardHeader>
-          <CardTitle>Embed Templates</CardTitle>
+          <CardTitle>{t('settings.webhook.embedTemplates')}</CardTitle>
           <CardDescription>
-            Customize the Discord embed messages for each notification type.
+            {t('settings.webhook.embedTemplatesDesc')}
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-6">
           <Collapsible open={isNewTicketsExpanded} onOpenChange={setIsNewTicketsExpanded}>
             <CollapsibleTrigger className="flex items-center justify-between w-full p-3 bg-muted/30 rounded-lg hover:bg-muted/50 transition-colors">
               <div className="flex items-center gap-2">
-                <Label className="text-base font-medium">New Tickets Template</Label>
+                <Label className="text-base font-medium">{t('settings.webhook.newTicketsTemplate')}</Label>
                 {!settings.notifications.newTickets && (
-                  <Badge variant="secondary" className="text-xs">Disabled</Badge>
+                  <Badge variant="secondary" className="text-xs">{t('status.disabled')}</Badge>
                 )}
               </div>
               {isNewTicketsExpanded ? (
@@ -541,9 +543,9 @@ const WebhookSettings: React.FC<WebhookSettingsProps> = ({
           <Collapsible open={isNewPunishmentsExpanded} onOpenChange={setIsNewPunishmentsExpanded}>
             <CollapsibleTrigger className="flex items-center justify-between w-full p-3 bg-muted/30 rounded-lg hover:bg-muted/50 transition-colors">
               <div className="flex items-center gap-2">
-                <Label className="text-base font-medium">New Punishments Template</Label>
+                <Label className="text-base font-medium">{t('settings.webhook.newPunishmentsTemplate')}</Label>
                 {!settings.notifications.newPunishments && (
-                  <Badge variant="secondary" className="text-xs">Disabled</Badge>
+                  <Badge variant="secondary" className="text-xs">{t('status.disabled')}</Badge>
                 )}
               </div>
               {isNewPunishmentsExpanded ? (
@@ -565,9 +567,9 @@ const WebhookSettings: React.FC<WebhookSettingsProps> = ({
           <Collapsible open={isAuditLogsExpanded} onOpenChange={setIsAuditLogsExpanded}>
             <CollapsibleTrigger className="flex items-center justify-between w-full p-3 bg-muted/30 rounded-lg hover:bg-muted/50 transition-colors">
               <div className="flex items-center gap-2">
-                <Label className="text-base font-medium">Audit Logs Template</Label>
+                <Label className="text-base font-medium">{t('settings.webhook.auditLogsTemplate')}</Label>
                 {!settings.notifications.auditLogs && (
-                  <Badge variant="secondary" className="text-xs">Disabled</Badge>
+                  <Badge variant="secondary" className="text-xs">{t('status.disabled')}</Badge>
                 )}
               </div>
               {isAuditLogsExpanded ? (

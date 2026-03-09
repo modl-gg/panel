@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { GamepadIcon, MessageCircle, Lock, Plus, Trash2 } from 'lucide-react';
 import { Button } from '@modl-gg/shared-web/components/ui/button';
 import { Input } from '@modl-gg/shared-web/components/ui/input';
@@ -58,6 +59,7 @@ const PunishmentSettings = ({
   setSelectedPunishment,
   visibleSection
 }: PunishmentSettingsProps) => {
+  const { t } = useTranslation();
   const [showCorePunishments, setShowCorePunishments] = useState(false);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [punishmentToDelete, setPunishmentToDelete] = useState<PunishmentType | null>(null);
@@ -93,19 +95,19 @@ const PunishmentSettings = ({
       {showThresholds && (
       <div>
         <p className="text-sm text-muted-foreground mb-4">
-          Configure the point thresholds for determining a player's offender status. Higher thresholds make it harder to reach medium and habitual status.
+          {t('settings.punishment.thresholdsDesc')}
         </p>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
           <div className="space-y-4 border rounded-md p-4">
             <h5 className="font-medium flex items-center">
               <GamepadIcon className="h-4 w-4 mr-2 text-amber-500" />
-              Gameplay Status Thresholds
+              {t('settings.punishment.gameplayThresholds')}
             </h5>
             <div className="space-y-4">
               <div className="space-y-2">
                 <div className="flex justify-between">
-                  <Label htmlFor="gameplay-medium">Medium Offender</Label>
-                  <span className="text-sm text-muted-foreground">{statusThresholds.gameplay.medium}+ points</span>
+                  <Label htmlFor="gameplay-medium">{t('settings.punishment.mediumOffender')}</Label>
+                  <span className="text-sm text-muted-foreground">{statusThresholds.gameplay.medium}+ {t('settings.punishment.points')}</span>
                 </div>
                 <Slider
                   id="gameplay-medium"
@@ -125,8 +127,8 @@ const PunishmentSettings = ({
 
               <div className="space-y-2">
                 <div className="flex justify-between">
-                  <Label htmlFor="gameplay-habitual">Habitual Offender</Label>
-                  <span className="text-sm text-muted-foreground">{statusThresholds.gameplay.habitual}+ points</span>
+                  <Label htmlFor="gameplay-habitual">{t('settings.punishment.habitualOffender')}</Label>
+                  <span className="text-sm text-muted-foreground">{statusThresholds.gameplay.habitual}+ {t('settings.punishment.points')}</span>
                 </div>
                 <Slider
                   id="gameplay-habitual"
@@ -146,7 +148,7 @@ const PunishmentSettings = ({
 
               <div className="space-y-2">
                 <div className="flex justify-between">
-                  <Label htmlFor="gameplay-point-expiry">Point Expiry</Label>
+                  <Label htmlFor="gameplay-point-expiry">{t('settings.punishment.pointExpiry')}</Label>
                   <span className="text-sm text-muted-foreground">{formatMonths(statusThresholds.gameplay.pointExpiryMonths)}</span>
                 </div>
                 <Slider
@@ -170,13 +172,13 @@ const PunishmentSettings = ({
           <div className="space-y-4 border rounded-md p-4">
             <h5 className="font-medium flex items-center">
               <MessageCircle className="h-4 w-4 mr-2 text-blue-500" />
-              Social Status Thresholds
+              {t('settings.punishment.socialThresholds')}
             </h5>
             <div className="space-y-4">
               <div className="space-y-2">
                 <div className="flex justify-between">
-                  <Label htmlFor="social-medium">Medium Offender</Label>
-                  <span className="text-sm text-muted-foreground">{statusThresholds.social.medium}+ points</span>
+                  <Label htmlFor="social-medium">{t('settings.punishment.mediumOffender')}</Label>
+                  <span className="text-sm text-muted-foreground">{statusThresholds.social.medium}+ {t('settings.punishment.points')}</span>
                 </div>
                 <Slider
                   id="social-medium"
@@ -196,8 +198,8 @@ const PunishmentSettings = ({
 
               <div className="space-y-2">
                 <div className="flex justify-between">
-                  <Label htmlFor="social-habitual">Habitual Offender</Label>
-                  <span className="text-sm text-muted-foreground">{statusThresholds.social.habitual}+ points</span>
+                  <Label htmlFor="social-habitual">{t('settings.punishment.habitualOffender')}</Label>
+                  <span className="text-sm text-muted-foreground">{statusThresholds.social.habitual}+ {t('settings.punishment.points')}</span>
                 </div>
                 <Slider
                   id="social-habitual"
@@ -217,7 +219,7 @@ const PunishmentSettings = ({
 
               <div className="space-y-2">
                 <div className="flex justify-between">
-                  <Label htmlFor="social-point-expiry">Point Expiry</Label>
+                  <Label htmlFor="social-point-expiry">{t('settings.punishment.pointExpiry')}</Label>
                   <span className="text-sm text-muted-foreground">{formatMonths(statusThresholds.social.pointExpiryMonths)}</span>
                 </div>
                 <Slider
@@ -246,14 +248,14 @@ const PunishmentSettings = ({
       {showTypes && (
       <div>
         <p className="text-sm text-muted-foreground mb-4">
-          Configure the punishment types available in your system. Core administrative types can be configured but not modified or removed.
+          {t('settings.punishment.typesDesc')}
         </p>
         {/* Administrative Punishment Types Section (Ordinals 0-5) */}
         <div>
           <div className="flex items-center justify-between mb-3">
             <h4 className="text-base font-medium flex items-center">
               <Lock className="h-4 w-4 mr-2 text-gray-500" />
-              Core Administrative Punishments
+              {t('settings.punishment.coreAdminPunishments')}
             </h4>
             <Button
               variant="ghost"
@@ -261,7 +263,7 @@ const PunishmentSettings = ({
               onClick={() => setShowCorePunishments(!showCorePunishments)}
               className="text-xs"
             >
-              {showCorePunishments ? 'Hide' : 'Show'}
+              {showCorePunishments ? t('common.hide') : t('common.show')}
             </Button>
           </div>
 
@@ -286,7 +288,7 @@ const PunishmentSettings = ({
                           onClick={() => setSelectedPunishment(type)}
                           className="text-xs px-2 h-7 text-muted-foreground"
                         >
-                          Configure
+                          {t('common.configure')}
                         </Button>
                       )}
                     </div>
@@ -298,7 +300,7 @@ const PunishmentSettings = ({
 
           {!showCorePunishments && (
             <div className="text-sm text-muted-foreground mb-6">
-              Click 'Show' to view administrative punishment types (ordinals 0-5) that can be configured for descriptions and appeal forms but cannot be modified or removed.
+              {t('settings.punishment.coreAdminHint')}
             </div>
           )}
         </div>
@@ -307,7 +309,7 @@ const PunishmentSettings = ({
           <div className="w-full md:w-1/2">
             <h4 className="text-base font-medium mb-3 flex items-center">
               <GamepadIcon className="h-4 w-4 mr-2 text-amber-500" />
-              Customizable Gameplay Related
+              {t('settings.punishment.gameplayRelated')}
             </h4>
             <div className="space-y-2">
               {punishmentTypes
@@ -329,7 +331,7 @@ const PunishmentSettings = ({
                           onClick={() => setSelectedPunishment(type)}
                           className="text-xs px-2 h-7 text-muted-foreground"
                         >
-                          Configure
+                          {t('common.configure')}
                         </Button>
                       )}
                       {type.isCustomizable && (
@@ -352,7 +354,7 @@ const PunishmentSettings = ({
           <div className="w-full md:w-1/2">
             <h4 className="text-base font-medium mb-3 flex items-center">
               <MessageCircle className="h-4 w-4 mr-2 text-blue-500" />
-              Customizable Social Related
+              {t('settings.punishment.socialRelated')}
             </h4>
             <div className="space-y-2">
               {punishmentTypes
@@ -374,7 +376,7 @@ const PunishmentSettings = ({
                           onClick={() => setSelectedPunishment(type)}
                           className="text-xs px-2 h-7 text-muted-foreground"
                         >
-                          Configure
+                          {t('common.configure')}
                         </Button>
                       )}
                       {type.isCustomizable && (
@@ -398,15 +400,15 @@ const PunishmentSettings = ({
         <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
           <AlertDialogContent>
             <AlertDialogHeader>
-              <AlertDialogTitle>Delete Punishment Type</AlertDialogTitle>
+              <AlertDialogTitle>{t('settings.punishment.deletePunishmentType')}</AlertDialogTitle>
               <AlertDialogDescription>
-                Are you sure you want to delete "{punishmentToDelete?.name}"? This action cannot be undone.
+                {t('settings.punishment.deletePunishmentTypeConfirm', { name: punishmentToDelete?.name })}
               </AlertDialogDescription>
             </AlertDialogHeader>
             <AlertDialogFooter>
-              <AlertDialogCancel>Cancel</AlertDialogCancel>
+              <AlertDialogCancel>{t('common.cancel')}</AlertDialogCancel>
               <AlertDialogAction onClick={confirmDelete} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
-                Delete
+                {t('common.delete')}
               </AlertDialogAction>
             </AlertDialogFooter>
           </AlertDialogContent>
@@ -415,29 +417,29 @@ const PunishmentSettings = ({
         <Separator className="my-6" />
 
         <div className="space-y-4">
-          <h4 className="text-base font-medium">Add New Punishment Type</h4>
+          <h4 className="text-base font-medium">{t('settings.punishment.addNewType')}</h4>
           <div className="flex gap-3 items-end">
             <div className="space-y-2 flex-grow">
-              <Label htmlFor="punishment-name">Punishment Name</Label>
+              <Label htmlFor="punishment-name">{t('settings.punishment.punishmentName')}</Label>
               <Input
                 id="punishment-name"
-                placeholder="Enter punishment type name"
+                placeholder={t('settings.punishment.punishmentNamePlaceholder')}
                 value={newPunishmentName}
                 onChange={(e) => setNewPunishmentName(e.target.value)}
               />
             </div>
             <div className="space-y-2 w-48">
-              <Label htmlFor="punishment-category">Category</Label>
+              <Label htmlFor="punishment-category">{t('settings.punishment.category')}</Label>
               <Select
                 value={newPunishmentCategory}
                 onValueChange={(value) => setNewPunishmentCategory(value as 'Gameplay' | 'Social')}
               >
                 <SelectTrigger id="punishment-category">
-                  <SelectValue placeholder="Select category" />
+                  <SelectValue placeholder={t('settings.punishment.selectCategory')} />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="Gameplay">Gameplay</SelectItem>
-                  <SelectItem value="Social">Social</SelectItem>
+                  <SelectItem value="Gameplay">{t('settings.punishment.categoryGameplay')}</SelectItem>
+                  <SelectItem value="Social">{t('settings.punishment.categorySocial')}</SelectItem>
                 </SelectContent>
               </Select>
             </div>
@@ -446,7 +448,7 @@ const PunishmentSettings = ({
               disabled={!newPunishmentName.trim()}
             >
               <Plus className="h-4 w-4 mr-1" />
-              Add Type
+              {t('settings.punishment.addType')}
             </Button>
           </div>
         </div>
