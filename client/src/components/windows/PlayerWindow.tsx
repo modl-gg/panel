@@ -17,6 +17,7 @@ import PlayerPunishment, { PlayerPunishmentData } from '@/components/ui/player-p
 import MediaUpload from '@/components/MediaUpload';
 import { formatDateWithTime } from '@/utils/date-utils';
 import { getAvatarUrl, apiFetch } from '@/lib/api';
+import { formatTicketStatusLabel, normalizeTicketStatus } from '@/lib/ticket-enums';
 
 // Local type definitions
 interface WindowPosition {
@@ -2944,6 +2945,8 @@ const PlayerWindow = ({ playerId, isOpen, onClose, initialPosition }: PlayerWind
                   // Determine if this player created the ticket or is the reported player
                   const isCreator = ticket.creatorUuid === playerId;
                   const isReported = ticket.reportedPlayerUuid === playerId;
+                  const normalizedStatus = normalizeTicketStatus(ticket.status);
+                  const statusLabel = formatTicketStatusLabel(ticket.status);
                   
                   return (
                     <div
@@ -2956,8 +2959,8 @@ const PlayerWindow = ({ playerId, isOpen, onClose, initialPosition }: PlayerWind
                           <div className="flex items-center gap-2 mb-1 flex-wrap">
                             <Ticket className="h-3.5 w-3.5 text-muted-foreground" />
                             <span className="font-medium text-sm">{ticket.id || ticket._id}</span>
-                            <Badge variant={ticket.status === 'Open' ? 'destructive' : ticket.status === 'Closed' ? 'secondary' : 'default'} className="text-xs">
-                              {ticket.status}
+                            <Badge variant={normalizedStatus === 'open' ? 'destructive' : normalizedStatus === 'closed' ? 'secondary' : 'default'} className="text-xs">
+                              {statusLabel}
                             </Badge>
                             {/* Show badge indicating player's role in the ticket */}
                             {isCreator && (

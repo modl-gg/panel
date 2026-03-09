@@ -54,7 +54,7 @@ const typeMapping: Record<string, string> = {
 const ticketTypes = [
   { id: 'support', label: 'Support Request', icon: HelpCircle, description: 'Get help with an issue', apiType: 'support' },
   { id: 'bug', label: 'Bug Report', icon: Bug, description: 'Report a bug or technical issue', apiType: 'bug' },
-  { id: 'staff', label: 'Staff Application', icon: User, description: 'Apply to join the staff team', apiType: 'staff' },
+  { id: 'staff', label: 'Staff Application', icon: User, description: 'Apply to join the staff team', apiType: 'application' },
 ];
 
 interface FormField {
@@ -98,6 +98,7 @@ const SubmitTicketPage = () => {
 
   // Handle type selection from URL
   const effectiveType = selectedType || (urlType ? typeMapping[urlType.toLowerCase()] : null);
+  const apiTicketType = effectiveType === 'staff' ? 'application' : effectiveType;
 
   // Handle form field changes
   const handleFormFieldChange = (name: string, value: string) => {
@@ -302,7 +303,7 @@ const SubmitTicketPage = () => {
         for (const file of files) {
           const result = await uploadMedia(file, 'ticket', {
             ticketId: 'new',
-            ticketType: effectiveType,
+            ticketType: apiTicketType,
             fieldId: field.id
           });
           attachments.push({
@@ -335,7 +336,7 @@ const SubmitTicketPage = () => {
       const response = await apiFetch('/v1/public/tickets', {
         method: 'POST',
         body: JSON.stringify({
-          type: typeConfig?.apiType || effectiveType,
+          type: apiTicketType,
           subject: finalSubject,
           creatorName: webCreatorName,
           creatorEmail: email,
@@ -674,7 +675,7 @@ const SubmitTicketPage = () => {
                 }}
                 metadata={{
                   ticketId: 'new',
-                  ticketType: effectiveType,
+                  ticketType: apiTicketType,
                   fieldId: field.id
                 }}
                 variant="compact"

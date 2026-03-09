@@ -63,6 +63,7 @@ import PlayerPunishment, { PlayerPunishmentData } from '@/components/ui/player-p
 import MediaUpload from '@/components/MediaUpload';
 import TicketAttachments from '@/components/TicketAttachments';
 import { useMediaUpload, useMediaUploadConfig } from '@/hooks/use-media-upload';
+import { isClosedTicketStatus } from '@/lib/ticket-enums';
 
 // Define PunishmentType interface
 interface PunishmentType {
@@ -1189,7 +1190,7 @@ const TicketDetail = () => {
         id: ticketData.id || ticketData._id,
         subject: ticketData.subject || 'No Subject',
         // Simplify status to Open/Closed - anything but Closed is Open
-        status: (ticketData.locked === true || ticketData.status === 'Closed') ? 'Closed' : 'Open',
+        status: (ticketData.locked === true || isClosedTicketStatus(ticketData.status)) ? 'Closed' : 'Open',
         reportedBy: ticketData.reportedBy || 'Unknown',
         reportedById: ticketData.reportedById || ticketData.creatorUuid || ticketData.reportedByUuid,
         date: validDate,

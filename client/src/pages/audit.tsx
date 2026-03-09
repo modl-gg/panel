@@ -47,6 +47,7 @@ import { cn } from '@modl-gg/shared-web/lib/utils';
 import { usePlayerWindow } from '@/contexts/PlayerWindowContext';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell, LineChart, Line, Area, AreaChart } from 'recharts';
 import { getEvidenceDisplayText, getEvidenceClickUrl, getEvidenceShortName, isEvidenceClickable } from '@/utils/evidence-utils';
+import { formatTicketStatusLabel, normalizeTicketStatus } from '@/lib/ticket-enums';
 
 interface StaffMember {
   id: string;
@@ -1192,6 +1193,8 @@ const StaffDetailModal = ({ staff, isOpen, onClose, initialPeriod = '30d' }: {
                         const timeSinceOpened = formatDurationDetailed(new Date(ticket.created || ticket.createdAt || ticket.timestamp));
                         const timeSinceLastActivity = ticket.lastActivity ? formatDurationDetailed(new Date(ticket.lastActivity)) : 
                                                      ticket.updatedAt ? formatDurationDetailed(new Date(ticket.updatedAt)) : '--';
+                        const normalizedStatus = normalizeTicketStatus(ticket.status);
+                        const statusLabel = formatTicketStatusLabel(ticket.status);
                         
                         return (
                           <tr key={index} className="border-b">
@@ -1206,8 +1209,8 @@ const StaffDetailModal = ({ staff, isOpen, onClose, initialPeriod = '30d' }: {
                             </td>
                             <td className="p-2">{ticket.subject || ticket.title || 'No subject'}</td>
                             <td className="p-2">
-                              <Badge variant={ticket.status === 'closed' || ticket.status === 'Closed' ? 'outline' : 'secondary'}>
-                                {ticket.status}
+                              <Badge variant={normalizedStatus === 'closed' ? 'outline' : 'secondary'}>
+                                {statusLabel}
                               </Badge>
                             </td>
                             <td className="p-2">{ticket.replyCount || 0}</td>

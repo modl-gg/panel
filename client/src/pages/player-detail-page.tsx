@@ -19,6 +19,7 @@ import PlayerPunishment, { PlayerPunishmentData } from '@/components/ui/player-p
 import MediaUpload from '@/components/MediaUpload';
 import { formatDateWithTime } from '@/utils/date-utils';
 import { apiFetch } from '@/lib/api';
+import { formatTicketStatusLabel, normalizeTicketStatus } from '@/lib/ticket-enums';
 
 interface PlayerInfo {
   username: string;
@@ -2474,50 +2475,55 @@ const PlayerDetailPage = () => {
                   <span className="text-sm">Loading tickets...</span>
                 </div>
               ) : playerTickets && playerTickets.length > 0 ? (
-                playerTickets.map((ticket: any) => (
-                  <div 
-                    key={ticket._id} 
-                    className="bg-muted/30 p-3 rounded-lg hover:bg-muted/40 transition-colors cursor-pointer"
-                    onClick={() => handleTicketClick(ticket._id)}
-                  >
-                    <div className="flex justify-between items-start">
-                      <div className="flex-1">
-                        <div className="flex items-center gap-2 mb-1">
-                          <Badge variant="outline" className={`text-xs ${
-                            ticket.status === 'Open' ? 'bg-green-100 dark:bg-green-900 text-green-800 dark:text-green-200 border-green-300 dark:border-green-700' :
-                            ticket.status === 'Closed' ? 'bg-gray-100 dark:bg-gray-800 text-gray-800 dark:text-gray-200 border-gray-300 dark:border-gray-600' :
-                            'bg-red-100 dark:bg-red-900 text-red-800 dark:text-red-200 border-red-300 dark:border-red-700'
-                          }`}>
-                            {ticket.status?.replace('_', ' ').toUpperCase() || 'UNKNOWN'}
+                playerTickets.map((ticket: any) => {
+                  const normalizedStatus = normalizeTicketStatus(ticket.status);
+                  const statusLabel = formatTicketStatusLabel(ticket.status);
+
+                  return (
+                    <div 
+                      key={ticket._id} 
+                      className="bg-muted/30 p-3 rounded-lg hover:bg-muted/40 transition-colors cursor-pointer"
+                      onClick={() => handleTicketClick(ticket._id)}
+                    >
+                      <div className="flex justify-between items-start">
+                        <div className="flex-1">
+                          <div className="flex items-center gap-2 mb-1">
+                            <Badge variant="outline" className={`text-xs ${
+                              normalizedStatus === 'open' ? 'bg-green-100 dark:bg-green-900 text-green-800 dark:text-green-200 border-green-300 dark:border-green-700' :
+                              normalizedStatus === 'closed' ? 'bg-gray-100 dark:bg-gray-800 text-gray-800 dark:text-gray-200 border-gray-300 dark:border-gray-600' :
+                              'bg-red-100 dark:bg-red-900 text-red-800 dark:text-red-200 border-red-300 dark:border-red-700'
+                            }`}>
+                              {statusLabel}
+                            </Badge>
+                            <Badge variant="outline" className="text-xs bg-blue-50 dark:bg-blue-900 text-blue-900 dark:text-blue-100 border-blue-200 dark:border-blue-700">
+                              {ticket.category || 'General'}
+                            </Badge>
+                          </div>
+                          <div className="text-sm">
+                            <p className="font-medium">{ticket.subject || 'No subject'}</p>
+                            <p className="text-muted-foreground mt-1 line-clamp-2">
+                              {ticket.description || ticket.message || 'No description available'}
+                            </p>
+                          </div>
+                          <div className="text-xs text-muted-foreground mt-2">
+                            Created: {ticket.createdAt ? formatDateWithTime(ticket.createdAt) : 'Unknown'}
+                            {(() => {
+                              const assigneeDisplay = Array.isArray(ticket.assignedTo)
+                                ? ticket.assignedTo.join(', ')
+                                : ticket.assignedTo;
+                              return assigneeDisplay ? ` • Assigned to: ${assigneeDisplay}` : '';
+                            })()}
+                          </div>
+                        </div>
+                        <div className="ml-2">
+                          <Badge variant="outline" className="text-xs">
+                            #{ticket._id?.slice(-6) || 'N/A'}
                           </Badge>
-                          <Badge variant="outline" className="text-xs bg-blue-50 dark:bg-blue-900 text-blue-900 dark:text-blue-100 border-blue-200 dark:border-blue-700">
-                            {ticket.category || 'General'}
-                          </Badge>
                         </div>
-                        <div className="text-sm">
-                          <p className="font-medium">{ticket.subject || 'No subject'}</p>
-                          <p className="text-muted-foreground mt-1 line-clamp-2">
-                            {ticket.description || ticket.message || 'No description available'}
-                          </p>
-                        </div>
-                        <div className="text-xs text-muted-foreground mt-2">
-                          Created: {ticket.createdAt ? formatDateWithTime(ticket.createdAt) : 'Unknown'}
-                          {(() => {
-                            const assigneeDisplay = Array.isArray(ticket.assignedTo)
-                              ? ticket.assignedTo.join(', ')
-                              : ticket.assignedTo;
-                            return assigneeDisplay ? ` • Assigned to: ${assigneeDisplay}` : '';
-                          })()}
-                        </div>
-                      </div>
-                      <div className="ml-2">
-                        <Badge variant="outline" className="text-xs">
-                          #{ticket._id?.slice(-6) || 'N/A'}
-                        </Badge>
                       </div>
                     </div>
-                  </div>
-                ))
+                  );
+                })
               ) : (
                 <div className="bg-muted/30 p-3 rounded-lg">
                   <p className="text-sm text-muted-foreground">No tickets found for this player.</p>

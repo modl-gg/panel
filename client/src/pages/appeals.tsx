@@ -53,6 +53,7 @@ import { Separator } from '@modl-gg/shared-web/components/ui/separator';
 import { Badge } from '@modl-gg/shared-web/components/ui/badge';
 import { useSettings, useCreateAppeal } from '@/hooks/use-data';
 import TicketAttachments from '@/components/TicketAttachments';
+import { formatAppealStatusLabel, isTerminalAppealStatus, normalizeAppealStatus } from '@/lib/ticket-enums';
 
 // Appeal form field interfaces
 interface AppealFormField {
@@ -128,7 +129,7 @@ interface AppealInfo {
   id: string;
   banId: string;
   submittedOn: string;
-  status: 'Pending Review' | 'Under Review' | 'Rejected' | 'Approved' | 'Open' | 'Closed';
+  status: string;
   lastUpdate?: string;
   messages: AppealMessage[];
 }
@@ -386,7 +387,7 @@ const AppealsPage = () => {
           id: punishment.existingAppeal.id,
           banId: punishment.id,
           submittedOn: punishment.existingAppeal.submittedDate,
-          status: punishment.existingAppeal.status,
+          status: punishment.existingAppeal.appealWorkflowStatus || punishment.existingAppeal.status,
           lastUpdate: punishment.existingAppeal.submittedDate,
           messages: []
         };
@@ -399,7 +400,7 @@ const AppealsPage = () => {
         // Show toast for existing appeal
         toast({
           title: "Appeal Already Exists",
-          description: `You have already submitted an appeal for this punishment. Status: ${punishment.existingAppeal.status}`,
+          description: `You have already submitted an appeal for this punishment. Status: ${formatAppealStatusLabel(punishment.existingAppeal.appealWorkflowStatus || punishment.existingAppeal.status)}`,
           variant: "default"
         });
       } else {        
@@ -617,7 +618,7 @@ const AppealsPage = () => {
         id: appealData._id || appealData.id,
         banId: appealData.data?.punishmentId || banInfo?.id || '',
         submittedOn: appealData.created || appealData.submittedDate,
-        status: appealData.status,
+        status: appealData.appealWorkflowStatus || appealData.status,
         lastUpdate: appealData.updatedAt || appealData.created,
         messages: (appealData.replies || []).map((reply: any) => ({
           id: reply._id || reply.id || `msg-${Date.now()}-${Math.random()}`,
@@ -680,6 +681,9 @@ const AppealsPage = () => {
       });
     }
   };
+
+  const normalizedAppealStatus = normalizeAppealStatus(appealInfo?.status);
+  const appealStatusLabel = formatAppealStatusLabel(appealInfo?.status);
 
   // Render dynamic form field
   const renderFormField = (field: AppealFormField) => {
@@ -1141,13 +1145,13 @@ const AppealsPage = () => {
                     <span className="text-sm font-medium">Status:</span>
                     <Badge 
                       variant={
-                        appealInfo.status === 'Approved' ? "outline" :
-                        appealInfo.status === 'Rejected' ? "destructive" :
-                        appealInfo.status.includes('Review') ? "default" : "outline"
+                        normalizedAppealStatus === 'approved' ? "outline" :
+                        normalizedAppealStatus === 'rejected' ? "destructive" :
+                        normalizedAppealStatus === 'closed' ? "outline" : "default"
                       }
-                      className={appealInfo.status === 'Approved' ? "border-green-500 text-green-500" : ""}
+                      className={normalizedAppealStatus === 'approved' ? "border-green-500 text-green-500" : ""}
                     >
-                      {appealInfo.status}
+                      {appealStatusLabel}
                     </Badge>
                   </div>
                   {appealInfo.lastUpdate && (
@@ -1158,17 +1162,37 @@ const AppealsPage = () => {
                   )}
                 </div>
                 
-                {appealInfo.status === 'Pending Review' && (
+                {normalizedAppealStatus === 'open' && (
                   <Alert className="mt-4">
                     <AlertTriangle className="h-4 w-4" />
-                    <AlertTitle>Appeal Under Review</AlertTitle>
+                    <AlertTitle>Appeal Pending Review</AlertTitle>
                     <AlertDescription>
                       Your appeal is in the queue and will be reviewed by our staff. This process typically takes 1-3 days.
                     </AlertDescription>
                   </Alert>
                 )}
                 
-                {appealInfo.status === 'Rejected' && (
+                {normalizedAppealStatus === 'under_review' && (
+                  <Alert className="mt-4">
+                    <AlertTriangle className="h-4 w-4" />
+                    <AlertTitle>Appeal Under Review</AlertTitle>
+                    <AlertDescription>
+                      Staff are actively reviewing your appeal.
+                    </AlertDescription>
+                  </Alert>
+                )}
+
+                {normalizedAppealStatus === 'pending_player_response' && (
+                  <Alert className="mt-4">
+                    <AlertTriangle className="h-4 w-4" />
+                    <AlertTitle>Reply Needed</AlertTitle>
+                    <AlertDescription>
+                      Staff need more information before they can finish reviewing this appeal.
+                    </AlertDescription>
+                  </Alert>
+                )}
+
+                {normalizedAppealStatus === 'rejected' && (
                   <Alert variant="destructive" className="mt-4">
                     <ShieldX className="h-4 w-4" />
                     <AlertTitle>Appeal Rejected</AlertTitle>
@@ -1178,7 +1202,7 @@ const AppealsPage = () => {
                   </Alert>
                 )}
                 
-                {appealInfo.status === 'Approved' && (
+                {normalizedAppealStatus === 'approved' && (
                   <Alert className="mt-4 border-green-500 text-green-500 bg-green-50 dark:bg-green-950 dark:bg-opacity-20">
                     <ShieldCheck className="h-4 w-4" />
                     <AlertTitle>Appeal Approved</AlertTitle>
@@ -1255,7 +1279,7 @@ const AppealsPage = () => {
                     </div>
                     
                     {/* Reply input */}
-                    {appealInfo.status !== 'Approved' && appealInfo.status !== 'Rejected' && appealInfo.status !== 'Closed' && appealInfo.status !== 'Denied' && (
+                    {!isTerminalAppealStatus(appealInfo.status) && (
                       <Card className="mt-4">
                         <CardHeader>
                           <CardTitle className="text-lg">Reply to Appeal</CardTitle>

@@ -37,6 +37,7 @@ import { formatDate } from '@/utils/date-utils';
 import { getCreatorIdentifier, getUnverifiedExplanation, shouldShowUnverifiedBadge } from '@/utils/creator-verification';
 import { useMediaUpload } from '@/hooks/use-media-upload';
 import { isValidEmail, normalizeEmail } from '@/utils/email-validation';
+import { normalizeTicketStatus } from '@/lib/ticket-enums';
 
 export interface TicketMessage {
   id: string;
@@ -233,16 +234,14 @@ const PlayerTicket = () => {
   useEffect(() => {
     if (ticketData) {
       // Ticket data received
-        // Map API data to our TicketDetails interface
-      const status = ticketData.status || 'Unfinished';
-      // Map the status to one of our three statuses: Unfinished, Open, or Closed
-      // Handle case-insensitive comparison for backend compatibility
-      const statusLower = status.toLowerCase();
-      const mappedStatus = statusLower === 'unfinished' || statusLower === 'draft'
+      // Map API data to our TicketDetails interface
+      const normalizedStatus = normalizeTicketStatus(ticketData.status);
+      const mappedStatus = normalizedStatus === 'unfinished'
         ? 'Unfinished'
-        : (statusLower === 'open' || statusLower === 'in progress')
-          ? 'Open'
-          : 'Closed';      // Ensure we have a valid date
+        : normalizedStatus === 'closed'
+          ? 'Closed'
+          : 'Open';
+      // Ensure we have a valid date
       let validDate = new Date().toISOString(); // fallback to current time
       if (ticketData.created) {
         const createdDate = new Date(ticketData.created);
