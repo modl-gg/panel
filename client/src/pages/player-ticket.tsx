@@ -282,10 +282,7 @@ const PlayerTicket = () => {
         reportedBy: ticketData.creatorName || ticketData.reportedBy || 'Unknown',
         date: validDate,
         category: ticketData.category || 'Support',
-        // Use category if it's a more specific type, otherwise use type. Normalize to lowercase.
-        type: ((ticketData.category && ['player', 'chat', 'bug', 'support', 'staff', 'application', 'appeal'].includes(ticketData.category.toLowerCase()))
-          ? ticketData.category
-          : ticketData.type || 'bug').toLowerCase(),
+        type: (ticketData.type || 'bug').toLowerCase(),
         messages: processedMessages,
         locked: ticketData.locked === true
       });

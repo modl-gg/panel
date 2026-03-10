@@ -2101,7 +2101,7 @@ const PlayerDetailPage = () => {
                                           <span className="truncate mr-2">
                                             <Ticket className="h-3 w-3 inline mr-1" />
                                             {ticketId.slice(-8)}
-                                            {ticket && ` - ${(ticket as any).category || (ticket as any).type || ''}`}
+                                            {ticket && ` - ${(ticket as any).type || ''}`}
                                             {ticket && (
                                               <Badge variant="outline" className="ml-1 text-[10px] py-0 px-1">
                                                 {(ticket as any).locked ? 'Closed' : 'Open'}
@@ -2168,7 +2168,7 @@ const PlayerDetailPage = () => {
                                           <span className="truncate mr-2">
                                             <Ticket className="h-3 w-3 inline mr-1" />
                                             {ticketId.slice(-8)}
-                                            {` - ${ticket.category || ticket.type || ''}`}
+                                            {` - ${ticket.type || ''}`}
                                           </span>
                                           <Plus className="h-3 w-3 text-green-500 flex-shrink-0" />
                                         </div>
@@ -2503,7 +2503,7 @@ const PlayerDetailPage = () => {
                               {statusLabel}
                             </Badge>
                             <Badge variant="outline" className="text-xs bg-blue-50 dark:bg-blue-900 text-blue-900 dark:text-blue-100 border-blue-200 dark:border-blue-700">
-                              {ticket.category || 'General'}
+                              {ticket.category || ticket.type || 'General'}
                             </Badge>
                           </div>
                           <div className="text-sm">

@@ -2620,7 +2620,7 @@ const PlayerWindow = ({ playerId, isOpen, onClose, initialPosition }: PlayerWind
                                           <span className="truncate mr-2">
                                             <Ticket className="h-3 w-3 inline mr-1" />
                                             {ticketId.slice(-8)}
-                                            {ticket && ` - ${(ticket as any).category || (ticket as any).type || ''}`}
+                                            {ticket && ` - ${(ticket as any).type || ''}`}
                                             {ticket && (
                                               <Badge variant="outline" className="ml-1 text-[10px] py-0 px-1">
                                                 {(ticket as any).locked ? 'Closed' : 'Open'}
@@ -2687,7 +2687,7 @@ const PlayerWindow = ({ playerId, isOpen, onClose, initialPosition }: PlayerWind
                                           <span className="truncate mr-2">
                                             <Ticket className="h-3 w-3 inline mr-1" />
                                             {ticketId.slice(-8)}
-                                            {` - ${ticket.category || ticket.type || ''}`}
+                                            {` - ${ticket.type || ''}`}
                                           </span>
                                           <Plus className="h-3 w-3 text-green-500 flex-shrink-0" />
                                         </div>
@@ -2981,7 +2981,7 @@ const PlayerWindow = ({ playerId, isOpen, onClose, initialPosition }: PlayerWind
                             )}
                           </div>
                           <p className="text-sm text-muted-foreground mb-1">
-                            Category: {ticket.category || ticket.type}
+                            Category: {ticket.type}
                           </p>
                           <p className="text-sm text-muted-foreground mb-1">
                             Created: {formatDateWithTime(ticket.created)}
