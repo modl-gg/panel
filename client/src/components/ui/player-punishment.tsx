@@ -368,7 +368,7 @@ const PlayerPunishment: React.FC<PlayerPunishmentProps> = ({
 
     return (
       <div className="space-y-2">
-        <label className="text-sm font-medium">{t('punishment.offenseLevel')}</label>
+        <label className="text-sm font-medium">{t('punishment.status')}</label>
         <div className="flex gap-2">
           {OFFENSE_LEVELS.map((level) => (
             <Button

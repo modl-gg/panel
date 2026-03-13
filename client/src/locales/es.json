@@ -1445,7 +1445,7 @@
     "loadingTypes": "Cargando tipos de sanción de {{category}}...",
     "noTypesConfigured": "No hay tipos de sanción de {{category}} configurados",
     "severity": "Gravedad",
-    "offenseLevel": "Nivel de infracción",
+    "status": "Estado",
     "offenseFirst": "Primera infracción",
     "offenseMedium": "Medio",
     "offenseHabitual": "Habitual",

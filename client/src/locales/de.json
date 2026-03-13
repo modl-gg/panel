@@ -1445,7 +1445,7 @@
     "loadingTypes": "{{category}}-Straftypen werden geladen...",
     "noTypesConfigured": "Keine {{category}}-Straftypen konfiguriert",
     "severity": "Schweregrad",
-    "offenseLevel": "Vergehen-Stufe",
+    "status": "Status",
     "offenseFirst": "Erstes Vergehen",
     "offenseMedium": "Mittel",
     "offenseHabitual": "Gewohnheitsmäßig",

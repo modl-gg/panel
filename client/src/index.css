@@ -5,7 +5,7 @@
 :root {
   --background: 220 14% 96%;
   --foreground: 222.2 84% 4.9%;
-  --muted: 210 40% 96%;
+  --muted: 220 14% 92%;
   --muted-foreground: 215.4 16.3% 46.9%;
   --popover: 0 0% 100%;
   --popover-foreground: 222.2 84% 4.9%;
@@ -15,7 +15,7 @@
   --input: 214.3 31.8% 91.4%;
   --primary: 207 90% 54%;
   --primary-foreground: 210 40% 98%;
-  --secondary: 210 40% 96%;
+  --secondary: 215 16% 94%;
   --secondary-foreground: 222.2 84% 4.9%;
   --accent: 273 68% 59%;
   --accent-foreground: 210 40% 98%;
@@ -33,9 +33,14 @@
   --radius-card-lg: 1.25rem;
   --radius-pill: 9999px;
 
-  --shadow-card: 0 1px 3px 0 rgb(0 0 0 / 0.04), 0 1px 2px -1px rgb(0 0 0 / 0.04);
-  --shadow-card-hover: 0 4px 6px -1px rgb(0 0 0 / 0.06), 0 2px 4px -2px rgb(0 0 0 / 0.04);
-  --shadow-card-elevated: 0 10px 15px -3px rgb(0 0 0 / 0.06), 0 4px 6px -4px rgb(0 0 0 / 0.04);
+  /* Surface depth layers: page(96%) → card(100%) → surface-2(97.5%) → surface-3(94%) */
+  --surface-1: 0 0% 100%;
+  --surface-2: 220 14% 97.5%;
+  --surface-3: 220 14% 94%;
+
+  --shadow-card: 0 1px 3px 0 rgb(0 0 0 / 0.08), 0 1px 2px -1px rgb(0 0 0 / 0.06);
+  --shadow-card-hover: 0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.06);
+  --shadow-card-elevated: 0 10px 15px -3px rgb(0 0 0 / 0.1), 0 4px 6px -4px rgb(0 0 0 / 0.06);
   
   --chart-1: 207 90% 54%;
   --chart-2: 273 68% 59%;
@@ -56,21 +61,26 @@
 .dark {
   --background: 240 10% 5.5%;
   --foreground: 0 0% 98%;
-  --muted: 240 3.7% 15.9%;
+  --muted: 240 3.7% 17%;
   --muted-foreground: 240 5% 64.9%;
-  --popover: 240 10% 3.9%;
+  --popover: 240 10% 13%;
   --popover-foreground: 0 0% 98%;
-  --card: 240 10% 8%;
+  --card: 240 10% 11%;
   --card-foreground: 0 0% 98%;
-  --border: 240 3.7% 15.9%;
+  --border: 240 3.7% 18%;
 
-  --shadow-card: 0 1px 3px 0 rgb(0 0 0 / 0.2), 0 1px 2px -1px rgb(0 0 0 / 0.15);
-  --shadow-card-hover: 0 4px 6px -1px rgb(0 0 0 / 0.25), 0 2px 4px -2px rgb(0 0 0 / 0.15);
-  --shadow-card-elevated: 0 10px 15px -3px rgb(0 0 0 / 0.3), 0 4px 6px -4px rgb(0 0 0 / 0.2);
-  --input: 240 3.7% 15.9%;
+  /* Surface depth layers: page(5.5%) → card/s1(11%) → s2(15%) → s3(19%) */
+  --surface-1: 240 10% 11%;
+  --surface-2: 240 8% 15%;
+  --surface-3: 240 6% 19%;
+
+  --shadow-card: 0 1px 3px 0 rgb(0 0 0 / 0.25), 0 1px 2px -1px rgb(0 0 0 / 0.2);
+  --shadow-card-hover: 0 4px 6px -1px rgb(0 0 0 / 0.3), 0 2px 4px -2px rgb(0 0 0 / 0.2);
+  --shadow-card-elevated: 0 10px 15px -3px rgb(0 0 0 / 0.35), 0 4px 6px -4px rgb(0 0 0 / 0.25);
+  --input: 240 3.7% 18%;
   --primary: 207 90% 54%;
   --primary-foreground: 211 100% 99%;
-  --secondary: 240 3.7% 15.9%;
+  --secondary: 240 3.7% 17%;
   --secondary-foreground: 0 0% 98%;
   --accent: 273 68% 59%;
   --accent-foreground: 0 0% 98%;

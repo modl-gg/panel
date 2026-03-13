@@ -1445,7 +1445,7 @@
     "loadingTypes": "{{category}} straftypes laden...",
     "noTypesConfigured": "Geen {{category}} straftypes geconfigureerd",
     "severity": "Ernst",
-    "offenseLevel": "Overtreding niveau",
+    "status": "Status",
     "offenseFirst": "Eerste overtreding",
     "offenseMedium": "Gemiddeld",
     "offenseHabitual": "Gewoonteovertreder",

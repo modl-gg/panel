@@ -3381,7 +3381,7 @@ const Settings = () => {
               >
                 <CardContent className="p-5">
                   <div className="flex flex-col items-center text-center">
-                    <div className={`p-4 rounded-card mb-3 bg-muted`}>
+                    <div className={`p-4 rounded-card mb-3 bg-surface-2`}>
                       <Icon className="h-6 w-6 text-muted-foreground" />
                     </div>
                     <h3 className="font-medium text-sm mb-1">{category.title}</h3>
