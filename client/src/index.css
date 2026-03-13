@@ -38,6 +38,8 @@
   --surface-2: 220 14% 97.5%;
   --surface-3: 220 14% 94%;
 
+  /* Shadow hierarchy: inner → card → hover → elevated */
+  --shadow-card-inner: 0 1px 2px 0 rgb(0 0 0 / 0.03);
   --shadow-card: 0 1px 3px 0 rgb(0 0 0 / 0.08), 0 1px 2px -1px rgb(0 0 0 / 0.06);
   --shadow-card-hover: 0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.06);
   --shadow-card-elevated: 0 10px 15px -3px rgb(0 0 0 / 0.1), 0 4px 6px -4px rgb(0 0 0 / 0.06);
@@ -74,6 +76,7 @@
   --surface-2: 240 8% 15%;
   --surface-3: 240 6% 19%;
 
+  --shadow-card-inner: 0 1px 2px 0 rgb(0 0 0 / 0.12);
   --shadow-card: 0 1px 3px 0 rgb(0 0 0 / 0.25), 0 1px 2px -1px rgb(0 0 0 / 0.2);
   --shadow-card-hover: 0 4px 6px -1px rgb(0 0 0 / 0.3), 0 2px 4px -2px rgb(0 0 0 / 0.2);
   --shadow-card-elevated: 0 10px 15px -3px rgb(0 0 0 / 0.35), 0 4px 6px -4px rgb(0 0 0 / 0.25);
