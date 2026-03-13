@@ -800,7 +800,7 @@ const TicketSettings = ({
 
       <div className="space-y-6">
       {quickResponsesState?.categories?.length > 0 ? quickResponsesState.categories.map((category) => (
-        <Card key={category.id} className="border-l-4 border-l-blue-500 rounded-card shadow-card-inner">
+        <Card key={category.id} className="border-l-4 border-l-blue-500 rounded-card shadow-card-inner bg-surface-2">
           <CardHeader className="pb-3">
             <div className="flex items-center justify-between">
               <div>
@@ -1687,7 +1687,7 @@ const TicketSettings = ({
                   
                   <div className="space-y-6">
                   {quickResponsesState?.categories?.length > 0 ? quickResponsesState.categories.map((category) => (
-                    <Card key={category.id} className="border-l-4 border-l-blue-500 rounded-card shadow-card-inner">
+                    <Card key={category.id} className="border-l-4 border-l-blue-500 rounded-card shadow-card-inner bg-surface-2">
                       <CardHeader className="pb-3">
                         <div className="flex items-center justify-between">
                           <div>

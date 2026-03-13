@@ -323,7 +323,7 @@ const DomainSettings: React.FC = () => {
         </p>
       </div>
 
-      <Card className="rounded-card shadow-card-inner">
+      <Card className="rounded-card shadow-card-inner bg-surface-2">
         <CardContent className="space-y-6">
           {!canManageCustomDomain && (
             <Alert className="border-orange-200 bg-orange-50">
@@ -454,7 +454,7 @@ const DomainSettings: React.FC = () => {
       </Card>
 
       {domainStatus && domainStatus.status !== 'active' && (
-        <Card className="rounded-card shadow-card-inner">
+        <Card className="rounded-card shadow-card-inner bg-surface-2">
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
               <ExternalLink className="h-5 w-5" />
@@ -507,7 +507,7 @@ const DomainSettings: React.FC = () => {
       )}
 
 
-      <Card className="rounded-card shadow-card-inner">
+      <Card className="rounded-card shadow-card-inner bg-surface-2">
         <CardHeader>
           <CardTitle>{t('settings.domain.setupInstructions')}</CardTitle>
           <CardDescription>

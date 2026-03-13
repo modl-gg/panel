@@ -17,12 +17,6 @@ export default {
         "card-lg": "var(--radius-card-lg)",
         pill: "var(--radius-pill)",
       },
-      boxShadow: {
-        "card-inner": "var(--shadow-card-inner)",
-        card: "var(--shadow-card)",
-        "card-hover": "var(--shadow-card-hover)",
-        "card-elevated": "var(--shadow-card-elevated)",
-      },
       colors: {
         background: "hsl(var(--background))",
         foreground: "hsl(var(--foreground))",

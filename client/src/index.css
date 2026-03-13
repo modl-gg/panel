@@ -3,7 +3,7 @@
 @tailwind utilities;
 
 :root {
-  --background: 220 14% 96%;
+  --background: 220 6% 95%;
   --foreground: 222.2 84% 4.9%;
   --muted: 220 14% 92%;
   --muted-foreground: 215.4 16.3% 46.9%;
@@ -33,16 +33,16 @@
   --radius-card-lg: 1.25rem;
   --radius-pill: 9999px;
 
-  /* Surface depth layers: page(96%) → card(100%) → surface-2(97.5%) → surface-3(94%) */
+  /* Surface depth layers: page(95%) → card(100%) → surface-2(95%) → surface-3(91%) */
   --surface-1: 0 0% 100%;
-  --surface-2: 220 14% 97.5%;
-  --surface-3: 220 14% 94%;
+  --surface-2: 220 6% 95%;
+  --surface-3: 220 6% 91%;
 
   /* Shadow hierarchy: inner → card → hover → elevated */
-  --shadow-card-inner: 0 1px 2px 0 rgb(0 0 0 / 0.03);
-  --shadow-card: 0 1px 3px 0 rgb(0 0 0 / 0.08), 0 1px 2px -1px rgb(0 0 0 / 0.06);
-  --shadow-card-hover: 0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.06);
-  --shadow-card-elevated: 0 10px 15px -3px rgb(0 0 0 / 0.1), 0 4px 6px -4px rgb(0 0 0 / 0.06);
+  --shadow-card-inner: 0 1px 3px 0 rgb(0 0 0 / 0.06), 0 1px 2px -1px rgb(0 0 0 / 0.06);
+  --shadow-card: 0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1);
+  --shadow-card-hover: 0 10px 15px -3px rgb(0 0 0 / 0.1), 0 4px 6px -4px rgb(0 0 0 / 0.1);
+  --shadow-card-elevated: 0 20px 25px -5px rgb(0 0 0 / 0.1), 0 8px 10px -6px rgb(0 0 0 / 0.1);
   
   --chart-1: 207 90% 54%;
   --chart-2: 273 68% 59%;
@@ -71,15 +71,15 @@
   --card-foreground: 0 0% 98%;
   --border: 240 3.7% 18%;
 
-  /* Surface depth layers: page(5.5%) → card/s1(11%) → s2(15%) → s3(19%) */
+  /* Surface depth layers: page(5.5%) → card/s1(11%) → s2(16%) → s3(21%) */
   --surface-1: 240 10% 11%;
-  --surface-2: 240 8% 15%;
-  --surface-3: 240 6% 19%;
+  --surface-2: 240 8% 16%;
+  --surface-3: 240 6% 21%;
 
-  --shadow-card-inner: 0 1px 2px 0 rgb(0 0 0 / 0.12);
-  --shadow-card: 0 1px 3px 0 rgb(0 0 0 / 0.25), 0 1px 2px -1px rgb(0 0 0 / 0.2);
-  --shadow-card-hover: 0 4px 6px -1px rgb(0 0 0 / 0.3), 0 2px 4px -2px rgb(0 0 0 / 0.2);
-  --shadow-card-elevated: 0 10px 15px -3px rgb(0 0 0 / 0.35), 0 4px 6px -4px rgb(0 0 0 / 0.25);
+  --shadow-card-inner: 0 1px 3px 0 rgb(0 0 0 / 0.2), 0 1px 2px -1px rgb(0 0 0 / 0.15);
+  --shadow-card: 0 4px 6px -1px rgb(0 0 0 / 0.3), 0 2px 4px -2px rgb(0 0 0 / 0.25);
+  --shadow-card-hover: 0 10px 15px -3px rgb(0 0 0 / 0.35), 0 4px 6px -4px rgb(0 0 0 / 0.3);
+  --shadow-card-elevated: 0 20px 25px -5px rgb(0 0 0 / 0.4), 0 8px 10px -6px rgb(0 0 0 / 0.35);
   --input: 240 3.7% 18%;
   --primary: 207 90% 54%;
   --primary-foreground: 211 100% 99%;
@@ -341,4 +341,11 @@
   .dark .prose hr {
     @apply border-border;
   }
+}
+
+@layer utilities {
+  .shadow-card-inner { box-shadow: var(--shadow-card-inner); }
+  .shadow-card { box-shadow: var(--shadow-card); }
+  .shadow-card-hover { box-shadow: var(--shadow-card-hover); }
+  .shadow-card-elevated { box-shadow: var(--shadow-card-elevated); }
 }

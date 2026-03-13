@@ -495,7 +495,7 @@ const BillingSettings = () => {
     return (
       <div className="space-y-6">
         {/* Combined Premium Subscription & Usage */}
-        <Card className="rounded-card shadow-card-inner">
+        <Card className="rounded-card shadow-card-inner bg-surface-2">
           <CardHeader>
             <div className="flex items-start justify-between">
               <div>
@@ -619,7 +619,7 @@ const BillingSettings = () => {
         </Card>
 
         {/* Usage Overage Limits */}
-        <Card className="rounded-card shadow-card-inner">
+        <Card className="rounded-card shadow-card-inner bg-surface-2">
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
               <Settings className="h-5 w-5" />
@@ -704,7 +704,7 @@ const BillingSettings = () => {
   return (
       <div className="space-y-6">
         {/* Upgrade to Premium Card */}
-    <Card className="rounded-card shadow-card-inner">
+    <Card className="rounded-card shadow-card-inner bg-surface-2">
       <CardHeader>
         <div className="flex items-center justify-between">
           <div>

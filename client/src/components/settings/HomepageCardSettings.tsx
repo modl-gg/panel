@@ -294,7 +294,7 @@ const HomepageCardSettings: React.FC = () => {
 
   return (
     <div className="space-y-6">
-      <Card className="rounded-card shadow-card-inner">
+      <Card className="rounded-card shadow-card-inner bg-surface-2">
         <CardHeader>
           <CardTitle>{t('settings.homepage.title')}</CardTitle>
           <CardDescription>
@@ -307,7 +307,7 @@ const HomepageCardSettings: React.FC = () => {
               <Plus className="mr-2 h-4 w-4" /> {t('settings.homepage.addNewCard')}
             </Button>
           ) : (
-            <Card className="p-4 border-2 border-dashed rounded-card shadow-card-inner">
+            <Card className="p-4 border-2 border-dashed rounded-card shadow-card-inner bg-surface-2">
               <div className="space-y-4">
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div>
@@ -468,7 +468,7 @@ const HomepageCardSettings: React.FC = () => {
               <div className="text-center py-4">{t('settings.homepage.loadingCards')}</div>
             ) : homepageCards?.length ? (
               homepageCards.map((card) => (
-                <Card key={card.id} className="p-4 rounded-card shadow-card-inner">
+                <Card key={card.id} className="p-4 rounded-card shadow-card-inner bg-surface-2">
                   <div className="flex items-center justify-between">
                     <div className="flex items-center gap-3">
                       <GripVertical className="h-5 w-5 text-muted-foreground cursor-grab" />
