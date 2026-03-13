@@ -84,7 +84,7 @@ const LookupPage = () => {
   };
 
   return (
-    <div className="transition-all duration-300 bg-background/50 border rounded-xl shadow-sm md:p-8 md:my-8 md:mx-8 p-4 my-0 mx-0 mb-20">
+    <div className="transition-all duration-300 bg-card shadow-card rounded-card-lg border-transparent dark:border dark:border-border/20 md:p-8 md:my-6 md:mx-8 p-4 my-0 mx-0 mb-20">
       <h1 className="text-2xl font-bold mb-6">{t('pages.lookup.title')}</h1>
       
       <div className="relative mb-6">

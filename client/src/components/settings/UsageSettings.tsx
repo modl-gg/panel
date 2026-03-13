@@ -580,7 +580,7 @@ const fetchStorageData = async () => {
       {/* Storage Overview */}
       {storageUsage && (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-          <Card>
+          <Card className="rounded-card shadow-card-inner">
             <CardHeader>
               <CardTitle className="flex items-center justify-between">
                 <div className="flex items-center">
@@ -678,7 +678,7 @@ const fetchStorageData = async () => {
           </Card>
 
           {/* AI Usage Card */}
-          <Card>
+          <Card className="rounded-card shadow-card-inner">
             <CardHeader>
               <CardTitle className="flex items-center">
                 <Brain className="h-5 w-5 mr-2" />
@@ -756,7 +756,7 @@ const fetchStorageData = async () => {
 
           {/* Storage Overage Billing Card */}
           {storageUsage.quota?.isPaid && storageUsage.quota.overageUsed > 0 && (
-            <Card>
+            <Card className="rounded-card shadow-card-inner">
               <CardHeader>
                 <CardTitle className="flex items-center">
                   <CreditCard className="h-5 w-5 mr-2" />
@@ -781,7 +781,7 @@ const fetchStorageData = async () => {
             </Card>
           )}
 
-          <Card>
+          <Card className="rounded-card shadow-card-inner">
             <CardHeader>
               <CardTitle>{t('settings.usage.systemStatus')}</CardTitle>
             </CardHeader>
@@ -818,7 +818,7 @@ const fetchStorageData = async () => {
       )}
 
       {/* File Management Controls */}
-      <Card>
+      <Card className="rounded-card shadow-card-inner">
         <CardHeader>
           <CardTitle>{t('settings.usage.fileManagement')}</CardTitle>
         </CardHeader>

@@ -158,7 +158,7 @@ const GeneralSettings = ({
           <div className="space-y-3">
             <Label>{t('settings.general.homepageIcon')}</Label>
             <div className="flex items-center space-x-4">
-              <div className="w-16 h-16 bg-muted rounded-lg flex items-center justify-center overflow-hidden">
+              <div className="w-20 h-20 bg-surface-2 rounded-card flex items-center justify-center overflow-hidden">
                 {homepageIconUrl ? (
                   <img src={homepageIconUrl} alt={t('settings.general.homepageIcon')} className="w-full h-full object-cover" />
                 ) : (
@@ -202,7 +202,7 @@ const GeneralSettings = ({
           <div className="space-y-3">
             <Label>{t('settings.general.panelIcon')}</Label>
             <div className="flex items-center space-x-4">
-              <div className="w-16 h-16 bg-muted rounded-lg flex items-center justify-center overflow-hidden">
+              <div className="w-20 h-20 bg-surface-2 rounded-card flex items-center justify-center overflow-hidden">
                 {panelIconUrl ? (
                   <img src={panelIconUrl} alt={t('settings.general.panelIcon')} className="w-full h-full object-cover" />
                 ) : (
@@ -256,7 +256,7 @@ const GeneralSettings = ({
 
         {apiKey ? (
           <div className="space-y-4">
-            <div className="flex items-center gap-3 p-3 bg-muted/50 rounded-lg">
+            <div className="flex items-center gap-3 p-4 bg-surface-2 rounded-card">
               <div className="flex-1">
                 <div className="flex items-center gap-2 mt-1">
                   <code className="text-sm font-mono bg-background px-2 py-1 rounded border">
@@ -334,11 +334,11 @@ const GeneralSettings = ({
   // When showing all sections with collapsibles
   return (
     <div className="space-y-6 p-6">
-      <div className="space-y-4">
+      <div className="space-y-6">
         {/* Billing Settings */}
         {hasPermission('admin.settings.modify') && (
           <Collapsible open={isBillingExpanded} onOpenChange={setIsBillingExpanded}>
-            <CollapsibleTrigger className="flex items-center justify-between w-full p-4 bg-muted/50 rounded-lg hover:bg-muted/70 transition-colors">
+            <CollapsibleTrigger className="flex items-center justify-between w-full p-5 bg-surface-2 rounded-card hover:bg-surface-3 transition-colors">
               <div className="flex items-center">
                 <CreditCard className="h-4 w-4 mr-2" />
                 <h4 className="text-base font-medium">{t('settings.general.billingSubscription')}</h4>
@@ -358,7 +358,7 @@ const GeneralSettings = ({
 
         {/* Usage Section */}
         <Collapsible open={isUsageExpanded} onOpenChange={setIsUsageExpanded}>
-          <CollapsibleTrigger className="flex items-center justify-between w-full p-4 bg-muted/50 rounded-lg hover:bg-muted/70 transition-colors">
+          <CollapsibleTrigger className="flex items-center justify-between w-full p-5 bg-surface-2 rounded-card hover:bg-surface-3 transition-colors">
             <div className="flex items-center">
               <HardDrive className="h-4 w-4 mr-2" />
               <h4 className="text-base font-medium">{t('settings.general.usage')}</h4>
@@ -377,7 +377,7 @@ const GeneralSettings = ({
 
         {/* Server Configuration */}
         <Collapsible open={isServerConfigExpanded} onOpenChange={setIsServerConfigExpanded}>
-          <CollapsibleTrigger className="flex items-center justify-between w-full p-4 bg-muted/50 rounded-lg hover:bg-muted/70 transition-colors">
+          <CollapsibleTrigger className="flex items-center justify-between w-full p-5 bg-surface-2 rounded-card hover:bg-surface-3 transition-colors">
             <div className="flex items-center">
               <SettingsIcon className="h-4 w-4 mr-2" />
               <h4 className="text-base font-medium">{t('settings.general.serverConfiguration')}</h4>
@@ -397,7 +397,7 @@ const GeneralSettings = ({
         {/* Custom Domain Settings */}
         {hasPermission('admin.settings.view.domain') && (
           <Collapsible open={isDomainExpanded} onOpenChange={setIsDomainExpanded}>
-            <CollapsibleTrigger className="flex items-center justify-between w-full p-4 bg-muted/50 rounded-lg hover:bg-muted/70 transition-colors">
+            <CollapsibleTrigger className="flex items-center justify-between w-full p-5 bg-surface-2 rounded-card hover:bg-surface-3 transition-colors">
               <div className="flex items-center">
                 <Globe className="h-4 w-4 mr-2" />
                 <h4 className="text-base font-medium">{t('settings.general.customDomain')}</h4>
@@ -418,7 +418,7 @@ const GeneralSettings = ({
         {/* Discord Webhook Settings */}
         {hasPermission('admin.settings.view') && (
           <Collapsible open={isWebhookExpanded} onOpenChange={setIsWebhookExpanded}>
-            <CollapsibleTrigger className="flex items-center justify-between w-full p-4 bg-muted/50 rounded-lg hover:bg-muted/70 transition-colors">
+            <CollapsibleTrigger className="flex items-center justify-between w-full p-5 bg-surface-2 rounded-card hover:bg-surface-3 transition-colors">
               <div className="flex items-center">
                 <MessageCircle className="h-4 w-4 mr-2" />
                 <h4 className="text-base font-medium">{t('settings.general.discordWebhooks')}</h4>
@@ -444,7 +444,7 @@ const GeneralSettings = ({
         {/* Migration Tool - Super Admin Only */}
         {user && user.role === "Super Admin" && (
           <Collapsible open={isMigrationExpanded} onOpenChange={setIsMigrationExpanded}>
-            <CollapsibleTrigger className="flex items-center justify-between w-full p-4 bg-muted/50 rounded-lg hover:bg-muted/70 transition-colors">
+            <CollapsibleTrigger className="flex items-center justify-between w-full p-5 bg-surface-2 rounded-card hover:bg-surface-3 transition-colors">
               <div className="flex items-center">
                 <Database className="h-4 w-4 mr-2" />
                 <h4 className="text-base font-medium">{t('settings.migration.title')}</h4>

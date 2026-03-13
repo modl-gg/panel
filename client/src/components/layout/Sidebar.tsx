@@ -422,7 +422,7 @@ const Sidebar = () => {
         {/* Expandable search area */}
         {isLookupOpen && (
           <div
-            className={`bg-sidebar/90 ml-2 rounded-xl overflow-hidden ${isLookupClosing ? "animate-slide-left" : "animate-slide-right"}`}
+            className={`bg-sidebar/90 ml-2 rounded-2xl overflow-hidden ${isLookupClosing ? "animate-slide-left" : "animate-slide-right"}`}
             style={{ 
               backdropFilter: "blur(12px)",
               height: `${sidebarHeight}px`

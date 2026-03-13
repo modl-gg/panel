@@ -998,6 +998,7 @@
     "banAppeal": "Ban-Berufung",
     "staffApplication": "Personal-Bewerbung",
     "showingTickets": "Zeige {{from}}-{{to}} von {{total}} Tickets",
+    "ticketMeta": "#{{id}} · {{timeAgo}} von {{by}}",
     "bulk": {
       "selected": "{{count}} ausgewählt",
       "markAs": "Markieren als",
@@ -1011,6 +1012,12 @@
     "filter": {
       "noOptions": "Keine Optionen gefunden"
     }
+  },
+  "ticket": {
+    "backToTickets": "Zurück zu Tickets",
+    "shareLink": "Link teilen",
+    "shareLinkDesc": "Teile diesen Link mit dem Spieler, damit er das Ticket einsehen kann.",
+    "shareWithPlayer": "Mit Spieler teilen"
   },
   "audit": {
     "title": "Analytics & Audit",
@@ -1432,7 +1439,7 @@
     "loadingTypes": "{{category}}-Straftypen werden geladen...",
     "noTypesConfigured": "Keine {{category}}-Straftypen konfiguriert",
     "severity": "Schweregrad",
-    "offenseLevel": "Vergehen-Stufe",
+    "status": "Status",
     "offenseFirst": "Erstes Vergehen",
     "offenseMedium": "Mittel",
     "offenseHabitual": "Gewohnheitsmäßig",

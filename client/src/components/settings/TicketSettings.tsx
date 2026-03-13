@@ -800,7 +800,7 @@ const TicketSettings = ({
 
       <div className="space-y-6">
       {quickResponsesState?.categories?.length > 0 ? quickResponsesState.categories.map((category) => (
-        <Card key={category.id} className="border-l-4 border-l-blue-500">
+        <Card key={category.id} className="border-l-4 border-l-blue-500 rounded-card shadow-card-inner">
           <CardHeader className="pb-3">
             <div className="flex items-center justify-between">
               <div>
@@ -1399,12 +1399,12 @@ const TicketSettings = ({
   // When a specific section is selected, render content directly without collapsibles
   if (visibleSection) {
     return (
-      <div className="space-y-4 p-2">
+      <div className="space-y-6 p-2">
         {visibleSection === 'quick-responses' && quickResponsesContent}
         {visibleSection === 'label-management' && labelManagementContent}
         {visibleSection === 'ticket-forms' && (
           <DndProvider backend={HTML5Backend}>
-            <div className="space-y-4">
+            <div className="space-y-6">
               <p className="text-sm text-muted-foreground">
                 {t('settings.tickets.ticketFormsDesc')}
               </p>
@@ -1687,7 +1687,7 @@ const TicketSettings = ({
                   
                   <div className="space-y-6">
                   {quickResponsesState?.categories?.length > 0 ? quickResponsesState.categories.map((category) => (
-                    <Card key={category.id} className="border-l-4 border-l-blue-500">
+                    <Card key={category.id} className="border-l-4 border-l-blue-500 rounded-card shadow-card-inner">
                       <CardHeader className="pb-3">
                         <div className="flex items-center justify-between">
                           <div>

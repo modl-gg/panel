@@ -375,7 +375,7 @@ const BillingSettings = () => {
     const canUpgrade = plan.id === 'premium' && getCurrentPlan() === 'free';
     
       return (
-      <Card className={`relative ${isCurrent && plan.id === 'premium' ? 'ring-2 ring-primary' : ''}`}>
+      <Card className={`relative rounded-card shadow-card hover:shadow-card-hover transition-all ${isCurrent ? 'shadow-card-elevated ring-2 ring-primary' : ''}`}>
         {isCurrent && plan.id === 'premium' && (
           <div className="absolute -top-3 right-4">
             <Badge variant="secondary" className="bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-100">
@@ -387,7 +387,7 @@ const BillingSettings = () => {
         
         <CardHeader className="text-center pb-4">
           <CardTitle className="text-2xl">{plan.name}</CardTitle>
-          <div className="text-3xl font-bold">
+          <div className="text-4xl font-bold">
             ${plan.price}
             <span className="text-sm font-normal text-muted-foreground">/{plan.period}</span>
           </div>
@@ -421,9 +421,9 @@ const BillingSettings = () => {
                 {plan.buttonText}
               </Button>
             ) : canUpgrade ? (
-              <Button 
-                variant={plan.buttonVariant} 
-                className="w-full" 
+              <Button
+                variant={plan.buttonVariant}
+                className="w-full btn-pill"
                 onClick={handleCreateCheckoutSession}
                 disabled={isLoading}
               >
@@ -495,12 +495,12 @@ const BillingSettings = () => {
     return (
       <div className="space-y-6">
         {/* Combined Premium Subscription & Usage */}
-        <Card>
+        <Card className="rounded-card shadow-card-inner">
           <CardHeader>
             <div className="flex items-start justify-between">
               <div>
                 <CardTitle className="flex items-center gap-2">
-                  <Crown className="h-5 w-5 text-yellow-600" />
+                  <Crown className="h-10 w-10 text-yellow-600" />
                   {t('settings.billing.premiumSubscription')}
                   <span className="text-muted-foreground mx-2">—</span>
                   <span className="text-2xl font-bold text-primary">$9.99/month</span>
@@ -527,10 +527,10 @@ const BillingSettings = () => {
             {/* Billing Management Buttons */}
             <div className="flex gap-3">
               {normalizedStatus !== 'CANCELED' && (
-                <Button 
+                <Button
                   onClick={handleCreatePortalSession}
                   disabled={isLoading}
-                  className="flex items-center gap-2"
+                  className="flex items-center gap-2 btn-pill"
                 >
                   <CreditCard className="h-4 w-4" />
                   {isLoading ? t('common.loading') : t('settings.billing.manageBilling')}
@@ -573,10 +573,10 @@ const BillingSettings = () => {
               
               {normalizedStatus === 'CANCELED' && (
                 <>
-                  <Button 
+                  <Button
                     onClick={handleCreatePortalSession}
                     disabled={isLoading}
-                    className="flex items-center gap-2"
+                    className="flex items-center gap-2 btn-pill"
                   >
                     <CreditCard className="h-4 w-4" />
                     {isLoading ? t('common.loading') : t('settings.billing.manageBilling')}
@@ -619,7 +619,7 @@ const BillingSettings = () => {
         </Card>
 
         {/* Usage Overage Limits */}
-        <Card>
+        <Card className="rounded-card shadow-card-inner">
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
               <Settings className="h-5 w-5" />
@@ -687,6 +687,7 @@ const BillingSettings = () => {
             <Button
               onClick={handleSaveOverageLimits}
               disabled={savingOverageLimits}
+              className="btn-pill"
             >
               {savingOverageLimits ? t('common.saving') : t('common.save')}
             </Button>
@@ -703,12 +704,12 @@ const BillingSettings = () => {
   return (
       <div className="space-y-6">
         {/* Upgrade to Premium Card */}
-    <Card>
+    <Card className="rounded-card shadow-card-inner">
       <CardHeader>
         <div className="flex items-center justify-between">
           <div>
                 <CardTitle className="flex items-center gap-2">
-                  <Crown className="h-5 w-5 text-yellow-600" />
+                  <Crown className="h-10 w-10 text-yellow-600" />
                   {t('settings.billing.upgradeToPremium')}
                 </CardTitle>
                 <CardDescription className="mt-1">{t('settings.billing.upgradeToPremiumDesc')}</CardDescription>
@@ -729,7 +730,7 @@ const BillingSettings = () => {
                 <Button
                   onClick={handleCreateCheckoutSession}
                   disabled={isLoading}
-                  className="w-full flex items-center gap-2"
+                  className="w-full flex items-center gap-2 btn-pill"
                   size="lg"
                 >
                   {isLoading ? t('settings.billing.processing') : t('settings.billing.upgradeNow')}

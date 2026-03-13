@@ -162,7 +162,7 @@ const HomePage: React.FC = () => {
 
     if (card.actionType === 'category_dropdown' && card.category) {
       return (
-        <Card key={card.id} className="group hover:shadow-md transition-all duration-300 hover:-translate-y-1 h-72">
+        <Card key={card.id} className="group shadow-card hover:shadow-card-hover transition-all duration-300 hover:-translate-y-1 h-72">
           <Collapsible open={isExpanded} onOpenChange={() => toggleExpanded(card.id)}>
             <CardContent className="p-6 h-full flex flex-col justify-between">
               <div className="text-center">
@@ -189,7 +189,7 @@ const HomePage: React.FC = () => {
       const url = card.actionUrl || '#';
       
       return (
-        <Card key={card.id} className="group hover:shadow-md transition-all duration-300 hover:-translate-y-1 h-64 sm:h-72">
+        <Card key={card.id} className="group shadow-card hover:shadow-card-hover transition-all duration-300 hover:-translate-y-1 h-64 sm:h-72">
           <CardContent className="p-4 sm:p-6 h-full flex flex-col justify-between">
             <div className="text-center">
               <div className="w-14 h-14 bg-primary/10 rounded-full flex items-center justify-center mx-auto mb-4 group-hover:bg-primary/20 transition-colors">
@@ -322,7 +322,7 @@ const HomePage: React.FC = () => {
               ) : (
                 // Fallback to default cards if no custom cards are configured
                 <>
-                  <Card className="group hover:shadow-md transition-all duration-300 hover:-translate-y-1 h-64 sm:h-72">
+                  <Card className="group shadow-card hover:shadow-card-hover transition-all duration-300 hover:-translate-y-1 h-64 sm:h-72">
                     <CardContent className="p-4 sm:p-6 h-full flex flex-col justify-between">
                       <div className="text-center">
                         <div className="w-14 h-14 bg-amber-500/10 rounded-full flex items-center justify-center mx-auto mb-4 group-hover:bg-amber-500/20 transition-colors">
@@ -339,7 +339,7 @@ const HomePage: React.FC = () => {
                     </CardContent>
                   </Card>
 
-                  <Card className="group hover:shadow-md transition-all duration-300 hover:-translate-y-1 h-64 sm:h-72">
+                  <Card className="group shadow-card hover:shadow-card-hover transition-all duration-300 hover:-translate-y-1 h-64 sm:h-72">
                     <CardContent className="p-4 sm:p-6 h-full flex flex-col justify-between">
                       <div className="text-center">
                         <div className="w-14 h-14 bg-blue-500/10 rounded-full flex items-center justify-center mx-auto mb-4 group-hover:bg-blue-500/20 transition-colors">
@@ -354,7 +354,7 @@ const HomePage: React.FC = () => {
                     </CardContent>
                   </Card>
 
-                  <Card className="group hover:shadow-md transition-all duration-300 hover:-translate-y-1 h-64 sm:h-72">
+                  <Card className="group shadow-card hover:shadow-card-hover transition-all duration-300 hover:-translate-y-1 h-64 sm:h-72">
                     <CardContent className="p-4 sm:p-6 h-full flex flex-col justify-between">
                       <div className="text-center">
                         <div className="w-14 h-14 bg-green-500/10 rounded-full flex items-center justify-center mx-auto mb-4 group-hover:bg-green-500/20 transition-colors">
@@ -369,7 +369,7 @@ const HomePage: React.FC = () => {
                     </CardContent>
                   </Card>
 
-                  <Card className="group hover:shadow-md transition-all duration-300 hover:-translate-y-1 h-64 sm:h-72">
+                  <Card className="group shadow-card hover:shadow-card-hover transition-all duration-300 hover:-translate-y-1 h-64 sm:h-72">
                     <CardContent className="p-4 sm:p-6 h-full flex flex-col justify-between">
                       <div className="text-center">
                         <div className="w-14 h-14 bg-purple-500/10 rounded-full flex items-center justify-center mx-auto mb-4 group-hover:bg-purple-500/20 transition-colors">
@@ -386,7 +386,7 @@ const HomePage: React.FC = () => {
                     </CardContent>
                   </Card>
 
-                  <Card className="group hover:shadow-md transition-all duration-300 hover:-translate-y-1 h-72">
+                  <Card className="group shadow-card hover:shadow-card-hover transition-all duration-300 hover:-translate-y-1 h-72">
                     <CardContent className="p-6 h-full flex flex-col justify-between">
                       <div className="text-center">
                         <div className="w-14 h-14 bg-orange-500/10 rounded-full flex items-center justify-center mx-auto mb-4 group-hover:bg-orange-500/20 transition-colors">
@@ -403,7 +403,7 @@ const HomePage: React.FC = () => {
                     </CardContent>
                   </Card>
 
-                  <Card className="group hover:shadow-md transition-all duration-300 hover:-translate-y-1 h-72">
+                  <Card className="group shadow-card hover:shadow-card-hover transition-all duration-300 hover:-translate-y-1 h-72">
                     <CardContent className="p-6 h-full flex flex-col justify-between">
                       <div className="text-center">
                         <div className="w-14 h-14 bg-indigo-500/10 rounded-full flex items-center justify-center mx-auto mb-4 group-hover:bg-indigo-500/20 transition-colors">

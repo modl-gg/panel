@@ -324,7 +324,7 @@ const WebhookSettings: React.FC<WebhookSettingsProps> = ({
 
   return (
     <div className="space-y-6">
-      <Card>
+      <Card className="rounded-card shadow-card-inner">
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
             <MessageCircle className="h-5 w-5" />
@@ -334,7 +334,7 @@ const WebhookSettings: React.FC<WebhookSettingsProps> = ({
             {t('settings.webhook.description')}
           </CardDescription>
         </CardHeader>
-        <CardContent className="space-y-4">
+        <CardContent className="space-y-6">
           {/* Enable/Disable Webhook */}
           <div className="flex items-center justify-between">
             <div>
@@ -446,14 +446,14 @@ const WebhookSettings: React.FC<WebhookSettingsProps> = ({
       </Card>
 
       {/* Notification Settings */}
-      <Card>
+      <Card className="rounded-card shadow-card-inner">
         <CardHeader>
           <CardTitle>{t('settings.webhook.notificationTypes')}</CardTitle>
           <CardDescription>
             {t('settings.webhook.notificationTypesDesc')}
           </CardDescription>
         </CardHeader>
-        <CardContent className="space-y-4">
+        <CardContent className="space-y-6">
           <div className="flex items-center justify-between">
             <div>
               <Label htmlFor="notify-tickets" className="text-base font-medium">
@@ -508,7 +508,7 @@ const WebhookSettings: React.FC<WebhookSettingsProps> = ({
       </Card>
 
       {/* Embed Template Customization */}
-      <Card>
+      <Card className="rounded-card shadow-card-inner">
         <CardHeader>
           <CardTitle>{t('settings.webhook.embedTemplates')}</CardTitle>
           <CardDescription>

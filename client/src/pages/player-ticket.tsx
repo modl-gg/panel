@@ -49,7 +49,7 @@ export interface TicketMessage {
   staff?: boolean;
   attachments?: string[];
   closedAs?: string;
-  staffMinecraftUuid?: string; // For staff avatar display
+  avatar?: string; // Staff avatar URL from backend
   creatorIdentifier?: string; // Browser identifier for creator verification
 }
 
@@ -141,15 +141,13 @@ const MessageAvatar = ({ message, creatorUuid }: { message: TicketMessage, creat
     );
   }
 
-  // For staff messages - use staff Minecraft UUID if available
+  // For staff messages - use avatar URL if available
   if (message.senderType === 'staff' || message.staff) {
-    const staffMinecraftUuid = message.staffMinecraftUuid;
-
-    if (staffMinecraftUuid && !avatarError) {
+    if (message.avatar && !avatarError) {
       return (
         <div className="relative h-8 w-8 bg-muted rounded-md flex items-center justify-center overflow-hidden flex-shrink-0">
           <img
-            src={getAvatarUrl(staffMinecraftUuid, 32, true)}
+            src={message.avatar}
             alt={`${message.sender} Avatar`}
             className={`w-full h-full object-cover transition-opacity duration-200 ${avatarLoading ? 'opacity-0' : 'opacity-100'}`}
             onError={() => {
@@ -269,7 +267,7 @@ const PlayerTicket = () => {
           attachments: message.attachments,
           closedAs: (message.action === "Comment" || message.action === "Reopen") ? undefined : message.action,
           creatorIdentifier: message.creatorIdentifier, // Include creator identifier for verification
-          staffMinecraftUuid: message.staffMinecraftUuid, // Preserve staff Minecraft UUID for avatars
+          avatar: message.avatar, // Preserve staff avatar URL
         };
         
         return processed;
