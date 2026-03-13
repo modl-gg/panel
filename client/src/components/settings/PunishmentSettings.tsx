@@ -90,7 +90,7 @@ const PunishmentSettings = ({
   };
 
   return (
-    <div className="space-y-6 p-2">
+    <div className="space-y-6 p-4">
       {/* Status Thresholds Section */}
       {showThresholds && (
       <div>

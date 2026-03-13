@@ -1004,6 +1004,7 @@
     "banAppeal": "Ban Appeal",
     "staffApplication": "Staff Application",
     "showingTickets": "Showing {{from}}-{{to}} of {{total}} tickets",
+    "ticketMeta": "#{{id}} · {{timeAgo}} by {{by}}",
     "bulk": {
       "selected": "{{count}} selected",
       "markAs": "Mark as",
@@ -1017,6 +1018,12 @@
     "filter": {
       "noOptions": "No options found"
     }
+  },
+  "ticket": {
+    "backToTickets": "Back to Tickets",
+    "shareLink": "Share Link",
+    "shareLinkDesc": "Share this link with the player so they can view the ticket.",
+    "shareWithPlayer": "Share with Player"
   },
   "audit": {
     "title": "Analytics & Audit",

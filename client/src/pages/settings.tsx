@@ -3360,7 +3360,7 @@ const Settings = () => {
         </div>
 
         {/* Category Cards Grid */}
-        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4">
+        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-5">
           {settingsCategories.map((category) => {
             // Check permission
             if (category.permission && !canAccessSettingsTab(category.permission as any)) {
@@ -3377,11 +3377,11 @@ const Settings = () => {
             return (
               <Card
                 key={category.id}
-                className={`transition-all ${isSelected ? 'bg-muted/50' : ''}`}
+                className={`transition-all rounded-card shadow-card hover:shadow-card-hover ${isSelected ? 'bg-muted/50 ring-1 ring-primary/20' : ''}`}
               >
-                <CardContent className="p-4">
+                <CardContent className="p-5">
                   <div className="flex flex-col items-center text-center">
-                    <div className={`p-3 rounded-lg mb-3 bg-muted`}>
+                    <div className={`p-4 rounded-card mb-3 bg-muted`}>
                       <Icon className="h-6 w-6 text-muted-foreground" />
                     </div>
                     <h3 className="font-medium text-sm mb-1">{category.title}</h3>
@@ -3399,11 +3399,11 @@ const Settings = () => {
                           return (
                             <div
                               key={sub.id}
-                              className={`flex items-center gap-2 p-1.5 rounded text-xs transition-colors ${
+                              className={`flex items-center gap-2 p-2 rounded-md text-xs transition-colors ${
                                 isLocked
                                   ? 'opacity-50 cursor-not-allowed'
                                   : isSubSelected
-                                    ? 'bg-muted-foreground/20 font-medium cursor-pointer'
+                                    ? 'bg-primary/10 font-medium cursor-pointer'
                                     : 'hover:bg-muted text-muted-foreground cursor-pointer'
                               }`}
                               onClick={(e) => {
@@ -3434,8 +3434,8 @@ const Settings = () => {
         {/* Expanded Content Section - Below all cards */}
         {/* Only show Card wrapper for sections that don't have their own Card */}
         {expandedCategory !== 'staff' && expandedCategory !== 'knowledgebase' && (
-        <Card>
-          <CardContent className="p-6">
+        <Card className="rounded-card shadow-card">
+          <CardContent className="p-8">
             {/* Account Settings - Show by default when no sub-category is expanded */}
             {!expandedSubCategory && (
               <AccountSettings

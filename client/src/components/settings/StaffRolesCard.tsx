@@ -483,7 +483,7 @@ export default function StaffRolesCard() {
   // Show loading state
   if (rolesLoading || permissionsLoading) {
     return (
-      <Card>
+      <Card className="rounded-card shadow-card">
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
             <Shield className="h-5 w-5" />
@@ -660,7 +660,7 @@ export default function StaffRolesCard() {
 
   return (
     <div className="space-y-6">
-      <Card>
+      <Card className="rounded-card shadow-card">
         <CardHeader>
           <div className="flex items-center justify-between">
             <div>

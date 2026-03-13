@@ -155,7 +155,7 @@ const CategoryItem: React.FC<CategoryItemProps> = ({
   // Extracted CategoryItem component's JSX
   return (
     <div ref={preview} style={{ opacity: isDragging ? 0.5 : 1 }} data-handler-id={handlerId}>
-      <Card ref={ref} className="p-3 mb-2">
+      <Card ref={ref} className="p-3 mb-2 rounded-card shadow-card">
         <div className="flex items-center justify-between">
           <div className="flex items-center flex-1">
             <GripVertical className="mr-2 h-5 w-5 text-muted-foreground cursor-grab" />
@@ -600,12 +600,12 @@ const KnowledgebaseSettings: React.FC = () => {
   return (
     <DndProvider backend={HTML5Backend}>
       <div className="space-y-6">
-        <Card>
+        <Card className="rounded-card shadow-card">
           <CardHeader>
             <CardTitle>{t('settings.knowledgebase.manageCategories')}</CardTitle>
             <CardDescription>{t('settings.knowledgebase.manageCategoriesDesc')}</CardDescription>
           </CardHeader>
-          <CardContent className="space-y-4">
+          <CardContent className="space-y-6">
             <div className="space-y-2">
               <div className="flex flex-col md:flex-row gap-2">
                 <Input
@@ -663,7 +663,7 @@ const KnowledgebaseSettings: React.FC = () => {
         {/* Modals for editing/creating articles with Markdown editor */}
         {/* Edit Article Modal */}
         {editingArticle && !newArticleForModal && ( // Ensure only one modal is trying to render if states overlap by mistake
-            <Card className="mt-6" data-article-edit-form="true">
+            <Card className="mt-6 rounded-card shadow-card" data-article-edit-form="true">
                 <CardHeader>
                     <CardTitle>{t('settings.knowledgebase.editArticle', { title: editingArticle.title })}</CardTitle>
                 </CardHeader>
@@ -702,7 +702,7 @@ const KnowledgebaseSettings: React.FC = () => {
         
         {/* Create Article Modal */}
         {newArticleForModal && (
-          <Card className="mt-6" data-article-form="true">
+          <Card className="mt-6 rounded-card shadow-card" data-article-form="true">
             <CardHeader>
               <CardTitle>{t('settings.knowledgebase.createNewArticle')}</CardTitle>
               <CardDescription>{t('settings.knowledgebase.inCategory', { category: categories?.find(c => c.id === newArticleForModal.categoryId)?.name || t('common.unknown') })}</CardDescription>

@@ -176,7 +176,7 @@ const AccountSettings = ({
   };
 
   return (
-    <div className="space-y-4 p-2">
+    <div className="space-y-6 p-2">
       <div className="flex items-center justify-between mb-4">
         <h3 className="text-base font-large">{t('settings.profileSettings')}</h3>
         <Button variant="destructive" size="sm" onClick={logout}>

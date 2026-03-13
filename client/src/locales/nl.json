@@ -1004,6 +1004,7 @@
     "banAppeal": "Beroep op ban",
     "staffApplication": "Stafsollicitatie",
     "showingTickets": "Tonen {{from}}-{{to}} van {{total}} tickets",
+    "ticketMeta": "#{{id}} · {{timeAgo}} door {{by}}",
     "bulk": {
       "selected": "{{count}} geselecteerd",
       "markAs": "Markeren als",
@@ -1017,6 +1018,12 @@
     "filter": {
       "noOptions": "Geen opties gevonden"
     }
+  },
+  "ticket": {
+    "backToTickets": "Terug naar Tickets",
+    "shareLink": "Link delen",
+    "shareLinkDesc": "Deel deze link met de speler zodat ze het ticket kunnen bekijken.",
+    "shareWithPlayer": "Delen met speler"
   },
   "audit": {
     "title": "Analytics & audit",

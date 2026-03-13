@@ -1004,6 +1004,7 @@
     "banAppeal": "Apelación de ban",
     "staffApplication": "Solicitud de staff",
     "showingTickets": "Mostrando {{from}}-{{to}} de {{total}} tickets",
+    "ticketMeta": "#{{id}} · {{timeAgo}} por {{by}}",
     "bulk": {
       "selected": "{{count}} seleccionados",
       "markAs": "Marcar como",
@@ -1017,6 +1018,12 @@
     "filter": {
       "noOptions": "No se encontraron opciones"
     }
+  },
+  "ticket": {
+    "backToTickets": "Volver a Tickets",
+    "shareLink": "Compartir enlace",
+    "shareLinkDesc": "Comparte este enlace con el jugador para que pueda ver el ticket.",
+    "shareWithPlayer": "Compartir con jugador"
   },
   "audit": {
     "title": "Analytics y auditoría",

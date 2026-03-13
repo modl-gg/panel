@@ -13,6 +13,14 @@ export default {
         lg: "var(--radius)",
         md: "calc(var(--radius) - 2px)",
         sm: "calc(var(--radius) - 4px)",
+        card: "var(--radius-card)",
+        "card-lg": "var(--radius-card-lg)",
+        pill: "var(--radius-pill)",
+      },
+      boxShadow: {
+        card: "var(--shadow-card)",
+        "card-hover": "var(--shadow-card-hover)",
+        "card-elevated": "var(--shadow-card-elevated)",
       },
       colors: {
         background: "hsl(var(--background))",

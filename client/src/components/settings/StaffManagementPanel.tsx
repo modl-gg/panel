@@ -179,7 +179,7 @@ const StaffManagementPanel = () => {
 
   return (
     <>
-      <Card>
+      <Card className="rounded-card shadow-card">
         <CardHeader>
           <div className="flex justify-between items-center">
             <CardTitle>{t('settings.staff.staffManagement')}</CardTitle>
