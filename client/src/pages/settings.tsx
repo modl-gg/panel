@@ -46,7 +46,6 @@ import { QuickResponsesConfiguration, defaultQuickResponsesConfig } from '@/type
 import {
   formatSubscriptionStatusLabel,
   hasPremiumAccess,
-  normalizeStrictnessLevel,
   normalizeSubscriptionStatus,
 } from '@/lib/backend-enums';
 import {
@@ -137,7 +136,6 @@ interface IAIPunishmentConfig {
 interface IAIModerationSettings {
   enableAIReview: boolean;
   enableAutomatedActions: boolean;
-  strictnessLevel: 'LENIENT' | 'STANDARD' | 'STRICT';
   aiPunishmentConfigs: Record<string, IAIPunishmentConfig>;
 }
 
@@ -1027,7 +1025,6 @@ const Settings = () => {
   const [aiModerationSettings, setAiModerationSettings] = useState<IAIModerationSettings>({
     enableAIReview: false,
     enableAutomatedActions: false,
-    strictnessLevel: 'STANDARD',
     aiPunishmentConfigs: {}
   });
   const [isLoadingAiSettings, setIsLoadingAiSettings] = useState(false);
@@ -1421,7 +1418,6 @@ const Settings = () => {
         setAiModerationSettings(prev => ({
           ...prev,
           ...data,
-          strictnessLevel: normalizeStrictnessLevel(data.strictnessLevel),
           aiPunishmentConfigs: data.aiPunishmentConfigs || prev.aiPunishmentConfigs || {}
         }));
       } else {
@@ -1439,7 +1435,6 @@ const Settings = () => {
     try {
       const payload = {
         ...settings,
-        strictnessLevel: normalizeStrictnessLevel(settings.strictnessLevel),
         aiPunishmentConfigs: configs || settings.aiPunishmentConfigs
       };
       
@@ -1780,10 +1775,7 @@ const Settings = () => {
     if (settingsObject.aiModerationSettings) {
       const aiSettings = settingsObject.aiModerationSettings;
       const parsedAiSettings = typeof aiSettings === 'string' ? JSON.parse(aiSettings) : JSON.parse(JSON.stringify(aiSettings));
-      setAiModerationSettings({
-        ...parsedAiSettings,
-        strictnessLevel: normalizeStrictnessLevel(parsedAiSettings.strictnessLevel),
-      });
+      setAiModerationSettings(parsedAiSettings);
     }
 
     // After a short delay, reset the flag to allow auto-saving

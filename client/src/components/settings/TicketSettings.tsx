@@ -20,7 +20,7 @@ import { QuickResponseAction, QuickResponseCategory, QuickResponsesConfiguration
 import { TicketFormField, TicketFormSection, TicketFormSettings, TicketFormsConfiguration } from '@/types/forms';
 import { useBillingStatus } from '@/hooks/use-data';
 import { useAuth } from '@/hooks/use-auth';
-import { formatStrictnessLabel, hasPremiumAccess, normalizeStrictnessLevel } from '@/lib/backend-enums';
+import { hasPremiumAccess } from '@/lib/backend-enums';
 
 // Label type definition
 interface Label {
@@ -1991,7 +1991,7 @@ const TicketSettings = ({
               <div className="flex items-center space-x-2">
                 {!isAIModerationExpanded && isPremiumUser() && (
                   <span className="text-sm text-muted-foreground">
-                    {aiModerationSettings.enableAutomatedActions ? t('settings.tickets.automated') : t('settings.tickets.manual')} - {formatStrictnessLabel(aiModerationSettings.strictnessLevel)}
+                    {aiModerationSettings.enableAutomatedActions ? t('settings.tickets.automated') : t('settings.tickets.manual')}
                   </span>
                 )}
                 {!isPremiumUser() && (
@@ -2070,32 +2070,6 @@ const TicketSettings = ({
                               }));
                             }}
                           />
-                        </div>
-
-                        {/* Strictness Level */}
-                        <div className="space-y-3">
-                          <Label className="text-sm font-medium">{t('settings.tickets.aiStrictnessLevel')}</Label>
-                          <Select
-                            value={normalizeStrictnessLevel(aiModerationSettings.strictnessLevel)}
-                            onValueChange={(value) => {
-                              setAiModerationSettings((prev: any) => ({
-                                ...prev,
-                                strictnessLevel: value
-                              }));
-                            }}
-                          >
-                            <SelectTrigger className="w-full">
-                              <SelectValue placeholder={t('settings.tickets.selectStrictnessLevel')} />
-                            </SelectTrigger>
-                            <SelectContent>
-                              <SelectItem value="LENIENT">{t('settings.tickets.strictnessLenient')}</SelectItem>
-                              <SelectItem value="STANDARD">{t('settings.tickets.strictnessStandard')}</SelectItem>
-                              <SelectItem value="STRICT">{t('settings.tickets.strictnessStrict')}</SelectItem>
-                            </SelectContent>
-                          </Select>
-                          <p className="text-xs text-muted-foreground">
-                            {t('settings.tickets.aiStrictnessHelp')}
-                          </p>
                         </div>
 
                         {/* AI Punishment Types Management Section */}

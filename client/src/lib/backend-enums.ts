@@ -16,8 +16,6 @@ export type SubscriptionStatus =
 
 export type ProvisioningStatus = "PENDING" | "IN_PROGRESS" | "COMPLETED" | "FAILED";
 
-export type StrictnessLevel = "LENIENT" | "STANDARD" | "STRICT";
-
 export type TicketLifecycleStatus = "UNFINISHED" | "OPEN" | "CLOSED";
 
 export type AppealWorkflowStatus =
@@ -45,8 +43,6 @@ const PROVISIONING_STATUS_SET = new Set<ProvisioningStatus>([
   "COMPLETED",
   "FAILED",
 ]);
-
-const STRICTNESS_LEVEL_SET = new Set<StrictnessLevel>(["LENIENT", "STANDARD", "STRICT"]);
 
 const TICKET_LIFECYCLE_SET = new Set<TicketLifecycleStatus>(["UNFINISHED", "OPEN", "CLOSED"]);
 
@@ -85,13 +81,6 @@ export function normalizeProvisioningStatus(value: NullableString): Provisioning
   return PROVISIONING_STATUS_SET.has(normalized as ProvisioningStatus)
     ? (normalized as ProvisioningStatus)
     : "PENDING";
-}
-
-export function normalizeStrictnessLevel(value: NullableString): StrictnessLevel {
-  const normalized = normalizeEnumKey(value);
-  return STRICTNESS_LEVEL_SET.has(normalized as StrictnessLevel)
-    ? (normalized as StrictnessLevel)
-    : "STANDARD";
 }
 
 export function normalizeTicketLifecycleStatus(value: NullableString): TicketLifecycleStatus {
@@ -199,18 +188,6 @@ export function formatTicketCategoryLabel(value: NullableString): string {
         .replace(/_/g, " ")
         .toLowerCase()
         .replace(/\b\w/g, (char) => char.toUpperCase());
-  }
-}
-
-export function formatStrictnessLabel(value: NullableString): string {
-  const strictness = normalizeStrictnessLevel(value);
-  switch (strictness) {
-    case "LENIENT":
-      return "Lenient";
-    case "STRICT":
-      return "Strict";
-    default:
-      return "Standard";
   }
 }
 
