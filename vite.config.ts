@@ -12,6 +12,9 @@ export default defineConfig(({ mode }) => {
       'import.meta.env.VITE_API_BASE_URL': JSON.stringify(
         process.env.VITE_API_BASE_URL || env.VITE_API_BASE_URL || ''
       ),
+      'import.meta.env.VITE_REPLAY_ATLAS_BASE_URL': JSON.stringify(
+        process.env.VITE_REPLAY_ATLAS_BASE_URL || env.VITE_REPLAY_ATLAS_BASE_URL || ''
+      ),
     },
     resolve: {
       alias: {
@@ -41,6 +44,7 @@ export default defineConfig(({ mode }) => {
           manualChunks: {
             "react-vendor": ["react", "react-dom"],
             "ui-vendor": ["lucide-react", "wouter", "@tanstack/react-query"],
+            "replay-viewer": ["@modl-gg/replay-viewer", "three"],
             "radix-vendor": [
               "@radix-ui/react-accordion",
               "@radix-ui/react-alert-dialog",

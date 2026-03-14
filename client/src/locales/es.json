@@ -770,7 +770,12 @@
       "overageLimitPlaceholder": "ej. 100",
       "currentLimits": "Límites actuales",
       "overageLimitWarning": "Establecer un límite menor no eliminará los archivos existentes pero evitará nuevas subidas que superen el límite.",
-      "saveSettings": "Guardar configuración"
+      "saveSettings": "Guardar configuración",
+      "showingFiles": "Mostrando {{from}}–{{to}} de {{total}}",
+      "pageOf": "Página {{page}} de {{total}}",
+      "percentUsed": "{{percent}}% usado",
+      "overageCost": "Costo por exceso",
+      "storageOverageDesc": "Estás usando {{overageUsed}} más allá de tu límite base de {{baseLimit}}. Costo adicional estimado: ${{cost}}."
     },
     "webhook": {
       "autoSaveFailed": "Auto-guardado fallido",

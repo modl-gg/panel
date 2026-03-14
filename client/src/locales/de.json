@@ -770,7 +770,12 @@
       "overageLimitPlaceholder": "z. B. 100",
       "currentLimits": "Aktuelle Limits",
       "overageLimitWarning": "Das Setzen eines niedrigeren Limits löscht keine vorhandenen Dateien, verhindert aber neue Uploads, die das Limit überschreiten.",
-      "saveSettings": "Einstellungen speichern"
+      "saveSettings": "Einstellungen speichern",
+      "showingFiles": "Zeige {{from}}–{{to}} von {{total}}",
+      "pageOf": "Seite {{page}} von {{total}}",
+      "percentUsed": "{{percent}}% verwendet",
+      "overageCost": "Überschreitungskosten",
+      "storageOverageDesc": "Sie verwenden {{overageUsed}} über Ihr {{baseLimit}}-Basislimit hinaus. Geschätzte Zusatzkosten: ${{cost}}."
     },
     "webhook": {
       "autoSaveFailed": "Auto-Speichern fehlgeschlagen",

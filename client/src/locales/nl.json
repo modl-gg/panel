@@ -770,7 +770,12 @@
       "overageLimitPlaceholder": "bijv. 100",
       "currentLimits": "Huidige limieten",
       "overageLimitWarning": "Een lagere limiet instellen verwijdert geen bestaande bestanden maar voorkomt nieuwe uploads die de limiet overschrijden.",
-      "saveSettings": "Instellingen opslaan"
+      "saveSettings": "Instellingen opslaan",
+      "showingFiles": "Toont {{from}}–{{to}} van {{total}}",
+      "pageOf": "Pagina {{page}} van {{total}}",
+      "percentUsed": "{{percent}}% gebruikt",
+      "overageCost": "Overschrijdingskosten",
+      "storageOverageDesc": "U gebruikt {{overageUsed}} boven uw basislimiet van {{baseLimit}}. Geschatte extra kosten: ${{cost}}."
     },
     "webhook": {
       "autoSaveFailed": "Automatisch opslaan mislukt",

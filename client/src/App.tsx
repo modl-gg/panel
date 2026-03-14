@@ -38,6 +38,7 @@ const SetupPage = lazy(() => import("@/pages/SetupPage"));
 const ServerNotFoundPage = lazy(() => import("@/pages/ServerNotFoundPage"));
 const UploadEvidencePage = lazy(() => import("@/pages/upload-evidence-page"));
 const VerifyPage = lazy(() => import("@/pages/VerifyPage"));
+const ReplayPage = lazy(() => import("@/pages/replay-page"));
 
 // Knowledgebase Pages
 const KnowledgebasePage = lazy(() => import("@/pages/KnowledgebasePage"));
@@ -67,8 +68,9 @@ function Router() {
   const isVerifyEmailPage = location.startsWith('/verify-email');
   const isUploadEvidencePage = location.startsWith('/upload-evidence');
   const isVerifyPage = location.startsWith('/verify/');
+  const isReplayPage = location.startsWith('/replay');
 
-  if (!isAdminPanelRoute && !isAuthPage && !isAppealsPage && !isPlayerTicketPage && !isSubmitTicketPage && !isProvisioningPage && !isAcceptInvitationPage && !isVerifyEmailPage && !isUploadEvidencePage && !isVerifyPage) {
+  if (!isAdminPanelRoute && !isAuthPage && !isAppealsPage && !isPlayerTicketPage && !isSubmitTicketPage && !isProvisioningPage && !isAcceptInvitationPage && !isVerifyEmailPage && !isUploadEvidencePage && !isVerifyPage && !isReplayPage) {
     return (
       <main className="h-full bg-background"> {/* Basic wrapper for public pages */}
         <Suspense fallback={<PageLoader />}>
@@ -86,7 +88,7 @@ function Router() {
   
   // Don't show navigation on auth page, appeals page, player ticket page, or provisioning page
   // Note: isAuthPage now covers /auth and /panel/auth
-  if (isAuthPage || isAppealsPage || isPlayerTicketPage || isSubmitTicketPage || isProvisioningPage || isAcceptInvitationPage || isVerifyEmailPage || isUploadEvidencePage || isVerifyPage) {
+  if (isAuthPage || isAppealsPage || isPlayerTicketPage || isSubmitTicketPage || isProvisioningPage || isAcceptInvitationPage || isVerifyEmailPage || isUploadEvidencePage || isVerifyPage || isReplayPage) {
     return (
       <main className="h-full bg-background">
         <Suspense fallback={<PageLoader />}>
@@ -102,6 +104,7 @@ function Router() {
             <Route path="/verify-email" component={SetupPage} />
             <Route path="/upload-evidence/:token" component={UploadEvidencePage} />
             <Route path="/verify/:token" component={VerifyPage} />
+            <Route path="/replay" component={ReplayPage} />
           </Switch>
         </Suspense>
       </main>
@@ -135,6 +138,7 @@ function Router() {
               <Route path="/verify-email" component={SetupPage} />
               <Route path="/verify/:token" component={VerifyPage} />
               <Route path="/rate-limit" component={RateLimitPage} />
+              <Route path="/replay" component={ReplayPage} />
               {/* Public KB routes for mobile, if accessed directly and not caught by earlier block */}
               <Route path="/knowledgebase" component={KnowledgebasePage} />
               <Route path="/article/:articleSlug" component={ArticleDetailPage} />
@@ -175,6 +179,7 @@ function Router() {
             <Route path="/verify-email" component={SetupPage} />
             <Route path="/verify/:token" component={VerifyPage} />
             <Route path="/rate-limit" component={RateLimitPage} />
+            <Route path="/replay" component={ReplayPage} />
             {/* Public KB routes for desktop, if accessed directly and not caught by earlier block */}
             <Route path="/knowledgebase" component={KnowledgebasePage} />
             <Route path="/article/:articleSlug" component={ArticleDetailPage} />

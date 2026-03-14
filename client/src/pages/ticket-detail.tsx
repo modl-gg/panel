@@ -1911,29 +1911,33 @@ const TicketDetail = () => {
             )}
 
             {/* Replay Link Section */}
-            {ticketData?.replayUrl && (
-              <Card className="mb-4">
-                <CardContent className="py-3">
-                  <div className="flex items-center gap-3">
-                    <Video className="h-5 w-5 text-indigo-400" />
-                    <div className="flex-1">
-                      <p className="text-sm font-medium">Replay Evidence</p>
-                      <p className="text-xs text-muted-foreground">A replay was captured at the time of this report</p>
+            {ticketData?.replayUrl && (() => {
+              const replayId = extractReplayId(ticketData.replayUrl);
+              if (!replayId) return null;
+              return (
+                <Card className="mb-4">
+                  <CardContent className="py-3">
+                    <div className="flex items-center gap-3">
+                      <Video className="h-5 w-5 text-indigo-400" />
+                      <div className="flex-1">
+                        <p className="text-sm font-medium">Replay Evidence</p>
+                        <p className="text-xs text-muted-foreground">A replay was captured at the time of this report</p>
+                      </div>
+                      <a
+                        href={`/replay?id=${replayId}`}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="inline-flex items-center gap-2 px-3 py-1.5 bg-indigo-500/10 text-indigo-400 rounded-md hover:bg-indigo-500/20 transition text-sm font-medium"
+                      >
+                        <Video className="h-4 w-4" />
+                        View Replay
+                        <ArrowUpRight className="h-3 w-3" />
+                      </a>
                     </div>
-                    <a
-                      href={ticketData.replayUrl}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="inline-flex items-center gap-2 px-3 py-1.5 bg-indigo-500/10 text-indigo-400 rounded-md hover:bg-indigo-500/20 transition text-sm font-medium"
-                    >
-                      <Video className="h-4 w-4" />
-                      View Replay
-                      <ArrowUpRight className="h-3 w-3" />
-                    </a>
-                  </div>
-                </CardContent>
-              </Card>
-            )}
+                  </CardContent>
+                </Card>
+              );
+            })()}
 
             {/* Chat Messages Section for Chat Reports */}
             {ticketDetails.category === 'Chat Report' && ticketData?.chatMessages && ticketData.chatMessages.length > 0 && (
@@ -3629,5 +3633,17 @@ const PunishmentDetailsCard = ({ punishmentId }: { punishmentId: string }) => {
     </div>
   );
 };
+
+function extractReplayId(replayUrl: string): string | null {
+  // New format: just the UUID
+  if (/^[0-9a-f-]{36}$/i.test(replayUrl)) return replayUrl;
+  // Legacy format: https://replays.modl.gg/?id=xxx
+  try {
+    const url = new URL(replayUrl);
+    return url.searchParams.get('id');
+  } catch {
+    return null;
+  }
+}
 
 export default TicketDetail;
