@@ -3,7 +3,7 @@ import { ReplayViewer } from '@modl-gg/replay-viewer';
 import { fetchReplayMetadata, type ReplayMetadata } from '@/lib/replay-api';
 import { Loader2 } from 'lucide-react';
 
-const ATLAS_BASE = import.meta.env.VITE_REPLAY_ATLAS_BASE_URL || 'https://replays.modl.gg/atlas';
+const ATLAS_BASE = import.meta.env.VITE_REPLAY_ATLAS_BASE_URL || '/atlas';
 
 export default function ReplayPage() {
   const params = new URLSearchParams(window.location.search);

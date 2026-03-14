@@ -239,7 +239,7 @@ function AppContent() {
 
   // Show server not found page if server doesn't exist
   // Skip this check for verify-email page (needed for email verification flow)
-  if (publicSettings?.serverExists === false && !location.startsWith('/verify-email') && !location.startsWith('/verify/')) {
+  if (publicSettings?.serverExists === false && !location.startsWith('/verify-email') && !location.startsWith('/verify/') && !location.startsWith('/replay')) {
     return (
       <Suspense fallback={<div className="flex items-center justify-center min-h-screen"><Loader2 className="h-8 w-8 animate-spin text-primary" /></div>}>
         <ServerNotFoundPage />
