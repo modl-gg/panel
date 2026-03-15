@@ -9,6 +9,7 @@ import { Label } from '@modl-gg/shared-web/components/ui/label';
 import MediaUpload from './MediaUpload';
 import { useMediaUpload } from '@/hooks/use-media-upload';
 import { formatFileSize } from '@/utils/file-utils';
+import { useTranslation } from 'react-i18next';
 
 interface ArticleMedia {
   id: string;
@@ -38,6 +39,7 @@ export function ArticleMediaUpload({
   onInsertMedia,
   readonly = false
 }: ArticleMediaUploadProps) {
+  const { t } = useTranslation();
   const [media, setMedia] = useState<ArticleMedia[]>(existingMedia);
   const [copiedUrl, setCopiedUrl] = useState<string | null>(null);
   const { config, deleteMedia } = useMediaUpload();
@@ -63,8 +65,8 @@ export function ArticleMediaUpload({
     onMediaUpdate?.(updatedMedia);
 
     toast({
-      title: "Media Uploaded",
-      description: `${fileName} has been uploaded successfully.`,
+      title: t('upload.mediaUploaded'),
+      description: t('upload.uploadedSuccess', { name: fileName }),
     });
   };
 
@@ -76,13 +78,13 @@ export function ArticleMediaUpload({
       onMediaUpdate?.(updatedMedia);
 
       toast({
-        title: "Media Deleted",
-        description: `${mediaItem.fileName} has been deleted.`,
+        title: t('upload.mediaDeleted'),
+        description: t('upload.deletedSuccess', { name: mediaItem.fileName }),
       });
     } catch (error) {
       toast({
-        title: "Delete Failed",
-        description: "Failed to delete media file.",
+        title: t('upload.deleteFailed'),
+        description: t('upload.deleteMediaFailed'),
         variant: "destructive",
       });
     }
@@ -95,13 +97,13 @@ export function ArticleMediaUpload({
       setTimeout(() => setCopiedUrl(null), 2000);
       
       toast({
-        title: "URL Copied",
-        description: "Media URL has been copied to clipboard.",
+        title: t('upload.urlCopied'),
+        description: t('upload.urlCopiedDesc'),
       });
     } catch (error) {
       toast({
-        title: "Copy Failed",
-        description: "Failed to copy URL to clipboard.",
+        title: t('upload.copyFailed'),
+        description: t('upload.copyUrlFailed'),
         variant: "destructive",
       });
     }
@@ -111,8 +113,8 @@ export function ArticleMediaUpload({
     if (onInsertMedia) {
       onInsertMedia(mediaItem.url, mediaItem.altText);
       toast({
-        title: "Media Inserted",
-        description: `${mediaItem.fileName} has been inserted into the article.`,
+        title: t('upload.mediaInserted'),
+        description: t('upload.mediaInsertedDesc', { name: mediaItem.fileName }),
       });
     }
   };
@@ -135,12 +137,12 @@ export function ArticleMediaUpload({
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
             <ImageIcon className="h-5 w-5" />
-            Article Media
+            {t('upload.articleMedia')}
           </CardTitle>
         </CardHeader>
         <CardContent>
           <p className="text-sm text-muted-foreground">
-            Media storage is not configured. Please contact your administrator.
+            {t('upload.storageNotConfigured')}
           </p>
         </CardContent>
       </Card>
@@ -152,7 +154,7 @@ export function ArticleMediaUpload({
       <CardHeader>
         <CardTitle className="flex items-center gap-2">
           <ImageIcon className="h-5 w-5" />
-          Article Media
+          {t('upload.articleMedia')}
           {media.length > 0 && (
             <Badge variant="secondary">{media.length}</Badge>
           )}
@@ -174,7 +176,7 @@ export function ArticleMediaUpload({
 
         {media.length > 0 && (
           <div className="space-y-4">
-            <h4 className="text-sm font-medium">Uploaded Media</h4>
+            <h4 className="text-sm font-medium">{t('upload.uploadedMedia')}</h4>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               {media.map((item) => (
                 <Card key={item.id} className="overflow-hidden">
@@ -194,7 +196,7 @@ export function ArticleMediaUpload({
                     ) : (
                       <div className="text-center">
                         <ImageIcon className="h-8 w-8 mx-auto mb-2 text-muted-foreground" />
-                        <p className="text-xs text-muted-foreground">Preview not available</p>
+                        <p className="text-xs text-muted-foreground">{t('upload.previewNotAvailable')}</p>
                       </div>
                     )}
                     
@@ -221,7 +223,7 @@ export function ArticleMediaUpload({
                     {!readonly && (
                       <div className="space-y-2">
                         <Label htmlFor={`alt-${item.id}`} className="text-xs">
-                          Alt Text
+                          {t('upload.altText')}
                         </Label>
                         <Input
                           id={`alt-${item.id}`}
@@ -245,7 +247,7 @@ export function ArticleMediaUpload({
                         ) : (
                           <Copy className="h-3 w-3 mr-1" />
                         )}
-                        {copiedUrl === item.url ? 'Copied!' : 'Copy URL'}
+                        {copiedUrl === item.url ? t('common.copied') : t('upload.copyUrl')}
                       </Button>
                       
                       {onInsertMedia && !readonly && (
@@ -256,7 +258,7 @@ export function ArticleMediaUpload({
                           onClick={() => handleInsertMedia(item)}
                         >
                           <Upload className="h-3 w-3 mr-1" />
-                          Insert
+                          {t('upload.insert')}
                         </Button>
                       )}
                     </div>

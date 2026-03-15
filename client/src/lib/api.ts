@@ -1,26 +1,15 @@
-import { MODL } from '@modl-gg/shared-web';
+function normalizeBaseUrl(baseUrl: string): string {
+  return baseUrl.endsWith('/') ? baseUrl.slice(0, -1) : baseUrl;
+}
 
 function resolveApiBaseUrl(): string {
-  if (import.meta.env.DEV) {
-    return '';
+  const configuredBaseUrl = import.meta.env.VITE_API_BASE_URL?.trim();
+  if (configuredBaseUrl && configuredBaseUrl.startsWith('/')) {
+    return normalizeBaseUrl(configuredBaseUrl);
   }
 
-  if (import.meta.env.VITE_API_BASE_URL) {
-    return import.meta.env.VITE_API_BASE_URL;
-  }
-
-  if (typeof window !== 'undefined') {
-    const hostname = window.location.hostname;
-    if (!hostname.endsWith('.pages.dev') && !hostname.includes('localhost')) {
-      const parts = hostname.split('.');
-      if (parts.length >= 2) {
-        const baseDomain = parts.slice(-2).join('.');
-        return `https://api.${baseDomain}`;
-      }
-    }
-  }
-
-  return MODL.Domain.HTTPS_API;
+  // Default to same-origin API routing: https://<panel-domain>/api/v1/...
+  return '/api';
 }
 
 const API_BASE_URL = resolveApiBaseUrl();
@@ -59,7 +48,11 @@ function resolveCredentials(path: string, options?: RequestOptions): RequestCred
 
 function createHeaders(options?: RequestOptions): Headers {
   const headers = new Headers(options?.headers);
-  headers.set('X-Server-Domain', getCurrentDomain());
+
+  // Always include the server domain for multi-tenancy
+  if (!headers.has('X-Server-Domain')) {
+    headers.set('X-Server-Domain', getCurrentDomain());
+  }
 
   // Set Content-Type for JSON bodies (object or already-stringified JSON)
   if (options?.body && (typeof options.body === 'object' || typeof options.body === 'string')) {
@@ -129,7 +122,11 @@ export async function apiUpload(
 ): Promise<Response> {
   const fullUrl = getApiUrl(path);
   const headers = new Headers(options?.headers);
-  headers.set('X-Server-Domain', getCurrentDomain());
+
+  // Always include the server domain for multi-tenancy
+  if (!headers.has('X-Server-Domain')) {
+    headers.set('X-Server-Domain', getCurrentDomain());
+  }
 
   const response = await fetch(fullUrl, {
     ...options,

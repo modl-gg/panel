@@ -2,25 +2,7 @@ import { useMemo } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { useAuth } from './use-auth';
 import { buildRoleHierarchy, canModifyRole, canRemoveUser, canAssignMinecraftPlayer } from '@/utils/role-hierarchy';
-import { getApiUrl, getCurrentDomain } from '@/lib/api';
-
-async function apiFetch(url: string, options: RequestInit = {}): Promise<Response> {
-  const fullUrl = getApiUrl(url);
-  const response = await fetch(fullUrl, {
-    ...options,
-    credentials: "include",
-    headers: {
-      ...options.headers,
-      "X-Server-Domain": getCurrentDomain(),
-    },
-  });
-  if (response.status === 429) {
-    const { handleRateLimitResponse, getCurrentPath } = await import('../utils/rate-limit-handler');
-    await handleRateLimitResponse(response, getCurrentPath());
-    throw new Error('Rate limit exceeded');
-  }
-  return response;
-}
+import { apiFetch } from '@/lib/api';
 
 // Define permissions that match the backend permission system
 export const PERMISSIONS = {
@@ -54,6 +36,16 @@ export const PERMISSIONS = {
   PUNISHMENT_MODIFY_NOTE: 'punishment.modify.note',
   PUNISHMENT_MODIFY_EVIDENCE: 'punishment.modify.evidence',
   PUNISHMENT_MODIFY_OPTIONS: 'punishment.modify.options',
+
+  // Staff tool permissions
+  STAFF_CHAT_TOGGLE: 'staff.chat.toggle',
+  STAFF_CHAT_CLEAR: 'staff.chat.clear',
+  STAFF_CHAT_SLOW: 'staff.chat.slow',
+  STAFF_MAINTENANCE: 'staff.maintenance',
+  STAFF_MODACTIONS: 'staff.modactions',
+  STAFF_INTERCEPT: 'staff.intercept',
+  STAFF_CHATLOGS: 'staff.chatlogs',
+  STAFF_COMMANDLOGS: 'staff.commandlogs',
 
   // Ticket permissions
   TICKET_VIEW_ALL: 'ticket.view.all',

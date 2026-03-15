@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { useTranslation } from 'react-i18next';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@modl-gg/shared-web/components/ui/card';
 import { Button } from '@modl-gg/shared-web/components/ui/button';
 import { Badge } from '@modl-gg/shared-web/components/ui/badge';
@@ -110,6 +111,7 @@ const BillingSettings = () => {
   const cancelSubscriptionMutation = useCancelSubscription();
   const resubscribeMutation = useResubscribe();
   const { toast } = useToast();
+  const { t } = useTranslation();
   const [isLoading, setIsLoading] = useState(false);
   const [isSpinning, setIsSpinning] = useState(false);
   const queryClient = useQueryClient();
@@ -142,8 +144,8 @@ const BillingSettings = () => {
         const stripe = await getStripe();
         if (!stripe) {
           toast({
-            title: 'Configuration Error',
-            description: 'Stripe is not configured. Please contact support.',
+            title: t('settings.billing.configurationError'),
+            description: t('settings.billing.stripeNotConfigured'),
             variant: 'destructive',
           });
           return;
@@ -151,8 +153,8 @@ const BillingSettings = () => {
         const { error } = await stripe.redirectToCheckout({ sessionId: data.sessionId });
         if (error) {
           toast({
-            title: 'Error',
-            description: error.message || 'Failed to redirect to Stripe Checkout.',
+            title: t('toast.error'),
+            description: error.message || t('settings.billing.stripeRedirectFailed'),
             variant: 'destructive',
           });
         }
@@ -162,8 +164,8 @@ const BillingSettings = () => {
     } catch (error) {
       console.error(error);
       toast({
-        title: 'Error',
-        description: 'Could not create checkout session. Please try again.',
+        title: t('toast.error'),
+        description: t('settings.billing.checkoutSessionFailed'),
         variant: 'destructive',
       });
     } finally {
@@ -191,8 +193,8 @@ const BillingSettings = () => {
     } catch (error) {
       console.error(error);
       toast({
-        title: 'Error',
-        description: 'Could not open billing portal. Please try again.',
+        title: t('toast.error'),
+        description: t('settings.billing.portalFailed'),
         variant: 'destructive',
       });
     } finally {
@@ -206,15 +208,15 @@ const BillingSettings = () => {
       await queryClient.invalidateQueries({ queryKey: ['/v1/panel/billing/status'] });
 
       toast({
-        title: 'Billing Status Refreshed',
-        description: 'Your billing information has been updated.',
+        title: t('settings.billing.refreshed'),
+        description: t('settings.billing.refreshedDesc'),
       });
     } catch (error) {
       console.error('Error refreshing billing status:', error);
       toast({
         variant: 'destructive',
-        title: 'Error',
-        description: 'Could not refresh billing status. Please try again.',
+        title: t('toast.error'),
+        description: t('settings.billing.refreshFailed'),
       });
     } finally {
       setIsSpinning(false);
@@ -224,17 +226,17 @@ const BillingSettings = () => {
   const handleCancelSubscription = async () => {
     try {
       const response = await cancelSubscriptionMutation.mutateAsync();
-      
+
       toast({
-        title: 'Subscription Cancelled',
-        description: response.message || 'Your subscription has been cancelled successfully.',
+        title: t('settings.billing.subscriptionCancelled'),
+        description: response.message || t('settings.billing.subscriptionCancelledDesc'),
         variant: 'default',
       });
     } catch (error: any) {
       console.error('Error cancelling subscription:', error);
       toast({
-        title: 'Error',
-        description: error.message || 'Failed to cancel subscription. Please try again.',
+        title: t('toast.error'),
+        description: error.message || t('settings.billing.cancelFailed'),
         variant: 'destructive',
       });
     }
@@ -243,17 +245,17 @@ const BillingSettings = () => {
   const handleResubscribe = async () => {
     try {
       const response = await resubscribeMutation.mutateAsync();
-      
+
       toast({
-        title: 'Subscription Reactivated!',
-        description: response.message || 'Your premium subscription has been reactivated successfully.',
+        title: t('settings.billing.subscriptionReactivated'),
+        description: response.message || t('settings.billing.subscriptionReactivatedDesc'),
         variant: 'default',
       });
     } catch (error: any) {
       console.error('Error resubscribing:', error);
       toast({
-        title: 'Error',
-        description: error.message || 'Failed to reactivate subscription. Please try again.',
+        title: t('toast.error'),
+        description: error.message || t('settings.billing.reactivateFailed'),
         variant: 'destructive',
       });
     }
@@ -289,23 +291,22 @@ const BillingSettings = () => {
           <Alert className="flex items-center border-red-200 bg-red-50 dark:border-red-800 dark:bg-red-950">
             <AlertTriangle className="h-4 w-4 text-red-600" />
             <AlertDescription className="text-red-800 dark:text-red-200">
-              <strong>Subscription Expired:</strong> Your premium subscription has ended. You are now on the free plan.
+              <strong>{t('settings.billing.subscriptionExpired')}:</strong> {t('settings.billing.subscriptionExpiredDesc')}
             </AlertDescription>
           </Alert>
         );
       }
-      
+
       const endDate = new Date(currentPeriodEnd);
       const today = new Date();
-      
+
       if (endDate <= today) {
         // Cancellation period has ended
         return (
           <Alert className="flex items-center border-red-200 bg-red-50 dark:border-red-800 dark:bg-red-950">
             <AlertTriangle className="h-4 w-4 text-red-600" />
             <AlertDescription className="text-red-800 dark:text-red-200">
-              <strong>Subscription Expired:</strong> Your premium subscription ended on{' '}
-              <strong>{endDate.toLocaleDateString()}</strong>. You are now on the free plan.
+              <strong>{t('settings.billing.subscriptionExpired')}:</strong> {t('settings.billing.subscriptionExpiredOn', { date: endDate.toLocaleDateString() })}
             </AlertDescription>
           </Alert>
         );
@@ -315,8 +316,7 @@ const BillingSettings = () => {
           <Alert className="flex items-center border-orange-200 bg-orange-50 dark:border-orange-800 dark:bg-orange-950">
             <AlertTriangle className="h-4 w-4 text-orange-600" />
             <AlertDescription className="text-orange-800 dark:text-orange-200">
-              <strong>Subscription Cancelled:</strong> Your premium access will end on{' '}
-              <strong>{endDate.toLocaleDateString()}</strong>. You can still use all premium features until then.
+              <strong>{t('settings.billing.subscriptionCancelledAlert')}:</strong> {t('settings.billing.accessEndsOn', { date: endDate.toLocaleDateString() })}
             </AlertDescription>
           </Alert>
         );
@@ -329,7 +329,7 @@ const BillingSettings = () => {
         <Alert variant="destructive" className="flex items-center">
           <AlertTriangle className="h-4 w-4" />
           <AlertDescription>
-            <strong>Payment Issue:</strong> There's an issue with your payment method. Please update it to continue using premium features.
+            <strong>{t('settings.billing.paymentIssue')}:</strong> {t('settings.billing.paymentIssueDesc')}
           </AlertDescription>
         </Alert>
       );
@@ -347,24 +347,24 @@ const BillingSettings = () => {
     // Special handling for cancelled subscriptions
     if (normalizedStatus === 'CANCELED') {
       if (!currentPeriodEnd) {
-        return <Badge variant="secondary" className="bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-100"><AlertTriangle className="h-3 w-3 mr-1" />Expired</Badge>;
+        return <Badge variant="secondary" className="bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-100"><AlertTriangle className="h-3 w-3 mr-1" />{t('settings.billing.expired')}</Badge>;
       }
       const endDate = new Date(currentPeriodEnd);
       const today = new Date();
       if (endDate <= today) {
-        return <Badge variant="secondary" className="bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-100"><AlertTriangle className="h-3 w-3 mr-1" />Expired</Badge>;
+        return <Badge variant="secondary" className="bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-100"><AlertTriangle className="h-3 w-3 mr-1" />{t('settings.billing.expired')}</Badge>;
       } else {
-        return <Badge variant="secondary" className="bg-orange-100 text-orange-800 dark:bg-orange-900 dark:text-orange-100"><AlertTriangle className="h-3 w-3 mr-1" />Cancelled</Badge>;
+        return <Badge variant="secondary" className="bg-orange-100 text-orange-800 dark:bg-orange-900 dark:text-orange-100"><AlertTriangle className="h-3 w-3 mr-1" />{t('settings.billing.cancelled')}</Badge>;
       }
     }
-    
+
     switch (normalizedStatus) {
       case 'ACTIVE':
-        return <Badge variant="secondary" className="bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-100"><CheckCircle className="h-3 w-3 mr-1" />Active</Badge>;
+        return <Badge variant="secondary" className="bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-100"><CheckCircle className="h-3 w-3 mr-1" />{t('status.active')}</Badge>;
       case 'TRIALING':
-        return <Badge variant="secondary" className="bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-100"><Clock className="h-3 w-3 mr-1" />Trial</Badge>;
+        return <Badge variant="secondary" className="bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-100"><Clock className="h-3 w-3 mr-1" />{t('settings.billing.trial')}</Badge>;
       case 'PAST_DUE':
-        return <Badge variant="destructive"><AlertTriangle className="h-3 w-3 mr-1" />Past Due</Badge>;
+        return <Badge variant="destructive"><AlertTriangle className="h-3 w-3 mr-1" />{t('settings.billing.pastDue')}</Badge>;
       default:
         return <Badge variant="outline">{formatSubscriptionStatusLabel(normalizedStatus)}</Badge>;
     }
@@ -375,19 +375,19 @@ const BillingSettings = () => {
     const canUpgrade = plan.id === 'premium' && getCurrentPlan() === 'free';
     
       return (
-      <Card className={`relative ${isCurrent && plan.id === 'premium' ? 'ring-2 ring-primary' : ''}`}>
+      <Card className={`relative rounded-card shadow-card hover:shadow-card-hover transition-all ${isCurrent ? 'shadow-card-elevated ring-2 ring-primary' : ''}`}>
         {isCurrent && plan.id === 'premium' && (
           <div className="absolute -top-3 right-4">
             <Badge variant="secondary" className="bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-100">
               <Check className="h-3 w-3 mr-1" />
-              Current Plan
+              {t('settings.billing.currentPlan')}
             </Badge>
           </div>
         )}
         
         <CardHeader className="text-center pb-4">
           <CardTitle className="text-2xl">{plan.name}</CardTitle>
-          <div className="text-3xl font-bold">
+          <div className="text-4xl font-bold">
             ${plan.price}
             <span className="text-sm font-normal text-muted-foreground">/{plan.period}</span>
           </div>
@@ -421,13 +421,13 @@ const BillingSettings = () => {
                 {plan.buttonText}
               </Button>
             ) : canUpgrade ? (
-              <Button 
-                variant={plan.buttonVariant} 
-                className="w-full" 
+              <Button
+                variant={plan.buttonVariant}
+                className="w-full btn-pill"
                 onClick={handleCreateCheckoutSession}
                 disabled={isLoading}
               >
-                {isLoading ? 'Processing...' : plan.buttonText}
+                {isLoading ? t('settings.billing.processing') : plan.buttonText}
               </Button>
             ) : (
               <Button variant="outline" className="w-full" disabled>
@@ -476,15 +476,15 @@ const BillingSettings = () => {
           throw new Error(data.error || 'Failed to update overage limits');
         }
         toast({
-          title: 'Overage Limits Updated',
-          description: `Storage overage: ${storageOverageGB} GB, AI overage: ${aiOverageRequests} requests.`,
+          title: t('settings.billing.overageLimitsUpdated'),
+          description: t('settings.billing.overageLimitsUpdatedDesc', { storageGB: storageOverageGB, aiRequests: aiOverageRequests }),
         });
         queryClient.invalidateQueries({ queryKey: ['/v1/panel/billing/status'] });
         queryClient.invalidateQueries({ queryKey: ['/v1/panel/billing/usage'] });
       } catch (error: any) {
         toast({
-          title: 'Error',
-          description: error.message || 'Failed to update overage limits.',
+          title: t('toast.error'),
+          description: error.message || t('settings.billing.overageLimitsFailed'),
           variant: 'destructive',
         });
       } finally {
@@ -495,26 +495,26 @@ const BillingSettings = () => {
     return (
       <div className="space-y-6">
         {/* Combined Premium Subscription & Usage */}
-        <Card>
+        <Card className="rounded-card shadow-card-inner bg-surface-2">
           <CardHeader>
             <div className="flex items-start justify-between">
               <div>
                 <CardTitle className="flex items-center gap-2">
-                  <Crown className="h-5 w-5 text-yellow-600" />
-                  Premium Subscription
+                  <Crown className="h-10 w-10 text-yellow-600" />
+                  {t('settings.billing.premiumSubscription')}
                   <span className="text-muted-foreground mx-2">—</span>
                   <span className="text-2xl font-bold text-primary">$9.99/month</span>
                 </CardTitle>
                 <CardDescription className='mt-4'>
                   {normalizedStatus === 'CANCELED' && currentPeriodEnd
-                    ? `Access ends ${new Date(currentPeriodEnd).toLocaleDateString()}`
+                    ? t('settings.billing.accessEnds', { date: new Date(currentPeriodEnd).toLocaleDateString() })
                     : normalizedStatus === 'CANCELED' && !currentPeriodEnd
-                    ? 'Your subscription has been cancelled and access has ended.'
-                    : currentPeriodEnd 
-                    ? `${normalizedStatus === 'TRIALING' ? 'Trial ends' : 'Next billing'} ${new Date(currentPeriodEnd).toLocaleDateString()}`
+                    ? t('settings.billing.subscriptionCancelledAccessEnded')
+                    : currentPeriodEnd
+                    ? t(normalizedStatus === 'TRIALING' ? 'settings.billing.trialEnds' : 'settings.billing.nextBilling', { date: new Date(currentPeriodEnd).toLocaleDateString() })
                     : normalizedStatus === 'ACTIVE'
-                    ? 'Your premium subscription is active. Billing information is being synced with Stripe.'
-                    : 'Modl uses Stripe to handle billing. Use the buttons below to manage your subscription.'
+                    ? t('settings.billing.subscriptionActive')
+                    : t('settings.billing.stripeManageDesc')
                   }
                 </CardDescription>
               </div>
@@ -527,16 +527,16 @@ const BillingSettings = () => {
             {/* Billing Management Buttons */}
             <div className="flex gap-3">
               {normalizedStatus !== 'CANCELED' && (
-                <Button 
+                <Button
                   onClick={handleCreatePortalSession}
                   disabled={isLoading}
-                  className="flex items-center gap-2"
+                  className="flex items-center gap-2 btn-pill"
                 >
                   <CreditCard className="h-4 w-4" />
-                  {isLoading ? 'Loading...' : 'Manage Billing'}
+                  {isLoading ? t('common.loading') : t('settings.billing.manageBilling')}
                 </Button>
               )}
-              
+
               {normalizedStatus === 'ACTIVE' && (
                 <AlertDialog>
                   <AlertDialogTrigger asChild>
@@ -546,25 +546,25 @@ const BillingSettings = () => {
                       className="flex items-center gap-2"
                     >
                       <AlertTriangle className="h-4 w-4" />
-                      {cancelSubscriptionMutation.isPending ? 'Cancelling...' : 'Cancel Plan'}
+                      {cancelSubscriptionMutation.isPending ? t('settings.billing.cancelling') : t('settings.billing.cancelPlan')}
                     </Button>
                   </AlertDialogTrigger>
                   <AlertDialogContent>
                     <AlertDialogHeader>
-                      <AlertDialogTitle>Cancel Premium Subscription</AlertDialogTitle>
+                      <AlertDialogTitle>{t('settings.billing.cancelPremiumTitle')}</AlertDialogTitle>
                       <AlertDialogDescription>
-                        Are you sure you want to cancel your Premium subscription? You'll continue to have access to all Premium features until the end of your current billing period{currentPeriodEnd ? ` (${new Date(currentPeriodEnd).toLocaleDateString()})` : ''}.
+                        {t('settings.billing.cancelPremiumDesc', { date: currentPeriodEnd ? new Date(currentPeriodEnd).toLocaleDateString() : '' })}
                         <br /><br />
-                        After that, your server will be downgraded to the Free plan.
+                        {t('settings.billing.cancelPremiumDowngrade')}
                       </AlertDialogDescription>
                     </AlertDialogHeader>
                     <AlertDialogFooter>
-                      <AlertDialogCancel>Keep Subscription</AlertDialogCancel>
-                      <AlertDialogAction 
+                      <AlertDialogCancel>{t('settings.billing.keepSubscription')}</AlertDialogCancel>
+                      <AlertDialogAction
                         onClick={handleCancelSubscription}
                         className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
                       >
-                        Yes, Cancel Subscription
+                        {t('settings.billing.yesCancelSubscription')}
                       </AlertDialogAction>
                     </AlertDialogFooter>
                   </AlertDialogContent>
@@ -573,41 +573,40 @@ const BillingSettings = () => {
               
               {normalizedStatus === 'CANCELED' && (
                 <>
-                  <Button 
+                  <Button
                     onClick={handleCreatePortalSession}
                     disabled={isLoading}
-                    className="flex items-center gap-2"
+                    className="flex items-center gap-2 btn-pill"
                   >
                     <CreditCard className="h-4 w-4" />
-                    {isLoading ? 'Loading...' : 'Manage Billing'}
+                    {isLoading ? t('common.loading') : t('settings.billing.manageBilling')}
                   </Button>
-                  
+
                   <AlertDialog>
                     <AlertDialogTrigger asChild>
-                      <Button 
+                      <Button
                         variant="outline"
                         disabled={resubscribeMutation.isPending}
                         className="flex items-center gap-2"
                       >
                         <RefreshCw className="h-4 w-4" />
-                        {resubscribeMutation.isPending ? 'Resubscribing...' : 'Resubscribe'}
+                        {resubscribeMutation.isPending ? t('settings.billing.resubscribing') : t('settings.billing.resubscribe')}
                       </Button>
                     </AlertDialogTrigger>
                     <AlertDialogContent>
                       <AlertDialogHeader>
-                        <AlertDialogTitle>Reactivate Premium Subscription</AlertDialogTitle>
+                        <AlertDialogTitle>{t('settings.billing.reactivatePremiumTitle')}</AlertDialogTitle>
                         <AlertDialogDescription>
-                          Reactiviting Premium Subscription will bill you automatically when your current billing period ends.
-                          Your subscription will automatically renew each month unless cancelled.
+                          {t('settings.billing.reactivatePremiumDesc')}
                         </AlertDialogDescription>
                       </AlertDialogHeader>
                       <AlertDialogFooter>
-                        <AlertDialogCancel>Cancel</AlertDialogCancel>
-                        <AlertDialogAction 
+                        <AlertDialogCancel>{t('common.cancel')}</AlertDialogCancel>
+                        <AlertDialogAction
                           onClick={handleResubscribe}
                           className="bg-primary text-primary-foreground hover:bg-primary/90"
                         >
-                          Yes, Reactivate Subscription
+                          {t('settings.billing.yesReactivateSubscription')}
                         </AlertDialogAction>
                       </AlertDialogFooter>
                     </AlertDialogContent>
@@ -620,15 +619,14 @@ const BillingSettings = () => {
         </Card>
 
         {/* Usage Overage Limits */}
-        <Card>
+        <Card className="rounded-card shadow-card-inner bg-surface-2">
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
               <Settings className="h-5 w-5" />
-              Usage Overage Limits
+              {t('settings.billing.usageOverageLimits')}
             </CardTitle>
             <CardDescription>
-              Configure the maximum overage you're willing to allow beyond your included plan limits.
-              Set to 0 to prevent any overage charges.
+              {t('settings.billing.usageOverageLimitsDesc')}
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-6">
@@ -637,7 +635,7 @@ const BillingSettings = () => {
               <div className="flex items-center justify-between">
                 <Label className="flex items-center gap-2">
                   <HardDrive className="h-4 w-4" />
-                  Storage Overage Limit
+                  {t('settings.billing.storageOverageLimit')}
                 </Label>
                 <span className="text-sm font-medium">{storageOverageGB} GB</span>
               </div>
@@ -649,11 +647,11 @@ const BillingSettings = () => {
                 step={10}
               />
               <div className="flex items-center justify-between text-xs text-muted-foreground">
-                <span>0 GB (no overage)</span>
+                <span>{t('settings.billing.noOverage', { unit: 'GB' })}</span>
                 <span>2,000 GB</span>
               </div>
               <p className="text-sm text-muted-foreground">
-                Rate: $0.08/GB/month &middot; Max cost: <strong>${(storageOverageGB * 0.08).toFixed(2)}/month</strong>
+                {t('settings.billing.storageOverageRate', { maxCost: (storageOverageGB * 0.08).toFixed(2) })}
               </p>
             </div>
 
@@ -662,9 +660,9 @@ const BillingSettings = () => {
               <div className="flex items-center justify-between">
                 <Label className="flex items-center gap-2">
                   <Brain className="h-4 w-4" />
-                  AI Request Overage Limit
+                  {t('settings.billing.aiOverageLimit')}
                 </Label>
-                <span className="text-sm font-medium">{aiOverageRequests.toLocaleString()} requests</span>
+                <span className="text-sm font-medium">{aiOverageRequests.toLocaleString()} {t('settings.billing.requests')}</span>
               </div>
               <Slider
                 value={[aiOverageRequests]}
@@ -674,23 +672,24 @@ const BillingSettings = () => {
                 step={100}
               />
               <div className="flex items-center justify-between text-xs text-muted-foreground">
-                <span>0 (no overage)</span>
-                <span>5,000 requests</span>
+                <span>{t('settings.billing.noOverage', { unit: t('settings.billing.requests') })}</span>
+                <span>5,000 {t('settings.billing.requests')}</span>
               </div>
               <p className="text-sm text-muted-foreground">
-                Rate: $0.02/request &middot; Max cost: <strong>${(aiOverageRequests * 0.02).toFixed(2)}/month</strong>
+                {t('settings.billing.aiOverageRate', { maxCost: (aiOverageRequests * 0.02).toFixed(2) })}
               </p>
             </div>
 
             <p className="text-sm text-muted-foreground">
-              Need higher limits? Contact support for custom pricing.
+              {t('settings.billing.higherLimitsContact')}
             </p>
 
             <Button
               onClick={handleSaveOverageLimits}
               disabled={savingOverageLimits}
+              className="btn-pill"
             >
-              {savingOverageLimits ? 'Saving...' : 'Save'}
+              {savingOverageLimits ? t('common.saving') : t('common.save')}
             </Button>
           </CardContent>
         </Card>
@@ -705,15 +704,15 @@ const BillingSettings = () => {
   return (
       <div className="space-y-6">
         {/* Upgrade to Premium Card */}
-    <Card>
+    <Card className="rounded-card shadow-card-inner bg-surface-2">
       <CardHeader>
         <div className="flex items-center justify-between">
           <div>
                 <CardTitle className="flex items-center gap-2">
-                  <Crown className="h-5 w-5 text-yellow-600" />
-                  Upgrade to Premium
+                  <Crown className="h-10 w-10 text-yellow-600" />
+                  {t('settings.billing.upgradeToPremium')}
                 </CardTitle>
-                <CardDescription className="mt-1">Unlock advanced features for your growing community</CardDescription>
+                <CardDescription className="mt-1">{t('settings.billing.upgradeToPremiumDesc')}</CardDescription>
               </div>
             </div>
           </CardHeader>
@@ -725,22 +724,22 @@ const BillingSettings = () => {
                   <div className="text-4xl font-bold text-primary">
                     $9.99
                   </div>
-                  <div className="text-sm text-muted-foreground">per month</div>
+                  <div className="text-sm text-muted-foreground">{t('settings.billing.perMonth')}</div>
                 </div>
-                
-                <Button 
+
+                <Button
                   onClick={handleCreateCheckoutSession}
                   disabled={isLoading}
-                  className="w-full flex items-center gap-2"
+                  className="w-full flex items-center gap-2 btn-pill"
                   size="lg"
                 >
-                  {isLoading ? 'Processing...' : 'Upgrade Now'}
+                  {isLoading ? t('settings.billing.processing') : t('settings.billing.upgradeNow')}
                 </Button>
               </div>
               
               {/* Premium Features */}
               <div className="lg:col-span-2 flex flex-col justify-center ml-0 lg:ml-8 mt-0 lg:mt-[-80px]">
-                <h4 className="font-medium text-sm text-muted-foreground mb-4">Premium Features</h4>
+                <h4 className="font-medium text-sm text-muted-foreground mb-4">{t('settings.billing.premiumFeatures')}</h4>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                   {premiumFeatures.map((feature, index) => (
                     <div key={index} className="flex items-center gap-3">
@@ -755,7 +754,7 @@ const BillingSettings = () => {
                   ))}
                 </div>
                 {premiumFeatures.length === 0 && (
-                  <p className="text-sm text-muted-foreground">Premium feature list is currently unavailable.</p>
+                  <p className="text-sm text-muted-foreground">{t('settings.billing.premiumFeaturesUnavailable')}</p>
                 )}
               </div>
             </div>
@@ -769,8 +768,8 @@ const BillingSettings = () => {
     return (
       <div className="space-y-8">
         <div>
-          <h2 className="text-2xl font-bold mb-2">Billing & Subscription</h2>
-          <p className="text-muted-foreground">Manage your subscription and billing details.</p>
+          <h2 className="text-2xl font-bold mb-2">{t('settings.billing.title')}</h2>
+          <p className="text-muted-foreground">{t('settings.billing.description')}</p>
         </div>
         
         <div className="space-y-4">
@@ -788,8 +787,8 @@ const BillingSettings = () => {
     <div className="space-y-8">
       <div className="flex items-center justify-between">
         <div>
-          <h2 className="text-2xl font-bold mb-2">Billing & Subscription</h2>
-          <p className="text-muted-foreground">Manage your subscription and billing details.</p>
+          <h2 className="text-2xl font-bold mb-2">{t('settings.billing.title')}</h2>
+          <p className="text-muted-foreground">{t('settings.billing.description')}</p>
         </div>
       </div>
 

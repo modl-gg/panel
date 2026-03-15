@@ -8,6 +8,7 @@ import { useToast } from '@modl-gg/shared-web/hooks/use-toast';
 import MediaUpload from './MediaUpload';
 import { useMediaUpload } from '@/hooks/use-media-upload';
 import { formatFileSize } from '@/utils/file-utils';
+import { useTranslation } from 'react-i18next';
 
 interface EvidenceItem {
   id: string;
@@ -38,6 +39,7 @@ export function EvidenceUpload({
   onEvidenceUpdate,
   readonly = false
 }: EvidenceUploadProps) {
+  const { t } = useTranslation();
   const [evidence, setEvidence] = useState<EvidenceItem[]>(existingEvidence);
   const [selectedMedia, setSelectedMedia] = useState<EvidenceItem | null>(null);
   const { config, deleteMedia } = useMediaUpload();
@@ -64,8 +66,8 @@ export function EvidenceUpload({
     onEvidenceUpdate?.(updatedEvidence);
 
     toast({
-      title: "Evidence Uploaded",
-      description: `${fileName} has been uploaded successfully.`,
+      title: t('upload.evidenceUploaded'),
+      description: t('upload.uploadedSuccess', { name: fileName }),
     });
   };
 
@@ -77,13 +79,13 @@ export function EvidenceUpload({
       onEvidenceUpdate?.(updatedEvidence);
 
       toast({
-        title: "Evidence Deleted",
-        description: `${evidenceItem.fileName} has been deleted.`,
+        title: t('upload.evidenceDeleted'),
+        description: t('upload.deletedSuccess', { name: evidenceItem.fileName }),
       });
     } catch (error) {
       toast({
-        title: "Delete Failed",
-        description: "Failed to delete evidence file.",
+        title: t('upload.deleteFailed'),
+        description: t('upload.deleteEvidenceFailed'),
         variant: "destructive",
       });
     }
@@ -106,7 +108,7 @@ export function EvidenceUpload({
       <CardHeader>
         <CardTitle className="flex items-center gap-2">
           <Shield className="h-5 w-5" />
-          Evidence Upload
+          {t('upload.evidenceUpload')}
           {evidence.length > 0 && (
             <Badge variant="secondary">{evidence.length}</Badge>
           )}
@@ -128,7 +130,7 @@ export function EvidenceUpload({
 
         {evidence.length > 0 && (
           <div className="space-y-2">
-            <h4 className="text-sm font-medium">Uploaded Evidence</h4>
+            <h4 className="text-sm font-medium">{t('upload.uploadedEvidence')}</h4>
             {evidence.map((item) => (
               <div
                 key={item.id}
@@ -172,11 +174,11 @@ export function EvidenceUpload({
                           <div className="p-8 text-center">
                             <FileText className="h-12 w-12 mx-auto mb-4 text-muted-foreground" />
                             <p className="text-sm text-muted-foreground mb-4">
-                              Preview not available for this file type
+                              {t('upload.previewNotAvailable')}
                             </p>
                             <Button asChild>
                               <a href={item.url} target="_blank" rel="noopener noreferrer">
-                                Download File
+                                {t('upload.downloadFile')}
                               </a>
                             </Button>
                           </div>

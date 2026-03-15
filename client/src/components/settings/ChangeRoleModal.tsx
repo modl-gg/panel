@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { useTranslation } from 'react-i18next';
 import { Button } from '@modl-gg/shared-web/components/ui/button';
 import {
   AlertDialog,
@@ -15,7 +16,7 @@ import { Label } from '@modl-gg/shared-web/components/ui/label';
 import { useQueryClient } from '@tanstack/react-query';
 import { useAuth } from '@/hooks/use-auth';
 import { useToast } from '@modl-gg/shared-web/hooks/use-toast';
-import { useQuery } from '@tanstack/react-query';
+import { useRoles } from '@/hooks/use-data';
 import { apiFetch } from '@/lib/api';
 
 interface StaffMember {
@@ -39,25 +40,14 @@ interface ChangeRoleModalProps {
 
 
 const ChangeRoleModal: React.FC<ChangeRoleModalProps> = ({ isOpen, onClose, staffMember }) => {
+  const { t } = useTranslation();
   const { user: currentUser } = useAuth();
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const [selectedRole, setSelectedRole] = useState<string>('');
   
-  // Fetch available roles from the API
-  const { data: rolesData } = useQuery({
-    queryKey: ['/v1/panel/roles'],
-    queryFn: async () => {
-      const { getApiUrl, getCurrentDomain } = await import('@/lib/api');
-      const response = await fetch(getApiUrl('/v1/panel/roles'), {
-        credentials: 'include',
-        headers: { 'X-Server-Domain': getCurrentDomain() }
-      });
-      if (!response.ok) throw new Error('Failed to fetch roles');
-      return response.json();
-    },
-    enabled: isOpen
-  });
+  // Fetch available roles from the shared hook
+  const { data: rolesData } = useRoles();
   
   // Filter out Super Admin role from available roles
   const availableRoles = (rolesData?.roles || []).filter((role: StaffRole) => role.name !== 'Super Admin');
@@ -75,8 +65,8 @@ const ChangeRoleModal: React.FC<ChangeRoleModalProps> = ({ isOpen, onClose, staf
     // Prevent changing role if user is Super Admin
     if (staffMember.role === 'Super Admin') {
       toast({
-        title: 'Error',
-        description: 'Super Admin role cannot be changed.',
+        title: t('toast.error'),
+        description: t('settings.staff.superAdminRoleCannotBeChanged'),
         variant: 'destructive',
       });
       return;
@@ -93,13 +83,13 @@ const ChangeRoleModal: React.FC<ChangeRoleModalProps> = ({ isOpen, onClose, staf
       });
 
       if (!response.ok) {
-        const errorData = await response.json().catch(() => ({ message: 'Failed to change role' }));
-        throw new Error(errorData.message || 'Failed to change role');
+        const errorData = await response.json().catch(() => ({ message: t('settings.staff.changeRoleFailed') }));
+        throw new Error(errorData.message || t('settings.staff.changeRoleFailed'));
       }
 
       toast({
-        title: 'Success',
-        description: 'Role changed successfully.',
+        title: t('toast.success'),
+        description: t('settings.staff.roleChanged'),
       });
 
       // Refresh the staff list
@@ -107,7 +97,7 @@ const ChangeRoleModal: React.FC<ChangeRoleModalProps> = ({ isOpen, onClose, staf
       onClose();
     } catch (error: any) {
       toast({
-        title: 'Error',
+        title: t('toast.error'),
         description: error.message,
         variant: 'destructive',
       });
@@ -120,17 +110,17 @@ const ChangeRoleModal: React.FC<ChangeRoleModalProps> = ({ isOpen, onClose, staf
     <AlertDialog open={isOpen} onOpenChange={onClose}>
       <AlertDialogContent>
         <AlertDialogHeader>
-          <AlertDialogTitle>Change Role for {staffMember.email}</AlertDialogTitle>
+          <AlertDialogTitle>{t('settings.staff.changeRoleFor', { email: staffMember.email })}</AlertDialogTitle>
           <AlertDialogDescription>
-            {staffMember.role === 'Super Admin' 
-              ? 'Super Admin role cannot be changed.'
-              : 'Select the new role for this staff member.'}
+            {staffMember.role === 'Super Admin'
+              ? t('settings.staff.superAdminRoleCannotBeChanged')
+              : t('settings.staff.selectNewRole')}
           </AlertDialogDescription>
         </AlertDialogHeader>
         <div className="grid gap-4 py-4">
           <div className="grid grid-cols-4 items-center gap-4">
             <Label htmlFor="role" className="text-right">
-              Role
+              {t('settings.staff.role')}
             </Label>
             <Select
               value={selectedRole}
@@ -138,7 +128,7 @@ const ChangeRoleModal: React.FC<ChangeRoleModalProps> = ({ isOpen, onClose, staf
               disabled={availableRoles.length === 0 || staffMember.role === 'Super Admin'}
             >
               <SelectTrigger className="col-span-3">
-                <SelectValue placeholder="Select a role" />
+                <SelectValue placeholder={t('settings.staff.selectRole')} />
               </SelectTrigger>
               <SelectContent>
                 {availableRoles.map((role: StaffRole) => (
@@ -151,12 +141,12 @@ const ChangeRoleModal: React.FC<ChangeRoleModalProps> = ({ isOpen, onClose, staf
           </div>
         </div>
         <AlertDialogFooter>
-          <AlertDialogCancel onClick={onClose}>Cancel</AlertDialogCancel>
+          <AlertDialogCancel onClick={onClose}>{t('common.cancel')}</AlertDialogCancel>
           <AlertDialogAction
             onClick={handleRoleChange}
             disabled={!selectedRole || selectedRole === staffMember.role || staffMember.role === 'Super Admin'}
           >
-            Confirm
+            {t('common.confirm')}
           </AlertDialogAction>
         </AlertDialogFooter>
       </AlertDialogContent>

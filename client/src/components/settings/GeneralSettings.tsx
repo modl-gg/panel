@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { CreditCard, SettingsIcon, Globe, Key, Upload, Eye, EyeOff, Check, Copy, RefreshCw, Trash2, Plus, ChevronDown, ChevronRight, HardDrive, MessageCircle, Database } from 'lucide-react';
 import { Button } from '@modl-gg/shared-web/components/ui/button';
 import { Input } from '@modl-gg/shared-web/components/ui/input';
@@ -14,7 +15,7 @@ import UsageSettings from './UsageSettings';
 import WebhookSettings from './WebhookSettings';
 import MigrationTool from './MigrationTool';
 import { queryClient } from '@/lib/queryClient';
-import { toast } from '@/hooks/use-toast';
+import { toast } from '@modl-gg/shared-web/hooks/use-toast';
 
 interface GeneralSettingsProps {
   // Server Configuration
@@ -101,6 +102,7 @@ const GeneralSettings = ({
 }: GeneralSettingsProps) => {
   const { user } = useAuth();
   const { hasPermission } = usePermissions();
+  const { t } = useTranslation();
 
   // When visibleSection is set, show content directly without collapsibles
   const showDirectContent = !!visibleSection;
@@ -120,8 +122,8 @@ const GeneralSettings = ({
     if (sessionId) {
       setIsBillingExpanded(true);
       toast({
-        title: 'Payment Successful!',
-        description: 'Your subscription has been activated.',
+        title: t('settings.general.paymentSuccessful'),
+        description: t('settings.general.subscriptionActivated'),
         variant: 'default',
       });
       queryClient.invalidateQueries({ queryKey: ['/v1/panel/billing/status'] });
@@ -138,10 +140,10 @@ const GeneralSettings = ({
     <div className="space-y-6">
       {/* Server Display Name */}
       <div className="space-y-2">
-        <Label htmlFor="server-display-name">Server Display Name</Label>
+        <Label htmlFor="server-display-name">{t('settings.general.serverDisplayName')}</Label>
         <Input
           id="server-display-name"
-          placeholder="Enter server name (shown in browser tab and auth page)"
+          placeholder={t('settings.general.serverDisplayNamePlaceholder')}
           value={serverDisplayName}
           onChange={(e) => setServerDisplayName(e.target.value)}
         />
@@ -151,14 +153,14 @@ const GeneralSettings = ({
 
       {/* Server Icons */}
       <div className="space-y-4">
-        <h4 className="text-base font-medium">Server Icons</h4>
+        <h4 className="text-base font-medium">{t('settings.general.serverIcons')}</h4>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
           <div className="space-y-3">
-            <Label>Homepage Icon</Label>
+            <Label>{t('settings.general.homepageIcon')}</Label>
             <div className="flex items-center space-x-4">
-              <div className="w-16 h-16 bg-muted rounded-lg flex items-center justify-center overflow-hidden">
+              <div className="w-20 h-20 bg-surface-2 rounded-card flex items-center justify-center overflow-hidden">
                 {homepageIconUrl ? (
-                  <img src={homepageIconUrl} alt="Homepage Icon" className="w-full h-full object-cover" />
+                  <img src={homepageIconUrl} alt={t('settings.general.homepageIcon')} className="w-full h-full object-cover" />
                 ) : (
                   <Globe className="h-8 w-8 text-muted-foreground" />
                 )}
@@ -181,7 +183,7 @@ const GeneralSettings = ({
                   disabled={uploadingHomepageIcon}
                 >
                   <Upload className="h-4 w-4 mr-2" />
-                  {uploadingHomepageIcon ? 'Uploading...' : 'Upload'}
+                  {uploadingHomepageIcon ? t('settings.general.uploading') : t('common.import')}
                 </Button>
                 {homepageIconUrl && (
                   <Button
@@ -190,7 +192,7 @@ const GeneralSettings = ({
                     onClick={handleRemoveHomepageIcon}
                   >
                     <Trash2 className="h-4 w-4 mr-2" />
-                    Remove
+                    {t('common.delete')}
                   </Button>
                 )}
               </div>
@@ -198,11 +200,11 @@ const GeneralSettings = ({
           </div>
 
           <div className="space-y-3">
-            <Label>Panel Icon</Label>
+            <Label>{t('settings.general.panelIcon')}</Label>
             <div className="flex items-center space-x-4">
-              <div className="w-16 h-16 bg-muted rounded-lg flex items-center justify-center overflow-hidden">
+              <div className="w-20 h-20 bg-surface-2 rounded-card flex items-center justify-center overflow-hidden">
                 {panelIconUrl ? (
-                  <img src={panelIconUrl} alt="Panel Icon" className="w-full h-full object-cover" />
+                  <img src={panelIconUrl} alt={t('settings.general.panelIcon')} className="w-full h-full object-cover" />
                 ) : (
                   <SettingsIcon className="h-8 w-8 text-muted-foreground" />
                 )}
@@ -225,7 +227,7 @@ const GeneralSettings = ({
                   disabled={uploadingPanelIcon}
                 >
                   <Upload className="h-4 w-4 mr-2" />
-                  {uploadingPanelIcon ? 'Uploading...' : 'Upload'}
+                  {uploadingPanelIcon ? t('settings.general.uploading') : t('common.import')}
                 </Button>
                 {panelIconUrl && (
                   <Button
@@ -234,7 +236,7 @@ const GeneralSettings = ({
                     onClick={handleRemovePanelIcon}
                   >
                     <Trash2 className="h-4 w-4 mr-2" />
-                    Remove
+                    {t('common.delete')}
                   </Button>
                 )}
               </div>
@@ -249,12 +251,12 @@ const GeneralSettings = ({
       <div className="space-y-4">
         <h4 className="text-base font-medium flex items-center">
           <Key className="h-4 w-4 mr-2" />
-          API Key
+          {t('settings.general.apiKey')}
         </h4>
 
         {apiKey ? (
           <div className="space-y-4">
-            <div className="flex items-center gap-3 p-3 bg-muted/50 rounded-lg">
+            <div className="flex items-center gap-3 p-4 bg-surface-2 rounded-card">
               <div className="flex-1">
                 <div className="flex items-center gap-2 mt-1">
                   <code className="text-sm font-mono bg-background px-2 py-1 rounded border">
@@ -273,21 +275,21 @@ const GeneralSettings = ({
             <div className="flex gap-2">
               <Button variant="outline" onClick={generateApiKey} disabled={isGeneratingApiKey}>
                 <RefreshCw className={`h-4 w-4 mr-2 ${isGeneratingApiKey ? 'animate-spin' : ''}`} />
-                Regenerate
+                {t('settings.general.regenerate')}
               </Button>
               <Button variant="destructive" onClick={revokeApiKey} disabled={isRevokingApiKey}>
                 <Trash2 className="h-4 w-4 mr-2" />
-                Revoke
+                {t('settings.general.revoke')}
               </Button>
             </div>
           </div>
         ) : (
           <div className="text-center py-6 border-2 border-dashed border-muted rounded-lg">
             <Key className="h-8 w-8 mx-auto mb-3 text-muted-foreground" />
-            <p className="text-sm text-muted-foreground mb-4">No API key generated yet</p>
+            <p className="text-sm text-muted-foreground mb-4">{t('settings.general.noApiKey')}</p>
             <Button onClick={generateApiKey} disabled={isGeneratingApiKey}>
               <Plus className="h-4 w-4 mr-2" />
-              Generate API Key
+              {t('settings.general.generateApiKey')}
             </Button>
           </div>
         )}
@@ -332,14 +334,14 @@ const GeneralSettings = ({
   // When showing all sections with collapsibles
   return (
     <div className="space-y-6 p-6">
-      <div className="space-y-4">
+      <div className="space-y-6">
         {/* Billing Settings */}
         {hasPermission('admin.settings.modify') && (
           <Collapsible open={isBillingExpanded} onOpenChange={setIsBillingExpanded}>
-            <CollapsibleTrigger className="flex items-center justify-between w-full p-4 bg-muted/50 rounded-lg hover:bg-muted/70 transition-colors">
+            <CollapsibleTrigger className="flex items-center justify-between w-full p-5 bg-surface-2 rounded-card hover:bg-surface-3 transition-colors">
               <div className="flex items-center">
                 <CreditCard className="h-4 w-4 mr-2" />
-                <h4 className="text-base font-medium">Billing & Subscription</h4>
+                <h4 className="text-base font-medium">{t('settings.general.billingSubscription')}</h4>
               </div>
               <div className="flex items-center space-x-2">
                 {!isBillingExpanded && (
@@ -356,14 +358,14 @@ const GeneralSettings = ({
 
         {/* Usage Section */}
         <Collapsible open={isUsageExpanded} onOpenChange={setIsUsageExpanded}>
-          <CollapsibleTrigger className="flex items-center justify-between w-full p-4 bg-muted/50 rounded-lg hover:bg-muted/70 transition-colors">
+          <CollapsibleTrigger className="flex items-center justify-between w-full p-5 bg-surface-2 rounded-card hover:bg-surface-3 transition-colors">
             <div className="flex items-center">
               <HardDrive className="h-4 w-4 mr-2" />
-              <h4 className="text-base font-medium">Usage</h4>
+              <h4 className="text-base font-medium">{t('settings.general.usage')}</h4>
             </div>
             <div className="flex items-center space-x-2">
               {!isUsageExpanded && (
-                <span className="text-sm text-muted-foreground">Storage & File Management</span>
+                <span className="text-sm text-muted-foreground">{t('settings.general.storageFileManagement')}</span>
               )}
               {isUsageExpanded ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
             </div>
@@ -375,10 +377,10 @@ const GeneralSettings = ({
 
         {/* Server Configuration */}
         <Collapsible open={isServerConfigExpanded} onOpenChange={setIsServerConfigExpanded}>
-          <CollapsibleTrigger className="flex items-center justify-between w-full p-4 bg-muted/50 rounded-lg hover:bg-muted/70 transition-colors">
+          <CollapsibleTrigger className="flex items-center justify-between w-full p-5 bg-surface-2 rounded-card hover:bg-surface-3 transition-colors">
             <div className="flex items-center">
               <SettingsIcon className="h-4 w-4 mr-2" />
-              <h4 className="text-base font-medium">Server Configuration</h4>
+              <h4 className="text-base font-medium">{t('settings.general.serverConfiguration')}</h4>
             </div>
             <div className="flex items-center space-x-2">
               {!isServerConfigExpanded && (
@@ -395,10 +397,10 @@ const GeneralSettings = ({
         {/* Custom Domain Settings */}
         {hasPermission('admin.settings.view.domain') && (
           <Collapsible open={isDomainExpanded} onOpenChange={setIsDomainExpanded}>
-            <CollapsibleTrigger className="flex items-center justify-between w-full p-4 bg-muted/50 rounded-lg hover:bg-muted/70 transition-colors">
+            <CollapsibleTrigger className="flex items-center justify-between w-full p-5 bg-surface-2 rounded-card hover:bg-surface-3 transition-colors">
               <div className="flex items-center">
                 <Globe className="h-4 w-4 mr-2" />
-                <h4 className="text-base font-medium">Custom Domain</h4>
+                <h4 className="text-base font-medium">{t('settings.general.customDomain')}</h4>
               </div>
               <div className="flex items-center space-x-2">
                 {!isDomainExpanded && (
@@ -416,10 +418,10 @@ const GeneralSettings = ({
         {/* Discord Webhook Settings */}
         {hasPermission('admin.settings.view') && (
           <Collapsible open={isWebhookExpanded} onOpenChange={setIsWebhookExpanded}>
-            <CollapsibleTrigger className="flex items-center justify-between w-full p-4 bg-muted/50 rounded-lg hover:bg-muted/70 transition-colors">
+            <CollapsibleTrigger className="flex items-center justify-between w-full p-5 bg-surface-2 rounded-card hover:bg-surface-3 transition-colors">
               <div className="flex items-center">
                 <MessageCircle className="h-4 w-4 mr-2" />
-                <h4 className="text-base font-medium">Discord Webhooks</h4>
+                <h4 className="text-base font-medium">{t('settings.general.discordWebhooks')}</h4>
               </div>
               <div className="flex items-center space-x-2">
                 {!isWebhookExpanded && (
@@ -442,14 +444,14 @@ const GeneralSettings = ({
         {/* Migration Tool - Super Admin Only */}
         {user && user.role === "Super Admin" && (
           <Collapsible open={isMigrationExpanded} onOpenChange={setIsMigrationExpanded}>
-            <CollapsibleTrigger className="flex items-center justify-between w-full p-4 bg-muted/50 rounded-lg hover:bg-muted/70 transition-colors">
+            <CollapsibleTrigger className="flex items-center justify-between w-full p-5 bg-surface-2 rounded-card hover:bg-surface-3 transition-colors">
               <div className="flex items-center">
                 <Database className="h-4 w-4 mr-2" />
-                <h4 className="text-base font-medium">Migration Tool</h4>
+                <h4 className="text-base font-medium">{t('settings.migration.title')}</h4>
               </div>
               <div className="flex items-center space-x-2">
                 {!isMigrationExpanded && (
-                  <span className="text-sm text-muted-foreground">Import data from external systems</span>
+                  <span className="text-sm text-muted-foreground">{t('settings.migration.summary')}</span>
                 )}
                 {isMigrationExpanded ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
               </div>

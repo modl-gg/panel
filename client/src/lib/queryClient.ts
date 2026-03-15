@@ -1,5 +1,5 @@
 import { QueryClient, QueryFunction } from "@tanstack/react-query";
-import { getApiUrl, getCurrentDomain } from "./api";
+import { getApiUrl } from "./api";
 
 function resolveCredentials(url: string, credentials?: RequestCredentials): RequestCredentials {
   if (credentials) {
@@ -28,7 +28,6 @@ export async function apiRequest(
     method,
     headers: {
       ...(data ? { "Content-Type": "application/json" } : {}),
-      "X-Server-Domain": getCurrentDomain(),
     },
     body: data ? JSON.stringify(data) : undefined,
     credentials: resolveCredentials(url),
@@ -49,9 +48,6 @@ export const getQueryFn: <T>(options: {
 
     const res = await fetch(fullUrl, {
       credentials: resolveCredentials(url),
-      headers: {
-        "X-Server-Domain": getCurrentDomain(),
-      },
     });
 
     if (unauthorizedBehavior === "returnNull" && res.status === 401) {

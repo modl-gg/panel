@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { useTranslation } from 'react-i18next';
 import { Globe, CheckCircle, AlertCircle, Copy, ExternalLink, RefreshCw, Check, Crown } from 'lucide-react';
 import { Button } from '@modl-gg/shared-web/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@modl-gg/shared-web/components/ui/card';
@@ -32,6 +33,7 @@ const DomainSettings: React.FC = () => {
   const [modlSubdomainUrl, setModlSubdomainUrl] = useState<string>('');
   const [canManageCustomDomain, setCanManageCustomDomain] = useState(true);
   const { toast } = useToast();
+  const { t } = useTranslation();
   const { user } = useAuth();
   const { hasPermission } = usePermissions();
 
@@ -79,8 +81,8 @@ const DomainSettings: React.FC = () => {
   const handleDomainSubmit = async () => {
     if (!canManageCustomDomain) {
       toast({
-        title: "Premium Required",
-        description: "Custom domains require Premium unless your server is grandfathered.",
+        title: t('settings.domain.premiumRequired'),
+        description: t('settings.domain.premiumRequiredDesc'),
         variant: "destructive",
       });
       return;
@@ -88,8 +90,8 @@ const DomainSettings: React.FC = () => {
 
     if (!customDomain.trim()) {
       toast({
-        title: "Error",
-        description: "Please enter a domain name",
+        title: t('toast.error'),
+        description: t('settings.domain.enterDomain'),
         variant: "destructive",
       });
       return;
@@ -97,8 +99,8 @@ const DomainSettings: React.FC = () => {
 
     if (!validateDomain(customDomain)) {
       toast({
-        title: "Invalid Domain",
-        description: "Please enter a valid domain name (e.g., panel.yourdomain.com)",
+        title: t('settings.domain.invalidDomain'),
+        description: t('settings.domain.invalidDomainDesc'),
         variant: "destructive",
       });
       return;
@@ -106,8 +108,8 @@ const DomainSettings: React.FC = () => {
 
     if (domainStatus?.domain && domainStatus.domain.toLowerCase() === customDomain.trim().toLowerCase()) {
       toast({
-        title: "Domain Already Configured",
-        description: "This domain is already configured. Please verify the existing configuration or remove it first.",
+        title: t('settings.domain.alreadyConfigured'),
+        description: t('settings.domain.alreadyConfiguredDesc'),
         variant: "destructive",
       });
       return;
@@ -130,28 +132,28 @@ const DomainSettings: React.FC = () => {
 
         if (data.status?.status === 'error') {
           toast({
-            title: "Configuration Error",
-            description: data.status.error || "Failed to configure domain in Cloudflare",
+            title: t('settings.domain.configurationError'),
+            description: data.status.error || t('settings.domain.cloudflareConfigFailed'),
             variant: "destructive",
           });
         } else {
           toast({
-            title: "Domain Configuration Started",
-            description: "Your custom domain has been configured. Please set up the CNAME record and click verify.",
+            title: t('settings.domain.configurationStarted'),
+            description: t('settings.domain.configurationStartedDesc'),
           });
         }
       } else {
         const error = await response.json();
         toast({
-          title: "Error",
-          description: error.message || "Failed to configure domain",
+          title: t('toast.error'),
+          description: error.message || t('settings.domain.configureFailed'),
           variant: "destructive",
         });
       }
     } catch (error) {
       toast({
-        title: "Error",
-        description: "Failed to configure domain. Please try again.",
+        title: t('toast.error'),
+        description: t('settings.domain.configureFailed'),
         variant: "destructive",
       });
     } finally {
@@ -162,8 +164,8 @@ const DomainSettings: React.FC = () => {
   const handleVerifyDomain = async () => {
     if (!canManageCustomDomain) {
       toast({
-        title: "Premium Required",
-        description: "Custom domains require Premium unless your server is grandfathered.",
+        title: t('settings.domain.premiumRequired'),
+        description: t('settings.domain.premiumRequiredDesc'),
         variant: "destructive",
       });
       return;
@@ -189,38 +191,38 @@ const DomainSettings: React.FC = () => {
         // Show appropriate message based on status
         if (data.status.status === 'active') {
           toast({
-            title: "Domain Verified! 🎉",
-            description: data.message || "Your custom domain is now active with SSL certificate!",
+            title: t('settings.domain.domainVerified'),
+            description: data.message || t('settings.domain.domainVerifiedDesc'),
           });
         } else if (data.status.status === 'verifying') {
           toast({
-            title: "Verification In Progress",
-            description: data.message || "Domain verification is in progress. This may take a few minutes.",
+            title: t('settings.domain.verificationInProgress'),
+            description: data.message || t('settings.domain.verificationInProgressDesc'),
           });
         } else if (data.status.status === 'error') {
           toast({
-            title: "Verification Failed",
-            description: data.status.error || "Failed to verify domain configuration",
+            title: t('settings.domain.verificationFailed'),
+            description: data.status.error || t('settings.domain.verificationFailedDesc'),
             variant: "destructive",
           });
         } else {
           toast({
-            title: "Status Updated",
-            description: data.message || "Domain verification status updated",
+            title: t('settings.domain.statusUpdated'),
+            description: data.message || t('settings.domain.statusUpdatedDesc'),
           });
         }
       } else {
         const error = await response.json();
         toast({
-          title: "Verification Error",
-          description: error.message || "Failed to verify domain",
+          title: t('settings.domain.verificationError'),
+          description: error.message || t('settings.domain.verifyFailed'),
           variant: "destructive",
         });
       }
     } catch (error) {
       toast({
-        title: "Error",
-        description: "Failed to verify domain. Please try again.",
+        title: t('toast.error'),
+        description: t('settings.domain.verifyFailed'),
         variant: "destructive",
       });
     } finally {
@@ -231,8 +233,8 @@ const DomainSettings: React.FC = () => {
   const handleRemoveDomain = async () => {
     if (!canManageCustomDomain) {
       toast({
-        title: "Premium Required",
-        description: "Custom domains require Premium unless your server is grandfathered.",
+        title: t('settings.domain.premiumRequired'),
+        description: t('settings.domain.premiumRequiredDesc'),
         variant: "destructive",
       });
       return;
@@ -251,21 +253,21 @@ const DomainSettings: React.FC = () => {
         setCustomDomain('');
         setDomainStatus(null);
         toast({
-          title: "Domain Removed",
-          description: "Custom domain has been removed. You can now access your panel via the default subdomain.",
+          title: t('settings.domain.domainRemoved'),
+          description: t('settings.domain.domainRemovedDesc'),
         });
       } else {
         const error = await response.json();
         toast({
-          title: "Error",
-          description: error.message || "Failed to remove domain",
+          title: t('toast.error'),
+          description: error.message || t('settings.domain.removeFailed'),
           variant: "destructive",
         });
       }
     } catch (error) {
       toast({
-        title: "Error",
-        description: "Failed to remove domain. Please try again.",
+        title: t('toast.error'),
+        description: t('settings.domain.removeFailed'),
         variant: "destructive",
       });
     } finally {
@@ -278,8 +280,8 @@ const DomainSettings: React.FC = () => {
     setCopied(true);
     setTimeout(() => setCopied(false), 2000);
     toast({
-      title: "Copied",
-      description: "CNAME record copied to clipboard",
+      title: t('toast.copied'),
+      description: t('settings.domain.cnameRecordCopied'),
     });
   };
 
@@ -295,11 +297,11 @@ const DomainSettings: React.FC = () => {
 
   const getStatusText = (status: string) => {
     switch (status) {
-      case 'active': return 'Active';
-      case 'pending': return 'Pending';
-      case 'verifying': return 'Verifying';
-      case 'error': return 'Error';
-      default: return 'Unknown';
+      case 'active': return t('status.active');
+      case 'pending': return t('status.pending');
+      case 'verifying': return t('settings.domain.statusVerifying');
+      case 'error': return t('status.error');
+      default: return t('settings.domain.statusUnknown');
     }
   };
 
@@ -307,7 +309,7 @@ const DomainSettings: React.FC = () => {
   if (!user || !hasPermission('admin.settings.view.domain')) {
     return (
       <div className="flex items-center justify-center h-64 border-2 border-dashed border-muted rounded-lg">
-        <p className="text-muted-foreground">You do not have permission to do that.</p>
+        <p className="text-muted-foreground">{t('common.noPermission')}</p>
       </div>
     );
   }
@@ -315,20 +317,20 @@ const DomainSettings: React.FC = () => {
   return (
     <div className="space-y-6">
       <div>
-        <h3 className="text-lg font-medium mb-2">Custom Domain Configuration</h3>
+        <h3 className="text-lg font-medium mb-2">{t('settings.domain.title')}</h3>
         <p className="text-sm text-muted-foreground">
-          Use your own domain instead of {currentDomain}.modl.gg. We recommend using 'support' as your subdomain.
+          {t('settings.domain.description', { domain: currentDomain })}
         </p>
       </div>
 
-      <Card>
-        <CardContent className="space-y-4">
+      <Card className="rounded-card shadow-card-inner bg-surface-2">
+        <CardContent className="space-y-6">
           {!canManageCustomDomain && (
             <Alert className="border-orange-200 bg-orange-50">
               <Crown className="h-4 w-4 text-orange-600" />
-              <AlertTitle className="text-orange-800">Premium Feature</AlertTitle>
+              <AlertTitle className="text-orange-800">{t('settings.domain.premiumFeature')}</AlertTitle>
               <AlertDescription className="text-orange-700">
-                Custom domains require Premium unless your server is grandfathered. Upgrade to Premium to configure a new custom domain.
+                {t('settings.domain.premiumFeatureDesc')}
               </AlertDescription>
             </Alert>
           )}
@@ -336,10 +338,10 @@ const DomainSettings: React.FC = () => {
           {accessingFromCustomDomain && (
             <Alert className="border-orange-200 bg-orange-50">
               <AlertCircle className="h-4 w-4 text-orange-600" />
-              <AlertTitle className="text-orange-800">Custom Domain Editing Restricted</AlertTitle>
+              <AlertTitle className="text-orange-800">{t('settings.domain.editingRestricted')}</AlertTitle>
               <AlertDescription className="text-orange-700">
-                You cannot modify custom domain settings while accessing from a custom domain.
-                Please access your panel via{' '}
+                {t('settings.domain.editingRestrictedDesc')}
+                {' '}
                 <a
                   href={modlSubdomainUrl}
                   className="underline font-medium hover:text-orange-900"
@@ -348,25 +350,25 @@ const DomainSettings: React.FC = () => {
                 >
                   {modlSubdomainUrl}
                 </a>
-                {' '}to make changes.
+                {' '}{t('settings.domain.toMakeChanges')}
               </AlertDescription>
             </Alert>
           )}
 
           <div>
             <br></br>
-            <p className="font-medium">Cloudflare Nameservers Required</p>
+            <p className="font-medium">{t('settings.domain.cloudflareRequired')}</p>
             <p className="text-sm text-muted-foreground">
-              You must use Cloudflare nameservers and enable proxying on the C-Name record. 
+              {t('settings.domain.cloudflareRequiredDesc')}
             </p>
             <p className="text-sm text-muted-foreground">
-              Learn how to switch your nameservers to Cloudflare <a href="https://developers.cloudflare.com/dns/zone-setups/full-setup/setup/">here</a>.
+              {t('settings.domain.cloudflareLearnPrefix')}{' '}<a href="https://developers.cloudflare.com/dns/zone-setups/full-setup/setup/">{t('settings.domain.here')}</a>.
             </p>
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             <div className="md:col-span-2">
-              <Label htmlFor="customDomain">Custom Domain</Label>
+              <Label htmlFor="customDomain">{t('settings.domain.customDomain')}</Label>
               <Input
                 id="customDomain"
                 type="text"
@@ -385,10 +387,10 @@ const DomainSettings: React.FC = () => {
                 {isLoading ? (
                   <>
                     <RefreshCw className="h-4 w-4 mr-2 animate-spin" />
-                    Configuring...
+                    {t('settings.domain.configuring')}
                   </>
                 ) : (
-                  'Configure Domain'
+                  t('settings.domain.configureDomain')
                 )}
               </Button>
             </div>
@@ -414,17 +416,17 @@ const DomainSettings: React.FC = () => {
                     {isVerifying ? (
                       <>
                         <RefreshCw className="h-4 w-4 mr-2 animate-spin" />
-                        Verifying...
+                        {t('settings.domain.verifying')}
                       </>
                     ) : domainStatus?.status === 'active' ? (
                       <>
                         <CheckCircle className="h-4 w-4 mr-2" />
-                        Verified
+                        {t('settings.domain.verified')}
                       </>
                     ) : (
                       <>
                         <CheckCircle className="h-4 w-4 mr-2" />
-                        Verify
+                        {t('settings.domain.verify')}
                       </>
                     )}
                   </Button>
@@ -434,7 +436,7 @@ const DomainSettings: React.FC = () => {
                     onClick={handleRemoveDomain}
                     disabled={isLoading || accessingFromCustomDomain || !canManageCustomDomain}
                   >
-                    Remove
+                    {t('common.remove')}
                   </Button>
                 </div>
               </div>
@@ -442,7 +444,7 @@ const DomainSettings: React.FC = () => {
               {domainStatus.status === 'error' && domainStatus.error && (
                 <Alert variant="destructive">
                   <AlertCircle className="h-4 w-4" />
-                  <AlertTitle>Configuration Error</AlertTitle>
+                  <AlertTitle>{t('settings.domain.configurationError')}</AlertTitle>
                   <AlertDescription>{domainStatus.error}</AlertDescription>
                 </Alert>
               )}
@@ -452,30 +454,30 @@ const DomainSettings: React.FC = () => {
       </Card>
 
       {domainStatus && domainStatus.status !== 'active' && (
-        <Card>
+        <Card className="rounded-card shadow-card-inner bg-surface-2">
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
               <ExternalLink className="h-5 w-5" />
-              DNS Configuration Required
+              {t('settings.domain.dnsConfigRequired')}
             </CardTitle>
             <CardDescription>
-              Set up the following CNAME record with Cloudflare
+              {t('settings.domain.dnsConfigDesc')}
             </CardDescription>
           </CardHeader>
           <CardContent>
             <Alert>
               <AlertCircle className="h-4 w-4" />
-              <AlertTitle>DNS Record Setup</AlertTitle>
+              <AlertTitle>{t('settings.domain.dnsRecordSetup')}</AlertTitle>
               <AlertDescription>
                 <div className="space-y-3 mt-3">
                   <div>
-                    <strong>Record Type:</strong> CNAME
+                    <strong>{t('settings.domain.recordType')}:</strong> CNAME
                   </div>
                   <div>
-                    <strong>Name/Host:</strong> {customDomain.split('.')[0]} (or the subdomain part)
+                    <strong>{t('settings.domain.nameHost')}:</strong> {customDomain.split('.')[0]} ({t('settings.domain.subdomainPart')})
                   </div>
                   <div className="flex items-center gap-2">
-                    <strong>Value/Target:</strong>
+                    <strong>{t('settings.domain.valueTarget')}:</strong>
                     <code className="bg-muted px-2 py-1 rounded text-sm">
                       {currentDomain}.modl.gg
                     </code>
@@ -492,10 +494,10 @@ const DomainSettings: React.FC = () => {
                     </Button>
                   </div>
                   <div>
-                    <strong>Orange Cloud:</strong> Enabled
+                    <strong>{t('settings.domain.orangeCloud')}:</strong> {t('settings.domain.enabled')}
                   </div>
                   <div>
-                    <strong>TTL:</strong> Auto
+                    <strong>{t('settings.domain.ttl')}:</strong> {t('settings.domain.auto')}
                   </div>
                 </div>
               </AlertDescription>
@@ -505,41 +507,41 @@ const DomainSettings: React.FC = () => {
       )}
 
 
-      <Card>
+      <Card className="rounded-card shadow-card-inner bg-surface-2">
         <CardHeader>
-          <CardTitle>Setup Instructions</CardTitle>
+          <CardTitle>{t('settings.domain.setupInstructions')}</CardTitle>
           <CardDescription>
-            Step-by-step guide to configure your custom domain
+            {t('settings.domain.setupInstructionsDesc')}
           </CardDescription>
         </CardHeader>
         <CardContent>
           <div className="space-y-4">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               <div>
-                <h4 className="font-medium mb-3">1. Configure Domain</h4>
+                <h4 className="font-medium mb-3">{t('settings.domain.step1Title')}</h4>
                 <p className="text-sm text-muted-foreground mb-3">
-                  Enter your desired custom domain in the form above and click "Configure Domain".
+                  {t('settings.domain.step1Desc')}
                 </p>
               </div>
 
               <div>
-                <h4 className="font-medium mb-3">2. Set DNS Record</h4>
+                <h4 className="font-medium mb-3">{t('settings.domain.step2Title')}</h4>
                 <p className="text-sm text-muted-foreground mb-3">
-                  Create a proxied CNAME record with Cloudflare pointing to your current subdomain.
+                  {t('settings.domain.step2Desc')}
                 </p>
               </div>
 
               <div>
-                <h4 className="font-medium mb-3">3. Verify Configuration</h4>
+                <h4 className="font-medium mb-3">{t('settings.domain.step3Title')}</h4>
                 <p className="text-sm text-muted-foreground mb-3">
-                  Click "Verify" to check if the DNS record is properly configured.
+                  {t('settings.domain.step3Desc')}
                 </p>
               </div>
 
               <div>
-                <h4 className="font-medium mb-3">4. All done!</h4>
+                <h4 className="font-medium mb-3">{t('settings.domain.step4Title')}</h4>
                 <p className="text-sm text-muted-foreground mb-3">
-                  Use your new custom domain to access the panel.
+                  {t('settings.domain.step4Desc')}
                 </p>
               </div>
             </div>
@@ -547,13 +549,13 @@ const DomainSettings: React.FC = () => {
             <Separator />
 
             <div>
-              <h4 className="font-medium mb-3">Important Notes</h4>
+              <h4 className="font-medium mb-3">{t('settings.domain.importantNotes')}</h4>
               <ul className="text-sm text-muted-foreground space-y-2">
-                <li>• DNS changes can take up to 48 hours to propagate globally</li>
-                <li>• SSL certificate generation may take a few minutes after DNS verification</li>
-                <li>• Your panel will remain accessible via the original subdomain</li>
-                <li>• Custom domain can be removed at any time without affecting functionality</li>
-                <li>• SSL and DNS validation are managed automatically by Cloudflare after CNAME setup</li>
+                <li>• {t('settings.domain.notesDnsPropagation')}</li>
+                <li>• {t('settings.domain.notesSslGeneration')}</li>
+                <li>• {t('settings.domain.notesOriginalAccess')}</li>
+                <li>• {t('settings.domain.notesRemovable')}</li>
+                <li>• {t('settings.domain.notesCloudflareManaaged')}</li>
               </ul>
             </div>
           </div>

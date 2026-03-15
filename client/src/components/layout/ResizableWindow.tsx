@@ -336,7 +336,7 @@ const ResizableWindow = ({
       >
         <div 
           ref={minimizedHeaderRef}
-          className="px-3 flex items-center justify-between rounded-lg shadow-md cursor-move bg-card h-7 hover:bg-card/90 border border-border/50"
+          className="px-3 flex items-center justify-between rounded-card shadow-card cursor-move bg-card h-7 hover:bg-card/90 border border-border/50"
           style={{ width: '250px' }}
           onMouseDown={handleMouseDown}
         >
@@ -401,7 +401,7 @@ const ResizableWindow = ({
       ref={windowRef}
       id={id}
       className={cn(
-        "resizable-window fixed bg-background border border-border rounded-lg shadow-lg",
+        "resizable-window fixed bg-background border border-border rounded-card shadow-card-elevated",
         isMaximized && "!top-0 !left-0 !w-full !h-full !max-w-none !max-h-none !resize-none"
       )}
       style={{

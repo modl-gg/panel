@@ -1,16 +1,18 @@
 import { useState, useEffect } from 'react';
 import { useLocation } from 'wouter';
-import { 
-  Home, 
-  Search, 
-  Ticket, 
-  Settings, 
+import {
+  Home,
+  Search,
+  Ticket,
+  Settings,
   AlertCircle,
   BookOpen,
 } from 'lucide-react';
 import { usePermissions, PERMISSIONS } from '@/hooks/use-permissions';
+import { useTranslation } from 'react-i18next';
 
 const MobileNavbar = () => {
+  const { t } = useTranslation();
   const [location, navigate] = useLocation();
   const { hasPermission } = usePermissions();
   
@@ -24,31 +26,31 @@ const MobileNavbar = () => {
   const navItems = [
     {
       icon: <Home className="h-5 w-5" />,
-      label: "Home",
+      label: t('nav.home'),
       path: "/panel",
       onClick: () => navigate('/panel')
     },
     {
       icon: <Search className="h-5 w-5" />,
-      label: "Lookup",
+      label: t('nav.lookup'),
       path: "/panel/lookup",
       onClick: () => navigate('/panel/lookup')
     },
     {
       icon: <Ticket className="h-5 w-5" />,
-      label: "Tickets",
+      label: t('nav.tickets'),
       path: "/panel/tickets",
       onClick: () => navigate('/panel/tickets')
     },
     {
       icon: <AlertCircle className="h-5 w-5" />,
-      label: "Audit",
+      label: t('nav.audit'),
       path: "/panel/audit",
       onClick: () => navigate('/panel/audit')
     },
     {
       icon: <Settings className="h-5 w-5" />,
-      label: "Settings",
+      label: t('nav.settings'),
       path: "/panel/settings",
       onClick: () => navigate('/panel/settings')
     }

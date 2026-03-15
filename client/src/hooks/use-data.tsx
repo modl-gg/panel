@@ -2,30 +2,9 @@ import React from 'react';
 import { useQuery, useMutation, useQueryClient, QueryClient, useQueries } from '@tanstack/react-query';
 import { queryClient } from '../lib/queryClient';
 import { useAuth } from './use-auth';
-import { getApiUrl, getCurrentDomain } from '@/lib/api';
+import { apiFetch } from '@/lib/api';
 import { isPublicPage } from '@/utils/routes';
 import { getApiErrorMessage } from '@/utils/email-validation';
-
-// Helper function to make API requests with the X-Server-Domain header
-async function apiFetch(url: string, options: RequestInit = {}): Promise<Response> {
-  const credentials = options.credentials
-    ?? (url.startsWith('/v1/public/') ? 'omit' : 'include');
-
-  const response = await fetch(getApiUrl(url), {
-    ...options,
-    credentials,
-    headers: {
-      ...options.headers,
-      'X-Server-Domain': getCurrentDomain(),
-    },
-  });
-  if (response.status === 429) {
-    const { handleRateLimitResponse, getCurrentPath } = await import('../utils/rate-limit-handler');
-    await handleRateLimitResponse(response, getCurrentPath());
-    throw new Error('Rate limit exceeded');
-  }
-  return response;
-}
 
 type SettingsEnvelope<T> = {
   data: T;
@@ -63,8 +42,7 @@ export function usePlayer(uuid: string) {
     },
     enabled: !!uuid,
     staleTime: 1000,
-    refetchOnWindowFocus: true,
-    refetchOnMount: true
+    refetchOnWindowFocus: true
   });
 }
 
@@ -83,8 +61,7 @@ export function useLinkedAccounts(uuid: string) {
     },
     enabled: !!uuid,
     staleTime: 1000,
-    refetchOnWindowFocus: true,
-    refetchOnMount: true
+    refetchOnWindowFocus: true
   });
 }
 
@@ -151,7 +128,6 @@ export function useTickets(options?: {
       return res.json();
     },
     staleTime: 30000,
-    refetchOnMount: true,
     refetchOnWindowFocus: true
   });
 }
@@ -185,9 +161,8 @@ export function useTicket(id: string) {
     },
     enabled: !!id,
     retry: false,
-    staleTime: 0,
-    gcTime: 0,
-    refetchOnMount: true,
+    staleTime: 30000,
+    gcTime: 60000,
     refetchOnWindowFocus: true
   });
 }
@@ -557,8 +532,7 @@ export function useSettings() {
         throw error;
       }
     },
-    staleTime: 0,
-    refetchOnMount: 'always',
+    staleTime: 300000,
     refetchOnWindowFocus: false,
     gcTime: 1000 * 60 * 5,
     refetchInterval: false,
@@ -650,39 +624,6 @@ export function useStats() {
     },
     staleTime: 5 * 60 * 1000,
     refetchOnWindowFocus: true,
-  });
-}
-
-interface ClientActivityAction {
-  label: string;
-  link?: string;
-  primary?: boolean;
-}
-
-export interface ClientActivity {
-  id: string | number;
-  type: string;
-  color: string;
-  title: string;
-  time: string;
-  description: string;
-  actions: ClientActivityAction[];
-}
-
-export function useRecentActivity(limit: number = 20, days: number = 7) {
-  return useQuery<ClientActivity[]>({
-    queryKey: ['/v1/panel/activity/recent', limit, days],
-    queryFn: async () => {
-      const res = await apiFetch(`/v1/panel/dashboard/activity/recent?limit=${limit}&days=${days}`);
-      if (!res.ok) {
-        const errorData = await res.json().catch(() => ({ message: 'Failed to fetch recent activity and could not parse error response.' }));
-        throw new Error(errorData.message || 'Failed to fetch recent activity');
-      }
-      return res.json();
-    },
-    staleTime: 1000 * 60 * 1,
-    refetchOnWindowFocus: true,
-    refetchOnMount: true,
   });
 }
 
@@ -865,9 +806,8 @@ export function usePanelTicket(id: string) {
       return data;
     },
     enabled: !!id,
-    staleTime: 0,
-    gcTime: 0,
-    refetchOnMount: true,
+    staleTime: 30000,
+    gcTime: 60000,
     refetchOnWindowFocus: true
   });
 }
@@ -886,8 +826,7 @@ export function usePlayerTickets(uuid: string) {
       return res.json();
     },
     enabled: !!uuid,
-    staleTime: 0,
-    refetchOnMount: true,
+    staleTime: 30000,
     refetchOnWindowFocus: true
   });
 }
@@ -906,8 +845,7 @@ export function usePlayerAllTickets(uuid: string) {
       return res.json();
     },
     enabled: !!uuid,
-    staleTime: 0,
-    refetchOnMount: true,
+    staleTime: 30000,
     refetchOnWindowFocus: true
   });
 }
@@ -934,6 +872,7 @@ export function useModifyPunishment() {
       const body: any = {
         type: modificationType,
         issuerName: user?.username || 'Unknown User',
+        issuerId: user?.id,
         reason: reason
       };
 
@@ -1000,7 +939,8 @@ export function useAddPunishmentNote() {
         },
         body: JSON.stringify({
           text: noteText,
-          issuerName: user?.username || 'Unknown User'
+          issuerName: user?.username || 'Unknown User',
+          issuerId: user?.id
         })
       });
 
@@ -1047,7 +987,8 @@ export function useModifyPunishmentTickets() {
           addTicketIds,
           removeTicketIds,
           modifyAssociatedTickets,
-          issuerName: user?.username || 'Unknown User'
+          issuerName: user?.username || 'Unknown User',
+          issuerId: user?.id
         })
       });
 
@@ -1186,20 +1127,6 @@ export function useDeleteRole() {
   });
 }
 
-export function useAvailablePlayers() {
-  return useQuery({
-    queryKey: ['/v1/panel/staff/available-players'],
-    queryFn: async () => {
-      const res = await apiFetch('/v1/panel/staff/available-players');
-      if (!res.ok) {
-        throw new Error('Failed to fetch available players');
-      }
-      return res.json();
-    },
-    staleTime: 1000 * 30,
-  });
-}
-
 export function useAssignMinecraftPlayer() {
   const queryClient = useQueryClient();
 
@@ -1277,21 +1204,6 @@ export function useRecentPunishments(limit: number = 10) {
     },
     staleTime: 2 * 60 * 1000,
     refetchOnWindowFocus: false,
-  });
-}
-
-export function useTicketSubscriptions() {
-  return useQuery({
-    queryKey: ['/v1/panel/ticket-subscriptions'],
-    queryFn: async () => {
-      const res = await apiFetch('/v1/panel/ticket-subscriptions');
-      if (!res.ok) {
-        throw new Error('Failed to fetch ticket subscriptions');
-      }
-      return res.json();
-    },
-    staleTime: 30 * 1000,
-    refetchOnWindowFocus: true,
   });
 }
 
@@ -1403,7 +1315,6 @@ export function useTicketCounts(options?: {
         return { type, count: data.pagination?.totalTickets || 0 };
       },
       staleTime: 30000,
-      refetchOnMount: true,
       refetchOnWindowFocus: true
     }))
   });
@@ -1452,7 +1363,6 @@ export function useTicketStatusCounts(options?: {
       return res.json() as Promise<{ open: number; closed: number }>;
     },
     staleTime: 30000,
-    refetchOnMount: true,
     refetchOnWindowFocus: true
   });
 }
@@ -1569,9 +1479,7 @@ export function useMigrationStatus() {
         currentMigration.status !== 'failed';
 
       return isActive ? 5000 : 30000;
-    },
-    refetchOnMount: true,
-    refetchOnWindowFocus: true
+    }
   });
 }
 

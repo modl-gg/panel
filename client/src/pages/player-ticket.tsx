@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { useTranslation } from 'react-i18next';
 import { useParams, Link } from 'wouter';
 import {
   MessageSquare,
@@ -30,13 +31,14 @@ import MediaUpload from '@/components/MediaUpload';
 import { apiRequest } from '@/lib/queryClient';
 import { getAvatarUrl } from '@/lib/api';
 import { queryClient } from '@/lib/queryClient';
-import { toast } from '@/hooks/use-toast';
+import { toast } from '@modl-gg/shared-web/hooks/use-toast';
 import MarkdownRenderer from '@/components/ui/markdown-renderer';
 import MarkdownHelp from '@/components/ui/markdown-help';
 import { formatDate } from '@/utils/date-utils';
 import { getCreatorIdentifier, getUnverifiedExplanation, shouldShowUnverifiedBadge } from '@/utils/creator-verification';
 import { useMediaUpload } from '@/hooks/use-media-upload';
 import { isValidEmail, normalizeEmail } from '@/utils/email-validation';
+import { normalizeTicketStatus } from '@/lib/ticket-enums';
 
 export interface TicketMessage {
   id: string;
@@ -47,7 +49,7 @@ export interface TicketMessage {
   staff?: boolean;
   attachments?: string[];
   closedAs?: string;
-  staffMinecraftUuid?: string; // For staff avatar display
+  avatar?: string; // Staff avatar URL from backend
   creatorIdentifier?: string; // Browser identifier for creator verification
 }
 
@@ -139,15 +141,13 @@ const MessageAvatar = ({ message, creatorUuid }: { message: TicketMessage, creat
     );
   }
 
-  // For staff messages - use staff Minecraft UUID if available
+  // For staff messages - use avatar URL if available
   if (message.senderType === 'staff' || message.staff) {
-    const staffMinecraftUuid = message.staffMinecraftUuid;
-
-    if (staffMinecraftUuid && !avatarError) {
+    if (message.avatar && !avatarError) {
       return (
         <div className="relative h-8 w-8 bg-muted rounded-md flex items-center justify-center overflow-hidden flex-shrink-0">
           <img
-            src={getAvatarUrl(staffMinecraftUuid, 32, true)}
+            src={message.avatar}
             alt={`${message.sender} Avatar`}
             className={`w-full h-full object-cover transition-opacity duration-200 ${avatarLoading ? 'opacity-0' : 'opacity-100'}`}
             onError={() => {
@@ -186,6 +186,7 @@ const MessageAvatar = ({ message, creatorUuid }: { message: TicketMessage, creat
 
 const PlayerTicket = () => {
   const { id } = useParams();
+  const { t } = useTranslation();
   const [playerName, setPlayerName] = useState('');
   const [newReply, setNewReply] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -233,16 +234,14 @@ const PlayerTicket = () => {
   useEffect(() => {
     if (ticketData) {
       // Ticket data received
-        // Map API data to our TicketDetails interface
-      const status = ticketData.status || 'Unfinished';
-      // Map the status to one of our three statuses: Unfinished, Open, or Closed
-      // Handle case-insensitive comparison for backend compatibility
-      const statusLower = status.toLowerCase();
-      const mappedStatus = statusLower === 'unfinished' || statusLower === 'draft'
+      // Map API data to our TicketDetails interface
+      const normalizedStatus = normalizeTicketStatus(ticketData.status);
+      const mappedStatus = normalizedStatus === 'unfinished'
         ? 'Unfinished'
-        : (statusLower === 'open' || statusLower === 'in progress')
-          ? 'Open'
-          : 'Closed';      // Ensure we have a valid date
+        : normalizedStatus === 'closed'
+          ? 'Closed'
+          : 'Open';
+      // Ensure we have a valid date
       let validDate = new Date().toISOString(); // fallback to current time
       if (ticketData.created) {
         const createdDate = new Date(ticketData.created);
@@ -268,7 +267,7 @@ const PlayerTicket = () => {
           attachments: message.attachments,
           closedAs: (message.action === "Comment" || message.action === "Reopen") ? undefined : message.action,
           creatorIdentifier: message.creatorIdentifier, // Include creator identifier for verification
-          staffMinecraftUuid: message.staffMinecraftUuid, // Preserve staff Minecraft UUID for avatars
+          avatar: message.avatar, // Preserve staff avatar URL
         };
         
         return processed;
@@ -281,10 +280,7 @@ const PlayerTicket = () => {
         reportedBy: ticketData.creatorName || ticketData.reportedBy || 'Unknown',
         date: validDate,
         category: ticketData.category || 'Support',
-        // Use category if it's a more specific type, otherwise use type. Normalize to lowercase.
-        type: ((ticketData.category && ['player', 'chat', 'bug', 'support', 'staff', 'application', 'appeal'].includes(ticketData.category.toLowerCase()))
-          ? ticketData.category
-          : ticketData.type || 'bug').toLowerCase(),
+        type: (ticketData.type || 'bug').toLowerCase(),
         messages: processedMessages,
         locked: ticketData.locked === true
       });
@@ -365,8 +361,8 @@ const PlayerTicket = () => {
     } catch (error) {
       console.error('Error sending reply:', error);
       toast({
-        title: "Failed to send reply",
-        description: "There was an error sending your reply. Please try again.",
+        title: t('playerTicket.replyFailed'),
+        description: t('playerTicket.replyFailedDesc'),
         variant: "destructive"
       });
       // Remove the optimistic update since it failed
@@ -386,7 +382,7 @@ const PlayerTicket = () => {
     return (
       <div className="flex flex-col items-center justify-center min-h-screen p-4">
         <Loader2 className="w-8 h-8 animate-spin text-primary mb-4" />
-        <p className="text-muted-foreground">Loading ticket information...</p>
+        <p className="text-muted-foreground">{t('playerTicket.loading')}</p>
       </div>
     );
   }
@@ -395,8 +391,8 @@ const PlayerTicket = () => {
     return (
       <div className="flex flex-col items-center justify-center min-h-screen p-4">
         <div className="bg-destructive/10 text-destructive rounded-lg p-6 max-w-md">
-          <h2 className="text-xl font-semibold mb-2">Ticket Not Found</h2>
-          <p className="mb-4">Sorry, we couldn't find the ticket you're looking for. It may have been deleted or you may not have permission to view it.</p>
+          <h2 className="text-xl font-semibold mb-2">{t('playerTicket.notFound')}</h2>
+          <p className="mb-4">{t('playerTicket.notFoundDesc')}</p>
         </div>
       </div>
     );
@@ -410,13 +406,13 @@ const PlayerTicket = () => {
         setVerificationEmailHint(result.emailHint || ticketData.emailHint || '');
         setCodeSent(true);
         toast({
-          title: "Code Sent",
-          description: "A verification code has been sent to your email.",
+          title: t('playerTicket.codeSent'),
+          description: t('playerTicket.codeSentDesc'),
         });
       } catch (error: any) {
         toast({
-          title: "Failed to send code",
-          description: error.message || "Please try again.",
+          title: t('playerTicket.codeFailed'),
+          description: error.message || t('playerTicket.tryAgain'),
           variant: "destructive"
         });
       }
@@ -435,14 +431,14 @@ const PlayerTicket = () => {
           // Refetch the ticket with the new token
           queryClient.invalidateQueries({ queryKey: ['/v1/public/tickets', id] });
           toast({
-            title: "Verified",
-            description: "Access granted. You can now view this ticket.",
+            title: t('playerTicket.verified'),
+            description: t('playerTicket.verifiedDesc'),
           });
         }
       } catch (error: any) {
         toast({
-          title: "Verification Failed",
-          description: error.message || "Invalid or expired code. Please try again.",
+          title: t('playerTicket.verificationFailed'),
+          description: error.message || t('playerTicket.invalidCode'),
           variant: "destructive"
         });
       } finally {
@@ -454,11 +450,11 @@ const PlayerTicket = () => {
       <div className="min-h-screen bg-background flex items-center justify-center p-4">
         <Card className="w-full max-w-md">
           <CardHeader>
-            <CardTitle>Email Verification Required</CardTitle>
+            <CardTitle>{t('playerTicket.verificationRequired')}</CardTitle>
             <CardDescription>
-              This ticket requires email verification to view.
+              {t('playerTicket.verificationRequiredDesc')}
               {ticketData.emailHint && (
-                <> A code will be sent to <strong>{ticketData.emailHint}</strong>.</>
+                <> {t('playerTicket.codeSentTo')} <strong>{ticketData.emailHint}</strong>.</>
               )}
             </CardDescription>
           </CardHeader>
@@ -466,15 +462,15 @@ const PlayerTicket = () => {
             {!codeSent ? (
               <Button onClick={handleRequestCode} disabled={requestVerificationMutation.isPending} className="w-full">
                 {requestVerificationMutation.isPending ? (
-                  <><Loader2 className="mr-2 h-4 w-4 animate-spin" /> Sending...</>
+                  <><Loader2 className="mr-2 h-4 w-4 animate-spin" /> {t('playerTicket.sending')}</>
                 ) : (
-                  'Send Verification Code'
+                  t('playerTicket.sendVerificationCode')
                 )}
               </Button>
             ) : (
               <>
                 <div className="space-y-2">
-                  <Label htmlFor="verificationCode">Enter the 6-digit code sent to {verificationEmailHint || ticketData.emailHint}</Label>
+                  <Label htmlFor="verificationCode">{t('playerTicket.enterCode', { email: verificationEmailHint || ticketData.emailHint })}</Label>
                   <Input
                     id="verificationCode"
                     type="text"
@@ -487,13 +483,13 @@ const PlayerTicket = () => {
                 </div>
                 <Button onClick={handleVerifyCode} disabled={isVerifying || verificationCode.length !== 6} className="w-full">
                   {isVerifying ? (
-                    <><Loader2 className="mr-2 h-4 w-4 animate-spin" /> Verifying...</>
+                    <><Loader2 className="mr-2 h-4 w-4 animate-spin" /> {t('playerTicket.verifying')}</>
                   ) : (
-                    'Verify Code'
+                    t('playerTicket.verifyCode')
                   )}
                 </Button>
                 <Button variant="ghost" size="sm" onClick={handleRequestCode} disabled={requestVerificationMutation.isPending} className="w-full">
-                  Resend Code
+                  {t('playerTicket.resendCode')}
                 </Button>
               </>
             )}
@@ -517,8 +513,8 @@ const PlayerTicket = () => {
     // Check if subject is required for non-application tickets
     if (ticketDetails.type !== 'staff' && ticketDetails.type !== 'application' && !finalSubject) {
       toast({
-        title: "Subject Required",
-        description: "Please provide a subject for your ticket.",
+        title: t('submitTicket.subjectRequired'),
+        description: t('submitTicket.subjectRequiredDesc'),
         variant: "destructive"
       });
       return;
@@ -549,8 +545,8 @@ const PlayerTicket = () => {
     // If no form config found, show error - no fallback
     if (!formConfig || !formConfig.fields) {
       toast({
-        title: "Form Configuration Missing",
-        description: `No form configuration found for ${ticketDetails.type} tickets. Please contact support.`,
+        title: t('submitTicket.formConfigMissing'),
+        description: t('submitTicket.formConfigMissingDesc', { type: ticketDetails.type }),
         variant: "destructive"
       });
       return;
@@ -607,13 +603,13 @@ const PlayerTicket = () => {
     const emailField = {
       id: 'email',
       type: 'text' as const,
-      label: 'Email Address',
-      description: 'Your email address for response notifications',
+      label: t('submitTicket.emailAddress'),
+      description: t('submitTicket.emailAddressDesc'),
       required: true,
       order: 1,
       sectionId: undefined
     };
-    
+
     // Combine email field with form config fields for validation
     const fieldsToValidate = [emailField, ...(formConfig.fields || [])];
     
@@ -631,8 +627,8 @@ const PlayerTicket = () => {
       
       if (field.required && (!formData[field.id] || formData[field.id].trim() === '')) {
         toast({
-          title: "Required Field Missing",
-          description: `Please complete the "${field.label}" field.`,
+          title: t('submitTicket.requiredFieldMissing'),
+          description: t('submitTicket.requiredFieldMissingDesc', { label: field.label }),
           variant: "destructive"
         });
         return;
@@ -642,8 +638,8 @@ const PlayerTicket = () => {
     const creatorEmail = normalizeEmail(formData['email']);
     if (!isValidEmail(creatorEmail)) {
       toast({
-        title: "Invalid Email Format",
-        description: "Please enter a valid email address (e.g., name@example.com).",
+        title: t('submitTicket.invalidEmail'),
+        description: t('submitTicket.invalidEmailDesc'),
         variant: "destructive"
       });
       return;
@@ -715,8 +711,8 @@ const PlayerTicket = () => {
 
       if (hiddenExcludedFiles > 0) {
         toast({
-          title: "Hidden Attachments Excluded",
-          description: `${hiddenExcludedFiles} hidden attachment${hiddenExcludedFiles > 1 ? 's were' : ' was'} not submitted.`,
+          title: t('submitTicket.hiddenAttachmentsExcluded'),
+          description: t('submitTicket.hiddenAttachmentsExcludedDesc', { count: hiddenExcludedFiles }),
         });
       }
 
@@ -736,8 +732,8 @@ const PlayerTicket = () => {
       queryClient.invalidateQueries({ queryKey: ['/v1/public/tickets', ticketDetails.id] });
       
       toast({
-        title: "Ticket Submitted Successfully",
-        description: "Your ticket is now open for staff review.",
+        title: t('submitTicket.ticketSubmitted'),
+        description: t('submitTicket.ticketSubmittedDesc'),
         variant: "default"
       });
 
@@ -745,8 +741,8 @@ const PlayerTicket = () => {
     } catch (error: any) {
       console.error('Error submitting ticket form:', error);
       toast({
-        title: "Submission Failed",
-        description: error?.message || "There was an error submitting your ticket. Please try again.",
+        title: t('playerTicket.submissionFailed'),
+        description: error?.message || t('playerTicket.submissionFailedDesc'),
         variant: "destructive"
       });
     } finally {
@@ -775,7 +771,7 @@ const PlayerTicket = () => {
       return (
         <div className="text-center py-8">
           <Loader2 className="h-8 w-8 animate-spin mx-auto mb-4 text-primary" />
-          <p className="text-muted-foreground">Loading form configuration...</p>
+          <p className="text-muted-foreground">{t('submitTicket.loadingForm')}</p>
         </div>
       );
     }
@@ -811,12 +807,12 @@ const PlayerTicket = () => {
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L4.082 15.5c-.77.833.192 2.5 1.732 2.5z" />
             </svg>
           </div>
-          <h3 className="text-lg font-medium text-red-800 dark:text-red-300 mb-2">Form Not Configured</h3>
+          <h3 className="text-lg font-medium text-red-800 dark:text-red-300 mb-2">{t('submitTicket.formNotConfigured')}</h3>
           <p className="text-red-700 dark:text-red-400 mb-4">
-            No form configuration found for {ticketDetails.type} tickets.
+            {t('submitTicket.noFormConfig', { type: ticketDetails.type })}
           </p>
           <p className="text-sm text-red-600 dark:text-red-500">
-            Please contact server administration to configure this ticket form.
+            {t('submitTicket.contactAdmin')}
           </p>
         </div>
       );
@@ -829,8 +825,8 @@ const PlayerTicket = () => {
     const emailField = {
       id: 'email',
       type: 'text' as const,
-      label: 'Email Address',
-      description: 'Your email address for response notifications',
+      label: t('submitTicket.emailAddress'),
+      description: t('submitTicket.emailAddressDesc'),
       required: true,
       order: 1,
       sectionId: undefined,
@@ -856,12 +852,12 @@ const PlayerTicket = () => {
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L4.082 15.5c-.77.833.192 2.5 1.732 2.5z" />
             </svg>
           </div>
-          <h3 className="text-lg font-medium text-yellow-800 dark:text-yellow-300 mb-2">Empty Form Configuration</h3>
+          <h3 className="text-lg font-medium text-yellow-800 dark:text-yellow-300 mb-2">{t('submitTicket.emptyFormConfig')}</h3>
           <p className="text-yellow-700 dark:text-yellow-400 mb-4">
-            The {ticketDetails.type} ticket form has no fields configured.
+            {t('submitTicket.emptyFormConfigDesc', { type: ticketDetails.type })}
           </p>
           <p className="text-sm text-yellow-600 dark:text-yellow-500">
-            Please contact server administration to add fields to this ticket form.
+            {t('submitTicket.contactAdmin')}
           </p>
         </div>
       );
@@ -1105,7 +1101,7 @@ const PlayerTicket = () => {
             />
             {formPendingFiles[field.id]?.length ? (
               <div className="text-sm text-muted-foreground">
-                Selected file: {formPendingFiles[field.id][0].name} (uploads on submit)
+                {t('playerTicket.selectedFile', { name: formPendingFiles[field.id][0].name })}
               </div>
             ) : null}
           </div>
@@ -1128,11 +1124,11 @@ const PlayerTicket = () => {
         <div className="space-y-4">
           {ticketDetails.type !== 'staff' && ticketDetails.type !== 'application' && (
             <div>
-              <Label htmlFor="subject" className="font-medium">Ticket Subject</Label>
+              <Label htmlFor="subject" className="font-medium">{t('submitTicket.ticketSubject')}</Label>
               <Input
                 id="subject"
                 type="text"
-                placeholder="Enter a subject for your ticket"
+                placeholder={t('submitTicket.ticketSubjectPlaceholder')}
                 value={formSubject}
                 onChange={(e) => setFormSubject(e.target.value)}
                 className="mt-1"
@@ -1175,10 +1171,10 @@ const PlayerTicket = () => {
               />
               <div>
                 <label htmlFor="emailAuthEnabled" className="text-sm font-medium leading-tight cursor-pointer">
-                  Enable email authentication on this ticket
+                  {t('submitTicket.enableEmailAuth')}
                 </label>
                 <p className="text-xs text-muted-foreground mt-1">
-                  Require email verification to access this ticket. If disabled, anyone with the ticket ID can view and reply.
+                  {t('submitTicket.enableEmailAuthDesc')}
                 </p>
               </div>
             </div>
@@ -1194,12 +1190,12 @@ const PlayerTicket = () => {
             {isSubmitting ? (
               <>
                 <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                Submitting...
+                {t('playerTicket.submitting')}
               </>
             ) : (
               <>
                 <CheckSquare className="mr-2 h-4 w-4" />
-                Submit Ticket
+                {t('submitTicket.submitTicket')}
               </>
             )}
           </Button>
@@ -1221,11 +1217,11 @@ const PlayerTicket = () => {
               </svg>
             </div>
             <div>
-              <h3 className={`font-medium ${ticketData?.emailAuthEnabled ? 'text-green-800 dark:text-green-300' : 'text-yellow-800 dark:text-yellow-300'}`}>Security Notice</h3>
+              <h3 className={`font-medium ${ticketData?.emailAuthEnabled ? 'text-green-800 dark:text-green-300' : 'text-yellow-800 dark:text-yellow-300'}`}>{t('submitTicket.securityNotice')}</h3>
               <p className={`text-sm mt-1 ${ticketData?.emailAuthEnabled ? 'text-green-700 dark:text-green-400' : 'text-yellow-700 dark:text-yellow-400'}`}>
                 {ticketData?.emailAuthEnabled
-                  ? 'This ticket is protected by email authentication. Only you can access it by verifying your email address.'
-                  : 'Do not share sensitive information, personal data, or passwords over tickets. The six digit ticket ID is the only authentication on this page; anyone with this ticket ID can view and reply to this ticket as you.'
+                  ? t('submitTicket.securityNoticeProtected')
+                  : t('submitTicket.securityNoticeDesc')
                 }
               </p>
             </div>
@@ -1238,35 +1234,35 @@ const PlayerTicket = () => {
             <CardHeader>
               {(ticketDetails.type === 'staff' || ticketDetails.type === 'application') ? (
                 <>
-                  <CardTitle>Staff Application</CardTitle>
+                  <CardTitle>{t('playerTicket.staffApplication')}</CardTitle>
                   <CardDescription className="mt-2">
-                    Thank you for your interest in becoming a volunteer moderator. Please complete the form with honesty and showcase your personality.
+                    {t('playerTicket.staffApplicationDesc')}
                   </CardDescription>
                 </>
               ) : ticketDetails.type === 'bug' ? (
                 <>
-                  <CardTitle>Complete Your Bug Report</CardTitle>
-                  <CardDescription>Please provide detailed information about the bug you've encountered</CardDescription>
+                  <CardTitle>{t('playerTicket.completeBugReport')}</CardTitle>
+                  <CardDescription>{t('playerTicket.completeBugReportDesc')}</CardDescription>
                 </>
               ) : ticketDetails.type === 'player' ? (
                 <>
-                  <CardTitle>Complete Your Player Report</CardTitle>
-                  <CardDescription>Please provide details about the player and the incident</CardDescription>
+                  <CardTitle>{t('playerTicket.completePlayerReport')}</CardTitle>
+                  <CardDescription>{t('playerTicket.completePlayerReportDesc')}</CardDescription>
                 </>
               ) : ticketDetails.type === 'chat' ? (
                 <>
-                  <CardTitle>Complete Your Chat Report</CardTitle>
-                  <CardDescription>Please provide information about the chat incident</CardDescription>
+                  <CardTitle>{t('playerTicket.completeChatReport')}</CardTitle>
+                  <CardDescription>{t('playerTicket.completeChatReportDesc')}</CardDescription>
                 </>
               ) : ticketDetails.type === 'support' ? (
                 <>
-                  <CardTitle>Complete Your Support Request</CardTitle>
-                  <CardDescription>Please tell us how we can help you</CardDescription>
+                  <CardTitle>{t('playerTicket.completeSupportRequest')}</CardTitle>
+                  <CardDescription>{t('playerTicket.completeSupportRequestDesc')}</CardDescription>
                 </>
               ) : (
                 <>
-                  <CardTitle>Complete Your {ticketDetails.type.charAt(0).toUpperCase() + ticketDetails.type.slice(1)} Ticket</CardTitle>
-                  <CardDescription>Please provide the required information below to submit your ticket</CardDescription>
+                  <CardTitle>{t('playerTicket.completeTicket', { type: ticketDetails.type.charAt(0).toUpperCase() + ticketDetails.type.slice(1) })}</CardTitle>
+                  <CardDescription>{t('playerTicket.completeTicketDesc')}</CardDescription>
                 </>
               )}
             </CardHeader>
@@ -1294,7 +1290,7 @@ const PlayerTicket = () => {
                 <div className="mt-4 flex items-center gap-4 text-sm text-muted-foreground">
                   <div className="flex items-center gap-1">
                     <User className="h-4 w-4" />
-                    <span>Reported by {ticketDetails.reportedBy}</span>
+                    <span>{t('playerTicket.reportedBy', { name: ticketDetails.reportedBy })}</span>
                   </div>
                   <div className="flex items-center gap-1">
                     <Calendar className="h-4 w-4" />
@@ -1308,9 +1304,9 @@ const PlayerTicket = () => {
                     <div className="flex items-start gap-2">
                       <AlertCircle className="h-4 w-4 text-amber-600 dark:text-white mt-0.5 flex-shrink-0" />
                       <div className="text-sm">
-                        <p className="font-medium text-amber-800 dark:text-white">Link Your Minecraft Account</p>
+                        <p className="font-medium text-amber-800 dark:text-white">{t('playerTicket.linkMinecraftAccount')}</p>
                         <p className="text-amber-700 dark:text-white/80 mt-1">
-                          This ticket is not linked to a Minecraft account.
+                          {t('playerTicket.linkMinecraftAccountDesc')}
                           Run <code className="bg-amber-100 dark:bg-amber-900 px-1 py-0.5 rounded text-xs">/tclaim {ticketDetails.id}</code> in-game to link it.
                         </p>
                       </div>
@@ -1331,12 +1327,12 @@ const PlayerTicket = () => {
                           </span>
                           {message.senderType === 'staff' && (
                             <Badge variant="secondary" className="text-xs">
-                              Staff
+                              {t('playerTicket.staffBadge')}
                             </Badge>
                           )}
                           {message.senderType === 'system' && (
                             <Badge variant="outline" className="text-xs">
-                              System
+                              {t('playerTicket.systemBadge')}
                             </Badge>
                           )}
                           {message.closedAs && (
@@ -1369,7 +1365,7 @@ const PlayerTicket = () => {
                                       className="text-xs cursor-help"
                                       title={getUnverifiedExplanation()}
                                     >
-                                      UNVERIFIED
+                                      {t('playerTicket.unverifiedBadge')}
                                     </Badge>
                                   </TooltipTrigger>
                                   <TooltipContent className="max-w-xs p-3 z-50" side="top">
@@ -1423,21 +1419,21 @@ const PlayerTicket = () => {
             {ticketDetails.status === 'Open' && !ticketDetails.locked && (
               <Card>
                 <CardHeader>
-                  <CardTitle className="text-lg">Reply to Ticket</CardTitle>
+                  <CardTitle className="text-lg">{t('playerTicket.replyToTicket')}</CardTitle>
                   <CardDescription>
-                    Add a reply to this ticket. You can use markdown formatting.
+                    {t('playerTicket.replyToTicketDesc')}
                   </CardDescription>
                 </CardHeader>
                 <CardContent>
                   <div className="space-y-4">
                     <div className="space-y-2">
                       <div className="flex items-center justify-between">
-                        <Label htmlFor="reply">Reply</Label>
+                        <Label htmlFor="reply">{t('playerTicket.replyLabel')}</Label>
                         <Popover>
                           <PopoverTrigger asChild>
                             <Button variant="outline" size="sm" className="h-7">
                               <MessageSquare className="h-3 w-3 mr-1" />
-                              Formatting Help
+                              {t('playerTicket.formattingHelp')}
                             </Button>
                           </PopoverTrigger>
                           <PopoverContent className="w-80">
@@ -1449,7 +1445,7 @@ const PlayerTicket = () => {
                         id="reply"
                         value={newReply}
                         onChange={(e) => setNewReply(e.target.value)}
-                        placeholder="Type your reply here..."
+                        placeholder={t('playerTicket.replyPlaceholder')}
                         className="min-h-[100px]"
                       />
                     </div>
@@ -1475,12 +1471,12 @@ const PlayerTicket = () => {
                         {isSubmitting ? (
                           <>
                             <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                            Sending...
+                            {t('playerTicket.sending')}
                           </>
                         ) : (
                           <>
                             <Send className="mr-2 h-4 w-4" />
-                            Send Reply
+                            {t('playerTicket.sendReply')}
                           </>
                         )}
                       </Button>

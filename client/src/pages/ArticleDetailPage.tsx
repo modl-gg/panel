@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { useTranslation } from 'react-i18next';
 import { useRoute, Link } from 'wouter'; // Changed from react-router-dom to wouter
 import ReactMarkdown from 'react-markdown';
 import PageContainer from '@/components/layout/PageContainer'; // Corrected import
@@ -20,6 +21,7 @@ interface ArticleDetail {
 }
 
 const ArticleDetailPage: React.FC = () => {
+  const { t } = useTranslation();
   const [, params] = useRoute("/article/:articleSlug");
   const articleSlug = params?.articleSlug;
   const [article, setArticle] = useState<ArticleDetail | null>(null);
@@ -57,25 +59,25 @@ const ArticleDetailPage: React.FC = () => {
   }, [articleSlug]);
 
   if (isLoading) {
-    return <PageContainer><p>Loading article...</p></PageContainer>;
+    return <PageContainer><p>{t('article.loading')}</p></PageContainer>;
   }
 
   if (error) {
-    return <PageContainer><p>Error: {error}</p></PageContainer>;
+    return <PageContainer><p>{t('article.error', { message: error })}</p></PageContainer>;
   }
 
   if (!article) {
-    return <PageContainer><p>Article not found.</p></PageContainer>;
+    return <PageContainer><p>{t('article.notFound')}</p></PageContainer>;
   }
 
   return (
     <PageContainer>
       <div className="container mx-auto p-4">
         <div className="mb-6">
-          <Link href="/" className="text-primary hover:underline">&larr; Back to Home</Link>
+          <Link href="/" className="text-primary hover:underline">&larr; {t('article.backToHome')}</Link>
           {article.category && (
             <span className="ml-2 text-muted-foreground">
-              in <Link href={`/#${article.category.slug}`} className="text-primary hover:underline">{article.category.name}</Link> {/* Assuming category slug can be a hash on the main KB page */}
+              {t('article.in')} <Link href={`/#${article.category.slug}`} className="text-primary hover:underline">{article.category.name}</Link>
             </span>
           )}
         </div>
@@ -83,7 +85,7 @@ const ArticleDetailPage: React.FC = () => {
         <article className="prose lg:prose-xl max-w-none bg-card p-6 rounded-lg shadow prose-headings:text-foreground prose-p:text-foreground prose-strong:text-foreground prose-em:text-foreground prose-li:text-foreground prose-blockquote:text-foreground prose-code:text-foreground prose-pre:bg-muted prose-pre:text-foreground dark:prose-invert">
           <h1 className="text-3xl font-bold mb-4 text-foreground">{article.title}</h1>
           <div className="text-sm text-muted-foreground mb-4">
-            <span>Last updated: {new Date(article.updatedAt).toLocaleDateString()}</span>
+            <span>{t('article.lastUpdated')}: {new Date(article.updatedAt).toLocaleDateString()}</span>
           </div>
           <ReactMarkdown>{article.content}</ReactMarkdown>
         </article>

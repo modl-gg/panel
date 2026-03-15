@@ -26,7 +26,7 @@ export async function handleRateLimitResponse(response: Response, currentPath?: 
     const rateLimitData: RateLimitResponse = await response.json();
     
     // Dynamically import toast to show error
-    const { toast } = await import('@/hooks/use-toast');
+    const { toast } = await import('@modl-gg/shared-web/hooks/use-toast');
     
     // Build error message
     const errorMessage = rateLimitData.error || 'Too many requests. Please try again later.';
@@ -40,7 +40,7 @@ export async function handleRateLimitResponse(response: Response, currentPath?: 
   } catch (error) {
     console.error('Failed to parse rate limit response:', error);
     // Fallback: show basic toast
-    const { toast } = await import('@/hooks/use-toast');
+    const { toast } = await import('@modl-gg/shared-web/hooks/use-toast');
     toast({
       title: 'Rate limit exceeded',
       description: 'Too many requests. Please wait before trying again.',

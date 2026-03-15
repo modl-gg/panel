@@ -3,9 +3,11 @@ import { useLocation } from 'wouter';
 import PageContainer from '@/components/layout/PageContainer';
 import { useAuth } from '@/hooks/use-auth';
 import { useToast } from '@modl-gg/shared-web/hooks/use-toast';
+import { useTranslation } from 'react-i18next';
 
 const AcceptInvitationPage = () => {
-  const [status, setStatus] = useState('Verifying your invitation...');
+  const { t } = useTranslation();
+  const [status, setStatus] = useState('');
   const [, navigate] = useLocation();
   const { user, isLoading } = useAuth();
   const { toast } = useToast();
@@ -17,8 +19,8 @@ const AcceptInvitationPage = () => {
 
     if (user) {
       toast({
-        title: 'Already logged in',
-        description: 'You cannot accept an invitation while logged in.',
+        title: t('pages.acceptInvitation.alreadyLoggedInTitle'),
+        description: t('pages.acceptInvitation.alreadyLoggedInDesc'),
         variant: 'destructive',
       });
       navigate('/panel');
@@ -28,7 +30,7 @@ const AcceptInvitationPage = () => {
     const token = new URLSearchParams(window.location.search).get('token');
 
     if (!token) {
-      setStatus('This invitation link is invalid or has expired.');
+      setStatus(t('pages.acceptInvitation.invalidLink'));
       return;
     }
 
@@ -42,14 +44,14 @@ const AcceptInvitationPage = () => {
           body: JSON.stringify({ token })
         });
         if (response.ok) {
-          setStatus('Invitation accepted! Redirecting...');
+          setStatus(t('pages.acceptInvitation.accepted'));
           window.location.href = '/panel';
         } else {
           const errorData = await response.json();
-          setStatus(errorData.message || 'This invitation link is invalid or has expired.');
+          setStatus(errorData.message || t('pages.acceptInvitation.invalidLink'));
         }
       } catch (error) {
-        setStatus('An error occurred while trying to accept the invitation.');
+        setStatus(t('pages.acceptInvitation.error'));
       }
     };
 
@@ -60,8 +62,8 @@ const AcceptInvitationPage = () => {
     <PageContainer>
       <div className="flex items-center justify-center h-screen">
         <div className="text-center">
-          <h1 className="text-2xl font-bold mb-4">Accept Invitation</h1>
-          <p>{status}</p>
+          <h1 className="text-2xl font-bold mb-4">{t('pages.acceptInvitation.title')}</h1>
+          <p>{status || t('pages.acceptInvitation.verifying')}</p>
         </div>
       </div>
     </PageContainer>

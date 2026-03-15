@@ -1,4 +1,5 @@
 import React, { useState, useMemo } from 'react';
+import { useTranslation } from 'react-i18next';
 import { Button } from '@modl-gg/shared-web/components/ui/button';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@modl-gg/shared-web/components/ui/dialog';
 import { Input } from '@modl-gg/shared-web/components/ui/input';
@@ -27,6 +28,7 @@ const AssignMinecraftPlayerModal: React.FC<AssignMinecraftPlayerModalProps> = ({
   onClose,
   staffMember
 }) => {
+  const { t } = useTranslation();
   const [selectedPlayerUuid, setSelectedPlayerUuid] = useState<string>('');
   const [searchQuery, setSearchQuery] = useState<string>('');
   const { toast } = useToast();
@@ -57,8 +59,8 @@ const AssignMinecraftPlayerModal: React.FC<AssignMinecraftPlayerModalProps> = ({
 
     if (!selectedPlayerUuid) {
       toast({
-        title: 'No Player Selected',
-        description: 'Please select a Minecraft player to assign.',
+        title: t('settings.staff.noPlayerSelected'),
+        description: t('settings.staff.pleaseSelectPlayer'),
         variant: 'destructive'
       });
       return;
@@ -78,16 +80,16 @@ const AssignMinecraftPlayerModal: React.FC<AssignMinecraftPlayerModalProps> = ({
       });
 
       toast({
-        title: 'Player Assigned',
-        description: `${selectedPlayer.username} has been assigned to ${staffMember.username}.`
+        title: t('settings.staff.playerAssigned'),
+        description: t('settings.staff.playerAssignedDesc', { player: selectedPlayer.username, staff: staffMember.username })
       });
 
       onClose();
       setSelectedPlayerUuid('');
     } catch (error) {
       toast({
-        title: 'Assignment Failed',
-        description: error instanceof Error ? error.message : 'Failed to assign player',
+        title: t('settings.staff.assignmentFailed'),
+        description: error instanceof Error ? error.message : t('settings.staff.failedToAssignPlayer'),
         variant: 'destructive'
       });
     }
@@ -104,15 +106,15 @@ const AssignMinecraftPlayerModal: React.FC<AssignMinecraftPlayerModalProps> = ({
       });
 
       toast({
-        title: 'Assignment Cleared',
-        description: `Minecraft player assignment cleared for ${staffMember.username}.`
+        title: t('settings.staff.assignmentCleared'),
+        description: t('settings.staff.assignmentClearedDesc', { staff: staffMember.username })
       });
 
       onClose();
     } catch (error) {
       toast({
-        title: 'Clear Failed',
-        description: error instanceof Error ? error.message : 'Failed to clear assignment',
+        title: t('settings.staff.clearFailed'),
+        description: error instanceof Error ? error.message : t('settings.staff.failedToClearAssignment'),
         variant: 'destructive'
       });
     }
@@ -130,9 +132,9 @@ const AssignMinecraftPlayerModal: React.FC<AssignMinecraftPlayerModalProps> = ({
     <Dialog open={isOpen} onOpenChange={handleClose}>
       <DialogContent className="sm:max-w-2xl max-h-[80vh] flex flex-col">
         <DialogHeader>
-          <DialogTitle>Assign Minecraft Player</DialogTitle>
+          <DialogTitle>{t('settings.staff.assignMinecraftPlayer')}</DialogTitle>
           <DialogDescription>
-            Assign a Minecraft player to <strong>{staffMember.email}</strong> ({staffMember.role})
+            {t('settings.staff.assignMinecraftPlayerDesc', { email: staffMember.email, role: staffMember.role })}
           </DialogDescription>
         </DialogHeader>
 
@@ -143,7 +145,7 @@ const AssignMinecraftPlayerModal: React.FC<AssignMinecraftPlayerModalProps> = ({
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-2">
                   <User className="h-4 w-4" />
-                  <span className="text-sm font-medium">Currently Assigned:</span>
+                  <span className="text-sm font-medium">{t('settings.staff.currentlyAssigned')}</span>
                 </div>
                 <Button
                   variant="outline"
@@ -152,7 +154,7 @@ const AssignMinecraftPlayerModal: React.FC<AssignMinecraftPlayerModalProps> = ({
                   disabled={assignPlayerMutation.isPending}
                 >
                   <X className="h-3 w-3 mr-1" />
-                  Clear
+                  {t('settings.staff.clearAssignment')}
                 </Button>
               </div>
               <div className="mt-1">
@@ -165,13 +167,13 @@ const AssignMinecraftPlayerModal: React.FC<AssignMinecraftPlayerModalProps> = ({
 
           {/* Player Search */}
           <div className="space-y-3">
-            <label className="text-sm font-medium">Search and Select Minecraft Player</label>
+            <label className="text-sm font-medium">{t('settings.staff.searchAndSelectPlayer')}</label>
             
             {/* Search Input */}
             <div className="relative">
               <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
               <Input
-                placeholder="Search by username or UUID..."
+                placeholder={t('settings.staff.searchByUsernameOrUuid')}
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
                 className="pl-9"
@@ -183,27 +185,27 @@ const AssignMinecraftPlayerModal: React.FC<AssignMinecraftPlayerModalProps> = ({
             {!searchQuery || searchQuery.trim().length < 2 ? (
               <div className="text-center py-12 text-sm text-muted-foreground">
                 <Search className="h-8 w-8 mx-auto mb-2 opacity-50" />
-                <p>Start typing to search for players</p>
-                <p className="text-xs mt-1">Search by username or UUID (minimum 2 characters)</p>
+                <p>{t('settings.staff.startTypingToSearch')}</p>
+                <p className="text-xs mt-1">{t('settings.staff.searchMinChars')}</p>
               </div>
             ) : playersLoading ? (
               <div className="flex items-center justify-center py-8">
                 <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
-                <span className="ml-2 text-sm text-muted-foreground">Searching players...</span>
+                <span className="ml-2 text-sm text-muted-foreground">{t('settings.staff.searchingPlayers')}</span>
               </div>
             ) : availablePlayers.length === 0 ? (
               <div className="text-center py-8 text-sm text-muted-foreground">
                 {searchResults && searchResults.length > 0 ? (
-                  <>All matching players are already assigned to staff members.</>
+                  <>{t('settings.staff.allPlayersAssigned')}</>
                 ) : (
-                  <>No players found matching "{searchQuery}"</>
+                  <>{t('settings.staff.noPlayersFound', { query: searchQuery })}</>
                 )}
               </div>
             ) : (
               <div className="border rounded-md max-h-[300px] overflow-y-auto">
                 <div className="p-2">
                   <div className="px-2 py-1 text-xs text-muted-foreground mb-2">
-                    Found {availablePlayers.length} available player{availablePlayers.length !== 1 ? 's' : ''}
+                    {t('settings.staff.foundAvailablePlayers', { count: availablePlayers.length })}
                   </div>
                   {availablePlayers.map((player: any) => {
                     const playerUuid = player.uuid || player.minecraftUuid;
@@ -219,7 +221,7 @@ const AssignMinecraftPlayerModal: React.FC<AssignMinecraftPlayerModalProps> = ({
                             <User className="h-4 w-4 text-white" />
                           </div>
                           <div className="flex flex-col items-start min-w-0 flex-1">
-                            <span className="font-medium text-sm truncate w-full">{player.username || 'Unknown'}</span>
+                            <span className="font-medium text-sm truncate w-full">{player.username || t('settings.staff.unknownPlayer')}</span>
                             <span className="text-xs text-muted-foreground truncate w-full">{playerUuid}</span>
                           </div>
                           {selectedPlayerUuid === playerUuid && (
@@ -235,25 +237,25 @@ const AssignMinecraftPlayerModal: React.FC<AssignMinecraftPlayerModalProps> = ({
           </div>
 
           <div className="text-xs text-muted-foreground">
-            Only Minecraft players that are not currently assigned to other staff members are shown.
+            {t('settings.staff.onlyUnassignedPlayersShown')}
           </div>
         </div>
 
         <DialogFooter>
           <Button variant="outline" onClick={handleClose} disabled={assignPlayerMutation.isPending}>
-            Cancel
+            {t('common.cancel')}
           </Button>
-          <Button 
-            onClick={handleAssign} 
+          <Button
+            onClick={handleAssign}
             disabled={!selectedPlayerUuid || assignPlayerMutation.isPending}
           >
             {assignPlayerMutation.isPending ? (
               <>
                 <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                Assigning...
+                {t('settings.staff.assigning')}
               </>
             ) : (
-              'Assign Player'
+              t('settings.staff.assignPlayer')
             )}
           </Button>
         </DialogFooter>

@@ -6,6 +6,7 @@ import { UserCheck, Clock, User, MessageSquare, X } from 'lucide-react';
 import { useLocation } from 'wouter';
 import { formatTimeAgo } from '@/utils/date-utils';
 import { stripMarkdown } from '@/utils/markdown-utils';
+import { useTranslation } from 'react-i18next';
 
 const INITIAL_VISIBLE = 2;
 const LOAD_MORE_COUNT = 2;
@@ -33,6 +34,7 @@ export function AssignedTicketUpdatesSection({
   loading,
   onDismissTicket,
 }: AssignedTicketUpdatesSectionProps) {
+  const { t } = useTranslation();
   const [, setLocation] = useLocation();
   const [visibleCount, setVisibleCount] = useState(INITIAL_VISIBLE);
 
@@ -49,7 +51,7 @@ export function AssignedTicketUpdatesSection({
   };
 
   const truncateContent = (content: string | undefined | null, maxLength: number = 100) => {
-    if (!content) return 'No content available';
+    if (!content) return t('dashboard.assignedTickets.noContent');
     const contentStr = stripMarkdown(String(content));
     if (contentStr.length <= maxLength) return contentStr;
     return contentStr.substring(0, maxLength) + '...';
@@ -61,7 +63,7 @@ export function AssignedTicketUpdatesSection({
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
             <UserCheck className="h-5 w-5" />
-            Assigned Ticket Updates
+            {t('dashboard.assignedTickets.title')}
           </CardTitle>
         </CardHeader>
         <CardContent>
@@ -89,10 +91,10 @@ export function AssignedTicketUpdatesSection({
         <div className="flex justify-between items-center">
           <CardTitle className="flex items-center gap-2">
             <UserCheck className="h-5 w-5" />
-            Assigned Ticket Updates
+            {t('dashboard.assignedTickets.title')}
             {hasUpdates && (
               <Badge variant="destructive" className="text-xs">
-                {updates.length} new
+                {t('dashboard.assignedTickets.newCount', { count: updates.length })}
               </Badge>
             )}
           </CardTitle>
@@ -101,11 +103,11 @@ export function AssignedTicketUpdatesSection({
       <CardContent>
         <div className="space-y-4">
           <div>
-            <h4 className="text-sm font-medium mb-3">Recent Replies on Your Tickets</h4>
+            <h4 className="text-sm font-medium mb-3">{t('dashboard.assignedTickets.recentReplies')}</h4>
             <div className="space-y-3">
               {updates.length === 0 ? (
                 <div className="text-center py-4 text-muted-foreground text-sm">
-                  No recent updates to your assigned tickets
+                  {t('dashboard.assignedTickets.empty')}
                 </div>
               ) : (
                 <>
@@ -129,7 +131,7 @@ export function AssignedTicketUpdatesSection({
                                 : 'bg-blue-500/20 text-blue-500'
                             }`}
                           >
-                            {update.isStaffReply ? 'STAFF' : 'PLAYER'}
+                            {update.isStaffReply ? t('dashboard.assignedTickets.staff') : t('dashboard.assignedTickets.player')}
                           </Badge>
                           <Button
                             variant="ghost"
@@ -153,7 +155,7 @@ export function AssignedTicketUpdatesSection({
                       {update.additionalCount && update.additionalCount > 0 && (
                         <div className="mb-2">
                           <Badge variant="outline" className="text-xs">
-                            and {update.additionalCount} more
+                            {t('dashboard.assignedTickets.andMore', { count: update.additionalCount })}
                           </Badge>
                         </div>
                       )}
@@ -171,7 +173,7 @@ export function AssignedTicketUpdatesSection({
                         </div>
                         <div className="flex items-center gap-1">
                           <MessageSquare className="h-3 w-3" />
-                          <span>Reply</span>
+                          <span>{t('dashboard.assignedTickets.reply')}</span>
                         </div>
                       </div>
                     </div>
@@ -183,7 +185,7 @@ export function AssignedTicketUpdatesSection({
                       className="w-full text-muted-foreground hover:text-foreground"
                       onClick={() => setVisibleCount((prev) => prev + LOAD_MORE_COUNT)}
                     >
-                      Load {Math.min(updates.length - visibleCount, LOAD_MORE_COUNT)} more
+                      {t('dashboard.assignedTickets.loadMore', { count: Math.min(updates.length - visibleCount, LOAD_MORE_COUNT) })}
                     </Button>
                   )}
                 </>

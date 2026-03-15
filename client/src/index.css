@@ -3,9 +3,9 @@
 @tailwind utilities;
 
 :root {
-  --background: 0 0% 100%;
+  --background: 220 6% 95%;
   --foreground: 222.2 84% 4.9%;
-  --muted: 210 40% 96%;
+  --muted: 220 14% 92%;
   --muted-foreground: 215.4 16.3% 46.9%;
   --popover: 0 0% 100%;
   --popover-foreground: 222.2 84% 4.9%;
@@ -15,7 +15,7 @@
   --input: 214.3 31.8% 91.4%;
   --primary: 207 90% 54%;
   --primary-foreground: 210 40% 98%;
-  --secondary: 210 40% 96%;
+  --secondary: 215 16% 94%;
   --secondary-foreground: 222.2 84% 4.9%;
   --accent: 273 68% 59%;
   --accent-foreground: 210 40% 98%;
@@ -28,7 +28,21 @@
   --info: 199 89% 48%;
   --info-foreground: 210 40% 98%;
   --ring: 222.2 84% 4.9%;
-  --radius: 0.5rem;
+  --radius: 0.75rem;
+  --radius-card: 1rem;
+  --radius-card-lg: 1.25rem;
+  --radius-pill: 9999px;
+
+  /* Surface depth layers: page(95%) → card(100%) → surface-2(95%) → surface-3(91%) */
+  --surface-1: 0 0% 100%;
+  --surface-2: 220 6% 95%;
+  --surface-3: 220 6% 91%;
+
+  /* Shadow hierarchy: inner → card → hover → elevated */
+  --shadow-card-inner: 0 1px 3px 0 rgb(0 0 0 / 0.06), 0 1px 2px -1px rgb(0 0 0 / 0.06);
+  --shadow-card: 0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1);
+  --shadow-card-hover: 0 10px 15px -3px rgb(0 0 0 / 0.1), 0 4px 6px -4px rgb(0 0 0 / 0.1);
+  --shadow-card-elevated: 0 20px 25px -5px rgb(0 0 0 / 0.1), 0 8px 10px -6px rgb(0 0 0 / 0.1);
   
   --chart-1: 207 90% 54%;
   --chart-2: 273 68% 59%;
@@ -47,19 +61,29 @@
 }
 
 .dark {
-  --background: 240 10% 3.9%;
+  --background: 240 10% 5.5%;
   --foreground: 0 0% 98%;
-  --muted: 240 3.7% 15.9%;
+  --muted: 240 3.7% 17%;
   --muted-foreground: 240 5% 64.9%;
-  --popover: 240 10% 3.9%;
+  --popover: 240 10% 13%;
   --popover-foreground: 0 0% 98%;
-  --card: 240 10% 3.9%;
+  --card: 240 10% 11%;
   --card-foreground: 0 0% 98%;
-  --border: 240 3.7% 15.9%;
-  --input: 240 3.7% 15.9%;
+  --border: 240 3.7% 18%;
+
+  /* Surface depth layers: page(5.5%) → card/s1(11%) → s2(16%) → s3(21%) */
+  --surface-1: 240 10% 11%;
+  --surface-2: 240 8% 16%;
+  --surface-3: 240 6% 21%;
+
+  --shadow-card-inner: 0 1px 3px 0 rgb(0 0 0 / 0.2), 0 1px 2px -1px rgb(0 0 0 / 0.15);
+  --shadow-card: 0 4px 6px -1px rgb(0 0 0 / 0.3), 0 2px 4px -2px rgb(0 0 0 / 0.25);
+  --shadow-card-hover: 0 10px 15px -3px rgb(0 0 0 / 0.35), 0 4px 6px -4px rgb(0 0 0 / 0.3);
+  --shadow-card-elevated: 0 20px 25px -5px rgb(0 0 0 / 0.4), 0 8px 10px -6px rgb(0 0 0 / 0.35);
+  --input: 240 3.7% 18%;
   --primary: 207 90% 54%;
   --primary-foreground: 211 100% 99%;
-  --secondary: 240 3.7% 15.9%;
+  --secondary: 240 3.7% 17%;
   --secondary-foreground: 0 0% 98%;
   --accent: 273 68% 59%;
   --accent-foreground: 0 0% 98%;
@@ -141,6 +165,22 @@
 }
 
 @layer components {
+  /* Pill button utility */
+  .btn-pill {
+    border-radius: var(--radius-pill) !important;
+    padding-left: 1.5rem;
+    padding-right: 1.5rem;
+  }
+
+  /* Thicker progress bar override */
+  [role="progressbar"] {
+    height: 0.5rem !important;
+    border-radius: var(--radius-pill) !important;
+  }
+  [role="progressbar"] > div {
+    border-radius: var(--radius-pill) !important;
+  }
+
   /* Thin scrollbar variant for compact areas */
   .scrollbar-thin::-webkit-scrollbar {
     width: 6px;
@@ -237,7 +277,7 @@
   }
   
   .resizable-window {
-    @apply fixed rounded-lg shadow-lg overflow-hidden z-50 resize;
+    @apply fixed rounded-card shadow-card-elevated overflow-hidden z-50 resize;
     min-width: 600px;
     min-height: 400px;
     max-width: 90vw;
@@ -301,4 +341,11 @@
   .dark .prose hr {
     @apply border-border;
   }
+}
+
+@layer utilities {
+  .shadow-card-inner { box-shadow: var(--shadow-card-inner); }
+  .shadow-card { box-shadow: var(--shadow-card); }
+  .shadow-card-hover { box-shadow: var(--shadow-card-hover); }
+  .shadow-card-elevated { box-shadow: var(--shadow-card-elevated); }
 }

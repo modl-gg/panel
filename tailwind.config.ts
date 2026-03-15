@@ -13,6 +13,9 @@ export default {
         lg: "var(--radius)",
         md: "calc(var(--radius) - 2px)",
         sm: "calc(var(--radius) - 4px)",
+        card: "var(--radius-card)",
+        "card-lg": "var(--radius-card-lg)",
+        pill: "var(--radius-pill)",
       },
       colors: {
         background: "hsl(var(--background))",
@@ -56,6 +59,11 @@ export default {
         info: {
           DEFAULT: "hsl(var(--info))",
           foreground: "hsl(var(--info-foreground))",
+        },
+        surface: {
+          1: "hsl(var(--surface-1))",
+          2: "hsl(var(--surface-2))",
+          3: "hsl(var(--surface-3))",
         },
         border: "hsl(var(--border))",
         input: "hsl(var(--input))",

@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
+import { useTranslation } from 'react-i18next';
 import { useRoute, useLocation } from 'wouter';
 import {
   ArrowLeft, TriangleAlert, Ban, RefreshCcw, Search, LockOpen, History,
@@ -12,13 +13,14 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@modl-gg/shared-web/co
 import { usePlayer, useApplyPunishment, useSettings, usePunishmentTypes, usePlayerTickets, usePlayerAllTickets, useModifyPunishment, useAddPunishmentNote, useModifyPunishmentTickets, useLinkedAccounts, useFindLinkedAccounts, useLinkedBansForPunishment } from '@/hooks/use-data';
 import { ClickablePlayer } from '@/components/ui/clickable-player';
 import { useAuth } from '@/hooks/use-auth';
-import { useIsMobile } from '@/hooks/use-mobile';
-import { toast } from '@/hooks/use-toast';
+import { useIsMobile } from '@modl-gg/shared-web/hooks/use-mobile';
+import { toast } from '@modl-gg/shared-web/hooks/use-toast';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@modl-gg/shared-web/components/ui/select';
 import PlayerPunishment, { PlayerPunishmentData } from '@/components/ui/player-punishment';
 import MediaUpload from '@/components/MediaUpload';
 import { formatDateWithTime } from '@/utils/date-utils';
 import { apiFetch } from '@/lib/api';
+import { formatTicketStatusLabel, normalizeTicketStatus } from '@/lib/ticket-enums';
 
 interface PlayerInfo {
   username: string;
@@ -178,6 +180,7 @@ const LinkedBansDisplayDetail = ({ punishmentId, onPlayerClick }: { punishmentId
 };
 
 const PlayerDetailPage = () => {
+  const { t } = useTranslation();
   const [_, params] = useRoute('/panel/player/:uuid');
   const [location, navigate] = useLocation();
   const playerId = params?.uuid || '';
@@ -671,10 +674,11 @@ const PlayerDetailPage = () => {
           region: player.latestIPData?.region || player.region || 'Unknown',
           country: player.latestIPData?.country || player.country || 'Unknown',
           firstJoined: firstJoined,
-          lastOnline: getPlayerData(player, 'isOnline') ? 'Online' : 
-            (getPlayerData(player, 'lastDisconnect') ? 
-              formatDateWithTime(getPlayerData(player, 'lastDisconnect')) : 
-              'Unknown'),
+          lastOnline: getPlayerData(player, 'isOnline') ? 'Online' :
+            (getPlayerData(player, 'lastLogout') || getPlayerData(player, 'lastDisconnect') ?
+              formatDateWithTime(getPlayerData(player, 'lastLogout') || getPlayerData(player, 'lastDisconnect')) :
+              (player.ipAddresses?.length ? formatDateWithTime(player.ipAddresses[player.ipAddresses.length - 1].logins?.slice(-1)[0] || player.ipAddresses[player.ipAddresses.length - 1].firstLogin) :
+              'Unknown')),
           lastServer: player.lastServer || 'Unknown',
           playtime: (() => {
             const totalSeconds = getPlayerData(player, 'totalPlaytimeSeconds') || player.totalPlaytimeSeconds || 0;
@@ -792,8 +796,8 @@ const PlayerDetailPage = () => {
   const handleApplyPunishment = async () => {
     if (!playerInfo.selectedPunishmentCategory) {
       toast({
-        title: "Missing information",
-        description: "Please select a punishment type",
+        title: t('player.missingInfo'),
+        description: t('player.selectPunishmentType'),
         variant: "destructive"
       });
       return;
@@ -965,6 +969,7 @@ const PlayerDetailPage = () => {
       // Prepare punishment data in the format expected by the server
       const punishmentData: { [key: string]: any } = {
         issuerName: user?.username || 'Admin',
+        issuerId: user?.id,
         typeOrdinal: typeOrdinal,
         notes: notes,
         evidence: evidence,
@@ -985,8 +990,8 @@ const PlayerDetailPage = () => {
       
       // Show success message
       toast({
-        title: "Punishment applied",
-        description: `Successfully applied ${playerInfo.selectedPunishmentCategory} to ${playerInfo.username}`
+        title: t('player.punishmentApplied'),
+        description: t('player.punishmentAppliedDesc', { type: playerInfo.selectedPunishmentCategory, username: playerInfo.username })
       });
       
       // Reset the punishment form
@@ -1014,8 +1019,8 @@ const PlayerDetailPage = () => {
     } catch (error) {
       console.error('Error applying punishment:', error);
       toast({
-        title: "Failed to apply punishment",
-        description: error instanceof Error ? error.message : "An unknown error occurred",
+        title: t('player.punishmentFailed'),
+        description: error instanceof Error ? error.message : t('player.unknownError'),
         variant: "destructive"
       });
     } finally {
@@ -1036,7 +1041,7 @@ const PlayerDetailPage = () => {
           >
             <ArrowLeft className="h-5 w-5" />
           </Button>
-          <h1 className="text-2xl font-bold">Loading Player...</h1>
+          <h1 className="text-2xl font-bold">{t('player.loading')}</h1>
         </div>
         <div className="flex items-center justify-center h-64">
           <Loader2 className="h-8 w-8 animate-spin text-primary" />
@@ -1058,11 +1063,11 @@ const PlayerDetailPage = () => {
           >
             <ArrowLeft className="h-5 w-5" />
           </Button>
-          <h1 className="text-2xl font-bold">Player Not Found</h1>
+          <h1 className="text-2xl font-bold">{t('player.notFound')}</h1>
         </div>
         <div className="flex flex-col items-center justify-center h-64">
-          <p className="text-destructive">Could not find player data.</p>
-          <Button onClick={() => navigate("/panel/lookup")} className="mt-4">Return to Lookup</Button>
+          <p className="text-destructive">{t('player.notFoundDesc')}</p>
+          <Button onClick={() => navigate("/panel/lookup")} className="mt-4">{t('player.returnToLookup')}</Button>
         </div>
       </div>
     );
@@ -1079,7 +1084,7 @@ const PlayerDetailPage = () => {
         >
           <ArrowLeft className="h-5 w-5" />
         </Button>
-        <h1 className="text-2xl font-bold">Player Details</h1>
+        <h1 className="text-2xl font-bold">{t('player.details')}</h1>
       </div>
 
       <div className="space-y-4">
@@ -1119,9 +1124,9 @@ const PlayerDetailPage = () => {
                     "bg-success/10 text-success border-success/20" : 
                     "bg-muted/50 text-muted-foreground border-muted/30"
                   }>
-                    {playerInfo.status === 'Online' ? 
-                      "Online" : 
-                      "Offline"
+                    {playerInfo.status === 'Online' ?
+                      t('player.online') :
+                      t('player.offline')
                     }
                   </Badge>
                   <Badge variant="outline" className={
@@ -1131,7 +1136,7 @@ const PlayerDetailPage = () => {
                       "bg-warning/10 text-warning border-warning/20" : 
                       "bg-destructive/10 text-destructive border-destructive/20"
                   }>
-                    Social: {playerInfo.social.toLowerCase()}
+                    {t('player.social')}: {playerInfo.social.toLowerCase()}
                   </Badge>
                   <Badge variant="outline" className={
                     playerInfo.gameplay.toLowerCase() === 'low' ? 
@@ -1140,7 +1145,7 @@ const PlayerDetailPage = () => {
                       "bg-warning/10 text-warning border-warning/20" : 
                       "bg-destructive/10 text-destructive border-destructive/20"
                   }>
-                    Gameplay: {playerInfo.gameplay.toLowerCase()}
+                    {t('player.gameplay')}: {playerInfo.gameplay.toLowerCase()}
                   </Badge>
                   {playerInfo.punishmentStatus && (
                     <Badge variant="outline" className={
@@ -1148,40 +1153,40 @@ const PlayerDetailPage = () => {
                         ? "bg-destructive/10 text-destructive border-destructive/20"
                         : "bg-warning/10 text-warning border-warning/20"
                     }>
-                      {playerInfo.punishmentStatus === 'banned' ? 'Currently banned' : 'Currently muted'}
+                      {playerInfo.punishmentStatus === 'banned' ? t('player.currentlyBanned') : t('player.currentlyMuted')}
                     </Badge>
                   )}
                 </div>
                 
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-x-4 gap-y-2 mt-4 text-sm">
                   <div>
-                    <span className="text-muted-foreground">Region:</span>
+                    <span className="text-muted-foreground">{t('player.region')}:</span>
                     <span className="ml-1">{playerInfo.region}</span>
                     {playerInfo.region && playerInfo.region !== 'Unknown' && (
-                      <span className="text-xs text-muted-foreground ml-1">(from latest IP)</span>
+                      <span className="text-xs text-muted-foreground ml-1">{t('player.fromLatestIp')}</span>
                     )}
                   </div>
                   <div>
-                    <span className="text-muted-foreground">Country:</span>
+                    <span className="text-muted-foreground">{t('player.country')}:</span>
                     <span className="ml-1">{playerInfo.country}</span>
                     {playerInfo.country && playerInfo.country !== 'Unknown' && (
-                      <span className="text-xs text-muted-foreground ml-1">(from latest IP)</span>
+                      <span className="text-xs text-muted-foreground ml-1">{t('player.fromLatestIp')}</span>
                     )}
                   </div>
                   <div>
-                    <span className="text-muted-foreground">First Join:</span>
+                    <span className="text-muted-foreground">{t('player.firstJoin')}:</span>
                     <span className="ml-1">{playerInfo.firstJoined}</span>
                   </div>
                   <div>
-                    <span className="text-muted-foreground">Last Join:</span>
+                    <span className="text-muted-foreground">{t('player.lastJoin')}:</span>
                     <span className="ml-1">{playerInfo.lastOnline}</span>
                   </div>
                   <div>
-                    <span className="text-muted-foreground">Playtime:</span>
+                    <span className="text-muted-foreground">{t('player.playtime')}:</span>
                     <span className="ml-1">{playerInfo.playtime}</span>
                   </div>
                   <div>
-                    <span className="text-muted-foreground">{playerInfo.status === 'Online' ? 'Current Server:' : 'Last Server:'}</span>
+                    <span className="text-muted-foreground">{playerInfo.status === 'Online' ? t('player.currentServer') : t('player.lastServer')}:</span>
                     <span className="ml-1">{playerInfo.lastServer}</span>
                   </div>
                 </div>
@@ -1197,45 +1202,45 @@ const PlayerDetailPage = () => {
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="history">History</SelectItem>
-                <SelectItem value="linked">Connected Accounts</SelectItem>
-                <SelectItem value="notes">Notes</SelectItem>
-                <SelectItem value="tickets">Tickets</SelectItem>
-                <SelectItem value="names">Previous Names</SelectItem>
-                <SelectItem value="punishment">Punish</SelectItem>
+                <SelectItem value="history">{t('player.tabHistory')}</SelectItem>
+                <SelectItem value="linked">{t('player.tabConnected')}</SelectItem>
+                <SelectItem value="notes">{t('player.tabNotes')}</SelectItem>
+                <SelectItem value="tickets">{t('player.tabTickets')}</SelectItem>
+                <SelectItem value="names">{t('player.tabNames')}</SelectItem>
+                <SelectItem value="punishment">{t('player.tabPunish')}</SelectItem>
               </SelectContent>
             </Select>
           ) : (
             <TabsList className="grid grid-cols-6 gap-1 px-1">
               <TabsTrigger value="history" className="text-xs py-2">
                 <History className="h-3.5 w-3.5 mr-1.5" />
-                History
+                {t('player.tabHistory')}
               </TabsTrigger>
               <TabsTrigger value="linked" className="text-xs py-2">
                 <Link2 className="h-3.5 w-3.5 mr-1.5 flex-shrink-0" />
-                Connected
+                {t('player.tabConnectedShort')}
               </TabsTrigger>
               <TabsTrigger value="notes" className="text-xs py-2">
                 <StickyNote className="h-3.5 w-3.5 mr-1.5" />
-                Notes
+                {t('player.tabNotes')}
               </TabsTrigger>
               <TabsTrigger value="tickets" className="text-xs py-2">
                 <Ticket className="h-3.5 w-3.5 mr-1.5" />
-                Tickets
+                {t('player.tabTickets')}
               </TabsTrigger>
               <TabsTrigger value="names" className="text-xs py-2">
                 <UserRound className="h-3.5 w-3.5 mr-1.5" />
-                Names
+                {t('player.tabNames')}
               </TabsTrigger>
               <TabsTrigger value="punishment" className="text-xs py-2">
                 <Shield className="h-3.5 w-3.5 mr-1.5" />
-                Punish
+                {t('player.tabPunish')}
               </TabsTrigger>
             </TabsList>
           )}
           
           <TabsContent value="history" className="space-y-2 mx-1 mt-3">
-            <h4 className="font-medium">Player History</h4>
+            <h4 className="font-medium">{t('player.historyTitle')}</h4>
             <div className="space-y-2">
               {playerInfo.warnings.length > 0 ? playerInfo.warnings.map((warning, index) => {
                 const isExpanded = expandedPunishments.has(warning.id || `warning-${index}`);
@@ -1269,7 +1274,7 @@ const PlayerDetailPage = () => {
                             if (!warning.started) {
                               return (
                                 <Badge variant="outline" className="text-xs bg-yellow-100 dark:bg-yellow-900 text-yellow-800 dark:text-yellow-200 border-yellow-300 dark:border-yellow-700">
-                                  Unstarted
+                                  {t('player.unstarted')}
                                 </Badge>
                               );
                             }
@@ -1281,7 +1286,7 @@ const PlayerDetailPage = () => {
                             if (isInactive) {
                               return (
                                 <Badge variant="outline" className="text-xs bg-gray-100 dark:bg-gray-800 text-gray-800 dark:text-gray-200 border-gray-300 dark:border-gray-600">
-                                  Inactive
+                                  {t('status.inactive')}
                                 </Badge>
                               );
                             }
@@ -1289,7 +1294,7 @@ const PlayerDetailPage = () => {
                             // Punishment is active
                             return (
                               <Badge variant="outline" className="text-xs bg-green-100 dark:bg-green-900 text-green-800 dark:text-green-200 border-green-300 dark:border-green-700">
-                                Active
+                                {t('status.active')}
                               </Badge>
                             );
                           })()}
@@ -1839,6 +1844,7 @@ const PlayerDetailPage = () => {
                                       evidenceData = {
                                         text: playerInfo.uploadedEvidenceFile.fileName,
                                         issuerName: user?.username || 'Admin',
+                                        issuerId: user?.id,
                                         date: new Date().toISOString(),
                                         type: 'file',
                                         fileUrl: playerInfo.uploadedEvidenceFile.url,
@@ -1851,6 +1857,7 @@ const PlayerDetailPage = () => {
                                       evidenceData = {
                                         text: playerInfo.newPunishmentEvidence.trim(),
                                         issuerName: user?.username || 'Admin',
+                                        issuerId: user?.id,
                                         date: new Date().toISOString()
                                       };
                                     }
@@ -2094,7 +2101,7 @@ const PlayerDetailPage = () => {
                                           <span className="truncate mr-2">
                                             <Ticket className="h-3 w-3 inline mr-1" />
                                             {ticketId.slice(-8)}
-                                            {ticket && ` - ${(ticket as any).category || (ticket as any).type || ''}`}
+                                            {ticket && ` - ${(ticket as any).type || ''}`}
                                             {ticket && (
                                               <Badge variant="outline" className="ml-1 text-[10px] py-0 px-1">
                                                 {(ticket as any).locked ? 'Closed' : 'Open'}
@@ -2161,7 +2168,7 @@ const PlayerDetailPage = () => {
                                           <span className="truncate mr-2">
                                             <Ticket className="h-3 w-3 inline mr-1" />
                                             {ticketId.slice(-8)}
-                                            {` - ${ticket.category || ticket.type || ''}`}
+                                            {` - ${ticket.type || ''}`}
                                           </span>
                                           <Plus className="h-3 w-3 text-green-500 flex-shrink-0" />
                                         </div>
@@ -2403,6 +2410,7 @@ const PlayerDetailPage = () => {
                         const noteObject = {
                           text: playerInfo.newNote.trim(),
                           issuerName: actualUsername,
+                          issuerId: user?.id,
                           date: new Date().toISOString()
                         };
 
@@ -2474,50 +2482,55 @@ const PlayerDetailPage = () => {
                   <span className="text-sm">Loading tickets...</span>
                 </div>
               ) : playerTickets && playerTickets.length > 0 ? (
-                playerTickets.map((ticket: any) => (
-                  <div 
-                    key={ticket._id} 
-                    className="bg-muted/30 p-3 rounded-lg hover:bg-muted/40 transition-colors cursor-pointer"
-                    onClick={() => handleTicketClick(ticket._id)}
-                  >
-                    <div className="flex justify-between items-start">
-                      <div className="flex-1">
-                        <div className="flex items-center gap-2 mb-1">
-                          <Badge variant="outline" className={`text-xs ${
-                            ticket.status === 'Open' ? 'bg-green-100 dark:bg-green-900 text-green-800 dark:text-green-200 border-green-300 dark:border-green-700' :
-                            ticket.status === 'Closed' ? 'bg-gray-100 dark:bg-gray-800 text-gray-800 dark:text-gray-200 border-gray-300 dark:border-gray-600' :
-                            'bg-red-100 dark:bg-red-900 text-red-800 dark:text-red-200 border-red-300 dark:border-red-700'
-                          }`}>
-                            {ticket.status?.replace('_', ' ').toUpperCase() || 'UNKNOWN'}
+                playerTickets.map((ticket: any) => {
+                  const normalizedStatus = normalizeTicketStatus(ticket.status);
+                  const statusLabel = formatTicketStatusLabel(ticket.status);
+
+                  return (
+                    <div 
+                      key={ticket._id} 
+                      className="bg-muted/30 p-3 rounded-lg hover:bg-muted/40 transition-colors cursor-pointer"
+                      onClick={() => handleTicketClick(ticket._id)}
+                    >
+                      <div className="flex justify-between items-start">
+                        <div className="flex-1">
+                          <div className="flex items-center gap-2 mb-1">
+                            <Badge variant="outline" className={`text-xs ${
+                              normalizedStatus === 'open' ? 'bg-green-100 dark:bg-green-900 text-green-800 dark:text-green-200 border-green-300 dark:border-green-700' :
+                              normalizedStatus === 'closed' ? 'bg-gray-100 dark:bg-gray-800 text-gray-800 dark:text-gray-200 border-gray-300 dark:border-gray-600' :
+                              'bg-red-100 dark:bg-red-900 text-red-800 dark:text-red-200 border-red-300 dark:border-red-700'
+                            }`}>
+                              {statusLabel}
+                            </Badge>
+                            <Badge variant="outline" className="text-xs bg-blue-50 dark:bg-blue-900 text-blue-900 dark:text-blue-100 border-blue-200 dark:border-blue-700">
+                              {ticket.category || ticket.type || 'General'}
+                            </Badge>
+                          </div>
+                          <div className="text-sm">
+                            <p className="font-medium">{ticket.subject || 'No subject'}</p>
+                            <p className="text-muted-foreground mt-1 line-clamp-2">
+                              {ticket.description || ticket.message || 'No description available'}
+                            </p>
+                          </div>
+                          <div className="text-xs text-muted-foreground mt-2">
+                            Created: {ticket.createdAt ? formatDateWithTime(ticket.createdAt) : 'Unknown'}
+                            {(() => {
+                              const assigneeDisplay = Array.isArray(ticket.assignedTo)
+                                ? ticket.assignedTo.join(', ')
+                                : ticket.assignedTo;
+                              return assigneeDisplay ? ` • Assigned to: ${assigneeDisplay}` : '';
+                            })()}
+                          </div>
+                        </div>
+                        <div className="ml-2">
+                          <Badge variant="outline" className="text-xs">
+                            #{ticket._id?.slice(-6) || 'N/A'}
                           </Badge>
-                          <Badge variant="outline" className="text-xs bg-blue-50 dark:bg-blue-900 text-blue-900 dark:text-blue-100 border-blue-200 dark:border-blue-700">
-                            {ticket.category || 'General'}
-                          </Badge>
                         </div>
-                        <div className="text-sm">
-                          <p className="font-medium">{ticket.subject || 'No subject'}</p>
-                          <p className="text-muted-foreground mt-1 line-clamp-2">
-                            {ticket.description || ticket.message || 'No description available'}
-                          </p>
-                        </div>
-                        <div className="text-xs text-muted-foreground mt-2">
-                          Created: {ticket.createdAt ? formatDateWithTime(ticket.createdAt) : 'Unknown'}
-                          {(() => {
-                            const assigneeDisplay = Array.isArray(ticket.assignedTo)
-                              ? ticket.assignedTo.join(', ')
-                              : ticket.assignedTo;
-                            return assigneeDisplay ? ` • Assigned to: ${assigneeDisplay}` : '';
-                          })()}
-                        </div>
-                      </div>
-                      <div className="ml-2">
-                        <Badge variant="outline" className="text-xs">
-                          #{ticket._id?.slice(-6) || 'N/A'}
-                        </Badge>
                       </div>
                     </div>
-                  </div>
-                ))
+                  );
+                })
               ) : (
                 <div className="bg-muted/30 p-3 rounded-lg">
                   <p className="text-sm text-muted-foreground">No tickets found for this player.</p>

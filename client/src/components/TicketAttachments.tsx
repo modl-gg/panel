@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { Paperclip, Download, Eye, Trash2, FileText, Image, Video, File } from 'lucide-react';
+import { useTranslation } from 'react-i18next';
 import { Button } from '@modl-gg/shared-web/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@modl-gg/shared-web/components/ui/card';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@modl-gg/shared-web/components/ui/dialog';
@@ -40,6 +41,7 @@ export function TicketAttachments({
   compact = false,
   publicMode = false
 }: TicketAttachmentsProps & { compact?: boolean }) {
+  const { t } = useTranslation();
   const [attachments, setAttachments] = useState<TicketAttachment[]>(existingAttachments);
   const { config, deleteMedia } = useMediaUpload();
   const { toast } = useToast();
@@ -64,8 +66,8 @@ export function TicketAttachments({
     onAttachmentsUpdate?.(updatedAttachments);
 
     toast({
-      title: "Attachment Uploaded",
-      description: `${fileName} has been uploaded successfully.`,
+      title: t('upload.attachmentUploaded'),
+      description: t('upload.uploadedSuccess', { name: fileName }),
     });
   };
 
@@ -77,8 +79,8 @@ export function TicketAttachments({
       onAttachmentsUpdate?.(updatedAttachments);
 
       toast({
-        title: "Attachment Removed",
-        description: `${attachment.fileName} has been removed from this session.`,
+        title: t('upload.attachmentRemoved'),
+        description: t('upload.attachmentRemovedDesc', { name: attachment.fileName }),
       });
       return;
     }
@@ -90,13 +92,13 @@ export function TicketAttachments({
       onAttachmentsUpdate?.(updatedAttachments);
 
       toast({
-        title: "Attachment Deleted",
-        description: `${attachment.fileName} has been deleted.`,
+        title: t('upload.attachmentDeleted'),
+        description: t('upload.deletedSuccess', { name: attachment.fileName }),
       });
     } catch (error) {
       toast({
-        title: "Delete Failed",
-        description: "Failed to delete attachment.",
+        title: t('upload.deleteFailed'),
+        description: t('upload.deleteAttachmentFailed'),
         variant: "destructive",
       });
     }
@@ -139,7 +141,7 @@ export function TicketAttachments({
     return (
       <div className="p-4 bg-muted/50 rounded-lg">
         <p className="text-sm text-muted-foreground">
-          File attachments are not available. Media storage is not configured.
+          {t('upload.attachmentsNotAvailable')}
         </p>
       </div>
     );
@@ -162,7 +164,7 @@ export function TicketAttachments({
 
       {attachments.length > 0 && (
         <div className={compact ? "flex items-center gap-2 flex-wrap" : "space-y-2"}>
-          {!compact && showTitle && <h4 className="text-sm font-medium">Attachments</h4>}
+          {!compact && showTitle && <h4 className="text-sm font-medium">{t('upload.attachments')}</h4>}
           {compact ? (
             <>
               {attachments.map((attachment) => {
@@ -243,12 +245,12 @@ export function TicketAttachments({
                         <div className="p-8 text-center">
                           <File className="h-12 w-12 mx-auto mb-4 text-muted-foreground" />
                           <p className="text-sm text-muted-foreground mb-4">
-                            Preview not available for this file type
+                            {t('upload.previewNotAvailable')}
                           </p>
                           <Button asChild>
                             <a href={attachment.url} target="_blank" rel="noopener noreferrer">
                               <Download className="h-4 w-4 mr-2" />
-                              Download File
+                              {t('upload.downloadFile')}
                             </a>
                           </Button>
                         </div>
@@ -289,7 +291,7 @@ export function TicketAttachments({
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
             <Paperclip className="h-5 w-5" />
-            Attachments
+            {t('upload.attachments')}
             {attachments.length > 0 && (
               <Badge variant="secondary">{attachments.length}</Badge>
             )}
