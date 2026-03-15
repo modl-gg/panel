@@ -287,6 +287,7 @@ const fetchStorageData = async () => {
         else if (file.key?.includes('/tickets/') || file.key?.includes('/ticket/')) fileType = 'ticket';
         else if (file.key?.includes('/logs/')) fileType = 'logs';
         else if (file.key?.includes('/backup/')) fileType = 'backup';
+        else if (file.key?.endsWith('.modlreplay') || file.key?.includes('/replays/')) fileType = 'replay';
         
         return {
           id: file.key || `file-${Date.now()}-${Math.random()}`,
