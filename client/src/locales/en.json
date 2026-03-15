@@ -750,6 +750,7 @@
       "typeEvidence": "Evidence",
       "typeLogs": "Logs",
       "typeBackups": "Backups",
+      "typeReplays": "Replays",
       "sortBy": "Sort By",
       "size": "Size",
       "dateModified": "Date Modified",

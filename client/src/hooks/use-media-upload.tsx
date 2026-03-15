@@ -11,6 +11,7 @@ export interface MediaUploadConfig {
     appeals: string[];
     articles: string[];
     'server-icons': string[];
+    replays: string[];
   };
   fileSizeLimits: {
     evidence: number;
@@ -18,6 +19,7 @@ export interface MediaUploadConfig {
     appeals: number;
     articles: number;
     'server-icons': number;
+    replays: number;
   };
 }
 
@@ -91,14 +93,16 @@ async function fetchMediaConfig(): Promise<MediaUploadConfig> {
           tickets: [],
           appeals: [],
           articles: [],
-          'server-icons': []
+          'server-icons': [],
+          replays: []
         },
         fileSizeLimits: {
           evidence: 0,
           tickets: 0,
           appeals: 0,
           articles: 0,
-          'server-icons': 0
+          'server-icons': 0,
+          replays: 0
         }
       };
     }

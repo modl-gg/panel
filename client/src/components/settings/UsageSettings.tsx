@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
-import { HardDrive, Search, Trash2, Download, FolderOpen, Calendar, AlertCircle, Settings, CreditCard, Brain } from 'lucide-react';
+import { HardDrive, Search, Trash2, Download, FolderOpen, Calendar, AlertCircle, Settings, CreditCard, Brain, Play } from 'lucide-react';
 import { getApiUrl, getCurrentDomain, apiFetch } from '@/lib/api';
 import { Button } from '@modl-gg/shared-web/components/ui/button';
 import { Input } from '@modl-gg/shared-web/components/ui/input';
@@ -20,7 +20,7 @@ interface StorageFile {
   name: string;
   path: string;
   size: number;
-  type: 'ticket' | 'evidence' | 'logs' | 'backup' | 'other';
+  type: 'ticket' | 'evidence' | 'logs' | 'backup' | 'replay' | 'other';
   createdAt: string;
   lastModified: string;
   url: string;
@@ -35,6 +35,7 @@ interface StorageUsage {
     evidence: number;
     logs: number;
     backup: number;
+    replay: number;
     other: number;
   };
   quota?: {
@@ -171,12 +172,14 @@ const fetchStorageData = async () => {
         evidence: usageData.byType.evidence ?? 0,
         logs: usageData.byType.logs ?? 0,
         backup: usageData.byType.backup ?? 0,
+        replay: usageData.byType.replay ?? 0,
         other: usageData.byType.other ?? 0
       } : {
         ticket: 0,
         evidence: 0,
         logs: 0,
         backup: 0,
+        replay: 0,
         other: cdnUsedBytes
       };
 
@@ -370,6 +373,7 @@ const fetchStorageData = async () => {
       case 'evidence': return 'bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-300';
       case 'logs': return 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-300';
       case 'backup': return 'bg-purple-100 text-purple-800 dark:bg-purple-900/30 dark:text-purple-300';
+      case 'replay': return 'bg-orange-100 text-orange-800 dark:bg-orange-900/30 dark:text-orange-300';
       default: return 'bg-gray-100 text-gray-800 dark:bg-gray-800 dark:text-gray-300';
     }
   };
@@ -384,6 +388,7 @@ const fetchStorageData = async () => {
     if (['zip', 'rar', '7z', 'tar', 'gz'].includes(ext)) return 'Archive';
     if (['json', 'xml', 'yml', 'yaml', 'csv'].includes(ext)) return 'Data';
     if (['log'].includes(ext)) return 'Log';
+    if (['modlreplay'].includes(ext)) return 'Replay';
     return 'File';
   };
 
@@ -397,6 +402,7 @@ const fetchStorageData = async () => {
       case 'Archive': return 'bg-amber-100 text-amber-800 dark:bg-amber-900/30 dark:text-amber-300';
       case 'Data': return 'bg-teal-100 text-teal-800 dark:bg-teal-900/30 dark:text-teal-300';
       case 'Log': return 'bg-slate-100 text-slate-800 dark:bg-slate-800 dark:text-slate-300';
+      case 'Replay': return 'bg-orange-100 text-orange-800 dark:bg-orange-900/30 dark:text-orange-300';
       default: return 'bg-gray-100 text-gray-800 dark:bg-gray-800 dark:text-gray-300';
     }
   };
@@ -407,6 +413,7 @@ const fetchStorageData = async () => {
       case 'evidence': return <AlertCircle className="h-4 w-4" />;
       case 'logs': return <Calendar className="h-4 w-4" />;
       case 'backup': return <Download className="h-4 w-4" />;
+      case 'replay': return <Play className="h-4 w-4" />;
       default: return <HardDrive className="h-4 w-4" />;
     }
   };
@@ -850,6 +857,7 @@ const fetchStorageData = async () => {
                   <SelectItem value="evidence">{t('settings.usage.typeEvidence')}</SelectItem>
                   <SelectItem value="logs">{t('settings.usage.typeLogs')}</SelectItem>
                   <SelectItem value="backup">{t('settings.usage.typeBackups')}</SelectItem>
+                  <SelectItem value="replay">{t('settings.usage.typeReplays')}</SelectItem>
                   <SelectItem value="other">{t('common.other')}</SelectItem>
                 </SelectContent>
               </Select>
