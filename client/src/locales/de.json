@@ -750,6 +750,7 @@
       "typeEvidence": "Beweise",
       "typeLogs": "Protokolle",
       "typeBackups": "Sicherungen",
+      "typeReplays": "Wiederholungen",
       "sortBy": "Sortieren nach",
       "size": "Größe",
       "dateModified": "Änderungsdatum",
