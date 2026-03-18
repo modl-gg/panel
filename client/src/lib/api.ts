@@ -19,8 +19,11 @@ export function getApiUrl(path: string): string {
   return `${API_BASE_URL}${normalizedPath}`;
 }
 
+const CURRENT_DOMAIN: string =
+  import.meta.env.VITE_TENANT_DOMAIN?.trim() || window.location.hostname;
+
 export function getCurrentDomain(): string {
-  return window.location.hostname;
+  return CURRENT_DOMAIN;
 }
 
 export function getApiBaseUrl(): string {
@@ -121,12 +124,7 @@ export async function apiUpload(
   options?: Omit<RequestOptions, 'body'>
 ): Promise<Response> {
   const fullUrl = getApiUrl(path);
-  const headers = new Headers(options?.headers);
-
-  // Always include the server domain for multi-tenancy
-  if (!headers.has('X-Server-Domain')) {
-    headers.set('X-Server-Domain', getCurrentDomain());
-  }
+  const headers = createHeaders(options);
 
   const response = await fetch(fullUrl, {
     ...options,
