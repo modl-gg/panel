@@ -8,7 +8,7 @@ interface PageContainerProps {
 const PageContainer = ({ children, title }: PageContainerProps) => {
   // Responsive container that adapts to mobile devices
   return (
-    <section className="transition-all duration-300 bg-card shadow-card rounded-card-lg border-transparent dark:border dark:border-border/20
+    <section className="transition-all duration-300
       md:p-8 md:my-6 md:mx-8
       p-4 my-0 mx-0">
       {title && (

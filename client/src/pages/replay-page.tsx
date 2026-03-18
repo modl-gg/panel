@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { ReplayViewer } from '@modl-gg/replay-viewer';
-import { fetchReplayMetadata, type ReplayMetadata } from '@/lib/replay-api';
+import { fetchReplayMetadata, submitReplayLabels, type ReplayMetadata } from '@/lib/replay-api';
 import { Loader2 } from 'lucide-react';
 
 const ATLAS_BASE = import.meta.env.VITE_REPLAY_ATLAS_BASE_URL || '/atlas';
@@ -51,6 +51,10 @@ export default function ReplayPage() {
 
   if (!metadata) return null;
 
+  const handleLabelSubmit = async (labels: Array<{ uuid: string; playerName: string; verdict: string; confidence: number; cheats: unknown[]; notes: string }>) => {
+    await submitReplayLabels(metadata.replayId, labels);
+  };
+
   return (
     <div style={{ width: '100vw', height: '100vh' }}>
       <ReplayViewer
@@ -59,6 +63,7 @@ export default function ReplayPage() {
         atlasUrl={`${ATLAS_BASE}/${metadata.mcVersion}/atlas.png`}
         atlasMappingUrl={`${ATLAS_BASE}/${metadata.mcVersion}/atlas-data.json`}
         replayId={metadata.replayId}
+        onLabelSubmit={handleLabelSubmit}
         onError={(err) => setError(err.message)}
       />
     </div>
