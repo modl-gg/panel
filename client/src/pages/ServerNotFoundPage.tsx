@@ -2,10 +2,11 @@ import { AlertCircle, Home, ArrowLeft } from 'lucide-react';
 import { Button } from '@modl-gg/shared-web/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@modl-gg/shared-web/components/ui/card';
 import { useTranslation } from 'react-i18next';
+import { getCurrentDomain } from '@/lib/api';
 
 export default function ServerNotFoundPage() {
   const { t } = useTranslation();
-  const domain = window.location.hostname;
+  const domain = getCurrentDomain();
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-background p-4">

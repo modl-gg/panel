@@ -9,7 +9,7 @@ import { Alert, AlertDescription, AlertTitle } from '@modl-gg/shared-web/compone
 import { Badge } from '@modl-gg/shared-web/components/ui/badge';
 import { Separator } from '@modl-gg/shared-web/components/ui/separator';
 import { useToast } from '@modl-gg/shared-web/hooks/use-toast';
-import { apiFetch } from '@/lib/api';
+import { apiFetch, getCurrentDomain } from '@/lib/api';
 import { useAuth } from '@/hooks/use-auth';
 import { usePermissions } from '@/hooks/use-permissions';
 
@@ -37,9 +37,9 @@ const DomainSettings: React.FC = () => {
   const { user } = useAuth();
   const { hasPermission } = usePermissions();
 
-  // Get current subdomain from window location
+  // Get current subdomain from tenant domain
   useEffect(() => {
-    const hostname = window.location.hostname;
+    const hostname = getCurrentDomain();
     const parts = hostname.split('.');
     if (parts.length > 2) {
       setCurrentDomain(parts[0]);
@@ -53,11 +53,7 @@ const DomainSettings: React.FC = () => {
 
   const loadDomainConfig = async () => {
     try {
-      const { getApiUrl, getCurrentDomain } = await import('@/lib/api');
-      const response = await fetch(getApiUrl('/v1/panel/settings/domain'), {
-        credentials: 'include',
-        headers: { 'X-Server-Domain': getCurrentDomain() }
-      });
+      const response = await apiFetch('/v1/panel/settings/domain');
       if (response.ok) {
         const data = await response.json();
         if (data.customDomain) {
@@ -117,8 +113,7 @@ const DomainSettings: React.FC = () => {
 
     setIsLoading(true);
     try {
-      const csrfFetch = apiFetch;
-      const response = await csrfFetch('/v1/panel/settings/domain', {
+      const response = await apiFetch('/v1/panel/settings/domain', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -175,8 +170,7 @@ const DomainSettings: React.FC = () => {
 
     setIsVerifying(true);
     try {
-      const csrfFetch = apiFetch;
-      const response = await csrfFetch('/v1/panel/settings/domain/verify', {
+      const response = await apiFetch('/v1/panel/settings/domain/verify', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -244,8 +238,7 @@ const DomainSettings: React.FC = () => {
 
     setIsLoading(true);
     try {
-      const csrfFetch = apiFetch;
-      const response = await csrfFetch('/v1/panel/settings/domain', {
+      const response = await apiFetch('/v1/panel/settings/domain', {
         method: 'DELETE',
       });
 
@@ -355,8 +348,7 @@ const DomainSettings: React.FC = () => {
             </Alert>
           )}
 
-          <div>
-            <br></br>
+          <div className="mt-4">
             <p className="font-medium">{t('settings.domain.cloudflareRequired')}</p>
             <p className="text-sm text-muted-foreground">
               {t('settings.domain.cloudflareRequiredDesc')}

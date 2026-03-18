@@ -9,6 +9,17 @@ export interface ReplayMetadata {
   status: string;
 }
 
+export async function submitReplayLabels(replayId: string, labels: unknown[]): Promise<void> {
+  const response = await apiFetch(`/v1/public/replays/${encodeURIComponent(replayId)}/label`, {
+    method: 'POST',
+    body: { players: labels },
+  });
+
+  if (!response.ok) {
+    throw new Error(`Failed to submit labels: ${response.status}`);
+  }
+}
+
 export async function fetchReplayMetadata(replayId: string): Promise<ReplayMetadata> {
   const response = await apiFetch(`/v1/public/replays/${encodeURIComponent(replayId)}`);
 
