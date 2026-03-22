@@ -448,7 +448,7 @@ const PlayerTicket = () => {
 
     return (
       <div className="min-h-screen bg-background flex items-center justify-center p-4">
-        <Card className="w-full max-w-md">
+        <Card className="w-full max-w-md shadow-card">
           <CardHeader>
             <CardTitle>{t('playerTicket.verificationRequired')}</CardTitle>
             <CardDescription>
@@ -1230,7 +1230,7 @@ const PlayerTicket = () => {
         
         {/* Check if the ticket is unfinished and needs a form */}
         {ticketDetails.status === 'Unfinished' ? (
-          <Card className="mb-6">
+          <Card className="mb-6 shadow-card">
             <CardHeader>
               {(ticketDetails.type === 'staff' || ticketDetails.type === 'application') ? (
                 <>
@@ -1417,7 +1417,7 @@ const PlayerTicket = () => {
 
             {/* Reply section - only show if ticket is Open and not locked */}
             {ticketDetails.status === 'Open' && !ticketDetails.locked && (
-              <Card>
+              <Card className="shadow-card">
                 <CardHeader>
                   <CardTitle className="text-lg">{t('playerTicket.replyToTicket')}</CardTitle>
                   <CardDescription>

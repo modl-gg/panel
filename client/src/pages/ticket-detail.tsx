@@ -5,6 +5,7 @@ import { Popover, PopoverContent, PopoverTrigger } from '@modl-gg/shared-web/com
 import { queryClient } from '@/lib/queryClient';
 import { getAvatarUrl } from '@/lib/api';
 import { useAuth } from '@/hooks/use-auth';
+import { usePermissions } from '@/hooks/use-permissions';
 import { formatDate, formatDateWithRelative } from '../utils/date-utils';
 import {
   MessageSquare,
@@ -319,6 +320,7 @@ const TicketDetail = () => {
   const [activeTab, setActiveTab] = useState('conversation');
   const location = useLocation();
   const { user } = useAuth();
+  const { hasPermission } = usePermissions();
   const { toast } = useToast();
   const { t } = useTranslation();
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -406,6 +408,21 @@ const TicketDetail = () => {
 
     return categories;
   }, [punishmentTypesData]);
+
+  // Filter punishment types by user's punishment.apply.* permissions
+  const filteredPunishmentTypesByCategory = useMemo(() => {
+    const filterByPermission = (types: any[]) =>
+      types.filter((type: any) => {
+        const permId = 'punishment.apply.' + type.name.toLowerCase().replace(/ /g, '-');
+        return hasPermission(permId);
+      });
+
+    return {
+      Administrative: filterByPermission(punishmentTypesByCategory.Administrative),
+      Social: filterByPermission(punishmentTypesByCategory.Social),
+      Gameplay: filterByPermission(punishmentTypesByCategory.Gameplay),
+    };
+  }, [punishmentTypesByCategory, hasPermission]);
 
   // Get current punishment type from punishment data
   const getCurrentPunishmentType = useMemo(() => (punishmentData: any) => {
@@ -1915,7 +1932,7 @@ const TicketDetail = () => {
               const replayId = extractReplayId(ticketData.replayUrl);
               if (!replayId) return null;
               return (
-                <Card className="mb-4">
+                <Card className="mb-4 shadow-card">
                   <CardContent className="py-3">
                     <div className="flex items-center gap-3">
                       <Video className="h-5 w-5 text-indigo-400" />
@@ -1941,7 +1958,7 @@ const TicketDetail = () => {
 
             {/* Chat Messages Section for Chat Reports */}
             {ticketDetails.category === 'Chat Report' && ticketData?.chatMessages && ticketData.chatMessages.length > 0 && (
-              <Card className="mb-4">
+              <Card className="mb-4 shadow-card">
                 <CardHeader className="pb-3">
                   <CardTitle className="text-base flex items-center gap-2">
                     <MessageSquare className="h-4 w-4" />
@@ -2504,7 +2521,7 @@ const TicketDetail = () => {
                             onApply={async (data: PlayerPunishmentData) => {
                               return handleApplyPunishmentFromTicket(data);
                             }}
-                            punishmentTypesByCategory={punishmentTypesByCategory}
+                            punishmentTypesByCategory={filteredPunishmentTypesByCategory}
                             isLoading={false}
                             compact={false}
                           />

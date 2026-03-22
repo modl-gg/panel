@@ -59,7 +59,7 @@ export function AssignedTicketUpdatesSection({
 
   if (loading) {
     return (
-      <Card>
+      <Card className="shadow-card">
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
             <UserCheck className="h-5 w-5" />
@@ -86,7 +86,7 @@ export function AssignedTicketUpdatesSection({
   const hasUpdates = updates.length > 0;
 
   return (
-    <Card>
+    <Card className="shadow-card">
       <CardHeader>
         <div className="flex justify-between items-center">
           <CardTitle className="flex items-center gap-2">

@@ -845,7 +845,7 @@ const SubmitTicketPage = () => {
             </div>
           </div>
 
-          <Card className="mb-6">
+          <Card className="mb-6 shadow-card">
             <CardHeader>
               {!urlType && (
                 <Button
@@ -875,7 +875,7 @@ const SubmitTicketPage = () => {
   // Type selection
   return (
     <div className="min-h-screen bg-background flex items-center justify-center p-4">
-      <Card className="w-full max-w-lg">
+      <Card className="w-full max-w-lg shadow-card">
         <CardHeader className="text-center">
           <CardTitle>{t('submitTicket.submitATicket')}</CardTitle>
           <CardDescription>

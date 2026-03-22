@@ -56,7 +56,7 @@ export function RecentTicketsSection({ tickets, loading }: RecentTicketsSectionP
 
   if (loading) {
     return (
-      <Card>
+      <Card className="shadow-card">
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
             <Ticket className="h-5 w-5" />
@@ -81,7 +81,7 @@ export function RecentTicketsSection({ tickets, loading }: RecentTicketsSectionP
   }
 
   return (
-    <Card>
+    <Card className="shadow-card">
       <CardHeader>
         <CardTitle className="flex items-center gap-2">
           <Ticket className="h-5 w-5" />

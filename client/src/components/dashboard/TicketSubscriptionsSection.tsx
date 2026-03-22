@@ -76,7 +76,7 @@ export function TicketSubscriptionsSection({
 
   if (loading) {
     return (
-      <Card>
+      <Card className="shadow-card">
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
             <Bell className="h-5 w-5" />
@@ -104,7 +104,7 @@ export function TicketSubscriptionsSection({
   const hasUnreadUpdates = updates.length > 0;
 
   return (
-    <Card>
+    <Card className="shadow-card">
       <CardHeader>
         <div className="flex justify-between items-center">
           <CardTitle className="flex items-center gap-2">

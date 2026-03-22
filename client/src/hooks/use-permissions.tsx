@@ -1,4 +1,4 @@
-import { useMemo } from 'react';
+import { useMemo, useCallback } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { useAuth } from './use-auth';
 import { buildRoleHierarchy, canModifyRole, canRemoveUser, canAssignMinecraftPlayer } from '@/utils/role-hierarchy';
@@ -155,24 +155,24 @@ export function usePermissions() {
   }, [user, serverPermissions]);
 
   // Check if user has a specific permission (with hierarchical matching)
-  const hasPermission = (permission: string): boolean => {
+  const hasPermission = useCallback((permission: string): boolean => {
     if (!user) return false;
     return userPermissions.some(p => p === permission || permission.startsWith(p + '.'));
-  };
+  }, [user, userPermissions]);
 
   // Check if user has all required permissions
-  const hasAllPermissions = (permissions: string[]): boolean => {
+  const hasAllPermissions = useCallback((permissions: string[]): boolean => {
     if (!user) return false;
     if (!permissions || !Array.isArray(permissions)) return false; // Defensive check
     return permissions.every(permission => hasPermission(permission));
-  };
+  }, [user, hasPermission]);
 
   // Check if user has any of the required permissions
-  const hasAnyPermission = (permissions: string[]): boolean => {
+  const hasAnyPermission = useCallback((permissions: string[]): boolean => {
     if (!user) return false;
     if (!permissions || !Array.isArray(permissions)) return false; // Defensive check
     return permissions.some(permission => hasPermission(permission));
-  };
+  }, [user, hasPermission]);
 
   // Check if user can access a specific settings tab
   const canAccessSettingsTab = (tabName: keyof typeof SETTINGS_PERMISSIONS): boolean => {

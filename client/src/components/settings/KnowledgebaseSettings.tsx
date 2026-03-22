@@ -329,7 +329,7 @@ const KnowledgebaseSettings: React.FC = () => {
       const response = await csrfFetch('/v1/panel/knowledgebase/categories/reorder', {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(data),
+        body: JSON.stringify({ ids: data.orderedCategoryIds }),
       });
       if (!response.ok) {
         const errorData = await response.json().catch(() => ({ message: 'Failed to reorder categories' }));
@@ -482,7 +482,7 @@ const KnowledgebaseSettings: React.FC = () => {
       const response = await csrfFetch(`/v1/panel/knowledgebase/categories/${data.categoryId}/articles/reorder`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ orderedArticleIds: data.orderedArticleIds }),
+        body: JSON.stringify({ ids: data.orderedArticleIds }),
       });
       if (!response.ok) {
         const errorData = await response.json().catch(() => ({ message: 'Failed to reorder articles' }));

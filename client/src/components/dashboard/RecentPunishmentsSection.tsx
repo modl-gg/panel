@@ -78,7 +78,7 @@ export function RecentPunishmentsSection({ punishments, loading }: RecentPunishm
 
   if (loading) {
     return (
-      <Card>
+      <Card className="shadow-card">
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
             <Shield className="h-5 w-5" />
@@ -103,7 +103,7 @@ export function RecentPunishmentsSection({ punishments, loading }: RecentPunishm
   }
 
   return (
-    <Card>
+    <Card className="shadow-card">
       <CardHeader>
         <CardTitle className="flex items-center gap-2">
           <Shield className="h-5 w-5" />

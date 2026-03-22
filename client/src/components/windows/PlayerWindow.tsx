@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
   Eye, TriangleAlert, Ban, Search, LockOpen, History,
@@ -13,6 +13,7 @@ import ResizableWindow from '@/components/layout/ResizableWindow';
 import { usePlayer, useApplyPunishment, useSettings, usePunishmentTypes, usePlayerTickets, usePlayerAllTickets, useModifyPunishment, useAddPunishmentNote, useModifyPunishmentTickets, useLinkedAccounts, useFindLinkedAccounts, useLinkedBansForPunishment } from '@/hooks/use-data';
 import { ClickablePlayer } from '@/components/ui/clickable-player';
 import { useAuth } from '@/hooks/use-auth';
+import { usePermissions } from '@/hooks/use-permissions';
 import { toast } from '@modl-gg/shared-web/hooks/use-toast';
 import PlayerPunishment, { PlayerPunishmentData } from '@/components/ui/player-punishment';
 import MediaUpload from '@/components/MediaUpload';
@@ -220,8 +221,9 @@ const PlayerWindow = ({ playerId, isOpen, onClose, initialPosition }: PlayerWind
     return severity.toLowerCase() === 'low' ? 'lenient' : severity;
   };
 
-  // Get current authenticated user
+  // Get current authenticated user and permissions
   const { user } = useAuth();
+  const { hasPermission } = usePermissions();
   const [, setLocation] = useLocation();
     // Initialize the applyPunishment mutation hook
   const applyPunishment = useApplyPunishment();
@@ -753,6 +755,21 @@ const PlayerWindow = ({ playerId, isOpen, onClose, initialPosition }: PlayerWind
       }
     }
   }, [punishmentTypesData]);
+
+  // Filter punishment types by user's punishment.apply.* permissions
+  const filteredPunishmentTypesByCategory = useMemo(() => {
+    const filterByPermission = (types: PunishmentType[]) =>
+      types.filter(type => {
+        const permId = 'punishment.apply.' + type.name.toLowerCase().replace(/ /g, '-');
+        return hasPermission(permId);
+      });
+
+    return {
+      Administrative: filterByPermission(punishmentTypesByCategory.Administrative),
+      Social: filterByPermission(punishmentTypesByCategory.Social),
+      Gameplay: filterByPermission(punishmentTypesByCategory.Gameplay),
+    };
+  }, [punishmentTypesByCategory, hasPermission]);
 
   // Calculate player status based on punishments and settings
   const calculatePlayerStatus = (punishments: any[], punishmentTypes: PunishmentType[], statusThresholds: any) => {
@@ -3082,7 +3099,7 @@ const PlayerWindow = ({ playerId, isOpen, onClose, initialPosition }: PlayerWind
                 // Use the existing handleApplyPunishment logic
                 return handleApplyPunishment();
               }}
-              punishmentTypesByCategory={punishmentTypesByCategory}
+              punishmentTypesByCategory={filteredPunishmentTypesByCategory}
               isLoading={isLoadingSettings || isLoadingPunishmentTypes}
               compact={false}
               availableTickets={(playerTickets || []).map((t: any) => ({

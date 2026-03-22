@@ -1044,7 +1044,7 @@ const AppealsPage = () => {
           </p>
         </div>
 
-        <Card>
+        <Card className="shadow-card">
           <CardContent className="pt-6">
             <Form {...searchForm}>
               <form onSubmit={searchForm.handleSubmit(onSearchSubmit)} className="space-y-4">
@@ -1270,7 +1270,7 @@ const AppealsPage = () => {
                     
                     {/* Reply input */}
                     {!isTerminalAppealStatus(appealInfo.status) && (
-                      <Card className="mt-4">
+                      <Card className="mt-4 shadow-card">
                         <CardHeader>
                           <CardTitle className="text-lg">{t('appeals.replyToAppeal')}</CardTitle>
                           <CardDescription>
@@ -1379,7 +1379,7 @@ const AppealsPage = () => {
                 
                 {/* Dynamic Appeal Form */}
                 {banInfo.isAppealable !== false && (
-                  <Card className="mb-6">
+                  <Card className="mb-6 shadow-card">
                     <CardHeader>
                       <CardTitle>{t('appeals.submitAppeal')}</CardTitle>
                       <CardDescription>

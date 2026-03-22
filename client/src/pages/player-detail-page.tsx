@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useRoute, useLocation } from 'wouter';
 import {
@@ -13,6 +13,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@modl-gg/shared-web/co
 import { usePlayer, useApplyPunishment, useSettings, usePunishmentTypes, usePlayerTickets, usePlayerAllTickets, useModifyPunishment, useAddPunishmentNote, useModifyPunishmentTickets, useLinkedAccounts, useFindLinkedAccounts, useLinkedBansForPunishment } from '@/hooks/use-data';
 import { ClickablePlayer } from '@/components/ui/clickable-player';
 import { useAuth } from '@/hooks/use-auth';
+import { usePermissions } from '@/hooks/use-permissions';
 import { useIsMobile } from '@modl-gg/shared-web/hooks/use-mobile';
 import { toast } from '@modl-gg/shared-web/hooks/use-toast';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@modl-gg/shared-web/components/ui/select';
@@ -194,9 +195,10 @@ const PlayerDetailPage = () => {
   const [isApplyingPunishment, setIsApplyingPunishment] = useState(false);
   const [expandedPunishments, setExpandedPunishments] = useState<Set<string>>(new Set());
 
-  // Get current authenticated user
+  // Get current authenticated user and permissions
   const { user } = useAuth();
-  
+  const { hasPermission } = usePermissions();
+
   // Initialize the mutation hooks
   const applyPunishment = useApplyPunishment();
   const modifyPunishment = useModifyPunishment();
@@ -310,6 +312,21 @@ const PlayerDetailPage = () => {
       }
     }
   }, [punishmentTypesData]);
+
+  // Filter punishment types by user's punishment.apply.* permissions
+  const filteredPunishmentTypesByCategory = useMemo(() => {
+    const filterByPermission = (types: PunishmentType[]) =>
+      types.filter(type => {
+        const permId = 'punishment.apply.' + type.name.toLowerCase().replace(/ /g, '-');
+        return hasPermission(permId);
+      });
+
+    return {
+      Administrative: filterByPermission(punishmentTypesByCategory.Administrative),
+      Social: filterByPermission(punishmentTypesByCategory.Social),
+      Gameplay: filterByPermission(punishmentTypesByCategory.Gameplay),
+    };
+  }, [punishmentTypesByCategory, hasPermission]);
 
   // Calculate player status based on punishments and settings
   const calculatePlayerStatus = (punishments: any[], punishmentTypes: PunishmentType[], statusThresholds: any) => {
@@ -2604,7 +2621,7 @@ const PlayerDetailPage = () => {
                 // Use the existing handleApplyPunishment logic
                 await handleApplyPunishment();
               }}
-              punishmentTypesByCategory={punishmentTypesByCategory}
+              punishmentTypesByCategory={filteredPunishmentTypesByCategory}
               isLoading={isApplyingPunishment || isLoadingSettings || isLoadingPunishmentTypes}
               compact={false}
               availableTickets={(playerTickets || []).map((t: any) => ({

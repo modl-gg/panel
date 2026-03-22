@@ -393,7 +393,7 @@ const Tickets = () => {
     return (
       <Card
         key={ticket.id}
-        className={`mb-3 ${isSelected ? 'ring-2 ring-primary' : ''}`}
+        className={`mb-3 shadow-card ${isSelected ? 'ring-2 ring-primary' : ''}`}
         onClick={() => handleNavigateToTicket(ticket.id)}
       >
         <CardContent className="p-4">
@@ -599,7 +599,7 @@ const Tickets = () => {
         )}
 
         {/* Ticket list */}
-        <Card>
+        <Card className="shadow-card">
           <CardContent className="p-0">
             {isLoading ? (
               <div className="flex justify-center items-center py-12">

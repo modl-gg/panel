@@ -160,9 +160,8 @@ const AuthPage = () => {
             </p>
           </div>
 
-          <Card>
-            <br></br>
-            <CardContent>
+          <Card className="shadow-card">
+            <CardContent className="pt-6">
               <Form {...loginForm}>
                 <form onSubmit={loginForm.handleSubmit(onLoginSubmit)} className="space-y-4">
                   {loginStep === 'email' ? (

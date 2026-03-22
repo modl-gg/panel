@@ -306,7 +306,7 @@ const Sidebar = () => {
   return (
     <div className="fixed ml-4 top-1/4 left-4 z-40">
       {/* Server Logo */}
-      <div className="bg-sidebar/90 p-2 rounded-2xl shadow-lg w-16 mb-3 transition-all duration-200 hover:shadow-xl hover:bg-sidebar/95" 
+      <div className="bg-sidebar/90 p-2 rounded-2xl shadow-card-elevated border border-sidebar-border/50 w-16 mb-3 transition-all duration-200 hover:shadow-card-elevated hover:bg-sidebar/95"
         style={{ backdropFilter: "blur(12px)" }}>
         <img 
           src={publicSettings?.panelIconUrl || serverLogo} 
@@ -318,8 +318,8 @@ const Sidebar = () => {
       <div className="flex">
         {/* Fixed-width sidebar navigation (always visible) */}
         <aside
-          className="bg-sidebar/90 h-auto rounded-2xl w-16 overflow-hidden"
-          style={{ 
+          className="bg-sidebar/90 h-auto rounded-2xl w-16 overflow-hidden shadow-card-elevated border border-sidebar-border/50"
+          style={{
             backdropFilter: "blur(12px)",
             height: `${sidebarHeight}px`
           }}
@@ -422,8 +422,8 @@ const Sidebar = () => {
         {/* Expandable search area */}
         {isLookupOpen && (
           <div
-            className={`bg-sidebar/90 ml-2 rounded-2xl overflow-hidden ${isLookupClosing ? "animate-slide-left" : "animate-slide-right"}`}
-            style={{ 
+            className={`bg-sidebar/90 ml-2 rounded-2xl overflow-hidden shadow-card-elevated border border-sidebar-border/50 ${isLookupClosing ? "animate-slide-left" : "animate-slide-right"}`}
+            style={{
               backdropFilter: "blur(12px)",
               height: `${sidebarHeight}px`
             }}
