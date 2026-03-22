@@ -294,7 +294,7 @@ const HomepageCardSettings: React.FC = () => {
 
   return (
     <div className="space-y-6">
-      <Card className="rounded-card shadow-card-inner bg-surface-2">
+      <Card className="rounded-card shadow-card">
         <CardHeader>
           <CardTitle>{t('settings.homepage.title')}</CardTitle>
           <CardDescription>
