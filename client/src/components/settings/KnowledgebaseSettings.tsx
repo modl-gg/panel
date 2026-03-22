@@ -155,7 +155,7 @@ const CategoryItem: React.FC<CategoryItemProps> = ({
   // Extracted CategoryItem component's JSX
   return (
     <div ref={preview} style={{ opacity: isDragging ? 0.5 : 1 }} data-handler-id={handlerId}>
-      <Card ref={ref} className="p-3 mb-2 rounded-card shadow-card">
+      <Card ref={ref} className="p-4 rounded-card shadow-card-inner bg-surface-2">
         <div className="flex items-center justify-between">
           <div className="flex items-center flex-1">
             <GripVertical className="mr-2 h-5 w-5 text-muted-foreground cursor-grab" />
@@ -629,7 +629,7 @@ const KnowledgebaseSettings: React.FC = () => {
             </div>
 
             {/* List Categories - Drag and Drop will be added here */}
-            <div className="space-y-2">
+            <div className="space-y-3">
               {(displayedCategories || []).map((category, index) => (
                 <CategoryItem
                   key={category.id}

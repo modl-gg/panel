@@ -463,7 +463,7 @@ const HomepageCardSettings: React.FC = () => {
           )}
 
           {/* List existing cards */}
-          <div className="space-y-2">
+          <div className="space-y-3">
             {isLoadingCards ? (
               <div className="text-center py-4">{t('settings.homepage.loadingCards')}</div>
             ) : homepageCards?.length ? (

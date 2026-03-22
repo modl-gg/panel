@@ -92,7 +92,7 @@ const ArticleListItem: React.FC<ArticleListItemProps> = ({
 
   return (
     <div ref={preview} style={{ opacity: isDragging ? 0.5 : 1 }} data-handler-id={handlerId}>
-      <Card ref={ref} className="p-2 bg-muted/50 mb-2">
+      <Card ref={ref} className="p-3 rounded-lg shadow-card-inner bg-surface-3">
         <div className="flex items-center justify-between">
           <div className="flex items-center">
             <GripVertical className="mr-2 h-5 w-5 text-muted-foreground cursor-grab" />
@@ -103,22 +103,20 @@ const ArticleListItem: React.FC<ArticleListItemProps> = ({
               <EyeOff className="ml-2 h-3 w-3 text-gray-400" />
             )}
           </div>
-          <div className="space-x-1">
+          <div className="flex items-center gap-2">
             <Button
               variant="ghost"
-              size="icon"
-              className="h-7 w-7"
+              size="sm"
               onClick={() => onEdit(article)}
             >
-              <Edit className="h-3.5 w-3.5" />
+              <Edit className="h-4 w-4" />
             </Button>
             <Button
               variant="ghost"
-              size="icon"
-              className="h-7 w-7"
+              size="sm"
               onClick={() => onDelete(categoryId, article.id, article.title)}
             >
-              <Trash2 className="h-3.5 w-3.5 text-destructive" />
+              <Trash2 className="h-4 w-4 text-destructive" />
             </Button>
           </div>
         </div>

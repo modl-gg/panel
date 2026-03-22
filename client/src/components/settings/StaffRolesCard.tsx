@@ -240,10 +240,10 @@ const DraggableRoleCard: React.FC<DraggableRoleCardProps> = ({
   };
 
   return (
-    <div
+    <Card
       ref={ref}
-      className={`border rounded-lg p-4 transition-all ${
-        isDragging ? 'opacity-50 scale-95' : ''
+      className={`p-4 rounded-card shadow-card-inner bg-surface-2 transition-all ${
+        isDragging ? 'opacity-50' : ''
       } ${isOver && canDrop ? 'border-primary bg-primary/5' : ''} ${
         canDragRole ? 'cursor-move' : ''
       }`}
@@ -251,7 +251,7 @@ const DraggableRoleCard: React.FC<DraggableRoleCardProps> = ({
       <div className="flex items-center justify-between mb-2">
         <div className="flex items-center gap-3">
           {canDragRole && (
-            <GripVertical className="h-4 w-4 text-muted-foreground" />
+            <GripVertical className="h-5 w-5 text-muted-foreground cursor-grab" />
           )}
           <h4 className="font-medium">{role.name}</h4>
           {role.isDefault && (
@@ -272,21 +272,20 @@ const DraggableRoleCard: React.FC<DraggableRoleCardProps> = ({
         </div>
         <div className="flex items-center gap-2">
           <Button
-            variant="outline"
+            variant="ghost"
             size="sm"
             onClick={() => onEditRole(role)}
             disabled={role.name === 'Super Admin' || (roleOrderMap.get(currentUserRole || '') ?? 999) >= getRoleOrder(role)}
           >
-            <Edit className="h-3 w-3" />
+            <Edit className="h-4 w-4" />
           </Button>
           <Button
-            variant="outline"
+            variant="ghost"
             size="sm"
             onClick={() => onDeleteRole(role)}
             disabled={role.name === 'Super Admin' || (roleOrderMap.get(currentUserRole || '') ?? 999) >= getRoleOrder(role)}
-            className="text-destructive hover:text-destructive"
           >
-            <Trash2 className="h-3 w-3" />
+            <Trash2 className="h-4 w-4 text-destructive" />
           </Button>
         </div>
       </div>
@@ -319,7 +318,7 @@ const DraggableRoleCard: React.FC<DraggableRoleCardProps> = ({
           })}
         </div>
       </div>
-    </div>
+    </Card>
   );
 };
 
@@ -681,7 +680,7 @@ export default function StaffRolesCard() {
         <CardContent className="space-y-6">
           {/* Roles List */}
           <DndProvider backend={HTML5Backend}>
-            <div className="space-y-4">
+            <div className="space-y-3">
               {localRoles.map((role, index) => (
                 <DraggableRoleCard
                   key={role.id}
