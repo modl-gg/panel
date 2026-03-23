@@ -56,6 +56,8 @@ export interface TicketFormSection {
 }
 
 export interface TicketFormSettings {
+  requireEmail?: boolean;
+  requireEmailAuth?: boolean;
   fields: TicketFormField[];
   sections: TicketFormSection[];
 }

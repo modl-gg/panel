@@ -2106,10 +2106,11 @@ const Settings = () => {
       return;
     }
 
-    // Normalize API data: map 'customizable' to 'isCustomizable' and ensure correct structure
+    // Normalize API data: map backend field names to frontend field names
     const normalizedTypes = (punishmentTypesData as any[]).map((pt: any) => ({
       ...pt,
       isCustomizable: pt.isCustomizable ?? pt.customizable ?? false,
+      isAppealable: pt.isAppealable ?? pt.appealable ?? true,
       category: pt.category || (pt.administrative ? 'Administrative' : pt.social ? 'Social' : pt.gameplay ? 'Gameplay' : 'Administrative')
     }));
 
@@ -4548,16 +4549,28 @@ const Settings = () => {
                   onClick={async () => {
                     if (selectedPunishment) {
                       try {
+                        // Map frontend field names to backend field names for the request
+                        const { isCustomizable, isAppealable, ...rest } = selectedPunishment as any;
+                        const requestBody = {
+                          ...rest,
+                          appealable: isAppealable,
+                        };
                         const response = await apiFetch(`/v1/panel/settings/punishment-types/${selectedPunishment.ordinal}`, {
                           method: 'PATCH',
                           headers: { 'Content-Type': 'application/json' },
-                          body: JSON.stringify(selectedPunishment),
+                          body: JSON.stringify(requestBody),
                         });
 
                         if (response.ok) {
                           const savedType = await response.json();
+                          // Normalize the response to use frontend field names
+                          const normalizedSavedType = {
+                            ...savedType,
+                            isCustomizable: savedType.isCustomizable ?? savedType.customizable ?? false,
+                            isAppealable: savedType.isAppealable ?? savedType.appealable ?? true,
+                          };
                           setPunishmentTypes(prev =>
-                            prev.map(pt => pt.id === selectedPunishment.id ? savedType : pt)
+                            prev.map(pt => pt.id === selectedPunishment.id ? normalizedSavedType : pt)
                           );
                           queryClient.invalidateQueries({ queryKey: ['/v1/panel/settings/punishment-types'] });
                           toast({

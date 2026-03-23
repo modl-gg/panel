@@ -42,7 +42,9 @@ import {
   File,
   Eye,
   EyeOff,
-  Paperclip
+  Paperclip,
+  UserPlus,
+  UserMinus
 } from 'lucide-react';
 import { Button } from '@modl-gg/shared-web/components/ui/button';
 import { Badge } from '@modl-gg/shared-web/components/ui/badge';
@@ -182,6 +184,7 @@ export interface TicketDetails {
   aiAnalysis?: AIAnalysis;
   punishmentData?: PlayerPunishmentData; // New field for punishment interface data
   hidden?: boolean;
+  assignedTo?: string[];
 }
 
 // Avatar component for messages - moved outside to prevent recreation on re-renders
@@ -1209,6 +1212,7 @@ const TicketDetail = () => {
         createdServer: ticketData.createdServer || undefined,
         locked: ticketData.locked === true,
         hidden: ticketData.hidden === true,
+        assignedTo: ticketData.assignedTo || [],
         // Set default action to "Comment" to highlight the Comment button
         selectedAction: 'Comment',
         // Extract AI analysis from ticket data if present
@@ -1868,6 +1872,58 @@ const TicketDetail = () => {
                       </span>
                     </div>
                   )}
+                </div>
+
+                {/* Assigned Staff */}
+                <div className="flex flex-wrap items-center gap-2 mt-2">
+                  <span className="text-sm text-muted-foreground">Assigned:</span>
+                  {ticketDetails.assignedTo && ticketDetails.assignedTo.length > 0 ? (
+                    ticketDetails.assignedTo.map((staff) => (
+                      <Badge key={staff} variant="secondary" className="text-xs">
+                        {staff}
+                      </Badge>
+                    ))
+                  ) : (
+                    <span className="text-sm text-muted-foreground italic">Unassigned</span>
+                  )}
+                  {(() => {
+                    const myUsername = user?.username?.toLowerCase();
+                    const isAssigned = myUsername && ticketDetails.assignedTo?.some(a => a.toLowerCase() === myUsername);
+                    return (
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        className="h-7 text-xs"
+                        onClick={() => {
+                          const currentAssigned = ticketDetails.assignedTo || [];
+                          const newAssigned = isAssigned
+                            ? currentAssigned.filter(a => a.toLowerCase() !== myUsername)
+                            : [...currentAssigned, user?.username || ''];
+                          setTicketDetails(prev => ({ ...prev, assignedTo: newAssigned }));
+                          updateTicketMutation.mutate({
+                            id: ticketDetails.id,
+                            data: { assignedTo: newAssigned }
+                          }, {
+                            onSuccess: () => {
+                              refetch();
+                              toast({
+                                title: isAssigned ? 'Unassigned' : 'Assigned',
+                                description: isAssigned
+                                  ? 'You have been unassigned from this ticket.'
+                                  : 'You have been assigned to this ticket.',
+                              });
+                            }
+                          });
+                        }}
+                      >
+                        {isAssigned ? (
+                          <><UserMinus className="h-3.5 w-3.5 mr-1" />Unassign me</>
+                        ) : (
+                          <><UserPlus className="h-3.5 w-3.5 mr-1" />Assign to me</>
+                        )}
+                      </Button>
+                    );
+                  })()}
                 </div>
 
                 {/* Unlinked Account Notice - only show when ticket is loaded but has no creatorUuid */}

@@ -191,18 +191,19 @@ const SubmitTicketPage = () => {
       }
     });
 
-    // Add email field to validation
+    // Add email field to validation (only if required by form settings)
+    const isEmailRequired = formConfig.requireEmail !== false;
     const emailField = {
       id: 'email',
       type: 'text' as const,
       label: 'Email Address',
       description: 'Your email address for response notifications',
-      required: true,
+      required: isEmailRequired,
       order: 1,
       sectionId: undefined
     };
 
-    const fieldsToValidate = [emailField, ...(formConfig.fields || [])];
+    const fieldsToValidate = isEmailRequired ? [emailField, ...(formConfig.fields || [])] : (formConfig.fields || []);
 
     // Check display name
     if (!displayName.trim()) {
@@ -232,9 +233,9 @@ const SubmitTicketPage = () => {
       }
     }
 
-    // Validate email format
-    const email = normalizeEmail(formData['email']);
-    if (!isValidEmail(email)) {
+    // Validate email format (only if email is provided or required)
+    const email = normalizeEmail(formData['email'] || '');
+    if (isEmailRequired && !isValidEmail(email)) {
       toast({
         title: t('submitTicket.invalidEmail'),
         description: t('submitTicket.invalidEmailDesc'),
@@ -334,7 +335,7 @@ const SubmitTicketPage = () => {
           attachments,
           creatorIdentifier: creatorIdentifier,
           createdServer: 'Web',
-          emailAuthEnabled: formData['emailAuthEnabled'] === 'true',
+          emailAuthEnabled: formConfig.requireEmailAuth === true || formData['emailAuthEnabled'] === 'true',
         }),
       });
 
@@ -418,23 +419,27 @@ const SubmitTicketPage = () => {
     let fields = formConfig.fields || [];
     const sectionDefinitions = formConfig.sections || [];
 
-    const emailField = {
-      id: 'email',
-      type: 'text' as const,
-      label: 'Email Address',
-      description: 'Your email address for response notifications',
-      required: true,
-      order: 2,
-      sectionId: undefined,
-      options: undefined
-    };
+    const isEmailRequiredForRender = formConfig.requireEmail !== false;
 
-    const adjustedFields = fields.map((field: FormField) => ({
-      ...field,
-      order: field.order >= 1 ? field.order + 2 : field.order
-    }));
+    if (isEmailRequiredForRender) {
+      const emailField = {
+        id: 'email',
+        type: 'text' as const,
+        label: 'Email Address',
+        description: 'Your email address for response notifications',
+        required: true,
+        order: 2,
+        sectionId: undefined,
+        options: undefined
+      };
 
-    fields = [emailField, ...adjustedFields].sort((a: FormField, b: FormField) => a.order - b.order);
+      const adjustedFields = fields.map((field: FormField) => ({
+        ...field,
+        order: field.order >= 1 ? field.order + 2 : field.order
+      }));
+
+      fields = [emailField, ...adjustedFields].sort((a: FormField, b: FormField) => a.order - b.order);
+    }
 
     if (fields.length === 0) {
       return (
@@ -751,7 +756,8 @@ const SubmitTicketPage = () => {
                 </div>
               );
             })}
-          {/* Email authentication option */}
+          {/* Email authentication option - hidden if forced by form settings */}
+          {!formConfig?.requireEmailAuth && (
           <div className="border-t pt-4 mt-2">
             <div className="flex items-start space-x-2">
               <Checkbox
@@ -770,6 +776,7 @@ const SubmitTicketPage = () => {
               </div>
             </div>
           </div>
+          )}
         </div>
 
         <div className="flex justify-end">

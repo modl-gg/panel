@@ -599,19 +599,20 @@ const PlayerTicket = () => {
       }
     });
     
-    // Add email field to validation (it's added dynamically to the form)
+    // Add email field to validation (only if required by form settings)
+    const isEmailRequired = formConfig.requireEmail !== false;
     const emailField = {
       id: 'email',
       type: 'text' as const,
       label: t('submitTicket.emailAddress'),
       description: t('submitTicket.emailAddressDesc'),
-      required: true,
+      required: isEmailRequired,
       order: 1,
       sectionId: undefined
     };
 
     // Combine email field with form config fields for validation
-    const fieldsToValidate = [emailField, ...(formConfig.fields || [])];
+    const fieldsToValidate = isEmailRequired ? [emailField, ...(formConfig.fields || [])] : (formConfig.fields || []);
     
     // Check required fields - only validate fields that are visible
     for (const field of fieldsToValidate) {
@@ -635,8 +636,8 @@ const PlayerTicket = () => {
       }
     }
     
-    const creatorEmail = normalizeEmail(formData['email']);
-    if (!isValidEmail(creatorEmail)) {
+    const creatorEmail = normalizeEmail(formData['email'] || '');
+    if (isEmailRequired && !isValidEmail(creatorEmail)) {
       toast({
         title: t('submitTicket.invalidEmail'),
         description: t('submitTicket.invalidEmailDesc'),
@@ -820,27 +821,30 @@ const PlayerTicket = () => {
     
     let fields = formConfig.fields || [];
     const sectionDefinitions = formConfig.sections || [];
-    
-    
-    const emailField = {
-      id: 'email',
-      type: 'text' as const,
-      label: t('submitTicket.emailAddress'),
-      description: t('submitTicket.emailAddressDesc'),
-      required: true,
-      order: 1,
-      sectionId: undefined,
-      options: undefined
-    };
-    
-    // Adjust order of existing fields to make room for email field
-    const adjustedFields = fields.map((field: FormField) => ({
-      ...field,
-      order: field.order >= 1 ? field.order + 1 : field.order
-    }));
-    
-    // Add email field and sort by order
-    fields = [emailField, ...adjustedFields].sort((a, b) => a.order - b.order);
+
+    const isEmailRequiredForRender = formConfig.requireEmail !== false;
+
+    if (isEmailRequiredForRender) {
+      const emailField = {
+        id: 'email',
+        type: 'text' as const,
+        label: t('submitTicket.emailAddress'),
+        description: t('submitTicket.emailAddressDesc'),
+        required: true,
+        order: 1,
+        sectionId: undefined,
+        options: undefined
+      };
+
+      // Adjust order of existing fields to make room for email field
+      const adjustedFields = fields.map((field: FormField) => ({
+        ...field,
+        order: field.order >= 1 ? field.order + 1 : field.order
+      }));
+
+      // Add email field and sort by order
+      fields = [emailField, ...adjustedFields].sort((a, b) => a.order - b.order);
+    }
   
     
     // Ensure we have fields to render
@@ -1160,7 +1164,8 @@ const PlayerTicket = () => {
                 </div>
               );
             })}
-          {/* Email authentication option */}
+          {/* Email authentication option - hidden if forced by form settings */}
+          {!formConfig?.requireEmailAuth && (
           <div className="border-t pt-4 mt-2">
             <div className="flex items-start space-x-2">
               <Checkbox
@@ -1179,6 +1184,7 @@ const PlayerTicket = () => {
               </div>
             </div>
           </div>
+          )}
         </div>
 
         <div className="flex justify-end">

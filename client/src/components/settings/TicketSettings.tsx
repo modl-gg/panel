@@ -1437,6 +1437,51 @@ const TicketSettings = ({
                 </div>
               </div>
 
+              {/* General Settings */}
+              <div className="space-y-4">
+                <h5 className="text-sm font-medium">{t('settings.tickets.generalSettings')}</h5>
+                <div className="space-y-3">
+                  <div className="flex items-center justify-between p-3 bg-muted/50 rounded-lg">
+                    <div>
+                      <Label className="text-sm font-medium">{t('settings.tickets.requireEmailForCreation')}</Label>
+                      <p className="text-xs text-muted-foreground">{t('settings.tickets.requireEmailForCreationDesc')}</p>
+                    </div>
+                    <Switch
+                      checked={ticketForms[selectedTicketFormType]?.requireEmail ?? false}
+                      onCheckedChange={(checked) =>
+                        setTicketForms(prev => ({
+                          ...prev,
+                          [selectedTicketFormType]: {
+                            ...prev[selectedTicketFormType],
+                            requireEmail: checked,
+                          }
+                        }))
+                      }
+                    />
+                  </div>
+                  <div className="flex items-center justify-between p-3 bg-muted/50 rounded-lg">
+                    <div>
+                      <Label className="text-sm font-medium">{t('settings.tickets.requireEmailAuthToAccess')}</Label>
+                      <p className="text-xs text-muted-foreground">{t('settings.tickets.requireEmailAuthToAccessDesc')}</p>
+                    </div>
+                    <Switch
+                      checked={ticketForms[selectedTicketFormType]?.requireEmailAuth ?? false}
+                      onCheckedChange={(checked) =>
+                        setTicketForms(prev => ({
+                          ...prev,
+                          [selectedTicketFormType]: {
+                            ...prev[selectedTicketFormType],
+                            requireEmailAuth: checked,
+                          }
+                        }))
+                      }
+                    />
+                  </div>
+                </div>
+              </div>
+
+              <Separator />
+
               {/* Form Sections */}
               <div className="space-y-4">
                 <div className="flex items-center justify-between">
@@ -1870,6 +1915,51 @@ const TicketSettings = ({
                         </Button>
                       </div>
                     </div>
+
+                    {/* General Settings */}
+                    <div className="space-y-4">
+                      <h5 className="text-sm font-medium">{t('settings.tickets.generalSettings')}</h5>
+                      <div className="space-y-3">
+                        <div className="flex items-center justify-between p-3 bg-muted/50 rounded-lg">
+                          <div>
+                            <Label className="text-sm font-medium">{t('settings.tickets.requireEmailForCreation')}</Label>
+                            <p className="text-xs text-muted-foreground">{t('settings.tickets.requireEmailForCreationDesc')}</p>
+                          </div>
+                          <Switch
+                            checked={ticketForms[selectedTicketFormType]?.requireEmail ?? false}
+                            onCheckedChange={(checked) =>
+                              setTicketForms(prev => ({
+                                ...prev,
+                                [selectedTicketFormType]: {
+                                  ...prev[selectedTicketFormType],
+                                  requireEmail: checked,
+                                }
+                              }))
+                            }
+                          />
+                        </div>
+                        <div className="flex items-center justify-between p-3 bg-muted/50 rounded-lg">
+                          <div>
+                            <Label className="text-sm font-medium">{t('settings.tickets.requireEmailAuthToAccess')}</Label>
+                            <p className="text-xs text-muted-foreground">{t('settings.tickets.requireEmailAuthToAccessDesc')}</p>
+                          </div>
+                          <Switch
+                            checked={ticketForms[selectedTicketFormType]?.requireEmailAuth ?? false}
+                            onCheckedChange={(checked) =>
+                              setTicketForms(prev => ({
+                                ...prev,
+                                [selectedTicketFormType]: {
+                                  ...prev[selectedTicketFormType],
+                                  requireEmailAuth: checked,
+                                }
+                              }))
+                            }
+                          />
+                        </div>
+                      </div>
+                    </div>
+
+                    <Separator />
 
                     {/* Form Sections */}
                     <div className="space-y-4">
