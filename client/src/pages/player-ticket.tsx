@@ -599,8 +599,9 @@ const PlayerTicket = () => {
       }
     });
     
-    // Add email field to validation (only if required by form settings)
-    const isEmailRequired = formConfig.requireEmail !== false;
+    // Add email field to validation
+    const isEmailRequired = formConfig.requireEmail === true;
+    const showEmailField = isEmailRequired || formConfig.allowEmailNotifications !== false;
     const emailField = {
       id: 'email',
       type: 'text' as const,
@@ -612,7 +613,7 @@ const PlayerTicket = () => {
     };
 
     // Combine email field with form config fields for validation
-    const fieldsToValidate = isEmailRequired ? [emailField, ...(formConfig.fields || [])] : (formConfig.fields || []);
+    const fieldsToValidate = showEmailField ? [emailField, ...(formConfig.fields || [])] : (formConfig.fields || []);
     
     // Check required fields - only validate fields that are visible
     for (const field of fieldsToValidate) {
@@ -637,10 +638,19 @@ const PlayerTicket = () => {
     }
     
     const creatorEmail = normalizeEmail(formData['email'] || '');
+    const emailAuthSelected = formConfig.requireEmailAuth === true || formData['emailAuthEnabled'] === 'true';
     if (isEmailRequired && !isValidEmail(creatorEmail)) {
       toast({
         title: t('submitTicket.invalidEmail'),
         description: t('submitTicket.invalidEmailDesc'),
+        variant: "destructive"
+      });
+      return;
+    }
+    if (emailAuthSelected && !isValidEmail(creatorEmail)) {
+      toast({
+        title: t('submitTicket.emailAuthRequiresEmail'),
+        description: t('submitTicket.emailAuthRequiresEmailDesc'),
         variant: "destructive"
       });
       return;
@@ -822,15 +832,16 @@ const PlayerTicket = () => {
     let fields = formConfig.fields || [];
     const sectionDefinitions = formConfig.sections || [];
 
-    const isEmailRequiredForRender = formConfig.requireEmail !== false;
+    const isEmailRequiredForRender = formConfig.requireEmail === true;
+    const showEmailFieldForRender = isEmailRequiredForRender || formConfig.allowEmailNotifications !== false;
 
-    if (isEmailRequiredForRender) {
+    if (showEmailFieldForRender) {
       const emailField = {
         id: 'email',
         type: 'text' as const,
         label: t('submitTicket.emailAddress'),
         description: t('submitTicket.emailAddressDesc'),
-        required: true,
+        required: isEmailRequiredForRender,
         order: 1,
         sectionId: undefined,
         options: undefined
@@ -1164,8 +1175,8 @@ const PlayerTicket = () => {
                 </div>
               );
             })}
-          {/* Email authentication option - hidden if forced by form settings */}
-          {!formConfig?.requireEmailAuth && (
+          {/* Email authentication option - hidden if forced by form settings or if email is not enabled */}
+          {!formConfig?.requireEmailAuth && showEmailFieldForRender && (
           <div className="border-t pt-4 mt-2">
             <div className="flex items-start space-x-2">
               <Checkbox

@@ -1454,6 +1454,26 @@ const TicketSettings = ({
                           [selectedTicketFormType]: {
                             ...prev[selectedTicketFormType],
                             requireEmail: checked,
+                            ...(!checked ? { requireEmailAuth: false } : {}),
+                          }
+                        }))
+                      }
+                    />
+                  </div>
+                  <div className={`flex items-center justify-between p-3 bg-muted/50 rounded-lg ${!(ticketForms[selectedTicketFormType]?.requireEmail) ? 'opacity-50' : ''}`}>
+                    <div>
+                      <Label className="text-sm font-medium">{t('settings.tickets.requireEmailAuthToAccess')}</Label>
+                      <p className="text-xs text-muted-foreground">{t('settings.tickets.requireEmailAuthToAccessDesc')}</p>
+                    </div>
+                    <Switch
+                      checked={ticketForms[selectedTicketFormType]?.requireEmailAuth ?? false}
+                      disabled={!(ticketForms[selectedTicketFormType]?.requireEmail)}
+                      onCheckedChange={(checked) =>
+                        setTicketForms(prev => ({
+                          ...prev,
+                          [selectedTicketFormType]: {
+                            ...prev[selectedTicketFormType],
+                            requireEmailAuth: checked,
                           }
                         }))
                       }
@@ -1461,17 +1481,17 @@ const TicketSettings = ({
                   </div>
                   <div className="flex items-center justify-between p-3 bg-muted/50 rounded-lg">
                     <div>
-                      <Label className="text-sm font-medium">{t('settings.tickets.requireEmailAuthToAccess')}</Label>
-                      <p className="text-xs text-muted-foreground">{t('settings.tickets.requireEmailAuthToAccessDesc')}</p>
+                      <Label className="text-sm font-medium">{t('settings.tickets.allowEmailNotifications')}</Label>
+                      <p className="text-xs text-muted-foreground">{t('settings.tickets.allowEmailNotificationsDesc')}</p>
                     </div>
                     <Switch
-                      checked={ticketForms[selectedTicketFormType]?.requireEmailAuth ?? false}
+                      checked={ticketForms[selectedTicketFormType]?.allowEmailNotifications !== false}
                       onCheckedChange={(checked) =>
                         setTicketForms(prev => ({
                           ...prev,
                           [selectedTicketFormType]: {
                             ...prev[selectedTicketFormType],
-                            requireEmailAuth: checked,
+                            allowEmailNotifications: checked,
                           }
                         }))
                       }
@@ -1933,6 +1953,26 @@ const TicketSettings = ({
                                 [selectedTicketFormType]: {
                                   ...prev[selectedTicketFormType],
                                   requireEmail: checked,
+                                  ...(!checked ? { requireEmailAuth: false } : {}),
+                                }
+                              }))
+                            }
+                          />
+                        </div>
+                        <div className={`flex items-center justify-between p-3 bg-muted/50 rounded-lg ${!(ticketForms[selectedTicketFormType]?.requireEmail) ? 'opacity-50' : ''}`}>
+                          <div>
+                            <Label className="text-sm font-medium">{t('settings.tickets.requireEmailAuthToAccess')}</Label>
+                            <p className="text-xs text-muted-foreground">{t('settings.tickets.requireEmailAuthToAccessDesc')}</p>
+                          </div>
+                          <Switch
+                            checked={ticketForms[selectedTicketFormType]?.requireEmailAuth ?? false}
+                            disabled={!(ticketForms[selectedTicketFormType]?.requireEmail)}
+                            onCheckedChange={(checked) =>
+                              setTicketForms(prev => ({
+                                ...prev,
+                                [selectedTicketFormType]: {
+                                  ...prev[selectedTicketFormType],
+                                  requireEmailAuth: checked,
                                 }
                               }))
                             }
@@ -1940,17 +1980,17 @@ const TicketSettings = ({
                         </div>
                         <div className="flex items-center justify-between p-3 bg-muted/50 rounded-lg">
                           <div>
-                            <Label className="text-sm font-medium">{t('settings.tickets.requireEmailAuthToAccess')}</Label>
-                            <p className="text-xs text-muted-foreground">{t('settings.tickets.requireEmailAuthToAccessDesc')}</p>
+                            <Label className="text-sm font-medium">{t('settings.tickets.allowEmailNotifications')}</Label>
+                            <p className="text-xs text-muted-foreground">{t('settings.tickets.allowEmailNotificationsDesc')}</p>
                           </div>
                           <Switch
-                            checked={ticketForms[selectedTicketFormType]?.requireEmailAuth ?? false}
+                            checked={ticketForms[selectedTicketFormType]?.allowEmailNotifications !== false}
                             onCheckedChange={(checked) =>
                               setTicketForms(prev => ({
                                 ...prev,
                                 [selectedTicketFormType]: {
                                   ...prev[selectedTicketFormType],
-                                  requireEmailAuth: checked,
+                                  allowEmailNotifications: checked,
                                 }
                               }))
                             }
