@@ -7,7 +7,6 @@ import { KnowledgebaseArticle } from '@modl-gg/shared-web/types';
 
 export const ItemTypes = {
   ARTICLE: 'article',
-  // CATEGORY: 'category', // If needed from here, but likely defined in parent
 };
 
 interface ArticleDragItem {
@@ -24,8 +23,7 @@ interface ArticleListItemProps {
   moveArticle: (categoryId: string, dragIndex: number, hoverIndex: number) => void;
   onEdit: (article: KnowledgebaseArticle) => void;
   onDelete: (categoryId: string, articleId: string, title: string) => void;
-  onDropArticle: (categoryId: string) => void; // To trigger save on drop
-  // deleteArticleMutation: any; // If needed directly, or handled by parent
+  onDropArticle: (categoryId: string) => void;
 }
 
 const ArticleListItem: React.FC<ArticleListItemProps> = ({

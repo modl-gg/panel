@@ -14,7 +14,7 @@ import {
   SortAsc,
   Plus
 } from 'lucide-react';
-import { formatDate, formatTimeAgo } from '../utils/date-utils';
+import { formatTimeAgo } from '../utils/date-utils';
 import { Button } from '@modl-gg/shared-web/components/ui/button';
 import { Card, CardContent } from '@modl-gg/shared-web/components/ui/card';
 import { Input } from '@modl-gg/shared-web/components/ui/input';
@@ -118,7 +118,6 @@ const Tickets = () => {
   const { data: staffData } = useStaff();
   const bulkUpdateMutation = useBulkUpdateTickets();
   const updateTicketMutation = useUpdateTicket();
-
 
   const tickets: Ticket[] = ticketsResponse?.tickets || [];
   const pagination = ticketsResponse?.pagination || {

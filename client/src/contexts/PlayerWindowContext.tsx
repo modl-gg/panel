@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState, useCallback, ReactNode } from 'react';
+import { createContext, useContext, useState, useCallback, ReactNode } from 'react';
 import { createPortal } from 'react-dom';
 import PlayerWindow from '@/components/windows/PlayerWindow';
 
@@ -30,7 +30,6 @@ const getNextWindowPosition = (existingWindows: PlayerWindowState[]): WindowPosi
   const baseY = 100;
   const offset = 50;
   
-  // Find the next available position by offsetting from existing windows
   const count = existingWindows.length;
   return {
     x: baseX + (count * offset),
@@ -45,16 +44,13 @@ export function PlayerWindowProvider({ children }: { children: ReactNode }) {
     setWindows(prevWindows => {
       const windowId = generateWindowId(playerId);
       
-      // Check if window already exists
       const existingWindowIndex = prevWindows.findIndex(w => w.id === windowId);
       if (existingWindowIndex !== -1) {
-        // Window exists, just bring it to front by moving it to the end of the array
         const existingWindow = prevWindows[existingWindowIndex];
         const otherWindows = prevWindows.filter((_, index) => index !== existingWindowIndex);
         return [...otherWindows, { ...existingWindow, isOpen: true }];
       }
       
-      // Create new window
       const position = getNextWindowPosition(prevWindows);
       const newWindow: PlayerWindowState = {
         id: windowId,
@@ -78,7 +74,6 @@ export function PlayerWindowProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const focusPlayerWindow = useCallback((playerId: string, username?: string) => {
-    // Same as openPlayerWindow - if exists, bring to front; if not, create new
     openPlayerWindow(playerId, username);
   }, [openPlayerWindow]);
 
@@ -92,7 +87,6 @@ export function PlayerWindowProvider({ children }: { children: ReactNode }) {
   return (
     <PlayerWindowContext.Provider value={contextValue}>
       {children}
-      {/* Render all player windows via portal to ensure they appear above modals */}
       {typeof document !== 'undefined' && createPortal(
         <div data-player-windows>
           {windows.map(window => (

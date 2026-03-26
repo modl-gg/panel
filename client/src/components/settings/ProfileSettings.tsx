@@ -25,8 +25,7 @@ const ProfileSettings = () => {
   const handleSaveProfile = async () => {
     setIsUpdating(true);
     try {
-      const csrfFetch = apiFetch;
-      const response = await csrfFetch('/v1/panel/auth/profile', {
+      const response = await apiFetch('/v1/panel/auth/profile', {
         method: 'PATCH',
         headers: {
           'Content-Type': 'application/json',

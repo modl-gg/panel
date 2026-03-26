@@ -57,7 +57,6 @@ function createHeaders(options?: RequestOptions): Headers {
     headers.set('X-Server-Domain', getCurrentDomain());
   }
 
-  // Set Content-Type for JSON bodies (object or already-stringified JSON)
   if (options?.body && (typeof options.body === 'object' || typeof options.body === 'string')) {
     if (!headers.has('Content-Type')) {
       headers.set('Content-Type', 'application/json');
@@ -83,7 +82,6 @@ export async function apiFetch(
   const fullUrl = getApiUrl(path);
   const headers = createHeaders(options);
 
-  // Handle body - if it's already a string, use as-is; otherwise stringify
   let processedBody: string | undefined;
   if (body !== undefined && body !== null) {
     processedBody = typeof body === 'string' ? body : JSON.stringify(body);

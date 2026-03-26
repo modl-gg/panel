@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Image as ImageIcon, Video, Upload, Copy, Check, Trash2 } from 'lucide-react';
+import { Image as ImageIcon, Upload, Copy, Check, Trash2 } from 'lucide-react';
 import { Button } from '@modl-gg/shared-web/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@modl-gg/shared-web/components/ui/card';
 import { Badge } from '@modl-gg/shared-web/components/ui/badge';
@@ -126,7 +126,6 @@ export function ArticleMediaUpload({
     setMedia(updatedMedia);
     onMediaUpdate?.(updatedMedia);
   };
-
 
   const isImage = (type: string) => type.startsWith('image/');
   const isVideo = (type: string) => type.startsWith('video/');

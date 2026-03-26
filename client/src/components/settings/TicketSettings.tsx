@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
-import { MessageCircle, Tag, Plus, X, ChevronDown, ChevronRight, Layers, Shield, Edit3, Trash2, GripVertical, Save, CheckCircle, Settings, Crown } from 'lucide-react';
+import { MessageCircle, Tag, Plus, X, ChevronDown, ChevronRight, Layers, Shield, Edit3, Trash2, GripVertical, Save, Crown } from 'lucide-react';
 import { Button } from '@modl-gg/shared-web/components/ui/button';
 import { Input } from '@modl-gg/shared-web/components/ui/input';
 import { Textarea } from '@modl-gg/shared-web/components/ui/textarea';
@@ -377,8 +377,7 @@ const TicketSettings = ({
   visibleSection
 }: TicketSettingsProps) => {
   const { t } = useTranslation();
-  // User authentication and role information
-  const { user: currentUser } = useAuth();
+  useAuth();
   
   // Billing status for premium gating
   const { data: billingStatus } = useBillingStatus();
@@ -576,7 +575,6 @@ const TicketSettings = ({
 
   // Section Management Functions
   const addTicketFormSection = () => {
-    console.log('addTicketFormSection called with:', newTicketFormSectionTitle);
     if (!newTicketFormSectionTitle.trim()) return;
     
     const newSection: TicketFormSection = {
@@ -730,7 +728,6 @@ const TicketSettings = ({
       };
     });
   }, [selectedTicketFormType, setTicketForms]);
-
 
   // Move action within a category
   const moveAction = React.useCallback((categoryId: string, dragIndex: number, hoverIndex: number) => {
@@ -2306,7 +2303,6 @@ const TicketSettings = ({
     </div>
   );
 };
-
 
 // Quick Response Action Form Component
 const QuickResponseActionForm = ({ 

@@ -3,22 +3,17 @@ import { useTranslation } from 'react-i18next';
 import { Button } from '@modl-gg/shared-web/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@modl-gg/shared-web/components/ui/card';
 import { Input } from '@modl-gg/shared-web/components/ui/input';
-import { Textarea } from '@modl-gg/shared-web/components/ui/textarea';
 import { useToast } from '@modl-gg/shared-web/hooks/use-toast';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@modl-gg/shared-web/components/ui/alert-dialog';
 import { queryClient } from '@/lib/queryClient';
 import { apiFetch } from '@/lib/api';
 import { useQuery, useMutation } from '@tanstack/react-query';
-import { Plus, Edit, Trash2, GripVertical, Eye, EyeOff, ArrowUpDown } from 'lucide-react';
+import { Plus, Edit, Trash2, GripVertical } from 'lucide-react';
 import { DndProvider, useDrag, useDrop, DropTargetMonitor } from 'react-dnd';
 import { HTML5Backend } from 'react-dnd-html5-backend';
-import ArticleListItem, { ItemTypes as ArticleItemTypes } from './ArticleListItem';
+import ArticleListItem from './ArticleListItem';
 import MarkdownEditor from '@modl-gg/shared-web/components/ui/MarkdownEditor';
 import { KnowledgebaseCategory, KnowledgebaseArticle } from '@modl-gg/shared-web/types';
-// For now, we'll mock dnd as it's a larger setup.
-// Consider using a library like @dnd-kit/core for a more modern approach if not already in use.
-
-// TODO: Define these types based on your backend schema
 
 const normalizeArticle = (article: any): KnowledgebaseArticle => ({
   ...article,
@@ -233,9 +228,7 @@ const KnowledgebaseSettings: React.FC = () => {
   const { t } = useTranslation();
   const [newCategoryName, setNewCategoryName] = useState('');
   const [newCategoryDescription, setNewCategoryDescription] = useState('');
-  // editingCategory state is now part of KnowledgebaseSettings
   const [editingArticle, setEditingArticle] = useState<KnowledgebaseArticle | null>(null);
-  // const [selectedCategoryForNewArticle, setSelectedCategoryForNewArticle] = useState<string | null>(null); // Replaced by newArticleForModal
   const [newArticleForModal, setNewArticleForModal] = useState<{ categoryId: string; title: string; content: string; isVisible: boolean } | null>(null);
 
   // Delete confirmation dialog state
@@ -244,8 +237,7 @@ const KnowledgebaseSettings: React.FC = () => {
   const [deleteArticleDialogOpen, setDeleteArticleDialogOpen] = useState(false);
   const [articleToDelete, setArticleToDelete] = useState<{ categoryId: string; articleId: string; title: string } | null>(null);
 
-
-  const { data: categories, isLoading: isLoadingCategories, refetch: refetchCategories } = useQuery<KnowledgebaseCategory[], Error>({
+  const { data: categories, isLoading: isLoadingCategories } = useQuery<KnowledgebaseCategory[], Error>({
     queryKey: ['knowledgebaseCategories'],
     queryFn: fetchCategories,
     // Keep data fresh but don't refetch too often during D&D
@@ -256,8 +248,7 @@ const KnowledgebaseSettings: React.FC = () => {
   // Mutations (using React Query's useMutation)
   const createCategoryMutation = useMutation<KnowledgebaseCategory, Error, { name: string; description?: string }>({
     mutationFn: async (newCategory) => {
-      const csrfFetch = apiFetch;
-      const response = await csrfFetch('/v1/panel/knowledgebase/categories', {
+      const response = await apiFetch('/v1/panel/knowledgebase/categories', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(newCategory),
@@ -281,8 +272,7 @@ const KnowledgebaseSettings: React.FC = () => {
 
   const updateCategoryMutation = useMutation<KnowledgebaseCategory, Error, { id: string; name: string; description?: string }>({
     mutationFn: async (updatedCategory) => {
-      const csrfFetch = apiFetch;
-      const response = await csrfFetch(`/v1/panel/knowledgebase/categories/${updatedCategory.id}`, {
+      const response = await apiFetch(`/v1/panel/knowledgebase/categories/${updatedCategory.id}`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ name: updatedCategory.name, description: updatedCategory.description }),
@@ -305,8 +295,7 @@ const KnowledgebaseSettings: React.FC = () => {
 
   const deleteCategoryMutation = useMutation<void, Error, string>({
     mutationFn: async (categoryId) => {
-      const csrfFetch = apiFetch;
-      const response = await csrfFetch(`/v1/panel/knowledgebase/categories/${categoryId}`, {
+      const response = await apiFetch(`/v1/panel/knowledgebase/categories/${categoryId}`, {
         method: 'DELETE',
       });
       if (!response.ok) {
@@ -325,8 +314,7 @@ const KnowledgebaseSettings: React.FC = () => {
 
   const reorderCategoriesMutation = useMutation<void, Error, { orderedCategoryIds: string[] }>({
     mutationFn: async (data) => {
-      const csrfFetch = apiFetch;
-      const response = await csrfFetch('/v1/panel/knowledgebase/categories/reorder', {
+      const response = await apiFetch('/v1/panel/knowledgebase/categories/reorder', {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ ids: data.orderedCategoryIds }),
@@ -345,7 +333,6 @@ const KnowledgebaseSettings: React.FC = () => {
     },
   });
 
-
   // State for local optimistic updates during D&D
   const [displayedCategories, setDisplayedCategories] = useState<KnowledgebaseCategory[]>([]);
   const [editingCategoryState, setEditingCategoryState] = useState<KnowledgebaseCategory | null>(null); // Renamed to avoid conflict
@@ -355,7 +342,6 @@ const KnowledgebaseSettings: React.FC = () => {
       setDisplayedCategories(categories.sort((a, b) => a.ordinal - b.ordinal));
     }
   }, [categories]);
-
 
   const handleCreateCategory = () => {
     if (newCategoryName.trim()) {
@@ -372,7 +358,6 @@ const KnowledgebaseSettings: React.FC = () => {
         name: editingCategoryState.name.trim(),
         description: editingCategoryState.description?.trim() || undefined
       });
-      // setEditingCategoryState(null); // Already handled in onSuccess of mutation
     }
   };
 
@@ -405,12 +390,10 @@ const KnowledgebaseSettings: React.FC = () => {
     reorderCategoriesMutation.mutate({ orderedCategoryIds });
   };
 
-
   // Article Mutations
   const createArticleMutation = useMutation<KnowledgebaseArticle, Error, { categoryId: string; title: string; content: string; isVisible?: boolean }>({
     mutationFn: async (newArticle) => {
-      const csrfFetch = apiFetch;
-      const response = await csrfFetch(`/v1/panel/knowledgebase/categories/${newArticle.categoryId}/articles`, {
+      const response = await apiFetch(`/v1/panel/knowledgebase/categories/${newArticle.categoryId}/articles`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ title: newArticle.title, content: newArticle.content, isVisible: newArticle.isVisible }),
@@ -434,8 +417,7 @@ const KnowledgebaseSettings: React.FC = () => {
 
   const updateArticleMutation = useMutation<KnowledgebaseArticle, Error, { categoryId: string; articleId: string; title: string; content: string; isVisible: boolean }>({
     mutationFn: async (updatedArticle) => {
-      const csrfFetch = apiFetch;
-      const response = await csrfFetch(`/v1/panel/knowledgebase/categories/${updatedArticle.categoryId}/articles/${updatedArticle.articleId}`, {
+      const response = await apiFetch(`/v1/panel/knowledgebase/categories/${updatedArticle.categoryId}/articles/${updatedArticle.articleId}`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ title: updatedArticle.title, content: updatedArticle.content, isVisible: updatedArticle.isVisible }),
@@ -458,8 +440,7 @@ const KnowledgebaseSettings: React.FC = () => {
 
   const deleteArticleMutation = useMutation<void, Error, { categoryId: string; articleId: string }>({
     mutationFn: async ({ categoryId, articleId }) => {
-      const csrfFetch = apiFetch;
-      const response = await csrfFetch(`/v1/panel/knowledgebase/categories/${categoryId}/articles/${articleId}`, {
+      const response = await apiFetch(`/v1/panel/knowledgebase/categories/${categoryId}/articles/${articleId}`, {
         method: 'DELETE',
       });
       if (!response.ok) {
@@ -478,8 +459,7 @@ const KnowledgebaseSettings: React.FC = () => {
 
   const reorderArticlesMutation = useMutation<void, Error, { categoryId: string; orderedArticleIds: string[] }>({
     mutationFn: async (data) => {
-      const csrfFetch = apiFetch;
-      const response = await csrfFetch(`/v1/panel/knowledgebase/categories/${data.categoryId}/articles/reorder`, {
+      const response = await apiFetch(`/v1/panel/knowledgebase/categories/${data.categoryId}/articles/reorder`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ ids: data.orderedArticleIds }),
@@ -489,7 +469,7 @@ const KnowledgebaseSettings: React.FC = () => {
         throw new Error(errorData.message);
       }
     },
-    onSuccess: (data, variables) => {
+    onSuccess: () => {
       toast({ title: t('toast.success'), description: t('settings.knowledgebase.articlesReordered') });
       queryClient.invalidateQueries({ queryKey: ['knowledgebaseCategories'] });
     },
@@ -497,7 +477,6 @@ const KnowledgebaseSettings: React.FC = () => {
       toast({ title: t('toast.error'), description: error.message, variant: 'destructive' });
     },
   });
-
 
   const openCreateArticleModal = (categoryId: string) => {
     setNewArticleForModal({ categoryId, title: '', content: '', isVisible: true });
@@ -531,8 +510,7 @@ const KnowledgebaseSettings: React.FC = () => {
   // Function to fetch full article content for editing
   const fetchArticleForEditing = async (categoryId: string, articleId: string) => {
     try {
-      const csrfFetch = apiFetch;
-      const response = await csrfFetch(`/v1/panel/knowledgebase/categories/${categoryId}/articles/${articleId}`);
+      const response = await apiFetch(`/v1/panel/knowledgebase/categories/${categoryId}/articles/${articleId}`);
       if (!response.ok) {
         throw new Error('Failed to fetch article details');
       }
@@ -551,7 +529,6 @@ const KnowledgebaseSettings: React.FC = () => {
         }
       }, 100);
     } catch (error) {
-      console.error('Error fetching article for editing:', error);
       toast({ title: t('toast.error'), description: t('settings.knowledgebase.articleLoadFailed'), variant: "destructive" });
     }
   };
@@ -579,18 +556,6 @@ const KnowledgebaseSettings: React.FC = () => {
     }
     setDeleteArticleDialogOpen(false);
     setArticleToDelete(null);
-  };
-
-  const onDragEndArticles = (categoryId: string, result: any /* DropResult */) => {
-    // if (!result.destination) return;
-    // const category = categories?.find(cat => cat.id === categoryId);
-    // if (!category) return;
-    // const items = Array.from(category.articles || []);
-    // const [reorderedItem] = items.splice(result.source.index, 1);
-    // items.splice(result.destination.index, 0, reorderedItem);
-    // const orderedArticleIds = items.map(item => item.id);
-    // reorderArticlesMutation.mutate({ categoryId, orderedArticleIds });
-    toast({ title: t('settings.knowledgebase.dragDrop'), description: t('settings.knowledgebase.dragDropNotImplemented'), variant: "default" });
   };
 
   if (isLoadingCategories) {

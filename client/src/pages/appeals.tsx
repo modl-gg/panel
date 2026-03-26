@@ -4,7 +4,7 @@ import { useLocation } from 'wouter';
 import { z } from 'zod';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
-import { AlertTriangle, SearchIcon, ShieldCheck, ShieldX, Send, Paperclip, File, Image, Video, FileText, Eye, X } from 'lucide-react';
+import { AlertTriangle, SearchIcon, ShieldCheck, ShieldX, Send, File, Image, Video, FileText, X } from 'lucide-react';
 import { formatDate } from '../utils/date-utils';
 import { apiFetch, getAvatarUrl } from '@/lib/api';
 import { Label } from "@modl-gg/shared-web/components/ui/label";
@@ -40,11 +40,9 @@ import {
 import { useToast } from '@modl-gg/shared-web/hooks/use-toast';
 import { Separator } from '@modl-gg/shared-web/components/ui/separator';
 import { Badge } from '@modl-gg/shared-web/components/ui/badge';
-import { useSettings, useCreateAppeal } from '@/hooks/use-data';
-import TicketAttachments from '@/components/TicketAttachments';
+import { useCreateAppeal } from '@/hooks/use-data';
 import { formatAppealStatusLabel, isTerminalAppealStatus, normalizeAppealStatus } from '@/lib/ticket-enums';
 
-// Appeal form field interfaces
 interface AppealFormField {
   id: string;
   type: 'text' | 'textarea' | 'dropdown' | 'multiple_choice' | 'checkbox' | 'file_upload' | 'checkboxes';

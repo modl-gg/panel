@@ -1,7 +1,6 @@
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
-  Bell,
   RefreshCw,
   Sun,
   Moon
@@ -9,7 +8,6 @@ import {
 import { Button } from '@modl-gg/shared-web/components/ui/button';
 import { useTheme } from 'next-themes';
 import {
-  useStats,
   useRecentTickets,
   useRecentPunishments,
   useAssignedTicketUpdates,
@@ -20,7 +18,6 @@ import PageContainer from '@/components/layout/PageContainer';
 import { RecentTicketsSection } from '@/components/dashboard/RecentTicketsSection';
 import { RecentPunishmentsSection } from '@/components/dashboard/RecentPunishmentsSection';
 import { AssignedTicketUpdatesSection } from '@/components/dashboard/AssignedTicketUpdatesSection';
-
 
 const Home = () => {
   const [isSpinning, setIsSpinning] = useState(false);

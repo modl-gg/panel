@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Eye, EyeOff, Save, TestTube, MessageCircle, ChevronDown, ChevronRight } from 'lucide-react';
+import { Eye, EyeOff, TestTube, MessageCircle, ChevronDown, ChevronRight } from 'lucide-react';
 import { Button } from '@modl-gg/shared-web/components/ui/button';
 import { Input } from '@modl-gg/shared-web/components/ui/input';
 import { Label } from '@modl-gg/shared-web/components/ui/label';
@@ -60,15 +60,6 @@ const WebhookSettings: React.FC<WebhookSettingsProps> = ({
 }) => {
   const { hasPermission } = usePermissions();
   const { t } = useTranslation();
-  const defaultTemplate: EmbedTemplate = {
-    title: 'New {{type}}',
-    description: 'A new **{{type}}** has been created.',
-    color: '#3498db',
-    fields: [
-      { name: 'ID', value: '{{id}}', inline: true },
-      { name: 'Type', value: '{{type}}', inline: true }
-    ]
-  };
 
   const [settings, setSettings] = useState<WebhookSettings>({
     discordWebhookUrl: '',
@@ -125,7 +116,6 @@ const WebhookSettings: React.FC<WebhookSettingsProps> = ({
   const [showWebhookUrl, setShowWebhookUrl] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const [isTesting, setIsTesting] = useState(false);
-  const [lastSaved, setLastSaved] = useState<Date | null>(null);
   const [saveTimeout, setSaveTimeout] = useState<NodeJS.Timeout | null>(null);
   
   // Collapsible state for embed templates
@@ -219,7 +209,6 @@ const WebhookSettings: React.FC<WebhookSettingsProps> = ({
           avatarUrl: newSettings.avatarUrl || panelIconUrl || ''
         };
         await onSave(settingsToSave);
-        setLastSaved(new Date());
       } catch (error) {
         toast({
           title: t('settings.webhook.autoSaveFailed'),
@@ -272,7 +261,6 @@ const WebhookSettings: React.FC<WebhookSettingsProps> = ({
     autoSave(newSettings);
   };
 
-
   const handleTestWebhook = async () => {
     if (!settings.discordWebhookUrl || !settings.enabled) {
       toast({
@@ -285,8 +273,7 @@ const WebhookSettings: React.FC<WebhookSettingsProps> = ({
 
     try {
       setIsTesting(true);
-      const csrfFetch = apiFetch;
-      const response = await csrfFetch('/v1/panel/settings/webhooks/test', {
+      const response = await apiFetch('/v1/panel/settings/webhooks/test', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

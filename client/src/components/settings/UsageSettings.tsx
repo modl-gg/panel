@@ -303,7 +303,6 @@ const fetchStorageData = async () => {
       
       setFiles(transformedFiles);
     } catch (error) {
-      console.error('Error fetching storage data:', error);
       toast({
         title: t('toast.error'),
         description: t('settings.usage.fetchFailed'),
@@ -338,7 +337,7 @@ const fetchStorageData = async () => {
       setStorageSettings(settings);
       setNewOverageLimit(settings.overageLimit);
     } catch (error) {
-      console.error('Error fetching storage settings:', error);
+      // Settings may not be available
     }
   };
 
@@ -356,7 +355,6 @@ const fetchStorageData = async () => {
       
       setShowStorageSettings(false);
     } catch (error) {
-      console.error('Error updating storage settings:', error);
       toast({
         title: t('toast.error'),
         description: t('settings.usage.storageUpdateFailed'),
@@ -366,7 +364,6 @@ const fetchStorageData = async () => {
       setSettingsLoading(false);
     }
   };
-
 
   const getTypeColor = (type: string): string => {
     switch (type) {
@@ -493,10 +490,9 @@ const fetchStorageData = async () => {
 
   const confirmDelete = async () => {
     try {
-      const csrfFetch = apiFetch;
       if (deleteTarget === 'single') {
         const fileToDeleteKey = files.find(f => f.id === fileToDelete)?.path || fileToDelete;
-        await csrfFetch('/v1/panel/storage/bulk-delete', {
+        await apiFetch('/v1/panel/storage/bulk-delete', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ keys: [fileToDeleteKey] }),
@@ -512,7 +508,7 @@ const fetchStorageData = async () => {
           .map(f => f.path)
           .filter(key => key); // Remove any undefined keys
           
-        await csrfFetch('/v1/panel/storage/bulk-delete', {
+        await apiFetch('/v1/panel/storage/bulk-delete', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ keys: fileKeys }),
@@ -527,7 +523,6 @@ const fetchStorageData = async () => {
       setShowDeleteDialog(false);
       fetchStorageData();
     } catch (error) {
-      console.error('Error deleting files:', error);
       toast({
         title: t('toast.error'),
         description: t('settings.usage.deleteFailed'),

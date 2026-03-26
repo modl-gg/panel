@@ -1,5 +1,5 @@
-import React, { useEffect, useState } from 'react';
-import { useLocation, useRouter } from 'wouter';
+import { useEffect, useState } from 'react';
+import { useRouter } from 'wouter';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@modl-gg/shared-web/components/ui/card';
 import { Button } from '@modl-gg/shared-web/components/ui/button';
 import { AlertCircle, Clock, RefreshCw } from 'lucide-react';
@@ -16,7 +16,6 @@ interface RateLimitInfo {
 
 export default function RateLimitPage() {
   const { t } = useTranslation();
-  const [, setLocation] = useLocation();
   const [, navigate] = useRouter();
   const [timeLeft, setTimeLeft] = useState<number>(0);
   const [rateLimitInfo, setRateLimitInfo] = useState<RateLimitInfo>({});

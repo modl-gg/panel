@@ -1,4 +1,3 @@
-import { useState, useEffect } from 'react';
 import { useLocation } from 'wouter';
 import {
   Home,
@@ -6,23 +5,19 @@ import {
   Ticket,
   Settings,
   AlertCircle,
-  BookOpen,
 } from 'lucide-react';
-import { usePermissions, PERMISSIONS } from '@/hooks/use-permissions';
 import { useTranslation } from 'react-i18next';
 
 const MobileNavbar = () => {
   const { t } = useTranslation();
   const [location, navigate] = useLocation();
-  const { hasPermission } = usePermissions();
-  
+
   const isActive = (path: string) => {
-    return location === path 
-      ? "text-primary" 
+    return location === path
+      ? "text-primary"
       : "text-muted-foreground";
   };
 
-  // Define nav items with conditional analytics
   const navItems = [
     {
       icon: <Home className="h-5 w-5" />,

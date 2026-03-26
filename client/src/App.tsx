@@ -45,7 +45,6 @@ const KnowledgebasePage = lazy(() => import("@/pages/KnowledgebasePage"));
 const ArticleDetailPage = lazy(() => import("@/pages/ArticleDetailPage"));
 const HomePage = lazy(() => import("@/pages/HomePage"));
 
-// Loading component for Suspense fallback
 const PageLoader = () => (
   <div className="flex items-center justify-center min-h-[200px]">
     <Loader2 className="h-6 w-6 animate-spin text-primary" />
@@ -56,13 +55,11 @@ function Router() {
   const [location] = useLocation();
   const isMobile = useIsMobile();
 
-  // Handle public Knowledgebase routes first
-  // Check if the location is NOT part of the admin panel, auth, appeals, etc.
   const isAdminPanelRoute = location.startsWith("/panel");
   const isAuthPage = location === '/auth' || location === '/panel/auth';
-  const isAppealsPage = location === '/appeal'; // Assuming appeals is not under /panel
-  const isPlayerTicketPage = location.startsWith('/ticket/'); // Assuming player-ticket is not under /panel
-  const isSubmitTicketPage = location.startsWith('/submit-ticket'); // Public ticket submission page
+  const isAppealsPage = location === '/appeal';
+  const isPlayerTicketPage = location.startsWith('/ticket/');
+  const isSubmitTicketPage = location.startsWith('/submit-ticket');
   const isProvisioningPage = location === '/provisioning-in-progress';
   const isAcceptInvitationPage = location.startsWith('/accept-invitation');
   const isVerifyEmailPage = location.startsWith('/verify-email');
@@ -72,22 +69,19 @@ function Router() {
 
   if (!isAdminPanelRoute && !isAuthPage && !isAppealsPage && !isPlayerTicketPage && !isSubmitTicketPage && !isProvisioningPage && !isAcceptInvitationPage && !isVerifyEmailPage && !isUploadEvidencePage && !isVerifyPage && !isReplayPage) {
     return (
-      <main className="h-full bg-background"> {/* Basic wrapper for public pages */}
+      <main className="h-full bg-background">
         <Suspense fallback={<PageLoader />}>
           <Switch>
             <Route path="/" component={HomePage} />
             <Route path="/knowledgebase" component={KnowledgebasePage} />
             <Route path="/article/:articleSlug" component={ArticleDetailPage} />
-            {/* Fallback for unmatched public routes */}
             <Route component={NotFound} />
           </Switch>
         </Suspense>
       </main>
     );
   }
-  
-  // Don't show navigation on auth page, appeals page, player ticket page, or provisioning page
-  // Note: isAuthPage now covers /auth and /panel/auth
+
   if (isAuthPage || isAppealsPage || isPlayerTicketPage || isSubmitTicketPage || isProvisioningPage || isAcceptInvitationPage || isVerifyEmailPage || isUploadEvidencePage || isVerifyPage || isReplayPage) {
     return (
       <main className="h-full bg-background">
@@ -127,11 +121,11 @@ function Router() {
               <ProtectedRoute path="/panel/settings" component={Settings} />
               <ProtectedRoute path="/panel/api-docs" component={ApiDocs} />
               <AuthRoute path="/panel/auth" component={AuthPage} />
-              {/* These routes are assumed to be outside /panel */}
-              <AuthRoute path="/auth" component={AuthPage} /> {/* For direct /auth access */}
+              {/* These routes are outside /panel */}
+              <AuthRoute path="/auth" component={AuthPage} />
               <Route path="/appeal" component={AppealsPage} />
-            <Route path="/submit-ticket" component={SubmitTicketPage} />
-            <Route path="/submit-ticket/:type" component={SubmitTicketPage} />
+              <Route path="/submit-ticket" component={SubmitTicketPage} />
+              <Route path="/submit-ticket/:type" component={SubmitTicketPage} />
               <Route path="/ticket/:id" component={PlayerTicket} />
               <Route path="/provisioning-in-progress" component={ProvisioningInProgressPage} />
               <Route path="/accept-invitation" component={AcceptInvitationPage} />
@@ -168,8 +162,8 @@ function Router() {
             <ProtectedRoute path="/panel/settings" component={Settings} />
             <ProtectedRoute path="/panel/api-docs" component={ApiDocs} />
             <AuthRoute path="/panel/auth" component={AuthPage} />
-             {/* These routes are assumed to be outside /panel */}
-            <AuthRoute path="/auth" component={AuthPage} /> {/* For direct /auth access */}
+            {/* These routes are outside /panel */}
+            <AuthRoute path="/auth" component={AuthPage} />
             <Route path="/appeal" component={AppealsPage} />
             <Route path="/submit-ticket" component={SubmitTicketPage} />
             <Route path="/submit-ticket/:type" component={SubmitTicketPage} />
@@ -237,8 +231,7 @@ function AppContent() {
     );
   }
 
-  // Show server not found page if server doesn't exist
-  // Skip this check for verify-email page (needed for email verification flow)
+  // Skip server-not-found check for verify-email/verify/replay pages (needed for email verification flow)
   if (publicSettings?.serverExists === false && !location.startsWith('/verify-email') && !location.startsWith('/verify/') && !location.startsWith('/replay')) {
     return (
       <Suspense fallback={<div className="flex items-center justify-center min-h-screen"><Loader2 className="h-8 w-8 animate-spin text-primary" /></div>}>

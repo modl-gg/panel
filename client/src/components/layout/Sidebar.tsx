@@ -10,7 +10,6 @@ import {
   FileText,
   Settings,
   Loader2,
-  BookOpen,
 } from "lucide-react";
 import {
   Tooltip,
@@ -19,7 +18,6 @@ import {
 } from "@modl-gg/shared-web/components/ui/tooltip";
 import { Button } from "@modl-gg/shared-web/components/ui/button";
 import { Input } from "@modl-gg/shared-web/components/ui/input";
-import { useBillingStatus } from "@/hooks/use-data";
 import { useDashboard } from "@/contexts/DashboardContext";
 import PlayerWindow from "../../components/windows/PlayerWindow";
 import serverLogo from "../../assets/server-logo.png";
@@ -35,7 +33,6 @@ const Sidebar = () => {
   const { isSearchActive, setIsSearchActive } = useSidebar();
   const { openLookupWindow: openDashboardLookupWindow } = useDashboard();
   const [location, navigate] = useLocation();
-  const { data: billingStatus } = useBillingStatus();
   const { data: publicSettings } = usePublicSettings();
   const { hasPermission } = usePermissions();
   const { user } = useAuth();
@@ -73,8 +70,7 @@ const Sidebar = () => {
         if (Array.isArray(parsed)) {
           setRecentSearches(parsed);
         }
-      } catch (e) {
-        console.error('Failed to parse recent searches:', e);
+      } catch {
       }
     }
   }, []);
@@ -211,7 +207,6 @@ const Sidebar = () => {
     };
   }, []);
 
-  // Define nav items
   const allNavItems = [
     {
       name: t('nav.home'),
@@ -276,7 +271,6 @@ const Sidebar = () => {
   // Calculate sidebar height dynamically (navItems * 56px + top/bottom padding of 32px)
   const sidebarHeight = Math.max(200, navItems.length * 56 + 16);
 
-  // Define player type to avoid 'implicitly has an any type' errors
   interface Player {
     uuid?: string;
     minecraftUuid?: string;
@@ -300,7 +294,6 @@ const Sidebar = () => {
     isPunishmentLookup ? '' : searchQuery
   );
 
-  // Use search results directly (no need to filter since API does it)
   const filteredLookups = players || [];
 
   return (
@@ -336,11 +329,12 @@ const Sidebar = () => {
           <div className="w-16 p-2 pt-4 pb-4">
             <nav className="flex-1">
               <ul className="space-y-4">
-                {navItems.map((item, index) => {
+                {navItems.map((item) => {
                   const isActive =
-                    location === item.path || // Exact match for current page
-                    (item.path === "/panel/lookup" && isLookupOpen) || // Lookup is active
-                    (item.path === "/panel" && location.startsWith("/panel/player/")); // Home active if on player detail from panel                  // Special handling for lookup icon
+                    location === item.path ||
+                    (item.path === "/panel/lookup" && isLookupOpen) ||
+                    (item.path === "/panel" && location.startsWith("/panel/player/"));
+                  // Special handling for lookup icon
                   if (item.path === "/panel/lookup") {
                     return (
                       <li key={item.path} className="relative">
@@ -475,7 +469,6 @@ const Sidebar = () => {
                 <div className="flex-1 overflow-y-auto pr-1">
                   {/* Show punishment lookup result first if using # prefix */}
                   {isPunishmentLookup && punishmentLookupResult && (() => {
-                    console.log('Rendering punishment lookup result:', punishmentLookupResult);
                     return (
                     <div className="mb-3">
                       <div className="py-1 px-2 mb-2 text-xs text-muted-foreground">

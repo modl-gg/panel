@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import { useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@modl-gg/shared-web/components/ui/card';
 import { Badge } from '@modl-gg/shared-web/components/ui/badge';
 import { Button } from '@modl-gg/shared-web/components/ui/button';
@@ -24,14 +24,6 @@ interface RecentPunishmentsSectionProps {
   loading: boolean;
 }
 
-const punishmentColors = {
-  ban: 'bg-red-500/20 text-red-500',
-  tempban: 'bg-orange-500/20 text-orange-500',
-  kick: 'bg-yellow-500/20 text-yellow-500',
-  mute: 'bg-blue-500/20 text-blue-500',
-  warn: 'bg-purple-500/20 text-purple-500'
-};
-
 export function RecentPunishmentsSection({ punishments, loading }: RecentPunishmentsSectionProps) {
   const { t } = useTranslation();
   const { openPlayerWindow } = usePlayerWindow();
@@ -50,14 +42,6 @@ export function RecentPunishmentsSection({ punishments, loading }: RecentPunishm
     }
     setExpandedPunishments(newExpanded);
   };
-
-  const truncateReason = (reason: string | undefined | null, maxLength: number = 80) => {
-    if (!reason) return t('dashboard.recentPunishments.noReason');
-    const reasonStr = String(reason);
-    if (reasonStr.length <= maxLength) return reasonStr;
-    return reasonStr.substring(0, maxLength) + '...';
-  };
-
 
   const formatDuration = (duration?: string | number) => {
     if (!duration) return t('dashboard.recentPunishments.permanent');
@@ -135,7 +119,7 @@ export function RecentPunishmentsSection({ punishments, loading }: RecentPunishm
                             {punishment.type && (
                               <Badge
                                 variant="secondary"
-                                className={`text-xs`}
+                                className="text-xs"
                               >
                                 {punishment.type.toUpperCase()}
                               </Badge>

@@ -1,11 +1,10 @@
-import React, { useState, useEffect, useContext } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Link } from 'wouter';
 import SearchBar from '@/components/knowledgebase/SearchBar';
 import CategoryDisplay from '@/components/knowledgebase/CategoryDisplay';
 import PageContainer from '@/components/layout/PageContainer';
 import { useTranslation } from 'react-i18next';
 
-// Mock types - replace with actual types from API
 interface ArticleStub {
   id: string;
   title: string;
@@ -95,8 +94,6 @@ const KnowledgebasePage: React.FC = () => {
     return <PageContainer><p>{t('pages.knowledgebase.loadError', { error })}</p></PageContainer>;
   }
 
-  const contentToDisplay = searchTerm.trim().length >=2 ? searchResults : categories;
-
   return (
     <PageContainer>
       <div className="container mx-auto p-4">
@@ -112,7 +109,6 @@ const KnowledgebasePage: React.FC = () => {
                 <Link href={`/article/${article.slug}`} className="text-primary hover:underline">
                   {article.title}
                 </Link>
-                {/* Optionally show category: {article.category?.name} */}
               </div>
             ))}
           </div>
@@ -121,7 +117,6 @@ const KnowledgebasePage: React.FC = () => {
         {searchTerm.trim().length >= 2 && searchResults.length === 0 && (
             <p>{t('pages.knowledgebase.noArticlesFound', { searchTerm })}</p>
         )}
-
 
         {!searchTerm && categories.length === 0 && (
           <p className="text-center text-muted-foreground">{t('pages.knowledgebase.noCategories')}</p>

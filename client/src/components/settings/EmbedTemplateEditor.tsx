@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Plus, Minus, GripVertical, Palette, Eye, Info, Trash2 } from 'lucide-react';
+import { Plus, GripVertical, Eye, Info, Trash2 } from 'lucide-react';
 import { Button } from '@modl-gg/shared-web/components/ui/button';
 import { Input } from '@modl-gg/shared-web/components/ui/input';
 import { Label } from '@modl-gg/shared-web/components/ui/label';
@@ -121,13 +121,6 @@ const EmbedTemplateEditor: React.FC<EmbedTemplateEditorProps> = ({
 
   const removeField = (index: number) => {
     const newFields = template.fields.filter((_, i) => i !== index);
-    updateTemplate({ fields: newFields });
-  };
-
-  const moveField = (fromIndex: number, toIndex: number) => {
-    const newFields = [...template.fields];
-    const [removed] = newFields.splice(fromIndex, 1);
-    newFields.splice(toIndex, 0, removed);
     updateTemplate({ fields: newFields });
   };
 

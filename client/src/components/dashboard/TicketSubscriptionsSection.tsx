@@ -1,4 +1,3 @@
-import React from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@modl-gg/shared-web/components/ui/card';
 import { Badge } from '@modl-gg/shared-web/components/ui/badge';
 import { Button } from '@modl-gg/shared-web/components/ui/button';
@@ -19,7 +18,6 @@ export interface TicketSubscriptionUpdate {
   isRead: boolean;
   additionalCount?: number;
 }
-
 
 interface TicketSubscriptionsSectionProps {
   updates: TicketSubscriptionUpdate[];
@@ -61,8 +59,7 @@ export function TicketSubscriptionsSection({
   const handleDismissTicket = async (ticketId: string) => {
     try {
       await onDismissTicket(ticketId);
-    } catch (error) {
-      console.error('Error dismissing ticket updates:', error);
+    } catch {
     }
   };
 
@@ -72,7 +69,6 @@ export function TicketSubscriptionsSection({
     if (contentStr.length <= maxLength) return contentStr;
     return contentStr.substring(0, maxLength) + '...';
   };
-
 
   if (loading) {
     return (

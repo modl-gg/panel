@@ -22,7 +22,7 @@ interface Player {
 
 const LookupPage = () => {
   const { t } = useTranslation();
-  const [location, navigate] = useLocation();
+  const [, navigate] = useLocation();
   const [searchQuery, setSearchQuery] = useState('');
   
   // Get recent searches from localStorage sorted by timestamp

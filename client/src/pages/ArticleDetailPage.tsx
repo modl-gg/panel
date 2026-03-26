@@ -1,11 +1,9 @@
 import React, { useState, useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
-import { useRoute, Link } from 'wouter'; // Changed from react-router-dom to wouter
+import { useRoute, Link } from 'wouter';
 import ReactMarkdown from 'react-markdown';
-import PageContainer from '@/components/layout/PageContainer'; // Corrected import
-// import { Button } from '@modl-gg/shared-web/components/ui/button'; // If you want a back button
+import PageContainer from '@/components/layout/PageContainer';
 
-// Mock type - replace with actual type from API
 interface ArticleDetail {
   id: string;
   title: string;

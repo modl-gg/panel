@@ -114,7 +114,6 @@ export function MediaUpload({
     return <File className="h-4 w-4" />;
   };
 
-
   const validateFile = (file: File): string | null => {
     if (!allowedTypes.includes(file.type)) {
       return `File type ${file.type} is not supported. Allowed types: ${allowedTypes.join(', ')}`;
@@ -128,19 +127,14 @@ export function MediaUpload({
   };
 
   const uploadFile = async (file: File, fileId: string): Promise<{ url: string; key: string } | null> => {
-    try {
-      const result = await uploadMedia(file, uploadType, metadata, (progress) => {
-        setUploadedFiles(prev => prev.map(f =>
-          f.id === fileId
-            ? { ...f, progress: progress.percentage }
-            : f
-        ));
-      });
-      return result;
-    } catch (error) {
-      console.error('Upload error:', error);
-      throw error;
-    }
+    const result = await uploadMedia(file, uploadType, metadata, (progress) => {
+      setUploadedFiles(prev => prev.map(f =>
+        f.id === fileId
+          ? { ...f, progress: progress.percentage }
+          : f
+      ));
+    });
+    return result;
   };
 
   const handleFileSelect = useCallback(async (files: FileList | null) => {
@@ -270,12 +264,10 @@ export function MediaUpload({
 
   const handleFileInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     handleFileSelect(e.target.files);
-    // Reset value so the same file can be selected again if needed (though we usually prevent duplicates via state)
     e.target.value = '';
   };
 
   const handleRemoveFile = (fileId: string) => {
-    // Prevent removing files while uploading (optional, but safer to avoid state inconsistencies during upload)
     if (isUploading) return;
     setUploadedFiles(prev => prev.filter(f => f.id !== fileId));
   };

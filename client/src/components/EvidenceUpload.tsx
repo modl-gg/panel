@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Shield, Upload, FileText, Image, Video, Eye, Trash2 } from 'lucide-react';
+import { Shield, FileText, Image, Video, Eye, Trash2 } from 'lucide-react';
 import { Button } from '@modl-gg/shared-web/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@modl-gg/shared-web/components/ui/card';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@modl-gg/shared-web/components/ui/dialog';
@@ -41,8 +41,7 @@ export function EvidenceUpload({
 }: EvidenceUploadProps) {
   const { t } = useTranslation();
   const [evidence, setEvidence] = useState<EvidenceItem[]>(existingEvidence);
-  const [selectedMedia, setSelectedMedia] = useState<EvidenceItem | null>(null);
-  const { config, deleteMedia } = useMediaUpload();
+  const { deleteMedia } = useMediaUpload();
   const { toast } = useToast();
 
   const handleUploadComplete = (result: { url: string; key: string }, file?: File) => {
@@ -97,11 +96,8 @@ export function EvidenceUpload({
     return <FileText className="h-4 w-4" />;
   };
 
-
   const isImage = (type: string) => type.startsWith('image/');
   const isVideo = (type: string) => type.startsWith('video/');
-
-  // Evidence uploads support local storage fallback, so no need to check backblazeConfigured
 
   return (
     <Card>

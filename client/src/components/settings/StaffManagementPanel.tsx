@@ -6,18 +6,17 @@ import { usePermissions } from '@/hooks/use-permissions';
 import { apiFetch } from '@/lib/api';
 import { Button } from '@modl-gg/shared-web/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@modl-gg/shared-web/components/ui/card';
-import ChangeRoleModal from './ChangeRoleModal'; // Import the new modal
+import ChangeRoleModal from './ChangeRoleModal';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@modl-gg/shared-web/components/ui/table';
 import { useStaff, useRoles } from '@/hooks/use-data';
 import { Skeleton } from '@modl-gg/shared-web/components/ui/skeleton';
-import { MoreHorizontal, Plus, PlusIcon, RefreshCw, User } from 'lucide-react';
+import { MoreHorizontal, RefreshCw, User } from 'lucide-react';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@modl-gg/shared-web/components/ui/dropdown-menu';
 import { Badge } from '@modl-gg/shared-web/components/ui/badge';
 import InviteStaffModal from './InviteStaffModal';
 import AssignMinecraftPlayerModal from './AssignMinecraftPlayerModal';
 import { useToast } from '@modl-gg/shared-web/hooks/use-toast';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@modl-gg/shared-web/components/ui/alert-dialog';
-
 
 interface StaffMember {
   id: string;
@@ -36,8 +35,6 @@ interface Role {
   name: string;
   order?: number;
 }
-
-
 
 const StaffManagementPanel = () => {
   const { t } = useTranslation();
@@ -69,8 +66,6 @@ const StaffManagementPanel = () => {
   const [isSpinning, setIsSpinning] = useState(false);
   const queryClient = useQueryClient();
   const { toast } = useToast();
-  
-
 
   const handleInviteSent = () => {
     queryClient.invalidateQueries({ queryKey: ['/v1/panel/staff'] });
@@ -91,7 +86,6 @@ const StaffManagementPanel = () => {
         description: t('settings.staff.staffListRefreshedDesc'),
       });
     } catch (error) {
-      console.error('Error refreshing staff:', error);
       toast({
         title: t('toast.error'),
         description: t('settings.staff.refreshFailed'),
@@ -121,8 +115,7 @@ const StaffManagementPanel = () => {
     if (!selectedStaffMember) return;
 
     try {
-      const csrfFetch = apiFetch;
-      const response = await csrfFetch(`/v1/panel/staff/${selectedStaffMember.id}`, {
+      const response = await apiFetch(`/v1/panel/staff/${selectedStaffMember.id}`, {
         method: 'DELETE',
       });
 
@@ -144,8 +137,6 @@ const StaffManagementPanel = () => {
           ? t('settings.staff.invitationCancelled')
           : t('settings.staff.staffMemberRemoved'),
       });
-    } catch (error) {
-      console.error(error);
     } finally {
       setIsRemoveAlertOpen(false);
       setSelectedStaffMember(null);
@@ -154,8 +145,7 @@ const StaffManagementPanel = () => {
 
   const handleResendInvitation = async (staffId: string) => {
     try {
-      const csrfFetch = apiFetch;
-      const response = await csrfFetch(`/v1/panel/staff/invitations/${staffId}/resend`, {
+      const response = await apiFetch(`/v1/panel/staff/invitations/${staffId}/resend`, {
         method: 'POST',
       });
       if (!response.ok) {
@@ -168,7 +158,6 @@ const StaffManagementPanel = () => {
       });
       queryClient.invalidateQueries({ queryKey: ['/v1/panel/staff'] });
     } catch (error) {
-      console.error(error);
       toast({
         title: t('toast.error'),
         description: (error as Error).message,

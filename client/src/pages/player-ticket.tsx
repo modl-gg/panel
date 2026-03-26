@@ -1,17 +1,14 @@
 import { useState, useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
-import { useParams, Link } from 'wouter';
+import { useParams } from 'wouter';
 import {
   MessageSquare,
   User,
   Calendar,
-  Clock,
   Send,
-  ArrowLeft,
   Loader2,
   Tag,
   Link2,
-  Copy,
   CheckSquare,
   AlertCircle
 } from 'lucide-react';
@@ -24,18 +21,17 @@ import { Checkbox } from '@modl-gg/shared-web/components/ui/checkbox';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@modl-gg/shared-web/components/ui/select';
 import { Popover, PopoverContent, PopoverTrigger } from '@modl-gg/shared-web/components/ui/popover';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@modl-gg/shared-web/components/ui/tooltip';
-import { Card, CardHeader, CardTitle, CardDescription, CardContent, CardFooter } from '@modl-gg/shared-web/components/ui/card';
+import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '@modl-gg/shared-web/components/ui/card';
 import { useTicket, useAddTicketReply, useSubmitTicketForm, useSettings, useRequestTicketVerification, useVerifyTicketCode, setCookie } from '@/hooks/use-data';
 import TicketAttachments from '@/components/TicketAttachments';
 import MediaUpload from '@/components/MediaUpload';
-import { apiRequest } from '@/lib/queryClient';
 import { getAvatarUrl } from '@/lib/api';
 import { queryClient } from '@/lib/queryClient';
 import { toast } from '@modl-gg/shared-web/hooks/use-toast';
 import MarkdownRenderer from '@/components/ui/markdown-renderer';
 import MarkdownHelp from '@/components/ui/markdown-help';
 import { formatDate } from '@/utils/date-utils';
-import { getCreatorIdentifier, getUnverifiedExplanation, shouldShowUnverifiedBadge } from '@/utils/creator-verification';
+import { getCreatorIdentifier, getUnverifiedExplanation } from '@/utils/creator-verification';
 import { useMediaUpload } from '@/hooks/use-media-upload';
 import { isValidEmail, normalizeEmail } from '@/utils/email-validation';
 import { normalizeTicketStatus } from '@/lib/ticket-enums';
@@ -499,8 +495,6 @@ const PlayerTicket = () => {
     );
   }
 
-
-
   // Handle form submissions for unfinished tickets
   const handleFormSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -856,8 +850,7 @@ const PlayerTicket = () => {
       // Add email field and sort by order
       fields = [emailField, ...adjustedFields].sort((a, b) => a.order - b.order);
     }
-  
-    
+
     // Ensure we have fields to render
     if (fields.length === 0) {
       return (

@@ -58,7 +58,7 @@ const MigrationTool: React.FC = () => {
       await startMigration.mutateAsync({ migrationType: selectedType });
       setSelectedType('');
     } catch (error) {
-      console.error('Failed to start migration:', error);
+      // Error handled by the mutation's onError callback
     }
   };
 
@@ -68,7 +68,7 @@ const MigrationTool: React.FC = () => {
     try {
       await cancelMigration.mutateAsync();
     } catch (error) {
-      console.error('Failed to cancel migration:', error);
+      // Error handled by the mutation's onError callback
     }
   };
 
@@ -370,4 +370,3 @@ const MigrationTool: React.FC = () => {
 };
 
 export default MigrationTool;
-

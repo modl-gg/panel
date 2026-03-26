@@ -10,7 +10,6 @@ import { formatDate, formatDateWithRelative } from '../utils/date-utils';
 import {
   MessageSquare,
   User,
-  Flag,
   AlertCircle,
   Clock,
   FileText,
@@ -20,11 +19,10 @@ import {
   Send,
   ArrowUpRight,
   Link2,
-  StickyNote,  ArrowLeft,
+  StickyNote,
+  ArrowLeft,
   ThumbsUp,
-  ThumbsDown,
   Bug,
-  Shield,
   Axe,
   Tag,
   Plus,
@@ -42,22 +40,19 @@ import {
   File,
   Eye,
   EyeOff,
-  Paperclip,
   UserPlus,
   UserMinus
 } from 'lucide-react';
 import { Button } from '@modl-gg/shared-web/components/ui/button';
 import { Badge } from '@modl-gg/shared-web/components/ui/badge';
 import { Checkbox } from '@modl-gg/shared-web/components/ui/checkbox';
-import { useTicket, usePanelTicket, useUpdateTicket, useSettings, useStaff, useModifyPunishment, useApplyPunishment, useQuickResponses, usePunishmentTypes, useLabels } from '@/hooks/use-data';
+import { usePanelTicket, useUpdateTicket, useSettings, useStaff, useModifyPunishment, useApplyPunishment, useQuickResponses, usePunishmentTypes, useLabels } from '@/hooks/use-data';
 import { LabelBadge } from '@/components/ui/label-badge';
 import { QuickResponsesConfiguration, defaultQuickResponsesConfig } from '@/types/quickResponses';
 import { useToast } from '@modl-gg/shared-web/hooks/use-toast';
 import PageContainer from '@/components/layout/PageContainer';
 import { apiFetch } from '@/lib/api';
-import { Card, CardHeader, CardTitle, CardDescription, CardContent, CardFooter } from '@modl-gg/shared-web/components/ui/card';
-import { apiRequest } from '@/lib/queryClient';
-import { useAddTicketReply } from '@/hooks/use-add-ticket-reply';
+import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '@modl-gg/shared-web/components/ui/card';
 import MarkdownRenderer from '@/components/ui/markdown-renderer';
 import MarkdownHelp from '@/components/ui/markdown-help';
 import { ClickablePlayer } from '@/components/ui/clickable-player';
@@ -69,7 +64,6 @@ import TicketAttachments from '@/components/TicketAttachments';
 import { useMediaUpload, useMediaUploadConfig } from '@/hooks/use-media-upload';
 import { isClosedTicketStatus } from '@/lib/ticket-enums';
 
-// Define PunishmentType interface
 interface PunishmentType {
   id: number;
   name: string;
@@ -152,7 +146,6 @@ interface AIAnalysis {
   createdAt: Date;
 }
 
-// Define types for ticket categories and actions
 type TicketCategory = 'Player Report' | 'Chat Report' | 'Bug Report' | 'Punishment Appeal' | 'Support' | 'Application';
 
 export interface TicketDetails {
@@ -187,7 +180,6 @@ export interface TicketDetails {
   assignedTo?: string[];
 }
 
-// Avatar component for messages - moved outside to prevent recreation on re-renders
 const FilePreview = memo(({ file }: { file: File }) => {
   const [url, setUrl] = useState<string | null>(null);
   
@@ -742,23 +734,7 @@ const TicketDetail = () => {
         data: data
       };
       
-      console.log('Final punishment API data:', {
-        ...punishmentApiData,
-        notes: notes.length,
-        evidence: evidence.length,
-        attachedTicketIds,
-        dataKeys: Object.keys(data)
-      });
-      
-      // Call the API
-      console.log('Applying punishment with:', {
-        uuid: ticketDetails.relatedPlayerId,
-        relatedPlayer: ticketDetails.relatedPlayer,
-        punishmentData: punishmentApiData
-      });
-      
       if (!ticketDetails.relatedPlayerId) {
-        console.error('No player UUID found, ticket details:', ticketDetails);
         throw new Error('No player UUID found for this ticket. Only username available: ' + ticketDetails.relatedPlayer);
       }
       
@@ -767,16 +743,10 @@ const TicketDetail = () => {
         punishmentData: punishmentApiData
       });
       
-      console.log('Punishment application result:', result);
-      
-      // Show success message
       toast({
         title: t('ticket.punishmentApplied'),
         description: t('ticket.punishmentAppliedDesc', { type: punishmentData.selectedPunishmentCategory, player: ticketDetails.relatedPlayer })
       });
-      
-      // Important: We might need to close/update the ticket after punishment
-      console.log('Punishment successfully applied, checking if we need to update ticket state');
       
     } catch (error) {
       console.error('Error applying punishment:', error);
@@ -832,7 +802,6 @@ const TicketDetail = () => {
       return false;
     }
   };
-  
 
   // Helper function to get file icon
   const getFileIcon = (type: string) => {
@@ -960,7 +929,6 @@ const TicketDetail = () => {
     }
   });
 
-
   // Simplified status colors - just Open and Closed
   const statusColors = {
     'Open': 'bg-green-50 text-green-700 border-green-200',
@@ -996,15 +964,11 @@ const TicketDetail = () => {
   // Mutation hook for modifying punishments
   const modifyPunishmentMutation = useModifyPunishment();
 
-  
   // Fetch staff data to get assigned Minecraft accounts
   const { data: staffData } = useStaff();
 
   // Fetch available labels from settings
   const { data: availableLabels = [] } = useLabels();
-
-
-
 
   // Function to apply AI-suggested punishment
   const applyAISuggestion = async () => {
@@ -1025,40 +989,23 @@ const TicketDetail = () => {
       });
 
       if (response.ok) {
-        const responseData = await response.json();
-        console.log('AI punishment applied successfully, response:', responseData);
-        
-        // Refresh ticket data to show updated AI analysis
+        await response.json();
+
         if (refetch && typeof refetch === 'function') {
-          const refetchResult = await refetch();
-          console.log('Data refreshed via refetch, result:', refetchResult);
+          await refetch();
         } else {
-          console.error('refetch is not a function:', refetch);
-          console.log('Falling back to page reload');
           window.location.reload();
           return;
         }
-        
+
         // Force reload if the AI suggestion is still showing after 2 seconds
         setTimeout(() => {
           const aiAnalysis = document.querySelector('[data-testid="ai-analysis"]');
           if (aiAnalysis) {
-            console.log('AI analysis still visible, forcing page reload');
             window.location.reload();
           }
         }, 2000);
-        
-        // Give a small delay to ensure data is refreshed
-        setTimeout(() => {
-          console.log('Checking if AI analysis is hidden...');
-          const aiAnalysis = document.querySelector('[data-testid="ai-analysis"]');
-          if (aiAnalysis) {
-            console.log('AI analysis still visible after refresh');
-          } else {
-            console.log('AI analysis properly hidden after refresh');
-          }
-        }, 1000);
-        
+
         toast({
           title: t('toast.success'),
           description: t('ticket.aiApplied'),
@@ -1101,20 +1048,17 @@ const TicketDetail = () => {
       });
 
       if (response.ok) {
-        // Refresh ticket data to show dismissed AI analysis
         if (refetch && typeof refetch === 'function') {
           await refetch();
         } else {
-          console.error('refetch is not a function:', refetch);
           window.location.reload();
           return;
         }
-        
+
         // Force reload if the AI suggestion is still showing after 2 seconds
         setTimeout(() => {
           const aiAnalysis = document.querySelector('[data-testid="ai-analysis"]');
           if (aiAnalysis) {
-            console.log('AI analysis still visible after dismiss, forcing page reload');
             window.location.reload();
           }
         }, 2000);
@@ -3006,7 +2950,6 @@ const PunishmentDetailsCard = ({ punishmentId }: { punishmentId: string }) => {
     }
   }, [punishmentId]);
 
-
   const formatExpiryStatus = (expires: string | null, active: boolean): string => {
     if (!expires) {
       return active ? 'Permanent' : 'Inactive';
@@ -3071,7 +3014,6 @@ const PunishmentDetailsCard = ({ punishmentId }: { punishmentId: string }) => {
       return `${seconds}s`;
     }
   };
-
 
   if (isLoading) {
     return (
@@ -3560,8 +3502,6 @@ const PunishmentDetailsCard = ({ punishmentId }: { punishmentId: string }) => {
                   const newNote = prompt('Enter staff note:');
                   if (newNote?.trim()) {
                     // TODO: Send to server to add note to punishment
-                    // This would need a new API endpoint to add notes to existing punishments
-                    console.log('Adding note to punishment:', punishmentData.id, newNote);
                   }
                 }}
               >
@@ -3595,7 +3535,6 @@ const PunishmentDetailsCard = ({ punishmentId }: { punishmentId: string }) => {
               <p className="text-xs text-muted-foreground">No staff notes</p>
             )}
           </div>
-
 
           {/* Additional Data Section */}
           {punishmentData.data && Object.keys(punishmentData.data).length > 0 && (

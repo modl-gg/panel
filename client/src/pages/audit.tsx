@@ -1129,8 +1129,7 @@ const StaffDetailModal = ({ staff, isOpen, onClose, initialPeriod = '30d' }: {
                                         });
                                         
                                         const responseData = await response.json();
-                                        console.log('Rollback response:', responseData);
-                                        
+
                                         if (!response.ok) {
                                           throw new Error(responseData.error || `HTTP ${response.status}: ${response.statusText}`);
                                         }

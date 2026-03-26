@@ -1,12 +1,10 @@
 import { useMemo, useCallback } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { useAuth } from './use-auth';
-import { buildRoleHierarchy, canModifyRole, canRemoveUser, canAssignMinecraftPlayer } from '@/utils/role-hierarchy';
+import { buildRoleHierarchy, canModifyRole, canRemoveUser } from '@/utils/role-hierarchy';
 import { apiFetch } from '@/lib/api';
 
-// Define permissions that match the backend permission system
 export const PERMISSIONS = {
-  // Admin settings permissions
   ADMIN_SETTINGS_VIEW: 'admin.settings.view',
   ADMIN_SETTINGS_VIEW_PUNISHMENTS: 'admin.settings.view.punishments',
   ADMIN_SETTINGS_VIEW_CONTENT: 'admin.settings.view.content',
@@ -29,7 +27,6 @@ export const PERMISSIONS = {
   ADMIN_AUDIT_VIEW_ANALYTICS: 'admin.audit.view.analytics',
   ADMIN_AUDIT_VIEW_LOGS: 'admin.audit.view.logs',
 
-  // Punishment permissions
   PUNISHMENT_MODIFY: 'punishment.modify',
   PUNISHMENT_MODIFY_PARDON: 'punishment.modify.pardon',
   PUNISHMENT_MODIFY_DURATION: 'punishment.modify.duration',
@@ -37,7 +34,6 @@ export const PERMISSIONS = {
   PUNISHMENT_MODIFY_EVIDENCE: 'punishment.modify.evidence',
   PUNISHMENT_MODIFY_OPTIONS: 'punishment.modify.options',
 
-  // Staff tool permissions
   STAFF_CHAT_TOGGLE: 'staff.chat.toggle',
   STAFF_CHAT_CLEAR: 'staff.chat.clear',
   STAFF_CHAT_SLOW: 'staff.chat.slow',
@@ -47,7 +43,6 @@ export const PERMISSIONS = {
   STAFF_CHATLOGS: 'staff.chatlogs',
   STAFF_COMMANDLOGS: 'staff.commandlogs',
 
-  // Ticket permissions
   TICKET_VIEW_ALL: 'ticket.view.all',
   TICKET_VIEW_ALL_NOTES: 'ticket.view.all.notes',
   TICKET_REPLY_ALL: 'ticket.reply.all',
@@ -61,13 +56,12 @@ export const PERMISSIONS = {
   TICKET_DELETE_ALL: 'ticket.delete.all',
 } as const;
 
-// Settings-specific permissions map
 // Each tab lists ALL permissions that grant access (matched with hasAnyPermission)
 export const SETTINGS_PERMISSIONS = {
-  account: [], // Everyone can access account settings
+  account: [],
   general: [PERMISSIONS.ADMIN_SETTINGS_VIEW, PERMISSIONS.ADMIN_SETTINGS_VIEW_BILLING, PERMISSIONS.ADMIN_SETTINGS_VIEW_DOMAIN, PERMISSIONS.ADMIN_SETTINGS_VIEW_STORAGE, PERMISSIONS.ADMIN_SETTINGS_VIEW_MIGRATION],
   punishment: [PERMISSIONS.ADMIN_SETTINGS_VIEW, PERMISSIONS.ADMIN_SETTINGS_VIEW_PUNISHMENTS],
-  tags: [], // Tickets tab has mixed permission gates by sub-section
+  tags: [],
   staff: [PERMISSIONS.ADMIN_STAFF_MANAGE],
   knowledgebase: [PERMISSIONS.ADMIN_SETTINGS_VIEW, PERMISSIONS.ADMIN_SETTINGS_VIEW_CONTENT],
   homepage: [PERMISSIONS.ADMIN_SETTINGS_VIEW, PERMISSIONS.ADMIN_SETTINGS_VIEW_CONTENT],
@@ -76,51 +70,39 @@ export const SETTINGS_PERMISSIONS = {
 export function usePermissions() {
   const { user } = useAuth();
   
-  // Fetch user permissions from server (with fallback to defaults)
-  const { data: serverPermissions, error } = useQuery({
+  const { data: serverPermissions } = useQuery({
     queryKey: ['userPermissions', user?.role],
     queryFn: async () => {
       if (!user?.role) return [];
       try {
         const response = await apiFetch('/v1/panel/auth/permissions');
         if (!response.ok) {
-          // If server returns 401, user is not authenticated - return empty array
           if (response.status === 401) return [];
           throw new Error('Failed to fetch permissions');
         }
         return response.json();
-      } catch (error) {
-        console.warn('Failed to fetch user permissions from server, using fallback:', error);
-        return null; // Signal to use fallback permissions
+      } catch {
+        return null;
       }
     },
     enabled: !!user?.role,
-    staleTime: 5 * 60 * 1000, // Cache for 5 minutes
-    retry: false, // Don't retry on error, fallback to default permissions
+    staleTime: 5 * 60 * 1000,
+    retry: false,
   });
-  
-  // Log any permission fetch errors for debugging
-  if (error) {
-    console.warn('Permission query error:', error);
-  }
 
-  // Get user permissions (from server or fallback to defaults)
   const userPermissions = useMemo(() => {
     if (!user || !user.role) return [];
-    
-    // Use server permissions if available and valid
+
     if (serverPermissions && Array.isArray(serverPermissions)) {
       return serverPermissions;
     }
     
-    // If serverPermissions is explicitly null, it means fetch failed - deny all permissions
     // Server is the authority; on failure, grant no permissions for security
     if (serverPermissions === null) {
       return [];
     }
 
-    // If serverPermissions is undefined, query is still loading - use default role permissions
-    // only for the initial load before the first fetch completes
+    // Query still loading - use default role permissions until first fetch completes
     const defaultPermissions: Record<string, string[]> = {
       'Super Admin': [
         PERMISSIONS.ADMIN_SETTINGS_VIEW,
@@ -154,27 +136,23 @@ export function usePermissions() {
     return defaultPermissions[user.role] || [];
   }, [user, serverPermissions]);
 
-  // Check if user has a specific permission (with hierarchical matching)
   const hasPermission = useCallback((permission: string): boolean => {
     if (!user) return false;
     return userPermissions.some(p => p === permission || permission.startsWith(p + '.'));
   }, [user, userPermissions]);
 
-  // Check if user has all required permissions
   const hasAllPermissions = useCallback((permissions: string[]): boolean => {
     if (!user) return false;
-    if (!permissions || !Array.isArray(permissions)) return false; // Defensive check
+    if (!permissions || !Array.isArray(permissions)) return false;
     return permissions.every(permission => hasPermission(permission));
   }, [user, hasPermission]);
 
-  // Check if user has any of the required permissions
   const hasAnyPermission = useCallback((permissions: string[]): boolean => {
     if (!user) return false;
-    if (!permissions || !Array.isArray(permissions)) return false; // Defensive check
+    if (!permissions || !Array.isArray(permissions)) return false;
     return permissions.some(permission => hasPermission(permission));
   }, [user, hasPermission]);
 
-  // Check if user can access a specific settings tab
   const canAccessSettingsTab = (tabName: keyof typeof SETTINGS_PERMISSIONS): boolean => {
     if (!user) return false;
     if (tabName === 'tags') {
@@ -185,20 +163,18 @@ export function usePermissions() {
       ]);
     }
     const requiredPermissions = SETTINGS_PERMISSIONS[tabName];
-    if (!requiredPermissions || !Array.isArray(requiredPermissions)) return false; // Defensive check
+    if (!requiredPermissions || !Array.isArray(requiredPermissions)) return false;
     if (requiredPermissions.length === 0) return true;
     return hasAnyPermission(requiredPermissions as unknown as string[]);
   };
 
-  // Get accessible settings tabs
   const getAccessibleSettingsTabs = (): string[] => {
-    if (!user) return ['account']; // Default to account only if no user
+    if (!user) return ['account'];
     
     const allTabs = Object.keys(SETTINGS_PERMISSIONS) as (keyof typeof SETTINGS_PERMISSIONS)[];
     return allTabs.filter(tab => canAccessSettingsTab(tab));
   };
 
-  // Role hierarchy helper functions integrated with existing permission system
   const { data: rolesData } = useQuery({
     queryKey: ['/v1/panel/roles'],
     queryFn: async () => {
@@ -207,24 +183,19 @@ export function usePermissions() {
       return response.json();
     },
     enabled: !!user,
-    staleTime: 5 * 60 * 1000, // Cache for 5 minutes
+    staleTime: 5 * 60 * 1000,
   });
 
   const roleHierarchy = useMemo(() => {
     return rolesData?.roles ? buildRoleHierarchy(rolesData.roles) : new Map();
   }, [rolesData]);
 
-  // Role hierarchy functions
   const canModifyUserRole = (targetUserRole: string, newRole?: string, targetUserId?: string): boolean => {
     if (!user) return false;
-    // If no newRole specified, check if user can modify this role at all
-    // For checking general ability to change role, we'll use a dummy check
     if (!newRole) {
-      // Super Admin can modify any non-Super Admin role
       if (user.role === 'Super Admin' && targetUserRole !== 'Super Admin') {
         return true;
       }
-      // For others, check if they have higher authority than the target
       const currentRoleInfo = roleHierarchy.get(user.role);
       const targetRoleInfo = roleHierarchy.get(targetUserRole);
       if (!currentRoleInfo || !targetRoleInfo) return false;
@@ -240,13 +211,7 @@ export function usePermissions() {
 
   const canAssignStaffMinecraftPlayer = (targetUserRole: string, targetUserId: string): boolean => {
     if (!user) return false;
-    
-    // Super Admin can change anyone's minecraft player
-    if (user.role === 'Super Admin') {
-      return true;
-    }
-    
-    // For other roles, they can only change their own
+    if (user.role === 'Super Admin') return true;
     return user.id === targetUserId;
   };
 
@@ -257,7 +222,6 @@ export function usePermissions() {
     hasAnyPermission,
     canAccessSettingsTab,
     getAccessibleSettingsTabs,
-    // Role hierarchy functions
     canModifyUserRole,
     canRemoveStaffUser,
     canAssignStaffMinecraftPlayer,

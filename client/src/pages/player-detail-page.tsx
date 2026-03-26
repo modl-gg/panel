@@ -2,7 +2,7 @@ import { useState, useEffect, useCallback, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useRoute, useLocation } from 'wouter';
 import {
-  ArrowLeft, TriangleAlert, Ban, RefreshCcw, Search, LockOpen, History,
+  ArrowLeft, Ban, RefreshCcw, Search, History,
   Link2, StickyNote, Ticket, UserRound, Shield, FileText, Upload, Loader2,
   ChevronDown, ChevronRight, Settings, Plus, X
 } from 'lucide-react';
@@ -10,8 +10,7 @@ import { getAvatarUrl } from '@/lib/api';
 import { Button } from '@modl-gg/shared-web/components/ui/button';
 import { Badge } from '@modl-gg/shared-web/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@modl-gg/shared-web/components/ui/tabs';
-import { usePlayer, useApplyPunishment, useSettings, usePunishmentTypes, usePlayerTickets, usePlayerAllTickets, useModifyPunishment, useAddPunishmentNote, useModifyPunishmentTickets, useLinkedAccounts, useFindLinkedAccounts, useLinkedBansForPunishment } from '@/hooks/use-data';
-import { ClickablePlayer } from '@/components/ui/clickable-player';
+import { usePlayer, useApplyPunishment, useSettings, usePunishmentTypes, usePlayerAllTickets, useModifyPunishment, useAddPunishmentNote, useModifyPunishmentTickets, useLinkedAccounts, useFindLinkedAccounts, useLinkedBansForPunishment } from '@/hooks/use-data';
 import { useAuth } from '@/hooks/use-auth';
 import { usePermissions } from '@/hooks/use-permissions';
 import { useIsMobile } from '@modl-gg/shared-web/hooks/use-mobile';
@@ -151,7 +150,6 @@ interface PunishmentType {
   singleSeverityPoints?: number;
 }
 
-// Inline component for linked ban display on detail page
 const LinkedBansDisplayDetail = ({ punishmentId, onPlayerClick }: { punishmentId: string; onPlayerClick: (uuid: string) => void }) => {
   const { data: linkedBans, isLoading } = useLinkedBansForPunishment(punishmentId);
 
@@ -183,7 +181,7 @@ const LinkedBansDisplayDetail = ({ punishmentId, onPlayerClick }: { punishmentId
 const PlayerDetailPage = () => {
   const { t } = useTranslation();
   const [_, params] = useRoute('/panel/player/:uuid');
-  const [location, navigate] = useLocation();
+  const [, navigate] = useLocation();
   const playerId = params?.uuid || '';
   const isMobile = useIsMobile();
 
@@ -455,7 +453,6 @@ const PlayerDetailPage = () => {
     }
     return (player.data as any)[key];
   };
-
 
   // Helper function to check if a value is a valid display value for badges
   const isValidBadgeValue = (value: any): boolean => {

@@ -50,7 +50,7 @@ interface InviteStaffModalProps {
 
 const InviteStaffModal: React.FC<InviteStaffModalProps> = ({ isOpen, onClose, onInviteSent }) => {
   const { t } = useTranslation();
-  const { user } = useAuth();
+  useAuth();
   const { toast } = useToast();
   const [isLoading, setIsLoading] = useState(false);
   
@@ -78,8 +78,7 @@ const InviteStaffModal: React.FC<InviteStaffModalProps> = ({ isOpen, onClose, on
   const onSubmit = async (values: InviteFormValues) => {
     setIsLoading(true);
     try {
-      const csrfFetch = apiFetch;
-      const response = await csrfFetch('/v1/panel/staff/invite', {
+      const response = await apiFetch('/v1/panel/staff/invite', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -106,7 +105,6 @@ const InviteStaffModal: React.FC<InviteStaffModalProps> = ({ isOpen, onClose, on
       onInviteSent();
       onClose();
     } catch (error: any) {
-      console.error('Invitation error:', error);
       toast({
         title: t('toast.error'),
         description: error.message || t('settings.staff.sendInvitationFailed'),
