@@ -60,8 +60,7 @@ export default function ReplayPage() {
       <ReplayViewer
         replayUrl={metadata.replayUrl}
         mcVersion={metadata.mcVersion}
-        atlasUrl={`${ATLAS_BASE}/${metadata.mcVersion}/atlas.png`}
-        atlasMappingUrl={`${ATLAS_BASE}/${metadata.mcVersion}/atlas-data.json`}
+        atlasBaseUrl={ATLAS_BASE}
         replayId={metadata.replayId}
         onLabelSubmit={handleLabelSubmit}
         onError={(err) => setError(err.message)}

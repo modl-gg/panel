@@ -1,6 +1,5 @@
 import React, { useState, useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Button } from '@modl-gg/shared-web/components/ui/button';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -38,10 +37,9 @@ interface ChangeRoleModalProps {
   staffMember: StaffMember | null;
 }
 
-
 const ChangeRoleModal: React.FC<ChangeRoleModalProps> = ({ isOpen, onClose, staffMember }) => {
   const { t } = useTranslation();
-  const { user: currentUser } = useAuth();
+  useAuth();
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const [selectedRole, setSelectedRole] = useState<string>('');
@@ -58,7 +56,6 @@ const ChangeRoleModal: React.FC<ChangeRoleModalProps> = ({ isOpen, onClose, staf
     }
   }, [staffMember]);
 
-
   const handleRoleChange = async () => {
     if (!staffMember || !selectedRole) return;
 
@@ -73,8 +70,7 @@ const ChangeRoleModal: React.FC<ChangeRoleModalProps> = ({ isOpen, onClose, staf
     }
 
     try {
-      const csrfFetch = apiFetch;
-      const response = await csrfFetch(`/v1/panel/staff/${staffMember.id}/role`, {
+      const response = await apiFetch(`/v1/panel/staff/${staffMember.id}/role`, {
         method: 'PATCH',
         headers: {
           'Content-Type': 'application/json',

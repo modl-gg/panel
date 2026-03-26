@@ -1,5 +1,5 @@
 import React from 'react';
-import { useQuery, useMutation, useQueryClient, QueryClient, useQueries } from '@tanstack/react-query';
+import { useQuery, useMutation, useQueryClient, useQueries } from '@tanstack/react-query';
 import { queryClient } from '../lib/queryClient';
 import { useAuth } from './use-auth';
 import { apiFetch } from '@/lib/api';
@@ -136,7 +136,6 @@ export function useTicket(id: string) {
   return useQuery({
     queryKey: ['/v1/public/tickets', id],
     queryFn: async () => {
-      // Check for stored ticket auth token
       const tokenKey = `ticket_auth_${id}`;
       const token = getCookie(tokenKey);
 
@@ -167,7 +166,6 @@ export function useTicket(id: string) {
   });
 }
 
-// Cookie helpers for ticket auth tokens
 export function setCookie(name: string, value: string, days: number) {
   const expires = new Date(Date.now() + days * 864e5).toUTCString();
   document.cookie = `${name}=${encodeURIComponent(value)}; expires=${expires}; path=/; SameSite=Lax`;
@@ -695,20 +693,15 @@ export function useUpdateUsageBillingSettings() {
 
       if (!res.ok) {
         const errorText = await res.text();
-        console.error('[FRONTEND] Usage billing update failed:', errorText);
         throw new Error(errorText || 'Failed to update usage billing settings');
       }
 
-      const result = await res.json();
-      return result;
+      return res.json();
     },
-    onSuccess: (data) => {
+    onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['/v1/panel/billing/usage'] });
       queryClient.invalidateQueries({ queryKey: ['/v1/panel/billing/status'] });
     },
-    onError: (error) => {
-      console.error('[FRONTEND] Usage billing update mutation error:', error);
-    }
   });
 }
 
@@ -762,9 +755,8 @@ export function useApplyPunishment() {
           } else {
             errorMessage = errorData.error || errorData.message || errorMessage;
           }
-        } catch (parseError) {
+        } catch {
           const errorText = await res.text();
-          console.error('Punishment API error:', errorText);
           if (res.status === 403) {
             errorMessage = 'Permission denied: You do not have permission to apply this punishment type';
           } else {
@@ -801,9 +793,7 @@ export function usePanelTicket(id: string) {
         throw new Error(`Failed to fetch ticket: ${res.status} ${errorText}`);
       }
 
-      const data = await res.json();
-
-      return data;
+      return res.json();
     },
     enabled: !!id,
     staleTime: 30000,
@@ -903,8 +893,6 @@ export function useModifyPunishment() {
       });
 
       if (!res.ok) {
-        const errorText = await res.text();
-        console.error('Modify punishment API error:', errorText);
         throw new Error(`Failed to modify punishment: ${res.status} ${res.statusText}`);
       }
 
@@ -945,8 +933,6 @@ export function useAddPunishmentNote() {
       });
 
       if (!res.ok) {
-        const errorText = await res.text();
-        console.error('Add punishment note API error:', errorText);
         throw new Error(`Failed to add punishment note: ${res.status} ${res.statusText}`);
       }
 
@@ -993,8 +979,6 @@ export function useModifyPunishmentTickets() {
       });
 
       if (!res.ok) {
-        const errorText = await res.text();
-        console.error('Modify punishment tickets API error:', errorText);
         throw new Error(`Failed to modify punishment tickets: ${res.status} ${res.statusText}`);
       }
 
@@ -1067,7 +1051,6 @@ export function useCreateRole() {
       });
 
       if (!res.ok) {
-        const errorText = await res.text();
         throw new Error(`Failed to create role: ${res.status} ${res.statusText}`);
       }
 
@@ -1093,7 +1076,6 @@ export function useUpdateRole() {
       });
 
       if (!res.ok) {
-        const errorText = await res.text();
         throw new Error(`Failed to update role: ${res.status} ${res.statusText}`);
       }
 
@@ -1115,7 +1097,6 @@ export function useDeleteRole() {
       });
 
       if (!res.ok) {
-        const errorText = await res.text();
         throw new Error(`Failed to delete role: ${res.status} ${res.statusText}`);
       }
 
@@ -1149,7 +1130,6 @@ export function useAssignMinecraftPlayer() {
       });
 
       if (!res.ok) {
-        const errorText = await res.text();
         throw new Error(`Failed to assign Minecraft player: ${res.status} ${res.statusText}`);
       }
 

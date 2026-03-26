@@ -1,20 +1,17 @@
 import { useQuery } from '@tanstack/react-query';
 import { apiFetch } from '@/lib/api';
 
-// Helper function to extract UUID from username or return UUID if already a UUID
 export function extractPlayerIdentifier(playerText: string): string {
   if (!playerText) return '';
   
-  // Clean up the text by removing status info in parentheses
   const cleanText = playerText.replace(/\s*\([^)]*\).*$/, '').trim();
-  
-  // Check if it's already a UUID (36 chars with hyphens or 32 chars without)
+
   const uuidPattern = /^[0-9a-f]{8}-?[0-9a-f]{4}-?[0-9a-f]{4}-?[0-9a-f]{4}-?[0-9a-f]{12}$/i;
   if (uuidPattern.test(cleanText)) {
     return cleanText;
   }
-  
-  // Otherwise, treat it as a username
+
+
   return cleanText;
 }
 
@@ -37,20 +34,18 @@ function selectBestPlayerMatch(players: PlayerLookupResultItem[], identifier: st
   return exactMatch || players[0];
 }
 
-// Hook to resolve a username to a player UUID
 export function usePlayerLookup(identifier: string) {
   return useQuery({
     queryKey: ['player-lookup', identifier],
     queryFn: async () => {
       if (!identifier) throw new Error('No identifier provided');
       
-      // If it's already a UUID, return it directly
       const uuidPattern = /^[0-9a-f]{8}-?[0-9a-f]{4}-?[0-9a-f]{4}-?[0-9a-f]{4}-?[0-9a-f]{12}$/i;
       if (uuidPattern.test(identifier)) {
         return { uuid: identifier, username: identifier };
       }
-      
-      // Search by username
+
+
       const res = await apiFetch(`/v1/panel/players?search=${encodeURIComponent(identifier)}`);
       if (!res.ok) {
         throw new Error('Player not found');
@@ -61,7 +56,6 @@ export function usePlayerLookup(identifier: string) {
         throw new Error('Player not found');
       }
 
-      // Prefer exact case-insensitive username match, then fall back to the best available result
       const player = selectBestPlayerMatch(players, identifier);
       if (!player) {
         throw new Error('Player not found');
@@ -78,8 +72,8 @@ export function usePlayerLookup(identifier: string) {
       };
     },
     enabled: !!identifier,
-    staleTime: 1000 * 60 * 5, // 5 minutes
-    retry: false // Don't retry failed lookups
+    staleTime: 1000 * 60 * 5,
+    retry: false
   });
 }
 
@@ -98,7 +92,6 @@ interface PunishmentLookupResult {
   };
 }
 
-// Hook to lookup punishment by ID and get the player who has it
 export function usePunishmentLookup(punishmentId: string) {
   return useQuery({
     queryKey: ['punishment-lookup', punishmentId],
@@ -113,7 +106,6 @@ export function usePunishmentLookup(punishmentId: string) {
         throw new Error('Failed to lookup punishment');
       }
       const data = await res.json();
-      // Transform flat PunishmentResponse into the expected shape
       return {
         playerUuid: data.playerUuid,
         playerUsername: data.playerUsername,
@@ -130,7 +122,7 @@ export function usePunishmentLookup(punishmentId: string) {
       };
     },
     enabled: !!punishmentId && punishmentId.length > 0,
-    staleTime: 1000 * 60 * 5, // 5 minutes
-    retry: false // Don't retry failed lookups
+    staleTime: 1000 * 60 * 5,
+    retry: false
   });
 }

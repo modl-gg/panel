@@ -1,10 +1,10 @@
 import React, { useState, useEffect } from 'react';
 import { Link } from 'wouter';
-import { Search, Shield, MessageCircle, Phone, UserPlus, FileText, ExternalLink, ChevronRight, BookOpen, ChevronDown, LogIn, Sun, Moon } from 'lucide-react';
+import { Search, Shield, MessageCircle, UserPlus, FileText, BookOpen, ChevronDown, LogIn, Sun, Moon } from 'lucide-react';
 import { Button } from '@modl-gg/shared-web/components/ui/button';
 import { Input } from '@modl-gg/shared-web/components/ui/input';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@modl-gg/shared-web/components/ui/card';
-import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@modl-gg/shared-web/components/ui/collapsible';
+import { Card, CardContent, CardHeader, CardTitle } from '@modl-gg/shared-web/components/ui/card';
+import { Collapsible, CollapsibleTrigger } from '@modl-gg/shared-web/components/ui/collapsible';
 import { useTheme } from 'next-themes';
 import serverLogo from '@/assets/server-logo.png';
 import * as LucideIcons from 'lucide-react';
@@ -220,11 +220,8 @@ const HomePage: React.FC = () => {
     }
   };
 
-  // Show all categories instead of just first 4
-  const allCategories = categories;
-
   return (
-    <div className="min-h-screen bg-background">{/* Removed gradient for better theme compatibility */}
+    <div className="min-h-screen bg-background">
       {/* Header with Sign In and Theme Toggle - responsive positioning */}
       <div className="absolute top-4 right-4 z-10 flex items-center gap-1 sm:gap-2">
         {/* Theme Toggle */}

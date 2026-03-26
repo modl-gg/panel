@@ -65,7 +65,7 @@ const DomainSettings: React.FC = () => {
         setCanManageCustomDomain(Boolean(data.canManageCustomDomain));
       }
     } catch (error) {
-      console.error('Error loading domain configuration:', error);
+      // Domain configuration may not exist yet
     }
   };
 
@@ -497,7 +497,6 @@ const DomainSettings: React.FC = () => {
           </CardContent>
         </Card>
       )}
-
 
       <Card className="rounded-card shadow-card-inner bg-surface-2">
         <CardHeader>

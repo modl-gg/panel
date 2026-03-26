@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useLocation } from 'wouter';
 import { z } from 'zod';
@@ -160,9 +160,8 @@ const AuthPage = () => {
             </p>
           </div>
 
-          <Card>
-            <br></br>
-            <CardContent>
+          <Card className="shadow-card">
+            <CardContent className="pt-6">
               <Form {...loginForm}>
                 <form onSubmit={loginForm.handleSubmit(onLoginSubmit)} className="space-y-4">
                   {loginStep === 'email' ? (

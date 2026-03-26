@@ -1,7 +1,5 @@
-import React from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@modl-gg/shared-web/components/ui/card';
 import { Badge } from '@modl-gg/shared-web/components/ui/badge';
-import { Button } from '@modl-gg/shared-web/components/ui/button';
 import { Ticket, Clock, User } from 'lucide-react';
 import { useLocation } from 'wouter';
 import { formatTimeAgo } from '@/utils/date-utils';
@@ -53,10 +51,9 @@ export function RecentTicketsSection({ tickets, loading }: RecentTicketsSectionP
     return messageStr.substring(0, maxLength) + '...';
   };
 
-
   if (loading) {
     return (
-      <Card>
+      <Card className="shadow-card">
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
             <Ticket className="h-5 w-5" />
@@ -81,7 +78,7 @@ export function RecentTicketsSection({ tickets, loading }: RecentTicketsSectionP
   }
 
   return (
-    <Card>
+    <Card className="shadow-card">
       <CardHeader>
         <CardTitle className="flex items-center gap-2">
           <Ticket className="h-5 w-5" />

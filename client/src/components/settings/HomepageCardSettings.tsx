@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Button } from '@modl-gg/shared-web/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@modl-gg/shared-web/components/ui/card';
@@ -143,8 +143,7 @@ const HomepageCardSettings: React.FC = () => {
 
   const createCardMutation = useMutation<HomepageCard, Error, Partial<HomepageCard>>({
     mutationFn: async (newCard) => {
-      const csrfFetch = apiFetch;
-      const response = await csrfFetch('/v1/panel/homepage-cards', {
+      const response = await apiFetch('/v1/panel/homepage-cards', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(newCard),
@@ -169,8 +168,7 @@ const HomepageCardSettings: React.FC = () => {
   const updateCardMutation = useMutation<HomepageCard, Error, { id: string } & Partial<HomepageCard>>({
     mutationFn: async (updatedCard) => {
       const { id, ...updateData } = updatedCard;
-      const csrfFetch = apiFetch;
-      const response = await csrfFetch(`/v1/panel/homepage-cards/${id}`, {
+      const response = await apiFetch(`/v1/panel/homepage-cards/${id}`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(updateData),
@@ -194,8 +192,7 @@ const HomepageCardSettings: React.FC = () => {
 
   const deleteCardMutation = useMutation<void, Error, string>({
     mutationFn: async (cardId) => {
-      const csrfFetch = apiFetch;
-      const response = await csrfFetch(`/v1/panel/homepage-cards/${cardId}`, {
+      const response = await apiFetch(`/v1/panel/homepage-cards/${cardId}`, {
         method: 'DELETE',
       });
       if (!response.ok) {
@@ -294,7 +291,7 @@ const HomepageCardSettings: React.FC = () => {
 
   return (
     <div className="space-y-6">
-      <Card className="rounded-card shadow-card-inner bg-surface-2">
+      <Card className="rounded-card shadow-card">
         <CardHeader>
           <CardTitle>{t('settings.homepage.title')}</CardTitle>
           <CardDescription>
@@ -463,7 +460,7 @@ const HomepageCardSettings: React.FC = () => {
           )}
 
           {/* List existing cards */}
-          <div className="space-y-2">
+          <div className="space-y-3">
             {isLoadingCards ? (
               <div className="text-center py-4">{t('settings.homepage.loadingCards')}</div>
             ) : homepageCards?.length ? (
@@ -537,4 +534,3 @@ const HomepageCardSettings: React.FC = () => {
 };
 
 export default HomepageCardSettings;
-

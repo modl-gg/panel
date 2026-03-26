@@ -66,9 +66,7 @@ export function ClickablePlayer({
       
       // Open the player window
       openPlayerWindow(playerUuid, username);
-    } catch (error) {
-      console.error('Failed to lookup player:', error);
-      // You could show a toast notification here if needed
+    } catch {
     } finally {
       setIsLookingUp(false);
     }

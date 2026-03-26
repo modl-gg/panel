@@ -192,17 +192,19 @@ const SubmitTicketPage = () => {
     });
 
     // Add email field to validation
+    const isEmailRequired = formConfig.requireEmail === true;
+    const showEmailField = isEmailRequired || formConfig.allowEmailNotifications !== false;
     const emailField = {
       id: 'email',
       type: 'text' as const,
       label: 'Email Address',
       description: 'Your email address for response notifications',
-      required: true,
+      required: isEmailRequired,
       order: 1,
       sectionId: undefined
     };
 
-    const fieldsToValidate = [emailField, ...(formConfig.fields || [])];
+    const fieldsToValidate = showEmailField ? [emailField, ...(formConfig.fields || [])] : (formConfig.fields || []);
 
     // Check display name
     if (!displayName.trim()) {
@@ -233,11 +235,20 @@ const SubmitTicketPage = () => {
     }
 
     // Validate email format
-    const email = normalizeEmail(formData['email']);
-    if (!isValidEmail(email)) {
+    const email = normalizeEmail(formData['email'] || '');
+    const emailAuthSelected = formConfig.requireEmailAuth === true || formData['emailAuthEnabled'] === 'true';
+    if (isEmailRequired && !isValidEmail(email)) {
       toast({
         title: t('submitTicket.invalidEmail'),
         description: t('submitTicket.invalidEmailDesc'),
+        variant: "destructive"
+      });
+      return;
+    }
+    if (emailAuthSelected && !isValidEmail(email)) {
+      toast({
+        title: t('submitTicket.emailAuthRequiresEmail'),
+        description: t('submitTicket.emailAuthRequiresEmailDesc'),
         variant: "destructive"
       });
       return;
@@ -334,7 +345,7 @@ const SubmitTicketPage = () => {
           attachments,
           creatorIdentifier: creatorIdentifier,
           createdServer: 'Web',
-          emailAuthEnabled: formData['emailAuthEnabled'] === 'true',
+          emailAuthEnabled: formConfig.requireEmailAuth === true || formData['emailAuthEnabled'] === 'true',
         }),
       });
 
@@ -418,23 +429,28 @@ const SubmitTicketPage = () => {
     let fields = formConfig.fields || [];
     const sectionDefinitions = formConfig.sections || [];
 
-    const emailField = {
-      id: 'email',
-      type: 'text' as const,
-      label: 'Email Address',
-      description: 'Your email address for response notifications',
-      required: true,
-      order: 2,
-      sectionId: undefined,
-      options: undefined
-    };
+    const isEmailRequiredForRender = formConfig.requireEmail === true;
+    const showEmailFieldForRender = isEmailRequiredForRender || formConfig.allowEmailNotifications !== false;
 
-    const adjustedFields = fields.map((field: FormField) => ({
-      ...field,
-      order: field.order >= 1 ? field.order + 2 : field.order
-    }));
+    if (showEmailFieldForRender) {
+      const emailField = {
+        id: 'email',
+        type: 'text' as const,
+        label: 'Email Address',
+        description: isEmailRequiredForRender ? 'Your email address for response notifications' : 'Optionally provide your email to receive notifications',
+        required: isEmailRequiredForRender,
+        order: 2,
+        sectionId: undefined,
+        options: undefined
+      };
 
-    fields = [emailField, ...adjustedFields].sort((a: FormField, b: FormField) => a.order - b.order);
+      const adjustedFields = fields.map((field: FormField) => ({
+        ...field,
+        order: field.order >= 1 ? field.order + 2 : field.order
+      }));
+
+      fields = [emailField, ...adjustedFields].sort((a: FormField, b: FormField) => a.order - b.order);
+    }
 
     if (fields.length === 0) {
       return (
@@ -751,7 +767,8 @@ const SubmitTicketPage = () => {
                 </div>
               );
             })}
-          {/* Email authentication option */}
+          {/* Email authentication option - hidden if forced by form settings or if email is not enabled */}
+          {!formConfig?.requireEmailAuth && showEmailFieldForRender && (
           <div className="border-t pt-4 mt-2">
             <div className="flex items-start space-x-2">
               <Checkbox
@@ -770,6 +787,7 @@ const SubmitTicketPage = () => {
               </div>
             </div>
           </div>
+          )}
         </div>
 
         <div className="flex justify-end">
@@ -845,7 +863,7 @@ const SubmitTicketPage = () => {
             </div>
           </div>
 
-          <Card className="mb-6">
+          <Card className="mb-6 shadow-card">
             <CardHeader>
               {!urlType && (
                 <Button
@@ -875,7 +893,7 @@ const SubmitTicketPage = () => {
   // Type selection
   return (
     <div className="min-h-screen bg-background flex items-center justify-center p-4">
-      <Card className="w-full max-w-lg">
+      <Card className="w-full max-w-lg shadow-card">
         <CardHeader className="text-center">
           <CardTitle>{t('submitTicket.submitATicket')}</CardTitle>
           <CardDescription>

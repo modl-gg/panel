@@ -64,7 +64,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [, navigate] = useLocation();
   const { toast } = useToast();
   const [user, setUser] = useState<User | null>(null);
-  const [isLoading, setIsLoading] = useState<boolean>(true);
+  const [isLoading, setIsLoading] = useState(true);
 
   const fetchAuthenticatedUser = async (): Promise<User | null> => {
     const response = await authFetch('/v1/panel/auth/me');
@@ -76,7 +76,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     return mapUserFromMeResponse(userData);
   };
 
-  // Check for existing session on mount
   useEffect(() => {
     const checkSession = async () => {
       try {
@@ -94,7 +93,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     checkSession();
   }, []);
 
-  // Sync date locale, date format, and i18n language when user settings change
   useEffect(() => {
     const lang = user?.language || 'en';
     setDateLocale(lang);
@@ -291,7 +289,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const loginWithDiscoverablePasskey = async (): Promise<boolean> => {
     setIsLoading(true);
     try {
-      // 1. Get discoverable challenge from backend (no email needed)
       const startRes = await authFetch('/v1/panel/auth/webauthn/login/start', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -307,11 +304,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       }
       const { challengeId, options } = await startRes.json();
 
-      // 2. Browser shows passkey picker — user selects account
       const optionsJSON = options?.publicKey ?? options;
       const assertionResponse = await startAuthentication({ optionsJSON });
 
-      // 3. Verify with backend
       const verifyRes = await authFetch('/v1/panel/auth/webauthn/login/verify', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },

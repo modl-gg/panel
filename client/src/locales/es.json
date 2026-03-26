@@ -59,7 +59,8 @@
     "other": "Otro",
     "important": "Importante",
     "loadingUser": "Cargando usuario...",
-    "areYouSure": "¿Estás seguro?"
+    "areYouSure": "¿Estás seguro?",
+    "actions": "Acciones"
   },
   "table": {
     "player": "Jugador",
@@ -700,7 +701,13 @@
       "badgeReduce": "Reduce",
       "noQuickResponsesConfigured": "No hay respuestas rápidas configuradas.",
       "addFirstResponse": "Añadir primera respuesta",
-      "loadingQuickResponses": "Cargando respuestas rápidas..."
+      "loadingQuickResponses": "Cargando respuestas rápidas...",
+      "actionsCount": "{{count}} acción(es)",
+      "deleteFormFieldConfirm": "¿Estás seguro de que quieres eliminar el campo \"{{label}}\"? Esta acción no se puede deshacer.",
+      "deleteSectionConfirm": "¿Estás seguro de que quieres eliminar la sección \"{{title}}\"? Esta acción no se puede deshacer.",
+      "deleteQuickResponseConfirm": "¿Estás seguro de que quieres eliminar la respuesta rápida \"{{name}}\"? Esta acción no se puede deshacer.",
+      "removeAIPunishmentConfirm": "¿Estás seguro de que quieres eliminar \"{{name}}\" de los tipos de sanción de IA?",
+      "updateAIDescFor": "Actualizar descripción de IA para {{name}}"
     },
     "usage": {
       "fetchFailed": "No se pudo cargar la información de almacenamiento.",
@@ -766,6 +773,8 @@
       "noFilesFound": "No se encontraron archivos",
       "adjustSearchFilter": "Intenta ajustar tu criterio de búsqueda o filtro.",
       "noFilesUploaded": "Aún no se han subido archivos.",
+      "deleteSelected": "Eliminar {{count}} seleccionado(s)",
+      "deleteFilesConfirm": "¿Estás seguro de que quieres eliminar {{count}} archivo(s)? Esta acción no se puede deshacer.",
       "deleteFileConfirm": "¿Estás seguro de que quieres eliminar el/los archivo(s) seleccionado(s)? Esta acción no se puede deshacer.",
       "storageSettingsTitle": "Configuración de almacenamiento",
       "overageLimitPlaceholder": "ej. 100",
@@ -1068,12 +1077,12 @@
     "invalidDateRangeDesc": "Por favor selecciona tanto una fecha de inicio como una de fin",
     "endDateBeforeStart": "La fecha de fin no puede ser antes de la fecha de inicio",
     "rollbackByStaff": "Revertir por miembro del staff",
-    "bulkRollbackFor": "Reversión masiva para {{name}}",
+    "bulkRollbackFor": "Reversión masiva para {{username}}",
     "rollbackDateRangeDesc": "Revertir todas las sanciones emitidas entre estas fechas",
     "startDate": "Fecha de inicio",
     "endDate": "Fecha de fin",
-    "selectStart": "Seleccionar fecha de inicio",
-    "selectEnd": "Seleccionar fecha de fin",
+    "selectStart": "Inicio",
+    "selectEnd": "Fin",
     "applyRollback": "Aplicar reversión",
     "timePeriod": "Período de tiempo",
     "statPunishmentsIssued": "Sanciones emitidas",

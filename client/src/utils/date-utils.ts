@@ -1,7 +1,3 @@
-/**
- * Shared date and time formatting utilities
- */
-
 let _dateFormat = 'MM/DD/YYYY';
 
 export const setDateFormat = (fmt: string) => {
@@ -87,7 +83,6 @@ export const formatTimeAgo = (dateString: string | Date): string => {
     const date = new Date(dateString);
     const now = new Date();
 
-    // Check for invalid date
     if (isNaN(date.getTime())) {
       return 'Unknown';
     }
@@ -124,7 +119,6 @@ export const formatDateWithRelative = (dateString: string): string => {
 
     const formattedDate = formatDateParts(date, true);
 
-    // Calculate relative time
     const absDiff = Math.abs(timeDiff);
     const minutes = Math.floor(absDiff / (1000 * 60));
     const hours = Math.floor(minutes / 60);

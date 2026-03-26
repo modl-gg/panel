@@ -14,7 +14,6 @@ export function useProvisioningStatusCheck() {
   const [location, setLocation] = useLocation();
 
   useEffect(() => {
-    // Don't check if we're already on the provisioning page or auth-related pages
     const exemptPaths = [
       '/provisioning-in-progress',
       '/auth',
@@ -36,7 +35,6 @@ export function useProvisioningStatusCheck() {
         const response = await apiFetch('/v1/panel/server/provisioning-status');
 
         if (!response.ok) {
-          // If we get a 401 or 403, it's likely an auth issue, not a provisioning issue
           if (response.status === 401 || response.status === 403) {
             return;
           }
@@ -47,7 +45,6 @@ export function useProvisioningStatusCheck() {
         const provisioningStatus = normalizeProvisioningStatus(data.status ?? data.provisioningStatus);
         const emailVerified = data.emailVerified === true;
 
-        // If email not verified or server not completed, redirect to setup page
         if (process.env.ENVIRONMENT !== 'development') {
           if (!emailVerified) {
             setLocation('/verify-email?status=check&reason=email_not_verified');

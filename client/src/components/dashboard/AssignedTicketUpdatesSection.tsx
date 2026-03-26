@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import { useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@modl-gg/shared-web/components/ui/card';
 import { Badge } from '@modl-gg/shared-web/components/ui/badge';
 import { Button } from '@modl-gg/shared-web/components/ui/button';
@@ -45,8 +45,7 @@ export function AssignedTicketUpdatesSection({
   const handleDismissTicket = async (ticketId: string) => {
     try {
       await onDismissTicket(ticketId);
-    } catch (error) {
-      console.error('Error dismissing ticket updates:', error);
+    } catch {
     }
   };
 
@@ -59,7 +58,7 @@ export function AssignedTicketUpdatesSection({
 
   if (loading) {
     return (
-      <Card>
+      <Card className="shadow-card">
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
             <UserCheck className="h-5 w-5" />
@@ -86,7 +85,7 @@ export function AssignedTicketUpdatesSection({
   const hasUpdates = updates.length > 0;
 
   return (
-    <Card>
+    <Card className="shadow-card">
       <CardHeader>
         <div className="flex justify-between items-center">
           <CardTitle className="flex items-center gap-2">

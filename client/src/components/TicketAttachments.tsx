@@ -111,7 +111,6 @@ export function TicketAttachments({
     return <File className="h-4 w-4" />;
   };
 
-
   const isImage = (type: string) => type.startsWith('image/');
   const isVideo = (type: string) => type.startsWith('video/');
   const isPdf = (type: string) => type === 'application/pdf';

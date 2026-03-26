@@ -4,7 +4,7 @@ import { useLocation } from 'wouter';
 import { z } from 'zod';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
-import { AlertTriangle, SearchIcon, ShieldCheck, ShieldX, Send, Paperclip, File, Image, Video, FileText, Eye, X } from 'lucide-react';
+import { AlertTriangle, SearchIcon, ShieldCheck, ShieldX, Send, File, Image, Video, FileText, X } from 'lucide-react';
 import { formatDate } from '../utils/date-utils';
 import { apiFetch, getAvatarUrl } from '@/lib/api';
 import { Label } from "@modl-gg/shared-web/components/ui/label";
@@ -40,11 +40,9 @@ import {
 import { useToast } from '@modl-gg/shared-web/hooks/use-toast';
 import { Separator } from '@modl-gg/shared-web/components/ui/separator';
 import { Badge } from '@modl-gg/shared-web/components/ui/badge';
-import { useSettings, useCreateAppeal } from '@/hooks/use-data';
-import TicketAttachments from '@/components/TicketAttachments';
+import { useCreateAppeal } from '@/hooks/use-data';
 import { formatAppealStatusLabel, isTerminalAppealStatus, normalizeAppealStatus } from '@/lib/ticket-enums';
 
-// Appeal form field interfaces
 interface AppealFormField {
   id: string;
   type: 'text' | 'textarea' | 'dropdown' | 'multiple_choice' | 'checkbox' | 'file_upload' | 'checkboxes';
@@ -1044,7 +1042,7 @@ const AppealsPage = () => {
           </p>
         </div>
 
-        <Card>
+        <Card className="shadow-card">
           <CardContent className="pt-6">
             <Form {...searchForm}>
               <form onSubmit={searchForm.handleSubmit(onSearchSubmit)} className="space-y-4">
@@ -1270,7 +1268,7 @@ const AppealsPage = () => {
                     
                     {/* Reply input */}
                     {!isTerminalAppealStatus(appealInfo.status) && (
-                      <Card className="mt-4">
+                      <Card className="mt-4 shadow-card">
                         <CardHeader>
                           <CardTitle className="text-lg">{t('appeals.replyToAppeal')}</CardTitle>
                           <CardDescription>
@@ -1379,7 +1377,7 @@ const AppealsPage = () => {
                 
                 {/* Dynamic Appeal Form */}
                 {banInfo.isAppealable !== false && (
-                  <Card className="mb-6">
+                  <Card className="mb-6 shadow-card">
                     <CardHeader>
                       <CardTitle>{t('appeals.submitAppeal')}</CardTitle>
                       <CardDescription>

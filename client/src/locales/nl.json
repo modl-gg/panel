@@ -59,7 +59,8 @@
     "other": "Overig",
     "important": "Belangrijk",
     "loadingUser": "Gebruiker laden...",
-    "areYouSure": "Weet je het zeker?"
+    "areYouSure": "Weet je het zeker?",
+    "actions": "Acties"
   },
   "table": {
     "player": "Speler",
@@ -700,7 +701,13 @@
       "badgeReduce": "Vermindert",
       "noQuickResponsesConfigured": "Geen snelle antwoorden geconfigureerd.",
       "addFirstResponse": "Eerste antwoord toevoegen",
-      "loadingQuickResponses": "Snelle antwoorden laden..."
+      "loadingQuickResponses": "Snelle antwoorden laden...",
+      "actionsCount": "{{count}} actie(s)",
+      "deleteFormFieldConfirm": "Weet je zeker dat je het formulierveld \"{{label}}\" wilt verwijderen? Deze actie kan niet ongedaan worden gemaakt.",
+      "deleteSectionConfirm": "Weet je zeker dat je de sectie \"{{title}}\" wilt verwijderen? Deze actie kan niet ongedaan worden gemaakt.",
+      "deleteQuickResponseConfirm": "Weet je zeker dat je het snelle antwoord \"{{name}}\" wilt verwijderen? Deze actie kan niet ongedaan worden gemaakt.",
+      "removeAIPunishmentConfirm": "Weet je zeker dat je \"{{name}}\" wilt verwijderen uit de AI-straftypen?",
+      "updateAIDescFor": "AI-beschrijving bijwerken voor {{name}}"
     },
     "usage": {
       "fetchFailed": "Opslaginformatie laden mislukt.",
@@ -766,6 +773,8 @@
       "noFilesFound": "Geen bestanden gevonden",
       "adjustSearchFilter": "Pas je zoek- of filtercriteria aan.",
       "noFilesUploaded": "Er zijn nog geen bestanden geüpload.",
+      "deleteSelected": "{{count}} geselecteerde verwijderen",
+      "deleteFilesConfirm": "Weet je zeker dat je {{count}} bestand(en) wilt verwijderen? Deze actie kan niet ongedaan worden gemaakt.",
       "deleteFileConfirm": "Weet je zeker dat je het/de geselecteerde bestand(en) wilt verwijderen? Deze actie kan niet ongedaan worden gemaakt.",
       "storageSettingsTitle": "Opslaginstellingen",
       "overageLimitPlaceholder": "bijv. 100",
@@ -1068,12 +1077,12 @@
     "invalidDateRangeDesc": "Selecteer zowel een begin- als einddatum",
     "endDateBeforeStart": "Einddatum kan niet vóór begindatum liggen",
     "rollbackByStaff": "Terugdraaien per staflid",
-    "bulkRollbackFor": "Massaal terugdraaien voor {{name}}",
+    "bulkRollbackFor": "Massaal terugdraaien voor {{username}}",
     "rollbackDateRangeDesc": "Alle straffen terugdraaien die zijn opgelegd tussen deze datums",
     "startDate": "Begindatum",
     "endDate": "Einddatum",
-    "selectStart": "Begindatum selecteren",
-    "selectEnd": "Einddatum selecteren",
+    "selectStart": "Start",
+    "selectEnd": "Einde",
     "applyRollback": "Terugdraaien toepassen",
     "timePeriod": "Tijdsperiode",
     "statPunishmentsIssued": "Opgelegde straffen",

@@ -15,18 +15,16 @@ import {
 } from '@/lib/backend-enums';
 import { useQueryClient } from '@tanstack/react-query';
 import { Skeleton } from '@modl-gg/shared-web/components/ui/skeleton';
-import { 
-  RefreshCw, 
-  Check, 
-  Crown, 
-  Zap, 
-  Shield, 
-  Users, 
+import {
+  RefreshCw,
+  Check,
+  Crown,
+  Zap,
+  Shield,
+  Users,
   HardDrive,
   Headphones,
   Brain,
-  Calendar,
-  DollarSign,
   AlertTriangle,
   CreditCard,
   Settings,
@@ -35,9 +33,7 @@ import {
 } from 'lucide-react';
 import { Alert, AlertDescription } from '@modl-gg/shared-web/components/ui/alert';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@modl-gg/shared-web/components/ui/alert-dialog';
-import { Progress } from '@modl-gg/shared-web/components/ui/progress';
 import { Slider } from '@modl-gg/shared-web/components/ui/slider';
-import { Switch } from '@modl-gg/shared-web/components/ui/switch';
 import { Label } from '@modl-gg/shared-web/components/ui/label';
 
 // Initialize Stripe lazily - only when a valid key is present
@@ -119,8 +115,7 @@ const BillingSettings = () => {
   const handleCreateCheckoutSession = async () => {
     setIsLoading(true);
     try {
-      const csrfFetch = apiFetch;
-      const response = await csrfFetch('/v1/panel/billing/checkout-session', {
+      const response = await apiFetch('/v1/panel/billing/checkout-session', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -162,7 +157,6 @@ const BillingSettings = () => {
         throw new Error('No checkout URL or session ID returned from server');
       }
     } catch (error) {
-      console.error(error);
       toast({
         title: t('toast.error'),
         description: t('settings.billing.checkoutSessionFailed'),
@@ -176,8 +170,7 @@ const BillingSettings = () => {
   const handleCreatePortalSession = async () => {
     setIsLoading(true);
     try {
-      const csrfFetch = apiFetch;
-      const response = await csrfFetch('/v1/panel/billing/portal-session', {
+      const response = await apiFetch('/v1/panel/billing/portal-session', {
         method: 'POST',
       });
 
@@ -191,7 +184,6 @@ const BillingSettings = () => {
       }
       window.location.href = data.url;
     } catch (error) {
-      console.error(error);
       toast({
         title: t('toast.error'),
         description: t('settings.billing.portalFailed'),
@@ -212,7 +204,6 @@ const BillingSettings = () => {
         description: t('settings.billing.refreshedDesc'),
       });
     } catch (error) {
-      console.error('Error refreshing billing status:', error);
       toast({
         variant: 'destructive',
         title: t('toast.error'),
@@ -233,7 +224,6 @@ const BillingSettings = () => {
         variant: 'default',
       });
     } catch (error: any) {
-      console.error('Error cancelling subscription:', error);
       toast({
         title: t('toast.error'),
         description: error.message || t('settings.billing.cancelFailed'),
@@ -252,7 +242,6 @@ const BillingSettings = () => {
         variant: 'default',
       });
     } catch (error: any) {
-      console.error('Error resubscribing:', error);
       toast({
         title: t('toast.error'),
         description: error.message || t('settings.billing.reactivateFailed'),
@@ -260,7 +249,6 @@ const BillingSettings = () => {
       });
     }
   };
-
 
   const getCurrentPlan = () => {
     if (!billingStatus) return 'free';

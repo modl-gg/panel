@@ -352,7 +352,7 @@ const StaffPerformanceModal = () => {
             <>
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            <Card>
+            <Card className="shadow-card">
               <CardHeader>
                 <CardTitle className="text-base">{t('audit.actionsByStaff')}</CardTitle>
               </CardHeader>
@@ -378,7 +378,7 @@ const StaffPerformanceModal = () => {
               </CardContent>
             </Card>
             
-            <Card>
+            <Card className="shadow-card">
               <CardHeader>
                 <CardTitle className="text-base">{t('audit.responseTimes')}</CardTitle>
               </CardHeader>
@@ -405,7 +405,7 @@ const StaffPerformanceModal = () => {
             </Card>
           </div>
           
-          <Card>
+          <Card className="shadow-card">
             <CardHeader>
               <CardTitle className="text-base">{t('audit.staffActivityDetails')}</CardTitle>
             </CardHeader>
@@ -574,7 +574,7 @@ const PunishmentRollbackModal = () => {
             </div>
           ) : (
             punishments.filter(p => p.canRollback).map((punishment) => (
-            <Card key={punishment.id}>
+            <Card key={punishment.id} className="shadow-card">
               <CardContent className="p-4">
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-4">
@@ -868,7 +868,7 @@ const StaffDetailModal = ({ staff, isOpen, onClose, initialPeriod = '30d' }: {
 
           {/* Key Metrics */}
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-            <Card>
+            <Card className="shadow-card">
               <CardContent className="p-4">
                 <div className="text-center">
                   <Gavel className="h-8 w-8 mx-auto mb-2 text-red-600" />
@@ -878,7 +878,7 @@ const StaffDetailModal = ({ staff, isOpen, onClose, initialPeriod = '30d' }: {
               </CardContent>
             </Card>
 
-            <Card>
+            <Card className="shadow-card">
               <CardContent className="p-4">
                 <div className="text-center">
                   <FileText className="h-8 w-8 mx-auto mb-2 text-blue-600" />
@@ -888,7 +888,7 @@ const StaffDetailModal = ({ staff, isOpen, onClose, initialPeriod = '30d' }: {
               </CardContent>
             </Card>
 
-            <Card>
+            <Card className="shadow-card">
               <CardContent className="p-4">
                 <div className="text-center">
                   <Eye className="h-8 w-8 mx-auto mb-2 text-green-600" />
@@ -898,7 +898,7 @@ const StaffDetailModal = ({ staff, isOpen, onClose, initialPeriod = '30d' }: {
               </CardContent>
             </Card>
 
-            <Card>
+            <Card className="shadow-card">
               <CardContent className="p-4">
                 <div className="text-center">
                   <Clock className="h-8 w-8 mx-auto mb-2 text-purple-600" />
@@ -911,7 +911,7 @@ const StaffDetailModal = ({ staff, isOpen, onClose, initialPeriod = '30d' }: {
 
           {/* Activity Charts */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            <Card>
+            <Card className="shadow-card">
               <CardHeader>
                 <CardTitle className="text-base">{t('audit.dailyActivityBreakdown')}</CardTitle>
               </CardHeader>
@@ -939,7 +939,7 @@ const StaffDetailModal = ({ staff, isOpen, onClose, initialPeriod = '30d' }: {
               </CardContent>
             </Card>
 
-            <Card>
+            <Card className="shadow-card">
               <CardHeader>
                 <CardTitle className="text-base">{t('audit.punishmentTypesIssued')}</CardTitle>
               </CardHeader>
@@ -977,7 +977,7 @@ const StaffDetailModal = ({ staff, isOpen, onClose, initialPeriod = '30d' }: {
 
           {/* Recent Actions Tables */}
           <div className="grid grid-cols-1 gap-6">
-            <Card>
+            <Card className="shadow-card">
               <CardHeader>
                 <CardTitle className="text-base">{t('audit.recentPunishmentsIssued')}</CardTitle>
               </CardHeader>
@@ -1129,8 +1129,7 @@ const StaffDetailModal = ({ staff, isOpen, onClose, initialPeriod = '30d' }: {
                                         });
                                         
                                         const responseData = await response.json();
-                                        console.log('Rollback response:', responseData);
-                                        
+
                                         if (!response.ok) {
                                           throw new Error(responseData.error || `HTTP ${response.status}: ${response.statusText}`);
                                         }
@@ -1174,7 +1173,7 @@ const StaffDetailModal = ({ staff, isOpen, onClose, initialPeriod = '30d' }: {
               </CardContent>
             </Card>
 
-            <Card>
+            <Card className="shadow-card">
               <CardHeader>
                 <CardTitle className="text-base">{t('audit.recentTicketResponses')}</CardTitle>
               </CardHeader>
@@ -1311,21 +1310,21 @@ const TicketAnalyticsSection = ({ analyticsPeriod }: { analyticsPeriod: string }
 
       {/* Summary Cards */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-        <Card>
+        <Card className="shadow-card">
           <CardContent className="p-4">
             <div className="text-sm text-muted-foreground">{t('audit.totalTickets')}</div>
             <div className="text-2xl font-bold">{totalTickets}</div>
             <p className="text-xs text-muted-foreground">{t('audit.inSelectedPeriod')}</p>
           </CardContent>
         </Card>
-        <Card>
+        <Card className="shadow-card">
           <CardContent className="p-4">
             <div className="text-sm text-muted-foreground">{t('audit.avgResolutionTime')}</div>
             <div className="text-2xl font-bold">{avgResolutionHours}h</div>
             <p className="text-xs text-muted-foreground">{t('audit.timeToResolve')}</p>
           </CardContent>
         </Card>
-        <Card>
+        <Card className="shadow-card">
           <CardContent className="p-4">
             <div className="text-sm text-muted-foreground">{t('audit.categories')}</div>
             <div className="text-2xl font-bold">{(ticketAnalytics?.byCategory || []).length}</div>
@@ -1337,7 +1336,7 @@ const TicketAnalyticsSection = ({ analyticsPeriod }: { analyticsPeriod: string }
       {/* Charts Row */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         {/* Tickets by Status */}
-        <Card>
+        <Card className="shadow-card">
           <CardHeader>
             <CardTitle className="text-base">{t('audit.ticketsByStatus')}</CardTitle>
           </CardHeader>
@@ -1373,7 +1372,7 @@ const TicketAnalyticsSection = ({ analyticsPeriod }: { analyticsPeriod: string }
         </Card>
 
         {/* Tickets by Category */}
-        <Card>
+        <Card className="shadow-card">
           <CardHeader>
             <CardTitle className="text-base">{t('audit.ticketsByCategory')}</CardTitle>
           </CardHeader>
@@ -1401,7 +1400,7 @@ const TicketAnalyticsSection = ({ analyticsPeriod }: { analyticsPeriod: string }
       </div>
 
       {/* Daily Ticket Trend */}
-      <Card>
+      <Card className="shadow-card">
         <CardHeader>
           <CardTitle className="text-base">{t('audit.dailyTicketTrend')}</CardTitle>
         </CardHeader>
@@ -1437,7 +1436,7 @@ const TicketAnalyticsSection = ({ analyticsPeriod }: { analyticsPeriod: string }
 
       {/* Resolution Time by Category */}
       {ticketAnalytics?.avgResolutionByCategory && ticketAnalytics.avgResolutionByCategory.length > 0 && (
-        <Card>
+        <Card className="shadow-card">
           <CardHeader>
             <CardTitle className="text-base">{t('audit.avgResolutionByCategory')}</CardTitle>
           </CardHeader>
@@ -1586,7 +1585,7 @@ const ActivePunishmentsCard = () => {
   );
 
   return (
-    <Card>
+    <Card className="shadow-card">
       <CardHeader>
         <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
           <CardTitle className="text-base flex items-center gap-2">
@@ -1815,7 +1814,7 @@ const StatCard = ({
   return (
     <Card
       className={cn(
-        "cursor-pointer transition-all hover:bg-muted/50",
+        "cursor-pointer transition-all hover:bg-muted/50 shadow-card",
         isExpanded && "ring-2 ring-primary"
       )}
       onClick={onToggle}
@@ -2018,7 +2017,7 @@ const AuditLog = () => {
 
         {/* Metrics Overview Chart - Show when nothing is expanded */}
         {!expandedSection && combinedMetricsData.length > 0 && (
-          <Card>
+          <Card className="shadow-card">
             <CardHeader>
               <CardTitle className="text-base">{t('audit.activityOverview')}</CardTitle>
             </CardHeader>
@@ -2089,7 +2088,7 @@ const AuditLog = () => {
 
         {/* Expanded Content - Full Width */}
         {expandedSection && (
-          <Card>
+          <Card className="shadow-card">
             <CardContent className="p-6">
               {expandedSection === 'tickets' && (
                 <TicketAnalyticsSection analyticsPeriod={analyticsPeriod} />
@@ -2098,7 +2097,7 @@ const AuditLog = () => {
               {expandedSection === 'punishments' && (
                 <div className="space-y-6">
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                    <Card>
+                    <Card className="shadow-card">
                       <CardHeader>
                         <CardTitle className="text-base">{t('audit.punishmentsByType')}</CardTitle>
                       </CardHeader>
@@ -2124,7 +2123,7 @@ const AuditLog = () => {
                       </CardContent>
                     </Card>
 
-                    <Card>
+                    <Card className="shadow-card">
                       <CardHeader>
                         <CardTitle className="text-base">{t('audit.dailyPunishmentTrend')}</CardTitle>
                       </CardHeader>
@@ -2151,7 +2150,7 @@ const AuditLog = () => {
                     </Card>
                   </div>
 
-                  <Card>
+                  <Card className="shadow-card">
                     <CardHeader>
                       <CardTitle className="text-base">{t('audit.topPunishers')}</CardTitle>
                     </CardHeader>
@@ -2186,7 +2185,7 @@ const AuditLog = () => {
               {expandedSection === 'staff' && (
                 <div className="space-y-6">
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                    <Card>
+                    <Card className="shadow-card">
                       <CardHeader>
                         <CardTitle className="text-base">{t('audit.actionsByStaff')}</CardTitle>
                       </CardHeader>
@@ -2212,7 +2211,7 @@ const AuditLog = () => {
                       </CardContent>
                     </Card>
 
-                    <Card>
+                    <Card className="shadow-card">
                       <CardHeader>
                         <CardTitle className="text-base">{t('audit.ticketResponsesTitle')}</CardTitle>
                       </CardHeader>
@@ -2239,7 +2238,7 @@ const AuditLog = () => {
                     </Card>
                   </div>
 
-                  <Card>
+                  <Card className="shadow-card">
                     <CardHeader>
                       <CardTitle className="text-base">{t('audit.staffActivityDetails')}</CardTitle>
                     </CardHeader>
@@ -2279,7 +2278,7 @@ const AuditLog = () => {
               {expandedSection === 'players' && (
                 <div className="space-y-6">
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                    <Card>
+                    <Card className="shadow-card">
                       <CardHeader>
                         <CardTitle className="text-base">{t('audit.playerLoginActivity')}</CardTitle>
                       </CardHeader>
@@ -2318,7 +2317,7 @@ const AuditLog = () => {
                       </CardContent>
                     </Card>
 
-                    <Card>
+                    <Card className="shadow-card">
                       <CardHeader>
                         <CardTitle className="text-base">{t('audit.loginsByCountry')}</CardTitle>
                       </CardHeader>
@@ -2354,7 +2353,7 @@ const AuditLog = () => {
                     </Card>
                   </div>
 
-                  <Card>
+                  <Card className="shadow-card">
                     <CardHeader>
                       <CardTitle className="text-base">{t('audit.securityAlerts')}</CardTitle>
                     </CardHeader>

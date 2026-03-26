@@ -235,7 +235,6 @@ async function uploadToS3(
 
     xhr.open('PUT', presignedUrl, true);
 
-    // Filter out headers that browsers don't allow setting manually
     const unsafeHeaders = ['content-length', 'host', 'connection', 'accept-encoding'];
     Object.entries(requiredHeaders).forEach(([key, value]) => {
       if (!unsafeHeaders.includes(key.toLowerCase())) {
@@ -281,10 +280,8 @@ export function useMediaUpload() {
     metadata: Record<string, unknown> = {},
     onProgress?: (progress: UploadProgress) => void
   ): Promise<{ url: string; key: string }> => {
-    // Get fresh config from cache or fetch it
     let currentConfig = queryClient.getQueryData<MediaUploadConfig>(MEDIA_CONFIG_QUERY_KEY);
-    
-    // If no cached config or config says not configured, fetch fresh
+
     if (!currentConfig || !currentConfig.backblazeConfigured) {
       currentConfig = await fetchMediaConfig();
       queryClient.setQueryData(MEDIA_CONFIG_QUERY_KEY, currentConfig);

@@ -1,4 +1,3 @@
-import React from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@modl-gg/shared-web/components/ui/card';
 import { Badge } from '@modl-gg/shared-web/components/ui/badge';
 import { Button } from '@modl-gg/shared-web/components/ui/button';
@@ -19,7 +18,6 @@ export interface TicketSubscriptionUpdate {
   isRead: boolean;
   additionalCount?: number;
 }
-
 
 interface TicketSubscriptionsSectionProps {
   updates: TicketSubscriptionUpdate[];
@@ -61,8 +59,7 @@ export function TicketSubscriptionsSection({
   const handleDismissTicket = async (ticketId: string) => {
     try {
       await onDismissTicket(ticketId);
-    } catch (error) {
-      console.error('Error dismissing ticket updates:', error);
+    } catch {
     }
   };
 
@@ -73,10 +70,9 @@ export function TicketSubscriptionsSection({
     return contentStr.substring(0, maxLength) + '...';
   };
 
-
   if (loading) {
     return (
-      <Card>
+      <Card className="shadow-card">
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
             <Bell className="h-5 w-5" />
@@ -104,7 +100,7 @@ export function TicketSubscriptionsSection({
   const hasUnreadUpdates = updates.length > 0;
 
   return (
-    <Card>
+    <Card className="shadow-card">
       <CardHeader>
         <div className="flex justify-between items-center">
           <CardTitle className="flex items-center gap-2">

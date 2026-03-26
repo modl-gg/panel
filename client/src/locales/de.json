@@ -59,7 +59,8 @@
     "other": "Sonstiges",
     "important": "Wichtig",
     "loadingUser": "Benutzer wird geladen...",
-    "areYouSure": "Bist du sicher?"
+    "areYouSure": "Bist du sicher?",
+    "actions": "Aktionen"
   },
   "table": {
     "player": "Spieler",
@@ -700,7 +701,13 @@
       "badgeReduce": "Reduziert",
       "noQuickResponsesConfigured": "Keine Schnellantworten konfiguriert.",
       "addFirstResponse": "Erste Antwort hinzufügen",
-      "loadingQuickResponses": "Schnellantworten werden geladen..."
+      "loadingQuickResponses": "Schnellantworten werden geladen...",
+      "actionsCount": "{{count}} Aktion(en)",
+      "deleteFormFieldConfirm": "Bist du sicher, dass du das Formularfeld \"{{label}}\" löschen möchtest? Diese Aktion kann nicht rückgängig gemacht werden.",
+      "deleteSectionConfirm": "Bist du sicher, dass du den Abschnitt \"{{title}}\" löschen möchtest? Diese Aktion kann nicht rückgängig gemacht werden.",
+      "deleteQuickResponseConfirm": "Bist du sicher, dass du die Schnellantwort \"{{name}}\" löschen möchtest? Diese Aktion kann nicht rückgängig gemacht werden.",
+      "removeAIPunishmentConfirm": "Bist du sicher, dass du \"{{name}}\" aus den KI-Straftypen entfernen möchtest?",
+      "updateAIDescFor": "KI-Beschreibung für {{name}} aktualisieren"
     },
     "usage": {
       "fetchFailed": "Speicherinformationen konnten nicht geladen werden.",
@@ -766,6 +773,8 @@
       "noFilesFound": "Keine Dateien gefunden",
       "adjustSearchFilter": "Versuche deine Such- oder Filterkriterien anzupassen.",
       "noFilesUploaded": "Es wurden noch keine Dateien hochgeladen.",
+      "deleteSelected": "{{count}} ausgewählte löschen",
+      "deleteFilesConfirm": "Bist du sicher, dass du {{count}} Datei(en) löschen möchtest? Diese Aktion kann nicht rückgängig gemacht werden.",
       "deleteFileConfirm": "Bist du sicher, dass du die ausgewählte(n) Datei(en) löschen möchtest? Diese Aktion kann nicht rückgängig gemacht werden.",
       "storageSettingsTitle": "Speichereinstellungen",
       "overageLimitPlaceholder": "z. B. 100",
@@ -1068,12 +1077,12 @@
     "invalidDateRangeDesc": "Bitte wähle sowohl ein Start- als auch ein Enddatum",
     "endDateBeforeStart": "Das Enddatum kann nicht vor dem Startdatum liegen",
     "rollbackByStaff": "Rückgängig machen nach Personalmitglied",
-    "bulkRollbackFor": "Massen-Rückgängigmachung für {{name}}",
+    "bulkRollbackFor": "Massen-Rückgängigmachung für {{username}}",
     "rollbackDateRangeDesc": "Alle Strafen rückgängig machen, die zwischen diesen Daten ausgestellt wurden",
     "startDate": "Startdatum",
     "endDate": "Enddatum",
-    "selectStart": "Startdatum auswählen",
-    "selectEnd": "Enddatum auswählen",
+    "selectStart": "Start",
+    "selectEnd": "Ende",
     "applyRollback": "Rückgängigmachung anwenden",
     "timePeriod": "Zeitraum",
     "statPunishmentsIssued": "Ausgestellte Strafen",

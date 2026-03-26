@@ -95,7 +95,6 @@ const PasskeySettings = () => {
       setNameDialogOpen(true);
     } catch (e: any) {
       if (e.name !== 'NotAllowedError') {
-        console.error('Passkey registration error:', e);
         toast({ title: t('toast.error'), description: t('settings.passkey.registrationCancelledOrFailed'), variant: 'destructive' });
       }
     } finally {

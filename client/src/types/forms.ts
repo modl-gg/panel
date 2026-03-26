@@ -1,6 +1,3 @@
-// Centralized type definitions for appeal and ticket form fields
-
-// Appeal form types
 export interface AppealFormField {
   id: string;
   type: 'text' | 'textarea' | 'dropdown' | 'multiple_choice' | 'checkbox' | 'file_upload' | 'checkboxes';
@@ -30,7 +27,6 @@ export interface AppealFormSettings {
   sections: AppealFormSection[];
 }
 
-// Ticket form types
 export interface TicketFormField {
   id: string;
   type: 'text' | 'textarea' | 'dropdown' | 'multiple_choice' | 'checkbox' | 'file_upload' | 'checkboxes' | 'description';
@@ -56,6 +52,9 @@ export interface TicketFormSection {
 }
 
 export interface TicketFormSettings {
+  requireEmail?: boolean;
+  requireEmailAuth?: boolean;
+  allowEmailNotifications?: boolean;
   fields: TicketFormField[];
   sections: TicketFormSection[];
 }

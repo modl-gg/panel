@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Shield, Plus, Edit, Trash2, Save, X, Check, GripVertical } from 'lucide-react';
+import { Shield, Plus, Edit, Trash2, Save, X, GripVertical } from 'lucide-react';
 import { DndProvider, useDrag, useDrop } from 'react-dnd';
 import { HTML5Backend } from 'react-dnd-html5-backend';
 import { Button } from '@modl-gg/shared-web/components/ui/button';
@@ -12,7 +12,7 @@ import { Badge } from '@modl-gg/shared-web/components/ui/badge';
 import { useToast } from '@modl-gg/shared-web/hooks/use-toast';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@modl-gg/shared-web/components/ui/dialog";
 import { Separator } from '@modl-gg/shared-web/components/ui/separator';
-import { useSettings, useRoles, usePermissions, useCreateRole, useUpdateRole, useDeleteRole } from '@/hooks/use-data';
+import { useRoles, usePermissions, useCreateRole, useUpdateRole, useDeleteRole } from '@/hooks/use-data';
 import { useAuth } from '@/hooks/use-auth';
 import { usePermissions as useUserPermissions } from '@/hooks/use-permissions';
 import { apiFetch } from '@/lib/api';
@@ -240,10 +240,10 @@ const DraggableRoleCard: React.FC<DraggableRoleCardProps> = ({
   };
 
   return (
-    <div
+    <Card
       ref={ref}
-      className={`border rounded-lg p-4 transition-all ${
-        isDragging ? 'opacity-50 scale-95' : ''
+      className={`p-4 rounded-card shadow-card-inner bg-surface-2 transition-all ${
+        isDragging ? 'opacity-50' : ''
       } ${isOver && canDrop ? 'border-primary bg-primary/5' : ''} ${
         canDragRole ? 'cursor-move' : ''
       }`}
@@ -251,7 +251,7 @@ const DraggableRoleCard: React.FC<DraggableRoleCardProps> = ({
       <div className="flex items-center justify-between mb-2">
         <div className="flex items-center gap-3">
           {canDragRole && (
-            <GripVertical className="h-4 w-4 text-muted-foreground" />
+            <GripVertical className="h-5 w-5 text-muted-foreground cursor-grab" />
           )}
           <h4 className="font-medium">{role.name}</h4>
           {role.isDefault && (
@@ -272,21 +272,20 @@ const DraggableRoleCard: React.FC<DraggableRoleCardProps> = ({
         </div>
         <div className="flex items-center gap-2">
           <Button
-            variant="outline"
+            variant="ghost"
             size="sm"
             onClick={() => onEditRole(role)}
             disabled={role.name === 'Super Admin' || (roleOrderMap.get(currentUserRole || '') ?? 999) >= getRoleOrder(role)}
           >
-            <Edit className="h-3 w-3" />
+            <Edit className="h-4 w-4" />
           </Button>
           <Button
-            variant="outline"
+            variant="ghost"
             size="sm"
             onClick={() => onDeleteRole(role)}
             disabled={role.name === 'Super Admin' || (roleOrderMap.get(currentUserRole || '') ?? 999) >= getRoleOrder(role)}
-            className="text-destructive hover:text-destructive"
           >
-            <Trash2 className="h-3 w-3" />
+            <Trash2 className="h-4 w-4 text-destructive" />
           </Button>
         </div>
       </div>
@@ -319,7 +318,7 @@ const DraggableRoleCard: React.FC<DraggableRoleCardProps> = ({
           })}
         </div>
       </div>
-    </div>
+    </Card>
   );
 };
 
@@ -356,7 +355,6 @@ export default function StaffRolesCard() {
 
   const roles = rolesData?.roles || [];
   const permissions = permissionsData?.permissions || [];
-  const permissionCategories = permissionsData?.categories || PERMISSION_CATEGORIES;
   
   // If no roles are loaded from the database, use default roles as fallback
   const effectiveRoles = roles.length > 0 ? roles : DEFAULT_ROLES;
@@ -369,9 +367,7 @@ export default function StaffRolesCard() {
     });
   }
   
-  // Safety check for currentUser
   if (!currentUser) {
-    console.warn('currentUser is undefined - this should not happen');
     return <div>{t('common.loadingUser')}</div>;
   }
 
@@ -437,8 +433,7 @@ export default function StaffRolesCard() {
         order: index + 1  // Start from 1 since Super Admin is always 0
       }));
       
-      const csrfFetch = apiFetch;
-      const response = await csrfFetch('/v1/panel/roles/reorder', {
+      const response = await apiFetch('/v1/panel/roles/reorder', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -681,7 +676,7 @@ export default function StaffRolesCard() {
         <CardContent className="space-y-6">
           {/* Roles List */}
           <DndProvider backend={HTML5Backend}>
-            <div className="space-y-4">
+            <div className="space-y-3">
               {localRoles.map((role, index) => (
                 <DraggableRoleCard
                   key={role.id}

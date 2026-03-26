@@ -43,13 +43,13 @@
   --shadow-card: 0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1);
   --shadow-card-hover: 0 10px 15px -3px rgb(0 0 0 / 0.1), 0 4px 6px -4px rgb(0 0 0 / 0.1);
   --shadow-card-elevated: 0 20px 25px -5px rgb(0 0 0 / 0.1), 0 8px 10px -6px rgb(0 0 0 / 0.1);
-  
+
   --chart-1: 207 90% 54%;
   --chart-2: 273 68% 59%;
   --chart-3: 142 71% 45%;
   --chart-4: 38 92% 50%;
   --chart-5: 199 89% 48%;
-  
+
   --sidebar-background: 0 0% 98%;
   --sidebar-foreground: 222.2 84% 4.9%;
   --sidebar-primary: 207 90% 54%;
@@ -96,7 +96,7 @@
   --info: 199 89% 48%;
   --info-foreground: 0 0% 98%;
   --ring: 240 4.9% 83.9%;
-  
+
   --sidebar-background: 240 11% 8%;
   --sidebar-foreground: 0 0% 98%;
   --sidebar-primary: 207 90% 54%;
@@ -215,7 +215,7 @@
       opacity: 1;
     }
   }
-  
+
   @keyframes slideLeft {
     from {
       width: 240px;
@@ -226,7 +226,7 @@
       opacity: 0;
     }
   }
-  
+
   @keyframes shake {
     0% { transform: translateX(0); }
     25% { transform: translateX(-8px); }
@@ -234,16 +234,16 @@
     75% { transform: translateX(-4px); }
     100% { transform: translateX(0); }
   }
-  
+
   .animate-shake {
     animation: shake 0.4s ease-in-out;
     border-color: hsl(var(--warning)) !important;
   }
-  
+
   .animate-slide-right {
     animation: slideRight 0.3s ease forwards;
   }
-  
+
   .animate-slide-left {
     animation: slideLeft 0.3s ease forwards;
   }
@@ -251,31 +251,31 @@
   .sidebar-collapsed {
     @apply w-[72px];
   }
-  
+
   .sidebar-expanded {
     @apply w-[240px];
   }
-  
+
   .sidebar-expanded-only {
     @apply block;
   }
-  
+
   .sidebar-collapsed .sidebar-expanded-only {
     @apply hidden;
   }
-  
+
   .sidebar-collapsed-only {
     @apply hidden;
   }
-  
+
   .sidebar-collapsed .sidebar-collapsed-only {
     @apply block;
   }
-  
+
   .window-header {
     @apply cursor-move;
   }
-  
+
   .resizable-window {
     @apply fixed rounded-card shadow-card-elevated overflow-hidden z-50 resize;
     min-width: 600px;
@@ -288,7 +288,7 @@
   .dark .prose {
     @apply text-foreground;
   }
-  
+
   .dark .prose h1,
   .dark .prose h2,
   .dark .prose h3,
@@ -297,7 +297,7 @@
   .dark .prose h6 {
     @apply text-foreground;
   }
-  
+
   .dark .prose p,
   .dark .prose li,
   .dark .prose blockquote,
@@ -305,39 +305,39 @@
   .dark .prose th {
     @apply text-foreground;
   }
-  
+
   .dark .prose code {
     @apply bg-muted text-foreground px-1 py-0.5 rounded;
   }
-  
+
   .dark .prose pre {
     @apply bg-muted border border-border;
   }
-  
+
   .dark .prose pre code {
     @apply bg-transparent px-0 py-0;
   }
-  
+
   .dark .prose blockquote {
     @apply border-l-border text-muted-foreground;
   }
-  
+
   .dark .prose table {
     @apply border-border;
   }
-  
+
   .dark .prose thead th {
     @apply border-b-border bg-muted;
   }
-  
+
   .dark .prose tbody td {
     @apply border-t-border;
   }
-  
+
   .dark .prose a {
     @apply text-primary hover:text-primary/80;
   }
-  
+
   .dark .prose hr {
     @apply border-border;
   }

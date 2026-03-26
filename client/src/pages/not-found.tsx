@@ -25,7 +25,7 @@ export default function NotFound() {
 
   return (
     <div className="min-h-screen w-full flex items-center justify-center bg-background">
-      <Card className="w-full max-w-md mx-4">
+      <Card className="w-full max-w-md mx-4 shadow-card">
         <CardContent className="pt-6 pb-6">
           <div className="flex flex-col items-center text-center space-y-4">
             <AlertCircle className="h-16 w-16 text-muted-foreground" />

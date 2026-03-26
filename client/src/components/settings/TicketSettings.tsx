@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
-import { MessageCircle, Tag, Plus, X, ChevronDown, ChevronRight, Layers, Shield, Edit3, Trash2, GripVertical, Save, CheckCircle, Settings, Crown } from 'lucide-react';
+import { MessageCircle, Tag, Plus, X, ChevronDown, ChevronRight, Layers, Shield, Edit3, Trash2, GripVertical, Save, Crown } from 'lucide-react';
 import { Button } from '@modl-gg/shared-web/components/ui/button';
 import { Input } from '@modl-gg/shared-web/components/ui/input';
 import { Textarea } from '@modl-gg/shared-web/components/ui/textarea';
@@ -377,8 +377,7 @@ const TicketSettings = ({
   visibleSection
 }: TicketSettingsProps) => {
   const { t } = useTranslation();
-  // User authentication and role information
-  const { user: currentUser } = useAuth();
+  useAuth();
   
   // Billing status for premium gating
   const { data: billingStatus } = useBillingStatus();
@@ -576,7 +575,6 @@ const TicketSettings = ({
 
   // Section Management Functions
   const addTicketFormSection = () => {
-    console.log('addTicketFormSection called with:', newTicketFormSectionTitle);
     if (!newTicketFormSectionTitle.trim()) return;
     
     const newSection: TicketFormSection = {
@@ -731,7 +729,6 @@ const TicketSettings = ({
     });
   }, [selectedTicketFormType, setTicketForms]);
 
-
   // Move action within a category
   const moveAction = React.useCallback((categoryId: string, dragIndex: number, hoverIndex: number) => {
     setQuickResponsesState(prev => ({
@@ -767,7 +764,7 @@ const TicketSettings = ({
 
   // AI Moderation computed values
   const availablePunishmentTypes = punishmentTypesState?.filter(pt =>
-    pt.isCustomizable && (!aiModerationSettings.aiPunishmentConfigs?.[pt.ordinal] || !aiModerationSettings.aiPunishmentConfigs[pt.ordinal].enabled)
+    pt.isCustomizable && pt.ordinal != null && (!aiModerationSettings.aiPunishmentConfigs?.[pt.ordinal] || !aiModerationSettings.aiPunishmentConfigs[pt.ordinal].enabled)
   ) || [];
 
   // Clear form when dialog opens for new field (not editing)
@@ -954,9 +951,9 @@ const TicketSettings = ({
                     </SelectTrigger>
                     <SelectContent className="max-h-60 overflow-y-auto">
                       {punishmentTypesState
-                        .filter(pt => !Object.values(aiModerationSettings?.aiPunishmentConfigs || {}).some((config: any) => config.name === pt.name))
+                        .filter(pt => pt.id != null && !Object.values(aiModerationSettings?.aiPunishmentConfigs || {}).some((config: any) => config.name === pt.name))
                         .map((punishmentType) => (
-                          <SelectItem key={punishmentType.id} value={punishmentType.id.toString()}>
+                          <SelectItem key={punishmentType.id} value={String(punishmentType.id)}>
                             {punishmentType.name} ({punishmentType.category})
                           </SelectItem>
                         ))}
@@ -994,8 +991,8 @@ const TicketSettings = ({
                 onClick={() => {
                   if (selectedPunishmentTypeId && newAIPunishmentDescription.trim()) {
                     const selectedType = punishmentTypesState.find(t => t.id === selectedPunishmentTypeId);
-                    if (selectedType) {
-                      const configKey = selectedType.ordinal.toString();
+                    if (selectedType && selectedType.ordinal != null) {
+                      const configKey = String(selectedType.ordinal);
                       setAiModerationSettings((prev: any) => ({
                         ...prev,
                         aiPunishmentConfigs: {
@@ -1437,6 +1434,71 @@ const TicketSettings = ({
                 </div>
               </div>
 
+              {/* General Settings */}
+              <div className="space-y-4">
+                <h5 className="text-sm font-medium">{t('settings.tickets.generalSettings')}</h5>
+                <div className="space-y-3">
+                  <div className="flex items-center justify-between p-3 bg-muted/50 rounded-lg">
+                    <div>
+                      <Label className="text-sm font-medium">{t('settings.tickets.requireEmailForCreation')}</Label>
+                      <p className="text-xs text-muted-foreground">{t('settings.tickets.requireEmailForCreationDesc')}</p>
+                    </div>
+                    <Switch
+                      checked={ticketForms[selectedTicketFormType]?.requireEmail ?? false}
+                      onCheckedChange={(checked) =>
+                        setTicketForms(prev => ({
+                          ...prev,
+                          [selectedTicketFormType]: {
+                            ...prev[selectedTicketFormType],
+                            requireEmail: checked,
+                            ...(!checked ? { requireEmailAuth: false } : {}),
+                          }
+                        }))
+                      }
+                    />
+                  </div>
+                  <div className={`flex items-center justify-between p-3 bg-muted/50 rounded-lg ${!(ticketForms[selectedTicketFormType]?.requireEmail) ? 'opacity-50' : ''}`}>
+                    <div>
+                      <Label className="text-sm font-medium">{t('settings.tickets.requireEmailAuthToAccess')}</Label>
+                      <p className="text-xs text-muted-foreground">{t('settings.tickets.requireEmailAuthToAccessDesc')}</p>
+                    </div>
+                    <Switch
+                      checked={ticketForms[selectedTicketFormType]?.requireEmailAuth ?? false}
+                      disabled={!(ticketForms[selectedTicketFormType]?.requireEmail)}
+                      onCheckedChange={(checked) =>
+                        setTicketForms(prev => ({
+                          ...prev,
+                          [selectedTicketFormType]: {
+                            ...prev[selectedTicketFormType],
+                            requireEmailAuth: checked,
+                          }
+                        }))
+                      }
+                    />
+                  </div>
+                  <div className="flex items-center justify-between p-3 bg-muted/50 rounded-lg">
+                    <div>
+                      <Label className="text-sm font-medium">{t('settings.tickets.allowEmailNotifications')}</Label>
+                      <p className="text-xs text-muted-foreground">{t('settings.tickets.allowEmailNotificationsDesc')}</p>
+                    </div>
+                    <Switch
+                      checked={ticketForms[selectedTicketFormType]?.allowEmailNotifications !== false}
+                      onCheckedChange={(checked) =>
+                        setTicketForms(prev => ({
+                          ...prev,
+                          [selectedTicketFormType]: {
+                            ...prev[selectedTicketFormType],
+                            allowEmailNotifications: checked,
+                          }
+                        }))
+                      }
+                    />
+                  </div>
+                </div>
+              </div>
+
+              <Separator />
+
               {/* Form Sections */}
               <div className="space-y-4">
                 <div className="flex items-center justify-between">
@@ -1871,6 +1933,71 @@ const TicketSettings = ({
                       </div>
                     </div>
 
+                    {/* General Settings */}
+                    <div className="space-y-4">
+                      <h5 className="text-sm font-medium">{t('settings.tickets.generalSettings')}</h5>
+                      <div className="space-y-3">
+                        <div className="flex items-center justify-between p-3 bg-muted/50 rounded-lg">
+                          <div>
+                            <Label className="text-sm font-medium">{t('settings.tickets.requireEmailForCreation')}</Label>
+                            <p className="text-xs text-muted-foreground">{t('settings.tickets.requireEmailForCreationDesc')}</p>
+                          </div>
+                          <Switch
+                            checked={ticketForms[selectedTicketFormType]?.requireEmail ?? false}
+                            onCheckedChange={(checked) =>
+                              setTicketForms(prev => ({
+                                ...prev,
+                                [selectedTicketFormType]: {
+                                  ...prev[selectedTicketFormType],
+                                  requireEmail: checked,
+                                  ...(!checked ? { requireEmailAuth: false } : {}),
+                                }
+                              }))
+                            }
+                          />
+                        </div>
+                        <div className={`flex items-center justify-between p-3 bg-muted/50 rounded-lg ${!(ticketForms[selectedTicketFormType]?.requireEmail) ? 'opacity-50' : ''}`}>
+                          <div>
+                            <Label className="text-sm font-medium">{t('settings.tickets.requireEmailAuthToAccess')}</Label>
+                            <p className="text-xs text-muted-foreground">{t('settings.tickets.requireEmailAuthToAccessDesc')}</p>
+                          </div>
+                          <Switch
+                            checked={ticketForms[selectedTicketFormType]?.requireEmailAuth ?? false}
+                            disabled={!(ticketForms[selectedTicketFormType]?.requireEmail)}
+                            onCheckedChange={(checked) =>
+                              setTicketForms(prev => ({
+                                ...prev,
+                                [selectedTicketFormType]: {
+                                  ...prev[selectedTicketFormType],
+                                  requireEmailAuth: checked,
+                                }
+                              }))
+                            }
+                          />
+                        </div>
+                        <div className="flex items-center justify-between p-3 bg-muted/50 rounded-lg">
+                          <div>
+                            <Label className="text-sm font-medium">{t('settings.tickets.allowEmailNotifications')}</Label>
+                            <p className="text-xs text-muted-foreground">{t('settings.tickets.allowEmailNotificationsDesc')}</p>
+                          </div>
+                          <Switch
+                            checked={ticketForms[selectedTicketFormType]?.allowEmailNotifications !== false}
+                            onCheckedChange={(checked) =>
+                              setTicketForms(prev => ({
+                                ...prev,
+                                [selectedTicketFormType]: {
+                                  ...prev[selectedTicketFormType],
+                                  allowEmailNotifications: checked,
+                                }
+                              }))
+                            }
+                          />
+                        </div>
+                      </div>
+                    </div>
+
+                    <Separator />
+
                     {/* Form Sections */}
                     <div className="space-y-4">
                       <div className="flex items-center justify-between">
@@ -2176,7 +2303,6 @@ const TicketSettings = ({
     </div>
   );
 };
-
 
 // Quick Response Action Form Component
 const QuickResponseActionForm = ({ 

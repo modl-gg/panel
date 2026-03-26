@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { X, Tag, UserPlus, CircleDot, CheckCircle2 } from 'lucide-react';
+import { X } from 'lucide-react';
 import { Button } from '@modl-gg/shared-web/components/ui/button';
 import { FilterDropdown } from './FilterDropdown';
 import { useTranslation } from 'react-i18next';

@@ -1,30 +1,25 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Scale, Shield, Globe, Tag, Plus, X, Fingerprint, KeyRound, Lock, QrCode, Copy, Check, Mail, Trash2, GamepadIcon, MessageCircle, Save, CheckCircle, User as UserIcon, CreditCard, BookOpen, Settings as SettingsIcon, Upload, Key, Eye, EyeOff, RefreshCw, ChevronDown, ChevronRight, Layers, GripVertical, Edit3, Users, Bot, FileText, Home, Bell, Crown, Database } from 'lucide-react';
+import { Scale, Shield, Globe, Tag, Plus, X, Check, Trash2, MessageCircle, Save, CheckCircle, User as UserIcon, CreditCard, BookOpen, Settings as SettingsIcon, Upload, Key, ChevronDown, ChevronRight, Layers, GripVertical, Edit3, Users, Bot, FileText, Home, Bell, Crown, Database } from 'lucide-react';
 import { getApiUrl, getCurrentDomain, apiFetch, apiUpload } from '@/lib/api';
 import { setDateLocale, setDateFormat as setDateFormatUtil } from '@/utils/date-utils';
 import i18n from '@/lib/i18n';
 import { Button } from '@modl-gg/shared-web/components/ui/button';
-import { Card, CardContent, CardHeader } from '@modl-gg/shared-web/components/ui/card';
+import { Card, CardContent } from '@modl-gg/shared-web/components/ui/card';
 import { useSidebar } from '@/hooks/use-sidebar';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@modl-gg/shared-web/components/ui/tabs';
-import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@modl-gg/shared-web/components/ui/collapsible';
 import { Switch } from '@modl-gg/shared-web/components/ui/switch';
 import { Label } from '@modl-gg/shared-web/components/ui/label';
-import { Separator } from '@modl-gg/shared-web/components/ui/separator';
-import { Slider } from '@modl-gg/shared-web/components/ui/slider';
-import { Progress } from '@modl-gg/shared-web/components/ui/progress';
 import { Input } from '@modl-gg/shared-web/components/ui/input';
 import { Badge } from '@modl-gg/shared-web/components/ui/badge';
 import { Checkbox } from '@modl-gg/shared-web/components/ui/checkbox';
 import { useToast } from '@modl-gg/shared-web/hooks/use-toast';
-import { Select, SelectContent, SelectGroup, SelectItem, SelectLabel, SelectTrigger, SelectValue } from '@modl-gg/shared-web/components/ui/select';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@modl-gg/shared-web/components/ui/select';
 import { useSettings, useBillingStatus, useUsageData, usePunishmentTypes, useTicketFormSettings, useQuickResponses, useStatusThresholds, useTicketLabelSettings } from '@/hooks/use-data';
 import PageContainer from '@/components/layout/PageContainer'
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@modl-gg/shared-web/components/ui/dialog";
 import { queryClient } from '@/lib/queryClient';
-import { useBeforeUnload } from 'react-router-dom';
-import { useLocation } from "wouter"; // For wouter navigation
+import { useLocation } from "wouter";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@modl-gg/shared-web/components/ui/tooltip";
 import { useAuth } from '@/hooks/use-auth';
 import { useIsMobile } from '@modl-gg/shared-web/hooks/use-mobile';
@@ -54,7 +49,6 @@ import {
   AppealFormSettings,
   TicketFormField,
   TicketFormSection,
-  TicketFormSettings,
   TicketFormsConfiguration,
 } from '@/types/forms';
 
@@ -698,7 +692,7 @@ const AppealFormFieldDropZone = ({ sectionId, moveFieldBetweenSections }: Appeal
 
 const Settings = () => {
   const { t } = useTranslation();
-  const { } = useSidebar();
+  useSidebar();
   const [location, navigateWouter] = useLocation();
   const { user, logout } = useAuth();
   const { canAccessSettingsTab, hasPermission } = usePermissions();
@@ -948,7 +942,6 @@ const Settings = () => {
   const [appealTagsState, setAppealTagsState] = useState<string[]>([
     'Ban Appeal', 'Mute Appeal', 'False Positive', 'Second Chance'
   ]);
-  
 
   // For new tag input
   const [newBugTagState, setNewBugTagState] = useState('');
@@ -1272,7 +1265,7 @@ const Settings = () => {
       }
     } catch (error) {
       console.error('Error loading API key:', error);
-      setApiKey(''); // Set to empty on error
+      setApiKey('');
       setFullApiKey('');
     }
   };
@@ -1402,7 +1395,6 @@ const Settings = () => {
     if (!key) return '';
     return key.substring(0, 8) + '••••••••••••••••••••••••' + key.substring(key.length - 4);
   };
-
 
   // AI Moderation settings functions
   const loadAiModerationSettings = async () => {
@@ -2078,20 +2070,15 @@ const Settings = () => {
       return;
     }
 
-    // Log the raw settingsData received from the hook
-
-
     if (settingsData?.settings && Object.keys(settingsData.settings).length > 0 && !initialLoadCompletedRef.current) {
-      applySettingsObjectToState(settingsData.settings); // Call directly
-      const loadedGeneralVersion = Number(settingsData.settings?.generalMeta?.version ?? 0);
+      applySettingsObjectToState(settingsData.settings);      const loadedGeneralVersion = Number(settingsData.settings?.generalMeta?.version ?? 0);
       setGeneralVersion(Number.isFinite(loadedGeneralVersion) ? loadedGeneralVersion : 0);
 
       // Capture settings for future reference and mark initial load as complete
       // This timeout ensures state updates from applySettingsObjectToState have settled
       // before capturing and enabling auto-save.
       setTimeout(() => {
-        captureInitialSettings(); // Call directly
-        initialLoadCompletedRef.current = true;
+        captureInitialSettings();        initialLoadCompletedRef.current = true;
       }, 600); // Delay to ensure state updates propagate
     } else if (!settingsData?.settings && !initialLoadCompletedRef.current && !isLoadingSettings && !isFetchingSettings) {
       // This case handles if the API returns no settings (e.g. empty object) on the first load
@@ -2106,12 +2093,15 @@ const Settings = () => {
       return;
     }
 
-    // Normalize API data: map 'customizable' to 'isCustomizable' and ensure correct structure
-    const normalizedTypes = (punishmentTypesData as any[]).map((pt: any) => ({
-      ...pt,
-      isCustomizable: pt.isCustomizable ?? pt.customizable ?? false,
-      category: pt.category || (pt.administrative ? 'Administrative' : pt.social ? 'Social' : pt.gameplay ? 'Gameplay' : 'Administrative')
-    }));
+    // Normalize API data: map backend field names to frontend field names
+    const normalizedTypes = (punishmentTypesData as any[])
+      .filter((pt: any) => pt.id != null && pt.ordinal != null)
+      .map((pt: any) => ({
+        ...pt,
+        isCustomizable: pt.isCustomizable ?? pt.customizable ?? false,
+        isAppealable: pt.isAppealable ?? pt.appealable ?? true,
+        category: pt.category || (pt.administrative ? 'Administrative' : pt.social ? 'Social' : pt.gameplay ? 'Gameplay' : 'Administrative')
+      }));
 
     setPunishmentTypesState(normalizedTypes);
   }, [punishmentTypesData, isLoadingPunishmentTypes]);
@@ -2247,7 +2237,6 @@ const Settings = () => {
       return;
     }
 
-
     // If there's a pending save, clear it
     if (saveTimeoutRef.current) {
       clearTimeout(saveTimeoutRef.current);
@@ -2374,10 +2363,8 @@ const Settings = () => {
   const setProfileUsername = (value: React.SetStateAction<string>) => {
     const newValue = typeof value === 'function' ? value(profileUsernameState) : value;
     setProfileUsernameState(newValue);
-    profileUsernameRef.current = newValue; // Keep ref in sync
+    profileUsernameRef.current = newValue;
 
-    // Profile username changed
-      // Trigger auto-save for profile updates, but skip during initial load
     if (!justLoadedFromServerRef.current && initialLoadCompletedRef.current) {
       triggerProfileAutoSave();
     }
@@ -2425,13 +2412,9 @@ const Settings = () => {
         })
       });
 
-      // Profile save response received
-
       if (response.ok) {
         const data = await response.json();
-        // Profile save successful
         setLastSaved(new Date());
-        // Update the user context without refreshing
         if (user && data.username) {
           user.username = data.username;
         }
@@ -2498,14 +2481,10 @@ const Settings = () => {
           })
         });
 
-        // Profile save attempt
-
         if (response.ok) {
           const data = await response.json();
-          // Profile save successful
           setLastSaved(new Date());
-          
-          // Update the user context without refreshing
+
           if (user && data.username) {
             user.username = data.username;
           }
@@ -3319,9 +3298,6 @@ const Settings = () => {
     },
   ];
 
-  // Get the currently expanded category object
-
-
   return (
     <PageContainer>
       <div className="flex flex-col space-y-4">
@@ -3810,8 +3786,6 @@ const Settings = () => {
                           {t('settings.page.playerDescriptionHelp')}
                         </p>
                       </div>
-                      
-
                     </div>
                   </div>
 
@@ -4548,16 +4522,28 @@ const Settings = () => {
                   onClick={async () => {
                     if (selectedPunishment) {
                       try {
+                        // Map frontend field names to backend field names for the request
+                        const { isCustomizable, isAppealable, ...rest } = selectedPunishment as any;
+                        const requestBody = {
+                          ...rest,
+                          appealable: isAppealable,
+                        };
                         const response = await apiFetch(`/v1/panel/settings/punishment-types/${selectedPunishment.ordinal}`, {
                           method: 'PATCH',
                           headers: { 'Content-Type': 'application/json' },
-                          body: JSON.stringify(selectedPunishment),
+                          body: JSON.stringify(requestBody),
                         });
 
                         if (response.ok) {
                           const savedType = await response.json();
+                          // Normalize the response to use frontend field names
+                          const normalizedSavedType = {
+                            ...savedType,
+                            isCustomizable: savedType.isCustomizable ?? savedType.customizable ?? false,
+                            isAppealable: savedType.isAppealable ?? savedType.appealable ?? true,
+                          };
                           setPunishmentTypes(prev =>
-                            prev.map(pt => pt.id === selectedPunishment.id ? savedType : pt)
+                            prev.map(pt => pt.id === selectedPunishment.id ? normalizedSavedType : pt)
                           );
                           queryClient.invalidateQueries({ queryKey: ['/v1/panel/settings/punishment-types'] });
                           toast({

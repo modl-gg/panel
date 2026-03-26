@@ -1,7 +1,7 @@
 import React, { useEffect, useState, useCallback } from 'react';
 import { useLocation } from 'wouter';
-import PageContainer from '@/components/layout/PageContainer'; // Import PageContainer
-import { Loader2 } from 'lucide-react'; // Import a loader icon
+import PageContainer from '@/components/layout/PageContainer';
+import { Loader2 } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 
 const ProvisioningInProgressPage: React.FC = () => {
@@ -15,7 +15,7 @@ const ProvisioningInProgressPage: React.FC = () => {
   // Get serverName and signInToken from URL query parameter
   const [searchParams] = useState(new URLSearchParams(window.location.search));
   const serverName = searchParams.get('server');
-  const signInToken = searchParams.get('signInToken'); // Get the signInToken
+  const signInToken = searchParams.get('signInToken');
 
   const checkStatus = useCallback(async () => {
     if (!serverName) {
@@ -27,7 +27,7 @@ const ProvisioningInProgressPage: React.FC = () => {
       const { getApiUrl, getCurrentDomain } = await import('@/lib/api');
       let apiUrl = `/v1/provisioning/status/${serverName}`;
       if (signInToken) {
-        apiUrl += `?signInToken=${signInToken}`; // Append signInToken if present
+        apiUrl += `?signInToken=${signInToken}`;
       }
       const response = await fetch(getApiUrl(apiUrl), {
         credentials: 'include',
@@ -83,17 +83,16 @@ const ProvisioningInProgressPage: React.FC = () => {
         setStatusMessage(t('pages.provisioning.setupFailed'));
       }
     }
-  }, [navigate, retryCount, serverName, signInToken]); // Added signInToken to dependencies
+  }, [navigate, retryCount, serverName, signInToken]);
 
   useEffect(() => {
     if (serverName) {
-      checkStatus(); // Initial check only if serverName is present
+      checkStatus();
     } else {
       setError(t('pages.provisioning.errorCriticalNoServer'));
       setStatusMessage(t('pages.provisioning.cannotProceed'));
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps 
-  }, [serverName, checkStatus]); // Added checkStatus to dependencies
+  }, [serverName, checkStatus]);
 
   return (
     <PageContainer title={t('pages.provisioning.pageTitle')}>

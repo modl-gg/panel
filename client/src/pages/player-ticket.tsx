@@ -1,17 +1,14 @@
 import { useState, useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
-import { useParams, Link } from 'wouter';
+import { useParams } from 'wouter';
 import {
   MessageSquare,
   User,
   Calendar,
-  Clock,
   Send,
-  ArrowLeft,
   Loader2,
   Tag,
   Link2,
-  Copy,
   CheckSquare,
   AlertCircle
 } from 'lucide-react';
@@ -24,18 +21,17 @@ import { Checkbox } from '@modl-gg/shared-web/components/ui/checkbox';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@modl-gg/shared-web/components/ui/select';
 import { Popover, PopoverContent, PopoverTrigger } from '@modl-gg/shared-web/components/ui/popover';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@modl-gg/shared-web/components/ui/tooltip';
-import { Card, CardHeader, CardTitle, CardDescription, CardContent, CardFooter } from '@modl-gg/shared-web/components/ui/card';
+import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '@modl-gg/shared-web/components/ui/card';
 import { useTicket, useAddTicketReply, useSubmitTicketForm, useSettings, useRequestTicketVerification, useVerifyTicketCode, setCookie } from '@/hooks/use-data';
 import TicketAttachments from '@/components/TicketAttachments';
 import MediaUpload from '@/components/MediaUpload';
-import { apiRequest } from '@/lib/queryClient';
 import { getAvatarUrl } from '@/lib/api';
 import { queryClient } from '@/lib/queryClient';
 import { toast } from '@modl-gg/shared-web/hooks/use-toast';
 import MarkdownRenderer from '@/components/ui/markdown-renderer';
 import MarkdownHelp from '@/components/ui/markdown-help';
 import { formatDate } from '@/utils/date-utils';
-import { getCreatorIdentifier, getUnverifiedExplanation, shouldShowUnverifiedBadge } from '@/utils/creator-verification';
+import { getCreatorIdentifier, getUnverifiedExplanation } from '@/utils/creator-verification';
 import { useMediaUpload } from '@/hooks/use-media-upload';
 import { isValidEmail, normalizeEmail } from '@/utils/email-validation';
 import { normalizeTicketStatus } from '@/lib/ticket-enums';
@@ -448,7 +444,7 @@ const PlayerTicket = () => {
 
     return (
       <div className="min-h-screen bg-background flex items-center justify-center p-4">
-        <Card className="w-full max-w-md">
+        <Card className="w-full max-w-md shadow-card">
           <CardHeader>
             <CardTitle>{t('playerTicket.verificationRequired')}</CardTitle>
             <CardDescription>
@@ -498,8 +494,6 @@ const PlayerTicket = () => {
       </div>
     );
   }
-
-
 
   // Handle form submissions for unfinished tickets
   const handleFormSubmit = async (e: React.FormEvent) => {
@@ -599,19 +593,21 @@ const PlayerTicket = () => {
       }
     });
     
-    // Add email field to validation (it's added dynamically to the form)
+    // Add email field to validation
+    const isEmailRequired = formConfig.requireEmail === true;
+    const showEmailField = isEmailRequired || formConfig.allowEmailNotifications !== false;
     const emailField = {
       id: 'email',
       type: 'text' as const,
       label: t('submitTicket.emailAddress'),
       description: t('submitTicket.emailAddressDesc'),
-      required: true,
+      required: isEmailRequired,
       order: 1,
       sectionId: undefined
     };
 
     // Combine email field with form config fields for validation
-    const fieldsToValidate = [emailField, ...(formConfig.fields || [])];
+    const fieldsToValidate = showEmailField ? [emailField, ...(formConfig.fields || [])] : (formConfig.fields || []);
     
     // Check required fields - only validate fields that are visible
     for (const field of fieldsToValidate) {
@@ -635,11 +631,20 @@ const PlayerTicket = () => {
       }
     }
     
-    const creatorEmail = normalizeEmail(formData['email']);
-    if (!isValidEmail(creatorEmail)) {
+    const creatorEmail = normalizeEmail(formData['email'] || '');
+    const emailAuthSelected = formConfig.requireEmailAuth === true || formData['emailAuthEnabled'] === 'true';
+    if (isEmailRequired && !isValidEmail(creatorEmail)) {
       toast({
         title: t('submitTicket.invalidEmail'),
         description: t('submitTicket.invalidEmailDesc'),
+        variant: "destructive"
+      });
+      return;
+    }
+    if (emailAuthSelected && !isValidEmail(creatorEmail)) {
+      toast({
+        title: t('submitTicket.emailAuthRequiresEmail'),
+        description: t('submitTicket.emailAuthRequiresEmailDesc'),
         variant: "destructive"
       });
       return;
@@ -820,29 +825,32 @@ const PlayerTicket = () => {
     
     let fields = formConfig.fields || [];
     const sectionDefinitions = formConfig.sections || [];
-    
-    
-    const emailField = {
-      id: 'email',
-      type: 'text' as const,
-      label: t('submitTicket.emailAddress'),
-      description: t('submitTicket.emailAddressDesc'),
-      required: true,
-      order: 1,
-      sectionId: undefined,
-      options: undefined
-    };
-    
-    // Adjust order of existing fields to make room for email field
-    const adjustedFields = fields.map((field: FormField) => ({
-      ...field,
-      order: field.order >= 1 ? field.order + 1 : field.order
-    }));
-    
-    // Add email field and sort by order
-    fields = [emailField, ...adjustedFields].sort((a, b) => a.order - b.order);
-  
-    
+
+    const isEmailRequiredForRender = formConfig.requireEmail === true;
+    const showEmailFieldForRender = isEmailRequiredForRender || formConfig.allowEmailNotifications !== false;
+
+    if (showEmailFieldForRender) {
+      const emailField = {
+        id: 'email',
+        type: 'text' as const,
+        label: t('submitTicket.emailAddress'),
+        description: t('submitTicket.emailAddressDesc'),
+        required: isEmailRequiredForRender,
+        order: 1,
+        sectionId: undefined,
+        options: undefined
+      };
+
+      // Adjust order of existing fields to make room for email field
+      const adjustedFields = fields.map((field: FormField) => ({
+        ...field,
+        order: field.order >= 1 ? field.order + 1 : field.order
+      }));
+
+      // Add email field and sort by order
+      fields = [emailField, ...adjustedFields].sort((a, b) => a.order - b.order);
+    }
+
     // Ensure we have fields to render
     if (fields.length === 0) {
       return (
@@ -1160,7 +1168,8 @@ const PlayerTicket = () => {
                 </div>
               );
             })}
-          {/* Email authentication option */}
+          {/* Email authentication option - hidden if forced by form settings or if email is not enabled */}
+          {!formConfig?.requireEmailAuth && showEmailFieldForRender && (
           <div className="border-t pt-4 mt-2">
             <div className="flex items-start space-x-2">
               <Checkbox
@@ -1179,6 +1188,7 @@ const PlayerTicket = () => {
               </div>
             </div>
           </div>
+          )}
         </div>
 
         <div className="flex justify-end">
@@ -1230,7 +1240,7 @@ const PlayerTicket = () => {
         
         {/* Check if the ticket is unfinished and needs a form */}
         {ticketDetails.status === 'Unfinished' ? (
-          <Card className="mb-6">
+          <Card className="mb-6 shadow-card">
             <CardHeader>
               {(ticketDetails.type === 'staff' || ticketDetails.type === 'application') ? (
                 <>
@@ -1417,7 +1427,7 @@ const PlayerTicket = () => {
 
             {/* Reply section - only show if ticket is Open and not locked */}
             {ticketDetails.status === 'Open' && !ticketDetails.locked && (
-              <Card>
+              <Card className="shadow-card">
                 <CardHeader>
                   <CardTitle className="text-lg">{t('playerTicket.replyToTicket')}</CardTitle>
                   <CardDescription>

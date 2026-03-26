@@ -14,7 +14,7 @@ import {
   SortAsc,
   Plus
 } from 'lucide-react';
-import { formatDate, formatTimeAgo } from '../utils/date-utils';
+import { formatTimeAgo } from '../utils/date-utils';
 import { Button } from '@modl-gg/shared-web/components/ui/button';
 import { Card, CardContent } from '@modl-gg/shared-web/components/ui/card';
 import { Input } from '@modl-gg/shared-web/components/ui/input';
@@ -118,7 +118,6 @@ const Tickets = () => {
   const { data: staffData } = useStaff();
   const bulkUpdateMutation = useBulkUpdateTickets();
   const updateTicketMutation = useUpdateTicket();
-
 
   const tickets: Ticket[] = ticketsResponse?.tickets || [];
   const pagination = ticketsResponse?.pagination || {
@@ -393,7 +392,7 @@ const Tickets = () => {
     return (
       <Card
         key={ticket.id}
-        className={`mb-3 ${isSelected ? 'ring-2 ring-primary' : ''}`}
+        className={`mb-3 shadow-card ${isSelected ? 'ring-2 ring-primary' : ''}`}
         onClick={() => handleNavigateToTicket(ticket.id)}
       >
         <CardContent className="p-4">
@@ -599,7 +598,7 @@ const Tickets = () => {
         )}
 
         {/* Ticket list */}
-        <Card>
+        <Card className="shadow-card">
           <CardContent className="p-0">
             {isLoading ? (
               <div className="flex justify-center items-center py-12">

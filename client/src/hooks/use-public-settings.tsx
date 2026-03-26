@@ -11,10 +11,6 @@ export interface PublicSettingsData {
   maintenanceMessage?: string;
 }
 
-/**
- * Hook to fetch basic server settings from the public API
- * This is used for unprotected pages like homepage and auth page
- */
 export function usePublicSettings() {
   return useQuery<PublicSettingsData>({
     queryKey: ['/v1/public/settings'],
@@ -23,7 +19,6 @@ export function usePublicSettings() {
         const res = await apiFetch('/v1/public/settings');
 
         if (!res.ok) {
-          console.error('[usePublicSettings] Request failed:', res.status);
           return {
             serverExists: false,
             serverDisplayName: null,
@@ -32,10 +27,8 @@ export function usePublicSettings() {
           };
         }
 
-        const data = await res.json();
-        return data as PublicSettingsData;
-      } catch (error) {
-        console.error('[usePublicSettings] Error occurred:', error);
+        return await res.json() as PublicSettingsData;
+      } catch {
         return {
           serverExists: false,
           serverDisplayName: null,

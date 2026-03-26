@@ -1,8 +1,8 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
-  Eye, TriangleAlert, Ban, Search, LockOpen, History,
-  Link2, StickyNote, Ticket, UserRound, Shield, FileText, Upload, Loader2,
+  Eye, TriangleAlert, History,
+  Link2, StickyNote, Ticket, UserRound, Shield, FileText, Loader2,
   ChevronDown, ChevronRight, Settings, Plus, X
 } from 'lucide-react';
 import { useLocation } from 'wouter';
@@ -10,9 +10,10 @@ import { Button } from '@modl-gg/shared-web/components/ui/button';
 import { Badge } from '@modl-gg/shared-web/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@modl-gg/shared-web/components/ui/tabs';
 import ResizableWindow from '@/components/layout/ResizableWindow';
-import { usePlayer, useApplyPunishment, useSettings, usePunishmentTypes, usePlayerTickets, usePlayerAllTickets, useModifyPunishment, useAddPunishmentNote, useModifyPunishmentTickets, useLinkedAccounts, useFindLinkedAccounts, useLinkedBansForPunishment } from '@/hooks/use-data';
+import { usePlayer, useApplyPunishment, useSettings, usePunishmentTypes, usePlayerAllTickets, useModifyPunishment, useAddPunishmentNote, useModifyPunishmentTickets, useLinkedAccounts, useFindLinkedAccounts, useLinkedBansForPunishment } from '@/hooks/use-data';
 import { ClickablePlayer } from '@/components/ui/clickable-player';
 import { useAuth } from '@/hooks/use-auth';
+import { usePermissions } from '@/hooks/use-permissions';
 import { toast } from '@modl-gg/shared-web/hooks/use-toast';
 import PlayerPunishment, { PlayerPunishmentData } from '@/components/ui/player-punishment';
 import MediaUpload from '@/components/MediaUpload';
@@ -29,7 +30,6 @@ interface WindowPosition {
 interface Player {
   _id: string;
   username: string;
-  // Add other player properties as needed
 }
 
 interface PlayerWindowProps {
@@ -208,11 +208,8 @@ const LinkedBansDisplay = ({ punishmentId, onPlayerClick }: { punishmentId: stri
 const PlayerWindow = ({ playerId, isOpen, onClose, initialPosition }: PlayerWindowProps) => {
   const { t } = useTranslation();
   const [activeTab, setActiveTab] = useState('history');
-  const [banSearchResults, setBanSearchResults] = useState<{id: string; player: string}[]>([]);
-  const [showBanSearchResults, setShowBanSearchResults] = useState(false);
   const [avatarError, setAvatarError] = useState(false);
   const [avatarLoading, setAvatarLoading] = useState(true);
-  const [isApplyingPunishment, setIsApplyingPunishment] = useState(false);
   const [expandedPunishments, setExpandedPunishments] = useState<Set<string>>(new Set());
   
   // Helper function to map severity levels for display (converts 'low' to 'lenient')
@@ -220,8 +217,9 @@ const PlayerWindow = ({ playerId, isOpen, onClose, initialPosition }: PlayerWind
     return severity.toLowerCase() === 'low' ? 'lenient' : severity;
   };
 
-  // Get current authenticated user
+  // Get current authenticated user and permissions
   const { user } = useAuth();
+  const { hasPermission } = usePermissions();
   const [, setLocation] = useLocation();
     // Initialize the applyPunishment mutation hook
   const applyPunishment = useApplyPunishment();
@@ -329,8 +327,6 @@ const PlayerWindow = ({ playerId, isOpen, onClose, initialPosition }: PlayerWind
     }
     
     try {
-      setIsApplyingPunishment(true);
-      
       // Determine severity and status based on punishment type first
       let severity = null;
       let status = null;
@@ -601,14 +597,11 @@ const PlayerWindow = ({ playerId, isOpen, onClose, initialPosition }: PlayerWind
       }));
       
     } catch (error) {
-      console.error('Error applying punishment:', error);
       toast({
         title: t('punishment.applyFailed'),
         description: error instanceof Error ? error.message : t('common.unknownError'),
         variant: "destructive"
       });
-    } finally {
-      setIsApplyingPunishment(false);
     }
   };
   
@@ -632,31 +625,6 @@ const PlayerWindow = ({ playerId, isOpen, onClose, initialPosition }: PlayerWind
     linkedAccounts: ['Dragon55#1234 (Discord)', 'dragonslayer123 (Website)'],
     notes: ['Player has been consistently helpful to new players', 'Frequently reports bugs and exploits']
   });
-
-  // Mock function to simulate ban search results
-  const searchBans = (query: string) => {
-    if (!query || query.length < 2) {
-      setBanSearchResults([]);
-      return;
-    }
-    
-    // Simulate API call delay
-    setTimeout(() => {
-      // Mock data for demonstration
-      const results = [
-        { id: 'ban-123', player: 'MineKnight45' },
-        { id: 'ban-456', player: 'DiamondMiner99' },
-        { id: 'ban-789', player: 'CraftMaster21' },
-        { id: 'ban-012', player: 'StoneBlazer76' }
-      ].filter(item => 
-        item.id.toLowerCase().includes(query.toLowerCase()) || 
-        item.player.toLowerCase().includes(query.toLowerCase())
-      );
-      
-      setBanSearchResults(results);
-      setShowBanSearchResults(results.length > 0);
-    }, 300);
-  };
 
   // Function to handle ticket navigation
   const handleTicketClick = (ticketId: string) => {
@@ -683,10 +651,8 @@ const PlayerWindow = ({ playerId, isOpen, onClose, initialPosition }: PlayerWind
     if (playerId && !hasTriggeredLinkedSearch && !findLinkedAccountsMutation.isPending) {
       setHasTriggeredLinkedSearch(true);
       findLinkedAccountsMutation.mutate(playerId, {
-        onError: (error) => {
-          console.error('Failed to trigger linked account search:', error);
+        onError: () => {
           // Don't reset the flag - this prevents retry loops on rate limit errors
-          // User can close and reopen the window to retry if needed
         }
       });
     }
@@ -748,11 +714,25 @@ const PlayerWindow = ({ playerId, isOpen, onClose, initialPosition }: PlayerWind
         
         // Update the state with the loaded punishment types
         setPunishmentTypesByCategory(categorized);
-      } catch (error) {
-        console.error("Error processing punishment types:", error);
+      } catch {
       }
     }
   }, [punishmentTypesData]);
+
+  // Filter punishment types by user's punishment.apply.* permissions
+  const filteredPunishmentTypesByCategory = useMemo(() => {
+    const filterByPermission = (types: PunishmentType[]) =>
+      types.filter(type => {
+        const permId = 'punishment.apply.' + type.name.toLowerCase().replace(/ /g, '-');
+        return hasPermission(permId);
+      });
+
+    return {
+      Administrative: filterByPermission(punishmentTypesByCategory.Administrative),
+      Social: filterByPermission(punishmentTypesByCategory.Social),
+      Gameplay: filterByPermission(punishmentTypesByCategory.Gameplay),
+    };
+  }, [punishmentTypesByCategory, hasPermission]);
 
   // Calculate player status based on punishments and settings
   const calculatePlayerStatus = (punishments: any[], punishmentTypes: PunishmentType[], statusThresholds: any) => {
@@ -875,11 +855,8 @@ const PlayerWindow = ({ playerId, isOpen, onClose, initialPosition }: PlayerWind
         
         // Add punishments to warnings with full details
         if (player.punishments) {
-          // Processing player punishments
           player.punishments.forEach((punishment: any) => {
-            // Processing individual punishment            // Determine punishment type name from ordinal using settings data
             const getPunishmentTypeName = (ordinal: number) => {
-              // First check all loaded punishment types from settings
               const allTypes = [
                 ...punishmentTypesByCategory.Administrative,
                 ...punishmentTypesByCategory.Social,
@@ -927,11 +904,7 @@ const PlayerWindow = ({ playerId, isOpen, onClose, initialPosition }: PlayerWind
                 const status = punishment.data?.status || (punishment.data?.get ? punishment.data.get('status') : punishment.status);
                 return status === 0 || status === '0' || status === null || status === undefined ? null : status;
               })(),
-              evidence: (() => {
-                const evidenceArray = punishment.evidence || [];
-                // Processing evidence data
-                return evidenceArray;
-              })(),
+              evidence: punishment.evidence || [],
               notes: punishment.notes || [],
               attachedTicketIds: punishment.attachedTicketIds || [],
               active: punishment.data?.active !== false || (punishment.data?.get ? punishment.data.get('active') !== false : punishment.active),
@@ -989,8 +962,7 @@ const PlayerWindow = ({ playerId, isOpen, onClose, initialPosition }: PlayerWind
         if (settingsData?.settings?.statusThresholds) {
           try {
             statusThresholds = settingsData.settings.statusThresholds;
-          } catch (error) {
-            console.error("Error parsing status thresholds:", error);
+          } catch {
           }
         }
         
@@ -1738,16 +1710,7 @@ const PlayerWindow = ({ playerId, isOpen, onClose, initialPosition }: PlayerWind
                                 /* Show modified/effective expiry - this takes priority over duration display */
                                 const expiryDate = new Date(effectiveState.effectiveExpiry);
                                 
-                                // Check if the date is valid
                                 if (isNaN(expiryDate.getTime())) {
-                                  console.error('Invalid effective expiry date for punishment:', {
-                                    punishmentId: warning.id,
-                                    effectiveExpiry: effectiveState.effectiveExpiry,
-                                    effectiveExpiryType: typeof effectiveState.effectiveExpiry,
-                                    modifications: effectiveState.modifications,
-                                    originalExpiry: effectiveState.originalExpiry,
-                                    originalExpired: effectiveState.originalExpiry ? new Date(effectiveState.originalExpiry) : null
-                                  });
                                   return (
                                     <div className="text-muted-foreground">
                                       Invalid expiry date (modified)
@@ -1782,13 +1745,7 @@ const PlayerWindow = ({ playerId, isOpen, onClose, initialPosition }: PlayerWind
                                 /* Show original expiry for unmodified punishments */
                                 const expiryDate = new Date(warning.expires);
                                 
-                                // Check if the date is valid
                                 if (isNaN(expiryDate.getTime())) {
-                                  console.error('Invalid original expiry date for punishment:', {
-                                    punishmentId: warning.id,
-                                    expires: warning.expires,
-                                    expiresType: typeof warning.expires
-                                  });
                                   return (
                                     <div className="text-muted-foreground">
                                       Invalid expiry date (original)
@@ -2272,7 +2229,6 @@ const PlayerWindow = ({ playerId, isOpen, onClose, initialPosition }: PlayerWind
                                       newPunishmentNote: ''
                                     }));
                                   } catch (error) {
-                                    console.error('Error adding note to punishment:', error);
                                     toast({
                                       title: t('player.addNoteFailed'),
                                       description: error instanceof Error ? error.message : t('common.unknownError'),
@@ -2408,7 +2364,6 @@ const PlayerWindow = ({ playerId, isOpen, onClose, initialPosition }: PlayerWind
                                       uploadedEvidenceFile: null
                                     }));
                                   } catch (error) {
-                                    console.error('Error adding evidence to punishment:', error);
                                     toast({
                                       title: t('player.addEvidenceFailed'),
                                       description: error instanceof Error ? error.message : t('common.unknownError'),
@@ -2577,7 +2532,6 @@ const PlayerWindow = ({ playerId, isOpen, onClose, initialPosition }: PlayerWind
                                       newDuration: undefined
                                     }));
                                   } catch (error) {
-                                    console.error('Error modifying punishment:', error);
                                     toast({
                                       title: t('player.modifyPunishmentFailed'),
                                       description: error instanceof Error ? error.message : t('common.unknownError'),
@@ -2751,7 +2705,6 @@ const PlayerWindow = ({ playerId, isOpen, onClose, initialPosition }: PlayerWind
                                       modifyTicketsRemove: [],
                                     }));
                                   } catch (error) {
-                                    console.error('Error modifying punishment tickets:', error);
                                     toast({
                                       title: t('player.modifyTicketsFailed'),
                                       description: error instanceof Error ? error.message : t('common.unknownError'),
@@ -3082,7 +3035,7 @@ const PlayerWindow = ({ playerId, isOpen, onClose, initialPosition }: PlayerWind
                 // Use the existing handleApplyPunishment logic
                 return handleApplyPunishment();
               }}
-              punishmentTypesByCategory={punishmentTypesByCategory}
+              punishmentTypesByCategory={filteredPunishmentTypesByCategory}
               isLoading={isLoadingSettings || isLoadingPunishmentTypes}
               compact={false}
               availableTickets={(playerTickets || []).map((t: any) => ({

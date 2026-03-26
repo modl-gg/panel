@@ -1,10 +1,9 @@
 import { useRef, useEffect, useState, ReactNode } from 'react';
-import { X, Maximize2, Minimize2, ChevronUp, ChevronDown, User, RefreshCcw } from 'lucide-react';
+import { X, ChevronUp, ChevronDown, User, RefreshCcw } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { WindowPosition } from '@modl-gg/shared-web/types';
 import { Button } from '@modl-gg/shared-web/components/ui/button';
 
-// Global static tracker for last player window state to share between instances
 const lastPlayerWindowConfig: {
   size: { width: number, height: number },
   position: { x: number, y: number }
@@ -51,12 +50,6 @@ const ResizableWindow = ({
     size: { width: number; height: number };
   }>({ position: initialPosition, size: initialSize });
   const [isInitialized, setIsInitialized] = useState(false);
-
-  // Track last opened window size/position for new windows
-  const [lastKnownConfig, setLastKnownConfig] = useState<{ 
-    size: { width: number, height: number }, 
-    position: WindowPosition 
-  } | null>(null);
 
   // Initialize position once
   useEffect(() => {
@@ -121,7 +114,7 @@ const ResizableWindow = ({
         lastPlayerWindowConfig.position = { x: xPos, y: yPos };
       }
     }
-  }, [isOpen, initialPosition, isInitialized, lastKnownConfig, id]);
+  }, [isOpen, initialPosition, isInitialized, id]);
 
   // Handle dragging
   useEffect(() => {
@@ -466,15 +459,12 @@ const ResizableWindow = ({
         </div>
       </div>
       
-      {/* Content area - completely removed when minimized */}
-      {!isMinimized && (
-        <div className="p-4 h-[calc(100%-28px)] w-full overflow-y-auto scrollbar">
-          {children}
-        </div>
-      )}
+      <div className="p-4 h-[calc(100%-28px)] w-full overflow-y-auto scrollbar">
+        {children}
+      </div>
       
       {/* Resize handles */}
-      {!isMaximized && !isMinimized && (
+      {!isMaximized && (
         <>
           {/* Edge resize handles */}
           <div 
