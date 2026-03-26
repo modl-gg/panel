@@ -331,6 +331,7 @@
       "cardCreated": "Homepagina-kaart succesvol aangemaakt.",
       "cardUpdated": "Homepagina-kaart succesvol bijgewerkt.",
       "cardDeleted": "Homepagina-kaart succesvol verwijderd.",
+      "cardsReordered": "Homepagina-kaarten succesvol opnieuw gerangschikt.",
       "titleDescRequired": "Titel en beschrijving zijn vereist.",
       "urlRequired": "URL is vereist voor linkkaarten.",
       "categoryRequired": "Selecteer een categorie."

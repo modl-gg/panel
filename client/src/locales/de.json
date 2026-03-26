@@ -331,6 +331,7 @@
       "cardCreated": "Homepage-Karte erfolgreich erstellt.",
       "cardUpdated": "Homepage-Karte erfolgreich aktualisiert.",
       "cardDeleted": "Homepage-Karte erfolgreich gelöscht.",
+      "cardsReordered": "Homepage-Karten erfolgreich neu sortiert.",
       "titleDescRequired": "Titel und Beschreibung sind erforderlich.",
       "urlRequired": "URL ist für Link-Karten erforderlich.",
       "categoryRequired": "Bitte wähle eine Kategorie aus."

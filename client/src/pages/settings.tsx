@@ -2095,9 +2095,10 @@ const Settings = () => {
 
     // Normalize API data: map backend field names to frontend field names
     const normalizedTypes = (punishmentTypesData as any[])
-      .filter((pt: any) => pt.id != null && pt.ordinal != null)
+      .filter((pt: any) => pt.ordinal != null)
       .map((pt: any) => ({
         ...pt,
+        id: pt.id ?? pt.ordinal,
         isCustomizable: pt.isCustomizable ?? pt.customizable ?? false,
         isAppealable: pt.isAppealable ?? pt.appealable ?? true,
         category: pt.category || (pt.administrative ? 'Administrative' : pt.social ? 'Social' : pt.gameplay ? 'Gameplay' : 'Administrative')
