@@ -764,7 +764,7 @@ const TicketSettings = ({
 
   // AI Moderation computed values
   const availablePunishmentTypes = punishmentTypesState?.filter(pt =>
-    pt.isCustomizable && (!aiModerationSettings.aiPunishmentConfigs?.[pt.ordinal] || !aiModerationSettings.aiPunishmentConfigs[pt.ordinal].enabled)
+    pt.isCustomizable && pt.ordinal != null && (!aiModerationSettings.aiPunishmentConfigs?.[pt.ordinal] || !aiModerationSettings.aiPunishmentConfigs[pt.ordinal].enabled)
   ) || [];
 
   // Clear form when dialog opens for new field (not editing)
@@ -951,9 +951,9 @@ const TicketSettings = ({
                     </SelectTrigger>
                     <SelectContent className="max-h-60 overflow-y-auto">
                       {punishmentTypesState
-                        .filter(pt => !Object.values(aiModerationSettings?.aiPunishmentConfigs || {}).some((config: any) => config.name === pt.name))
+                        .filter(pt => pt.id != null && !Object.values(aiModerationSettings?.aiPunishmentConfigs || {}).some((config: any) => config.name === pt.name))
                         .map((punishmentType) => (
-                          <SelectItem key={punishmentType.id} value={punishmentType.id.toString()}>
+                          <SelectItem key={punishmentType.id} value={String(punishmentType.id)}>
                             {punishmentType.name} ({punishmentType.category})
                           </SelectItem>
                         ))}
@@ -991,8 +991,8 @@ const TicketSettings = ({
                 onClick={() => {
                   if (selectedPunishmentTypeId && newAIPunishmentDescription.trim()) {
                     const selectedType = punishmentTypesState.find(t => t.id === selectedPunishmentTypeId);
-                    if (selectedType) {
-                      const configKey = selectedType.ordinal.toString();
+                    if (selectedType && selectedType.ordinal != null) {
+                      const configKey = String(selectedType.ordinal);
                       setAiModerationSettings((prev: any) => ({
                         ...prev,
                         aiPunishmentConfigs: {
