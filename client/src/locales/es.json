@@ -331,6 +331,7 @@
       "cardCreated": "Tarjeta de la página principal creada correctamente.",
       "cardUpdated": "Tarjeta de la página principal actualizada correctamente.",
       "cardDeleted": "Tarjeta de la página principal eliminada correctamente.",
+      "cardsReordered": "Tarjetas de la página principal reordenadas correctamente.",
       "titleDescRequired": "El título y la descripción son requeridos.",
       "urlRequired": "La URL es requerida para tarjetas de enlace.",
       "categoryRequired": "Por favor selecciona una categoría."

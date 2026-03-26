@@ -331,6 +331,7 @@
       "cardCreated": "Homepage card created successfully.",
       "cardUpdated": "Homepage card updated successfully.",
       "cardDeleted": "Homepage card deleted successfully.",
+      "cardsReordered": "Homepage cards reordered successfully.",
       "titleDescRequired": "Title and description are required.",
       "urlRequired": "URL is required for link cards.",
       "categoryRequired": "Please select a category."

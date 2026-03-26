@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Button } from '@modl-gg/shared-web/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@modl-gg/shared-web/components/ui/card';
@@ -14,6 +14,8 @@ import { Plus, Edit, Trash2, GripVertical, Eye, EyeOff } from 'lucide-react';
 import { Switch } from '@modl-gg/shared-web/components/ui/switch';
 import { Label } from '@modl-gg/shared-web/components/ui/label';
 import * as LucideIcons from 'lucide-react';
+import { DndProvider, useDrag, useDrop, DropTargetMonitor } from 'react-dnd';
+import { HTML5Backend } from 'react-dnd-html5-backend';
 
 // Get list of curated icons suitable for homepage cards
 const getAvailableIcons = () => {
@@ -103,6 +105,99 @@ const fetchCategories = async (): Promise<KnowledgebaseCategory[]> => {
     throw new Error('Failed to fetch categories');
   }
   return response.json();
+};
+
+const ITEM_TYPE_HOMEPAGE_CARD = 'homepage-card';
+
+interface CardDragItem {
+  id: string;
+  originalIndex: number;
+}
+
+interface DraggableCardItemProps {
+  card: HomepageCard;
+  index: number;
+  moveCard: (dragIndex: number, hoverIndex: number) => void;
+  onDrop: () => void;
+  onEdit: (card: HomepageCard) => void;
+  onDelete: (cardId: string) => void;
+  deleteDisabled: boolean;
+  IconPreview: React.FC<{ iconName: string; color?: string }>;
+}
+
+const DraggableCardItem: React.FC<DraggableCardItemProps> = ({
+  card, index, moveCard, onDrop, onEdit, onDelete, deleteDisabled, IconPreview,
+}) => {
+  const { t } = useTranslation();
+  const ref = useRef<HTMLDivElement>(null);
+
+  const [{ handlerId }, drop] = useDrop<CardDragItem, void, { handlerId: any }>({
+    accept: ITEM_TYPE_HOMEPAGE_CARD,
+    collect(monitor) {
+      return { handlerId: monitor.getHandlerId() };
+    },
+    hover(item: CardDragItem, monitor: DropTargetMonitor) {
+      if (!ref.current) return;
+      const dragIndex = item.originalIndex;
+      const hoverIndex = index;
+      if (dragIndex === hoverIndex) return;
+
+      const hoverBoundingRect = ref.current.getBoundingClientRect();
+      const hoverMiddleY = (hoverBoundingRect.bottom - hoverBoundingRect.top) / 2;
+      const clientOffset = monitor.getClientOffset();
+      const hoverClientY = clientOffset!.y - hoverBoundingRect.top;
+
+      if (dragIndex < hoverIndex && hoverClientY < hoverMiddleY) return;
+      if (dragIndex > hoverIndex && hoverClientY > hoverMiddleY) return;
+
+      moveCard(dragIndex, hoverIndex);
+      item.originalIndex = hoverIndex;
+    },
+  });
+
+  const [{ isDragging }, drag, preview] = useDrag({
+    type: ITEM_TYPE_HOMEPAGE_CARD,
+    item: () => ({ id: card.id, originalIndex: index }),
+    collect: (monitor) => ({ isDragging: monitor.isDragging() }),
+    end: (_item, monitor) => {
+      if (monitor.didDrop()) onDrop();
+    },
+  });
+
+  drop(drag(ref));
+
+  return (
+    <div ref={preview} style={{ opacity: isDragging ? 0.5 : 1 }} data-handler-id={handlerId}>
+      <Card ref={ref} className="p-4 rounded-card shadow-card-inner bg-surface-2">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-3">
+            <GripVertical className="h-5 w-5 text-muted-foreground cursor-grab" />
+            <IconPreview iconName={card.icon} color={card.iconColor} />
+            <div>
+              <h4 className="font-medium">{card.title}</h4>
+              <p className="text-sm text-muted-foreground">{card.description}</p>
+              <p className="text-xs text-muted-foreground">
+                {card.actionType === 'url' ? `URL: ${card.actionUrl}` : `${t('settings.homepage.category')}: ${card.category?.name}`}
+              </p>
+            </div>
+          </div>
+          <div className="flex items-center gap-2">
+            {card.isEnabled ? (
+              <Eye className="h-4 w-4 text-green-600" />
+            ) : (
+              <EyeOff className="h-4 w-4 text-muted-foreground" />
+            )}
+            <Button variant="ghost" size="sm" onClick={() => onEdit(card)}>
+              <Edit className="h-4 w-4" />
+            </Button>
+            <Button variant="ghost" size="sm" onClick={() => onDelete(card.id)} disabled={deleteDisabled}>
+              <Trash2 className="h-4 w-4 text-destructive" />
+            </Button>
+          </div>
+        </div>
+      </Card>
+    </div>
+  );
 };
 
 const HomepageCardSettings: React.FC = () => {
@@ -209,6 +304,49 @@ const HomepageCardSettings: React.FC = () => {
     },
   });
 
+  const reorderCardsMutation = useMutation<void, Error, { orderedCardIds: string[] }>({
+    mutationFn: async (data) => {
+      const response = await apiFetch('/v1/panel/homepage-cards/reorder', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ ids: data.orderedCardIds }),
+      });
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({ message: 'Failed to reorder cards' }));
+        throw new Error(errorData.message);
+      }
+    },
+    onSuccess: () => {
+      toast({ title: t('toast.success'), description: t('settings.homepage.cardsReordered') });
+      queryClient.invalidateQueries({ queryKey: ['homepageCards'] });
+    },
+    onError: (error) => {
+      toast({ title: t('toast.error'), description: error.message, variant: 'destructive' });
+    },
+  });
+
+  const [displayedCards, setDisplayedCards] = useState<HomepageCard[]>([]);
+
+  useEffect(() => {
+    if (homepageCards) {
+      setDisplayedCards([...homepageCards].sort((a, b) => a.ordinal - b.ordinal));
+    }
+  }, [homepageCards]);
+
+  const moveCard = useCallback((dragIndex: number, hoverIndex: number) => {
+    setDisplayedCards((prev) => {
+      const updated = [...prev];
+      const [dragged] = updated.splice(dragIndex, 1);
+      updated.splice(hoverIndex, 0, dragged);
+      return updated;
+    });
+  }, []);
+
+  const handleDropCard = useCallback(() => {
+    const orderedCardIds = displayedCards.map(c => c.id);
+    reorderCardsMutation.mutate({ orderedCardIds });
+  }, [displayedCards, reorderCardsMutation]);
+
   const resetForm = () => {
     setFormData({
       title: '',
@@ -290,6 +428,7 @@ const HomepageCardSettings: React.FC = () => {
   };
 
   return (
+    <DndProvider backend={HTML5Backend}>
     <div className="space-y-6">
       <Card className="rounded-card shadow-card">
         <CardHeader>
@@ -463,45 +602,19 @@ const HomepageCardSettings: React.FC = () => {
           <div className="space-y-3">
             {isLoadingCards ? (
               <div className="text-center py-4">{t('settings.homepage.loadingCards')}</div>
-            ) : homepageCards?.length ? (
-              homepageCards.map((card) => (
-                <Card key={card.id} className="p-4 rounded-card shadow-card-inner bg-surface-2">
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-3">
-                      <GripVertical className="h-5 w-5 text-muted-foreground cursor-grab" />
-                      <IconPreview iconName={card.icon} color={card.iconColor} />
-                      <div>
-                        <h4 className="font-medium">{card.title}</h4>
-                        <p className="text-sm text-muted-foreground">{card.description}</p>
-                        <p className="text-xs text-muted-foreground">
-                          {card.actionType === 'url' ? `URL: ${card.actionUrl}` : `${t('settings.homepage.category')}: ${card.category?.name}`}
-                        </p>
-                      </div>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      {card.isEnabled ? (
-                        <Eye className="h-4 w-4 text-green-600" />
-                      ) : (
-                        <EyeOff className="h-4 w-4 text-muted-foreground" />
-                      )}
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => handleEditCard(card)}
-                      >
-                        <Edit className="h-4 w-4" />
-                      </Button>
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => handleDeleteCard(card.id)}
-                        disabled={deleteCardMutation.isPending}
-                      >
-                        <Trash2 className="h-4 w-4 text-destructive" />
-                      </Button>
-                    </div>
-                  </div>
-                </Card>
+            ) : displayedCards.length ? (
+              displayedCards.map((card, index) => (
+                <DraggableCardItem
+                  key={card.id}
+                  card={card}
+                  index={index}
+                  moveCard={moveCard}
+                  onDrop={handleDropCard}
+                  onEdit={handleEditCard}
+                  onDelete={handleDeleteCard}
+                  deleteDisabled={deleteCardMutation.isPending}
+                  IconPreview={IconPreview}
+                />
               ))
             ) : (
               <div className="text-center py-8 text-muted-foreground">
@@ -530,6 +643,7 @@ const HomepageCardSettings: React.FC = () => {
         </AlertDialogContent>
       </AlertDialog>
     </div>
+    </DndProvider>
   );
 };
 

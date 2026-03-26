@@ -951,7 +951,7 @@ const TicketSettings = ({
                     </SelectTrigger>
                     <SelectContent className="max-h-60 overflow-y-auto">
                       {punishmentTypesState
-                        .filter(pt => pt.id != null && !Object.values(aiModerationSettings?.aiPunishmentConfigs || {}).some((config: any) => config.name === pt.name))
+                        .filter(pt => !Object.values(aiModerationSettings?.aiPunishmentConfigs || {}).some((config: any) => config.name === pt.name))
                         .map((punishmentType) => (
                           <SelectItem key={punishmentType.id} value={String(punishmentType.id)}>
                             {punishmentType.name} ({punishmentType.category})
