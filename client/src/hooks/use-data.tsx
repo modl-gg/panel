@@ -1,5 +1,5 @@
 import React from 'react';
-import { useQuery, useMutation, useQueryClient, useQueries } from '@tanstack/react-query';
+import { useQuery, useMutation, useQueryClient, keepPreviousData } from '@tanstack/react-query';
 import { queryClient } from '../lib/queryClient';
 import { useAuth } from './use-auth';
 import { apiFetch } from '@/lib/api';
@@ -128,7 +128,8 @@ export function useTickets(options?: {
       return res.json();
     },
     staleTime: 30000,
-    refetchOnWindowFocus: true
+    refetchOnWindowFocus: true,
+    placeholderData: keepPreviousData,
   });
 }
 
@@ -802,25 +803,6 @@ export function usePanelTicket(id: string) {
   });
 }
 
-export function usePlayerTickets(uuid: string) {
-  return useQuery({
-    queryKey: ['/v1/panel/tickets/player', uuid],
-    queryFn: async () => {
-      const res = await apiFetch(`/v1/panel/tickets/player/${uuid}`);
-      if (!res.ok) {
-        if (res.status === 404) {
-          return [];
-        }
-        throw new Error('Failed to fetch player tickets');
-      }
-      return res.json();
-    },
-    enabled: !!uuid,
-    staleTime: 30000,
-    refetchOnWindowFocus: true
-  });
-}
-
 export function usePlayerAllTickets(uuid: string) {
   return useQuery({
     queryKey: ['/v1/panel/tickets/player', uuid],
@@ -1266,49 +1248,6 @@ export function useMarkTicketAsRead() {
       queryClient.invalidateQueries({ queryKey: ['/v1/panel/ticket-subscriptions/assigned-updates'] });
     },
   });
-}
-
-export function useTicketCounts(options?: {
-  search?: string;
-  status?: string;
-}) {
-  const { search = '', status = '' } = options || {};
-
-  const ticketTypes = ['support', 'bug', 'player', 'chat', 'appeal', 'staff'];
-
-  const queries = useQueries({
-    queries: ticketTypes.map(type => ({
-      queryKey: ['/v1/panel/tickets/count', { search, status, type }],
-      queryFn: async () => {
-        const params = new URLSearchParams();
-        params.append('page', '1');
-        params.append('limit', '1');
-        if (search) params.append('search', search);
-        if (status) params.append('status', status);
-        params.append('type', type);
-
-        const res = await apiFetch(`/v1/panel/tickets?${params.toString()}`);
-        if (!res.ok) {
-          throw new Error(`Failed to fetch ticket count for ${type}`);
-        }
-        const data = await res.json();
-        return { type, count: data.pagination?.totalTickets || 0 };
-      },
-      staleTime: 30000,
-      refetchOnWindowFocus: true
-    }))
-  });
-
-  const counts = queries.reduce((acc, query, index) => {
-    const type = ticketTypes[index];
-    acc[type] = query.data?.count || 0;
-    return acc;
-  }, {} as Record<string, number>);
-
-  const isLoading = queries.some(query => query.isLoading);
-  const isError = queries.some(query => query.isError);
-
-  return { counts, isLoading, isError };
 }
 
 export function useTicketStatusCounts(options?: {
