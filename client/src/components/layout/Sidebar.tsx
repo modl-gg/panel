@@ -27,6 +27,8 @@ import { usePermissions, PERMISSIONS } from "@/hooks/use-permissions";
 import { useAuth } from "@/hooks/use-auth";
 import { usePlayerSearch } from "@/hooks/use-data";
 import { useQuery } from '@tanstack/react-query';
+import { queryClient } from "@/lib/queryClient";
+import { apiFetch } from "@/lib/api";
 
 const Sidebar = () => {
   const { t } = useTranslation();
@@ -207,6 +209,43 @@ const Sidebar = () => {
     };
   }, []);
 
+  const prefetchRouteData = (path: string) => {
+    const prefetchFn = async (url: string) => {
+      const res = await apiFetch(url);
+      if (!res.ok) throw new Error('Prefetch failed');
+      return res.json();
+    };
+
+    switch (path) {
+      case '/panel':
+        queryClient.prefetchQuery({
+          queryKey: ['/v1/panel/dashboard/recent-tickets', 3],
+          queryFn: () => prefetchFn('/v1/panel/dashboard/recent-tickets?limit=3'),
+          staleTime: 2 * 60 * 1000,
+        });
+        queryClient.prefetchQuery({
+          queryKey: ['/v1/panel/dashboard/recent-punishments', 5],
+          queryFn: () => prefetchFn('/v1/panel/dashboard/recent-punishments?limit=5'),
+          staleTime: 2 * 60 * 1000,
+        });
+        break;
+      case '/panel/tickets':
+        queryClient.prefetchQuery({
+          queryKey: ['/v1/panel/tickets', { page: 1, limit: 10, search: '', status: '', types: [], author: '', labels: [], assignees: [], sort: 'newest' }],
+          queryFn: () => prefetchFn('/v1/panel/tickets?page=1&limit=10&sort=newest'),
+          staleTime: 30000,
+        });
+        break;
+      case '/panel/settings':
+        queryClient.prefetchQuery({
+          queryKey: ['/v1/panel/settings/punishment-types'],
+          queryFn: () => prefetchFn('/v1/panel/settings/punishment-types'),
+          staleTime: 5 * 60 * 1000,
+        });
+        break;
+    }
+  };
+
   const allNavItems = [
     {
       name: t('nav.home'),
@@ -219,14 +258,13 @@ const Sidebar = () => {
     },
     {
       name: t('nav.lookup'),
-      path: "/panel/lookup", // This path is for active state, click handled separately
+      path: "/panel/lookup",
       icon: <Search className="h-5 w-5" />,
       onClick: () => {
         if (isLookupOpen) {
           closeLookup();
         } else {
           openLookup();
-          // Do not navigate here, lookup is an overlay
         }
       },
     },
@@ -395,6 +433,7 @@ const Sidebar = () => {
                                 "bg-sidebar-primary/10 text-sidebar-primary hover:bg-sidebar-primary/20",
                             )}
                             onClick={item.onClick}
+                            onMouseEnter={() => prefetchRouteData(item.path)}
                           >
                             <div className="relative">
                               {item.icon}

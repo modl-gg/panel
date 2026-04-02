@@ -257,22 +257,19 @@ const SubmitTicketPage = () => {
     setIsSubmitting(true);
 
     try {
-      // Convert formData keys from field IDs to field labels
-      const labeledFormData: Record<string, string> = {};
+      // Keep field IDs as keys, send labels separately
+      const cleanFormData: Record<string, string> = {};
+      const fieldLabelsMapping: Record<string, string> = {};
       const allFormFields = formConfig.fields || [];
 
       for (const [fieldId, value] of Object.entries(formData)) {
         const fieldConfig = allFormFields.find((f: FormField) => f.id === fieldId);
         if (fieldConfig?.type === 'file_upload') {
-          // File uploads are sent via `attachments` for preview support.
           continue;
         }
+        cleanFormData[fieldId] = value;
         if (fieldConfig && fieldConfig.label) {
-          labeledFormData[fieldConfig.label] = value;
-        } else if (fieldId === 'email') {
-          labeledFormData['Email Address'] = value;
-        } else {
-          labeledFormData[fieldId] = value;
+          fieldLabelsMapping[fieldId] = fieldConfig.label;
         }
       }
 
@@ -341,7 +338,8 @@ const SubmitTicketPage = () => {
           subject: finalSubject,
           creatorName: webCreatorName,
           creatorEmail: email,
-          formData: labeledFormData,
+          formData: cleanFormData,
+          fieldLabels: fieldLabelsMapping,
           attachments,
           creatorIdentifier: creatorIdentifier,
           createdServer: 'Web',
