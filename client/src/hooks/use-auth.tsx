@@ -25,7 +25,7 @@ interface PasskeyLoginOptions {
 type AuthContextType = {
   user: User | null;
   isLoading: boolean;
-  setUser: (user: User | null) => void;
+  refreshUser: () => Promise<void>;
   login: (email: string, code: string) => Promise<boolean>;
   logout: () => void;
   requestEmailVerification: (email: string) => Promise<string | undefined>;
@@ -74,6 +74,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
     const userData = await response.json();
     return mapUserFromMeResponse(userData);
+  };
+
+  const refreshUser = async () => {
+    const authenticatedUser = await fetchAuthenticatedUser();
+    setUser(authenticatedUser);
   };
 
   useEffect(() => {
@@ -426,7 +431,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       value={{
         user,
         isLoading,
-        setUser,
+        refreshUser,
         login,
         logout,
         requestEmailVerification,

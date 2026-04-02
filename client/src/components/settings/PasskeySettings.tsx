@@ -255,7 +255,14 @@ const PasskeySettings = () => {
       )}
 
       {/* Name dialog after registration */}
-      <Dialog open={nameDialogOpen} onOpenChange={setNameDialogOpen}>
+      <Dialog open={nameDialogOpen} onOpenChange={(open) => {
+        if (!open) {
+          setPendingChallengeId(null);
+          setPendingResponse(null);
+          setCredentialName('');
+        }
+        setNameDialogOpen(open);
+      }}>
         <DialogContent>
           <DialogHeader>
             <DialogTitle>{t('settings.passkey.nameYourPasskey')}</DialogTitle>
