@@ -9,6 +9,7 @@ import {
 import { getAvatarUrl } from '@/lib/api';
 import { Button } from '@modl-gg/shared-web/components/ui/button';
 import { Badge } from '@modl-gg/shared-web/components/ui/badge';
+import { Skeleton } from '@modl-gg/shared-web/components/ui/skeleton';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@modl-gg/shared-web/components/ui/tabs';
 import { usePlayer, useApplyPunishment, useSettings, usePunishmentTypes, usePlayerAllTickets, useModifyPunishment, useAddPunishmentNote, useModifyPunishmentTickets, useLinkedAccounts, useFindLinkedAccounts, useLinkedBansForPunishment } from '@/hooks/use-data';
 import { useAuth } from '@/hooks/use-auth';
@@ -1042,23 +1043,34 @@ const PlayerDetailPage = () => {
     }
   };
 
-  // Show loading state
   if (isLoading || isLoadingSettings) {
     return (
       <div className="w-full px-4 py-4 pb-20">
         <div className="flex items-center mb-4">
-          <Button 
-            variant="ghost" 
-            size="icon" 
+          <Button
+            variant="ghost"
+            size="icon"
             onClick={() => navigate('/panel/lookup')}
             className="mr-2"
           >
             <ArrowLeft className="h-5 w-5" />
           </Button>
-          <h1 className="text-2xl font-bold">{t('player.loading')}</h1>
+          <Skeleton className="h-8 w-48" />
         </div>
-        <div className="flex items-center justify-center h-64">
-          <Loader2 className="h-8 w-8 animate-spin text-primary" />
+        <div className="flex items-center gap-4 mb-6">
+          <Skeleton className="h-16 w-16 rounded-full" />
+          <div className="space-y-2">
+            <Skeleton className="h-5 w-40" />
+            <Skeleton className="h-4 w-24" />
+          </div>
+        </div>
+        <div className="space-y-4">
+          <Skeleton className="h-10 w-full max-w-md" />
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <Skeleton className="h-32 w-full" />
+            <Skeleton className="h-32 w-full" />
+          </div>
+          <Skeleton className="h-48 w-full" />
         </div>
       </div>
     );

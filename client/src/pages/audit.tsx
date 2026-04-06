@@ -45,6 +45,8 @@ import { PERMISSIONS } from '@/hooks/use-permissions';
 import { Alert, AlertDescription } from '@modl-gg/shared-web/components/ui/alert';
 import { cn } from '@modl-gg/shared-web/lib/utils';
 import { usePlayerWindow } from '@/contexts/PlayerWindowContext';
+import { useAuth } from '@/hooks/use-auth';
+import { Checkbox } from '@modl-gg/shared-web/components/ui/checkbox';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell, LineChart, Line, Area, AreaChart } from 'recharts';
 import { getEvidenceDisplayText, getEvidenceClickUrl, getEvidenceShortName, isEvidenceClickable } from '@/utils/evidence-utils';
 import { formatTicketStatusLabel, normalizeTicketStatus } from '@/lib/ticket-enums';
@@ -246,6 +248,7 @@ interface ActivePunishment {
   playerId: string;
   playerName: string;
   type: string;
+  typeOrdinal: number;
   category: string;
   staffName: string;
   reason: string;
@@ -617,6 +620,251 @@ const PunishmentRollbackModal = () => {
             </Card>
             ))
           )}
+        </div>
+      </DialogContent>
+    </Dialog>
+  );
+};
+
+// Bulk punishment actions modal (superadmin only)
+const BulkPunishmentActionsModal = ({ activePunishments, onSuccess }: {
+  activePunishments: ActivePunishment[];
+  onSuccess: () => void;
+}) => {
+  const { toast } = useToast();
+  const { t } = useTranslation();
+  const [operation, setOperation] = useState<'pardon' | 'set-expiration'>('pardon');
+  const [selectedTypes, setSelectedTypes] = useState<Set<number>>(new Set());
+  const [reason, setReason] = useState('');
+  const [durationValue, setDurationValue] = useState<number>(1);
+  const [durationUnit, setDurationUnit] = useState<string>('days');
+  const [isPermanent, setIsPermanent] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [open, setOpen] = useState(false);
+
+  // Group active punishments by type with counts + preview count in single pass
+  const { typeGroups, previewCount } = useMemo(() => {
+    const groups = new Map<number, { name: string; count: number }>();
+    let preview = 0;
+    for (const p of activePunishments) {
+      if (!p.active) continue;
+      const existing = groups.get(p.typeOrdinal);
+      if (existing) {
+        existing.count++;
+      } else {
+        groups.set(p.typeOrdinal, { name: p.type, count: 1 });
+      }
+      if (selectedTypes.has(p.typeOrdinal)) preview++;
+    }
+    return { typeGroups: groups, previewCount: preview };
+  }, [activePunishments, selectedTypes]);
+
+  const toggleType = (ordinal: number) => {
+    setSelectedTypes(prev => {
+      const next = new Set(prev);
+      if (next.has(ordinal)) {
+        next.delete(ordinal);
+      } else {
+        next.add(ordinal);
+      }
+      return next;
+    });
+  };
+
+  const durationToMs = (): number => {
+    if (isPermanent) return 0;
+    const multipliers: Record<string, number> = {
+      minutes: 60 * 1000,
+      hours: 60 * 60 * 1000,
+      days: 24 * 60 * 60 * 1000,
+    };
+    return durationValue * (multipliers[durationUnit] || multipliers.days);
+  };
+
+  const handleSubmit = async () => {
+    if (selectedTypes.size === 0) {
+      toast({ title: 'No types selected', description: 'Select at least one punishment type.', variant: 'destructive' });
+      return;
+    }
+    if (!reason.trim()) {
+      toast({ title: 'Reason required', description: 'Please provide a reason.', variant: 'destructive' });
+      return;
+    }
+
+    const actionLabel = operation === 'pardon' ? 'pardon' : 'set expiration on';
+    if (!window.confirm(`Are you sure you want to ${actionLabel} ${previewCount} punishment(s)? This cannot be undone.`)) {
+      return;
+    }
+
+    setIsSubmitting(true);
+    try {
+      const endpoint = operation === 'pardon'
+        ? '/v1/panel/audit/punishments/bulk-pardon'
+        : '/v1/panel/audit/punishments/bulk-set-expiration';
+
+      const body: Record<string, unknown> = {
+        typeOrdinals: Array.from(selectedTypes),
+        reason: reason.trim(),
+      };
+      if (operation === 'set-expiration') {
+        body.newDurationMs = durationToMs();
+      }
+
+      const response = await apiFetch(endpoint, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(body),
+      });
+
+      if (!response.ok) {
+        const data = await response.json().catch(() => ({}));
+        throw new Error(data.error || data.message || `HTTP ${response.status}`);
+      }
+
+      const data = await response.json();
+      toast({
+        title: operation === 'pardon' ? 'Bulk Pardon Complete' : 'Bulk Expiration Updated',
+        description: data.message || `${data.count} punishment(s) affected.`,
+      });
+      onSuccess();
+      setOpen(false);
+      setSelectedTypes(new Set());
+      setReason('');
+    } catch (error) {
+      toast({
+        title: 'Operation Failed',
+        description: error instanceof Error ? error.message : 'An error occurred',
+        variant: 'destructive',
+      });
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  return (
+    <Dialog open={open} onOpenChange={setOpen}>
+      <DialogTrigger asChild>
+        <Button variant="outline" size="sm">
+          <Gavel className="h-4 w-4 mr-2" />
+          Bulk Actions
+        </Button>
+      </DialogTrigger>
+      <DialogContent className="max-w-lg max-h-[80vh] overflow-hidden">
+        <DialogHeader>
+          <DialogTitle>Bulk Punishment Actions</DialogTitle>
+        </DialogHeader>
+        <div className="space-y-4 overflow-auto max-h-[60vh]">
+          {/* Operation toggle */}
+          <div className="flex gap-2">
+            <Button
+              variant={operation === 'pardon' ? 'default' : 'outline'}
+              size="sm"
+              onClick={() => setOperation('pardon')}
+              className="flex-1"
+            >
+              Pardon All
+            </Button>
+            <Button
+              variant={operation === 'set-expiration' ? 'default' : 'outline'}
+              size="sm"
+              onClick={() => setOperation('set-expiration')}
+              className="flex-1"
+            >
+              Set Expiration
+            </Button>
+          </div>
+
+          {/* Punishment type checkboxes */}
+          <div>
+            <label className="text-sm font-medium mb-2 block">Punishment Types</label>
+            {typeGroups.size === 0 ? (
+              <p className="text-sm text-muted-foreground">No active punishments found.</p>
+            ) : (
+              <div className="space-y-2 max-h-40 overflow-auto border rounded p-2">
+                {Array.from(typeGroups.entries()).map(([ordinal, { name, count }]) => (
+                  <label key={ordinal} className="flex items-center gap-2 cursor-pointer hover:bg-muted/50 rounded p-1">
+                    <Checkbox
+                      checked={selectedTypes.has(ordinal)}
+                      onCheckedChange={() => toggleType(ordinal)}
+                    />
+                    <span className="text-sm flex-1">{name}</span>
+                    <Badge variant="secondary" className="text-xs">{count}</Badge>
+                  </label>
+                ))}
+              </div>
+            )}
+          </div>
+
+          {/* Reason input */}
+          <div>
+            <label className="text-sm font-medium mb-1 block">Reason</label>
+            <textarea
+              value={reason}
+              onChange={e => setReason(e.target.value)}
+              placeholder="Enter reason for this bulk action..."
+              className="w-full min-h-[60px] rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+              maxLength={500}
+            />
+          </div>
+
+          {/* Duration input (set-expiration only) */}
+          {operation === 'set-expiration' && (
+            <div>
+              <label className="text-sm font-medium mb-1 block">New Duration</label>
+              <div className="flex items-center gap-2">
+                <label className="flex items-center gap-1 text-sm cursor-pointer">
+                  <Checkbox
+                    checked={isPermanent}
+                    onCheckedChange={(checked) => setIsPermanent(checked === true)}
+                  />
+                  Permanent
+                </label>
+              </div>
+              {!isPermanent && (
+                <div className="flex items-center gap-2 mt-2">
+                  <input
+                    type="number"
+                    min={1}
+                    value={durationValue}
+                    onChange={e => setDurationValue(Math.max(1, parseInt(e.target.value) || 1))}
+                    className="w-20 rounded-md border border-input bg-background px-3 py-2 text-sm"
+                  />
+                  <Select value={durationUnit} onValueChange={setDurationUnit}>
+                    <SelectTrigger className="w-[120px]">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="minutes">Minutes</SelectItem>
+                      <SelectItem value="hours">Hours</SelectItem>
+                      <SelectItem value="days">Days</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* Preview count */}
+          {selectedTypes.size > 0 && (
+            <div className="p-3 bg-muted/50 rounded-lg border text-sm">
+              This will affect <span className="font-bold">{previewCount}</span> active punishment(s).
+            </div>
+          )}
+
+          {/* Confirm button */}
+          <Button
+            variant="destructive"
+            className="w-full"
+            onClick={handleSubmit}
+            disabled={isSubmitting || selectedTypes.size === 0 || !reason.trim()}
+          >
+            {isSubmitting ? (
+              <RefreshCw className="h-4 w-4 mr-2 animate-spin" />
+            ) : (
+              <Gavel className="h-4 w-4 mr-2" />
+            )}
+            {operation === 'pardon' ? `Pardon ${previewCount} Punishment(s)` : `Update Expiration for ${previewCount} Punishment(s)`}
+          </Button>
         </div>
       </DialogContent>
     </Dialog>
@@ -1463,6 +1711,7 @@ const TicketAnalyticsSection = ({ analyticsPeriod }: { analyticsPeriod: string }
 // Punishments List Card component
 const ActivePunishmentsCard = () => {
   const { t } = useTranslation();
+  const { user } = useAuth();
   const [statusFilter, setStatusFilter] = useState<string>('active');
   const [staffFilter, setStaffFilter] = useState<string>('all');
   const [typeFilter, setTypeFilter] = useState<string>('all');
@@ -1473,7 +1722,7 @@ const ActivePunishmentsCard = () => {
   const pageSize = 20;
   const { openPlayerWindow } = usePlayerWindow();
 
-  const { data: activePunishments = [], isLoading } = useQuery({
+  const { data: activePunishments = [], isLoading, refetch } = useQuery({
     queryKey: ['punishments-list', statusFilter],
     queryFn: () => fetchPunishmentsList(statusFilter),
     staleTime: 5 * 60 * 1000
@@ -1643,6 +1892,13 @@ const ActivePunishmentsCard = () => {
                 <SelectItem value="no">{t('audit.noEvidenceFilter')}</SelectItem>
               </SelectContent>
             </Select>
+
+            {user?.role === 'Super Admin' && (
+              <BulkPunishmentActionsModal
+                activePunishments={activePunishments}
+                onSuccess={() => refetch()}
+              />
+            )}
           </div>
         </div>
       </CardHeader>

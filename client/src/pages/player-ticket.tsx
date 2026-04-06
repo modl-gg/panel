@@ -652,22 +652,19 @@ const PlayerTicket = () => {
 
     setIsSubmitting(true);
       try {
-      // Convert formData keys from field IDs to field labels for better readability
-      const labeledFormData: Record<string, string> = {};
+      // Keep field IDs as keys, send labels separately
+      const cleanFormData: Record<string, string> = {};
+      const fieldLabelsMapping: Record<string, string> = {};
       const allFormFields = formConfig.fields || [];
 
       for (const [fieldId, value] of Object.entries(formData)) {
-        // Find the field config to get its label
         const fieldConfig = allFormFields.find((f: FormField) => f.id === fieldId);
         if (fieldConfig?.type === 'file_upload') {
-          // File uploads are transmitted via `attachments` for proper media preview rendering.
           continue;
         }
+        cleanFormData[fieldId] = value;
         if (fieldConfig && fieldConfig.label) {
-          labeledFormData[fieldConfig.label] = value;
-        } else {
-          // Fallback to using the ID if no label found (shouldn't happen normally)
-          labeledFormData[fieldId] = value;
+          fieldLabelsMapping[fieldId] = fieldConfig.label;
         }
       }
 
@@ -727,9 +724,10 @@ const PlayerTicket = () => {
         formData: {
           subject: finalSubject,
           creatorEmail,
-          formData: labeledFormData,
+          formData: cleanFormData,
+          fieldLabels: fieldLabelsMapping,
           attachments,
-          creatorIdentifier: getCreatorIdentifier(ticketDetails.id) // Include creator identifier for verification
+          creatorIdentifier: getCreatorIdentifier(ticketDetails.id)
         }
       });
       

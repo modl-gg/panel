@@ -147,13 +147,43 @@ const AccountSettings = ({
   const { logout } = useAuth();
   const { t } = useTranslation();
   const [isUpdatingEmail, setIsUpdatingEmail] = useState(false);
+  const [emailChangeStep, setEmailChangeStep] = useState<'idle' | 'code-sent'>('idle');
+  const [emailCode, setEmailCode] = useState('');
+  const [isSendingCode, setIsSendingCode] = useState(false);
 
-  const handleUpdateEmail = async () => {
+  const handleSendEmailCode = async () => {
+    setIsSendingCode(true);
+    try {
+      const response = await apiFetch('/v1/panel/auth/email/send-code', {
+        method: 'POST',
+        body: { newEmail: currentEmail },
+      });
+      const data = await response.json();
+      if (!response.ok) {
+        throw new Error(data.message || t('settings.emailUpdateFailed'));
+      }
+      setEmailChangeStep('code-sent');
+      toast({
+        title: t('toast.verificationSent'),
+        description: t('toast.verificationSentDesc'),
+      });
+    } catch (error) {
+      toast({
+        title: t('common.error'),
+        description: error instanceof Error ? error.message : t('settings.emailUpdateFailed'),
+        variant: 'destructive',
+      });
+    } finally {
+      setIsSendingCode(false);
+    }
+  };
+
+  const handleConfirmEmailChange = async () => {
     setIsUpdatingEmail(true);
     try {
       const response = await apiFetch('/v1/panel/auth/email', {
         method: 'PATCH',
-        body: { newEmail: currentEmail },
+        body: { newEmail: currentEmail, code: emailCode },
       });
       const data = await response.json();
       if (!response.ok) {
@@ -163,7 +193,8 @@ const AccountSettings = ({
         title: t('settings.emailUpdated'),
         description: t('settings.emailUpdatedDesc'),
       });
-      // Reload to refresh the user context with the new email
+      setEmailChangeStep('idle');
+      setEmailCode('');
       setTimeout(() => window.location.reload(), 1000);
     } catch (error) {
       toast({
@@ -230,19 +261,44 @@ const AccountSettings = ({
                   id="email-address"
                   type="email"
                   value={currentEmail}
-                  onChange={(e) => setCurrentEmail(e.target.value)}
+                  onChange={(e) => {
+                    setCurrentEmail(e.target.value);
+                    setEmailChangeStep('idle');
+                    setEmailCode('');
+                  }}
                   placeholder="Enter email"
                   className="max-w-xs"
+                  disabled={emailChangeStep === 'code-sent'}
                 />
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={handleUpdateEmail}
-                  disabled={isUpdatingEmail}
-                >
-                  {isUpdatingEmail ? t('common.saving') : t('common.update')}
-                </Button>
+                {emailChangeStep === 'idle' && (
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={handleSendEmailCode}
+                    disabled={isSendingCode}
+                  >
+                    {isSendingCode ? t('common.saving') : t('common.update')}
+                  </Button>
+                )}
               </div>
+              {emailChangeStep === 'code-sent' && (
+                <div className="flex items-center gap-3 mt-2">
+                  <Input
+                    type="text"
+                    value={emailCode}
+                    onChange={(e) => setEmailCode(e.target.value)}
+                    placeholder="Enter code"
+                    className="max-w-[160px]"
+                    onKeyDown={(e) => { if (e.key === 'Enter') handleConfirmEmailChange(); }}
+                  />
+                  <Button size="sm" onClick={handleConfirmEmailChange} disabled={isUpdatingEmail || !emailCode}>
+                    {isUpdatingEmail ? t('common.saving') : 'Verify'}
+                  </Button>
+                  <Button variant="ghost" size="sm" onClick={() => { setEmailChangeStep('idle'); setEmailCode(''); }}>
+                    {t('common.cancel')}
+                  </Button>
+                </div>
+              )}
               <p className="text-xs text-muted-foreground mt-1.5">
                 {t('settings.emailDescription')}
               </p>

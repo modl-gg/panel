@@ -65,7 +65,16 @@ export const queryClient = new QueryClient({
       refetchInterval: false,
       refetchOnWindowFocus: false,
       staleTime: Infinity,
-      retry: false,
+      retry: (failureCount, error) => {
+        if (failureCount >= 1) return false;
+        if (error instanceof Error) {
+          const statusMatch = error.message.match(/^(\d{3}):/);
+          if (statusMatch) {
+            return parseInt(statusMatch[1], 10) >= 500;
+          }
+        }
+        return true;
+      },
     },
     mutations: {
       retry: false,
