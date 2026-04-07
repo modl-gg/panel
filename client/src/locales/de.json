@@ -1693,6 +1693,8 @@
     "genericFormDesc": "Bitte fülle das Formular unten aus, um dein Ticket einzureichen.",
     "subjectRequired": "Betreff erforderlich",
     "subjectRequiredDesc": "Bitte gib einen Betreff für dein Ticket ein.",
+    "nameRequired": "Name erforderlich",
+    "nameRequiredDesc": "Bitte gib deinen Namen ein.",
     "formConfigMissing": "Formularkonfiguration fehlt",
     "formConfigMissingDesc": "Keine Formularkonfiguration für {{type}}-Tickets gefunden. Bitte kontaktiere den Support.",
     "requiredFieldMissing": "Pflichtfeld fehlt",

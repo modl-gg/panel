@@ -1693,6 +1693,8 @@
     "genericFormDesc": "Vul het onderstaande formulier in om je ticket in te dienen.",
     "subjectRequired": "Onderwerp vereist",
     "subjectRequiredDesc": "Voer een onderwerp in voor je ticket.",
+    "nameRequired": "Naam vereist",
+    "nameRequiredDesc": "Voer je naam in.",
     "formConfigMissing": "Formulierconfiguratie ontbreekt",
     "formConfigMissingDesc": "Geen formulierconfiguratie gevonden voor {{type}}-tickets. Neem contact op met ondersteuning.",
     "requiredFieldMissing": "Verplicht veld ontbreekt",

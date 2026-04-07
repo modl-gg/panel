@@ -1693,6 +1693,8 @@
     "genericFormDesc": "Por favor completa el formulario a continuación para enviar tu ticket.",
     "subjectRequired": "Asunto requerido",
     "subjectRequiredDesc": "Por favor introduce un asunto para tu ticket.",
+    "nameRequired": "Nombre requerido",
+    "nameRequiredDesc": "Por favor ingresa tu nombre.",
     "formConfigMissing": "Configuración de formulario faltante",
     "formConfigMissingDesc": "No se encontró configuración de formulario para tickets de {{type}}. Por favor contacta soporte.",
     "requiredFieldMissing": "Campo requerido faltante",

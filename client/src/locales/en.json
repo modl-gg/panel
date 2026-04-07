@@ -1700,6 +1700,8 @@
     "genericFormDesc": "Please fill out the form below to submit your ticket.",
     "subjectRequired": "Subject Required",
     "subjectRequiredDesc": "Please enter a subject for your ticket.",
+    "nameRequired": "Name Required",
+    "nameRequiredDesc": "Please enter your name.",
     "formConfigMissing": "Form Configuration Missing",
     "formConfigMissingDesc": "No form configuration found for {{type}} tickets. Please contact support.",
     "requiredFieldMissing": "Required Field Missing",
