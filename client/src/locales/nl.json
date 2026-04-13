@@ -723,6 +723,7 @@
       "storageOverageAlert": "Opslagoverschrijding actief",
       "storageOverageTip": "Je gebruikt momenteel meer opslag dan je inbegrepen limiet. Extra kosten zijn van toepassing.",
       "storageLimitWarning": "Nadering van opslaglimiet",
+      "storageLimitWarningDesc": "Je hebt {{percentage}}% van je opslaglimiet van {{limit}} gebruikt.",
       "upgradePremiumStorage": "Upgrade naar Premium voor 200 GB opslag.",
       "storageUsage": "Opslaggebruik",
       "used": "Gebruikt",

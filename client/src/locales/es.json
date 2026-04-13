@@ -723,6 +723,7 @@
       "storageOverageAlert": "Exceso de almacenamiento activo",
       "storageOverageTip": "Actualmente estás usando almacenamiento más allá de tu límite incluido. Se aplican cargos adicionales.",
       "storageLimitWarning": "Acercándose al límite de almacenamiento",
+      "storageLimitWarningDesc": "Has usado el {{percentage}} % de tu límite de almacenamiento de {{limit}}.",
       "upgradePremiumStorage": "Mejora a Premium para 200 GB de almacenamiento.",
       "storageUsage": "Uso de almacenamiento",
       "used": "Usado",

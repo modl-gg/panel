@@ -723,6 +723,7 @@
       "storageOverageAlert": "Speicherüberschreitung aktiv",
       "storageOverageTip": "Du verwendest derzeit Speicher über dein enthaltenes Limit hinaus. Zusätzliche Kosten fallen an.",
       "storageLimitWarning": "Annäherung an das Speicherlimit",
+      "storageLimitWarningDesc": "Du hast {{percentage}} % deines Speicherlimits von {{limit}} verwendet.",
       "upgradePremiumStorage": "Upgrade auf Premium für 200 GB Speicher.",
       "storageUsage": "Speichernutzung",
       "used": "Verwendet",
