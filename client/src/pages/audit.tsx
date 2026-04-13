@@ -42,7 +42,7 @@ import PageContainer from '@/components/layout/PageContainer';
 import { useToast } from '@modl-gg/shared-web/hooks/use-toast';
 import { PermissionWrapper } from '@/components/PermissionWrapper';
 import { PERMISSIONS } from '@/hooks/use-permissions';
-import { Alert, AlertDescription } from '@modl-gg/shared-web/components/ui/alert';
+import { StatusBanner } from '@modl-gg/shared-web/components/ui/status-banner';
 import { cn } from '@modl-gg/shared-web/lib/utils';
 import { usePlayerWindow } from '@/contexts/PlayerWindowContext';
 import { useAuth } from '@/hooks/use-auth';
@@ -2656,12 +2656,9 @@ export default function AuditPage() {
       permissions={[PERMISSIONS.ADMIN_AUDIT_VIEW]}
       fallback={
         <PageContainer title={t('audit.title')}>
-          <Alert variant="destructive">
-            <AlertTriangle className="h-4 w-4" />
-            <AlertDescription>
-              {t('audit.noPermission')}
-            </AlertDescription>
-          </Alert>
+          <StatusBanner variant="error">
+            {t('audit.noPermission')}
+          </StatusBanner>
         </PageContainer>
       }
     >

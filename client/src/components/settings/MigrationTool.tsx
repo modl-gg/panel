@@ -3,7 +3,7 @@ import { useTranslation } from 'react-i18next';
 import { Database, Download, AlertCircle, CheckCircle2, Clock, Upload, Loader2, X } from 'lucide-react';
 import { Button } from '@modl-gg/shared-web/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@modl-gg/shared-web/components/ui/select';
-import { Alert, AlertDescription } from '@modl-gg/shared-web/components/ui/alert';
+import { StatusBanner } from '@modl-gg/shared-web/components/ui/status-banner';
 import { Progress } from '@modl-gg/shared-web/components/ui/progress';
 import { Card } from '@modl-gg/shared-web/components/ui/card';
 import { useMigrationStatus, useStartMigration, useCancelMigration } from '@/hooks/use-data';
@@ -220,60 +220,55 @@ const MigrationTool: React.FC = () => {
             )}
 
             {currentMigration.error && (
-              <Alert variant="destructive">
-                <AlertCircle className="h-4 w-4" />
-                <AlertDescription>{currentMigration.error}</AlertDescription>
-              </Alert>
+              <StatusBanner variant="error">
+                {currentMigration.error}
+              </StatusBanner>
             )}
           </div>
         </Card>
       )}
 
-      {/* Completed/Failed/Cancelled Migration Result */}
       {showCompletedAlert && lastCompletedMigration && (() => {
         const isCancelled = lastCompletedMigration.error?.toLowerCase().includes('cancelled');
         const isSuccess = lastCompletedMigration.status === 'completed';
-        const variant = isSuccess ? 'default' : (isCancelled ? 'default' : 'destructive');
+        const variant = isSuccess ? 'success' : (isCancelled ? 'warning' : 'error');
 
         return (
-          <Alert variant={variant} className={isCancelled ? 'border-amber-500/50 bg-amber-500/5' : undefined}>
-            {isSuccess ? (
-              <CheckCircle2 className="h-4 w-4" />
+          <StatusBanner
+            variant={variant}
+            icon={isSuccess ? (
+              <CheckCircle2 className="h-5 w-5 text-green-600 dark:text-green-400" />
             ) : isCancelled ? (
-              <X className="h-4 w-4 text-amber-600" />
+              <X className="h-5 w-5 text-amber-600 dark:text-amber-400" />
+            ) : undefined}
+          >
+            {isSuccess ? (
+              <>
+                {t('settings.migration.migrationCompletedSuccess')}
+                {lastCompletedMigration.progress && (
+                  <span className="ml-1">
+                    {t('settings.migration.processedRecords', { count: lastCompletedMigration.progress.recordsProcessed })}
+                    {lastCompletedMigration.progress.recordsSkipped > 0 &&
+                      t('settings.migration.skippedSuffix', { count: lastCompletedMigration.progress.recordsSkipped })}.
+                  </span>
+                )}
+              </>
+            ) : isCancelled ? (
+              t('settings.migration.migrationCancelled')
             ) : (
-              <AlertCircle className="h-4 w-4" />
+              lastCompletedMigration.error || t('settings.migration.migrationFailed')
             )}
-            <AlertDescription className={isCancelled ? 'text-amber-700 dark:text-amber-400' : undefined}>
-              {isSuccess ? (
-                <>
-                  {t('settings.migration.migrationCompletedSuccess')}
-                  {lastCompletedMigration.progress && (
-                    <span className="ml-1">
-                      {t('settings.migration.processedRecords', { count: lastCompletedMigration.progress.recordsProcessed })}
-                      {lastCompletedMigration.progress.recordsSkipped > 0 &&
-                        t('settings.migration.skippedSuffix', { count: lastCompletedMigration.progress.recordsSkipped })}.
-                    </span>
-                  )}
-                </>
-              ) : isCancelled ? (
-                t('settings.migration.migrationCancelled')
-              ) : (
-                lastCompletedMigration.error || t('settings.migration.migrationFailed')
-              )}
-            </AlertDescription>
-          </Alert>
+          </StatusBanner>
         );
       })()}
 
-      {/* Cooldown Warning */}
       {onCooldown && !isActive && (
-        <Alert>
-          <Clock className="h-4 w-4" />
-          <AlertDescription>
-            {t('settings.migration.cooldownActive', { time: formatCooldownTime(cooldownRemainingMs) })}
-          </AlertDescription>
-        </Alert>
+        <StatusBanner
+          variant="info"
+          icon={<Clock className="h-5 w-5 text-blue-600 dark:text-blue-400" />}
+        >
+          {t('settings.migration.cooldownActive', { time: formatCooldownTime(cooldownRemainingMs) })}
+        </StatusBanner>
       )}
 
       {/* Migration Start Controls */}

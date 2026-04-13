@@ -31,7 +31,7 @@ import {
   CheckCircle,
   Clock
 } from 'lucide-react';
-import { Alert, AlertDescription } from '@modl-gg/shared-web/components/ui/alert';
+import { StatusBanner } from '@modl-gg/shared-web/components/ui/status-banner';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@modl-gg/shared-web/components/ui/alert-dialog';
 import { Slider } from '@modl-gg/shared-web/components/ui/slider';
 import { Label } from '@modl-gg/shared-web/components/ui/label';
@@ -265,23 +265,30 @@ const BillingSettings = () => {
     return getCurrentPlan() === 'premium';
   };
 
+  const hasActiveSubscription = () => {
+    if (!billingStatus) return false;
+    const normalizedStatus = normalizeSubscriptionStatus(billingStatus.subscriptionStatus);
+    return ['ACTIVE', 'TRIALING', 'PAST_DUE', 'UNPAID', 'CANCELED'].includes(normalizedStatus);
+  };
+
+  const needsPaymentAttention = () => {
+    if (!billingStatus) return false;
+    const normalizedStatus = normalizeSubscriptionStatus(billingStatus.subscriptionStatus);
+    return normalizedStatus === 'PAST_DUE' || normalizedStatus === 'UNPAID';
+  };
+
   const getSubscriptionAlert = () => {
     if (isBillingLoading || !billingStatus) return null;
 
     const { currentPeriodEnd } = billingStatus;
     const normalizedStatus = normalizeSubscriptionStatus(billingStatus.subscriptionStatus);
 
-    // Special handling for cancelled subscriptions
     if (normalizedStatus === 'CANCELED') {
       if (!currentPeriodEnd) {
-        // No end date means it's already expired - show expired message
         return (
-          <Alert className="flex items-center border-red-200 bg-red-50 dark:border-red-800 dark:bg-red-950">
-            <AlertTriangle className="h-4 w-4 text-red-600" />
-            <AlertDescription className="text-red-800 dark:text-red-200">
-              <strong>{t('settings.billing.subscriptionExpired')}:</strong> {t('settings.billing.subscriptionExpiredDesc')}
-            </AlertDescription>
-          </Alert>
+          <StatusBanner variant="error" title={t('settings.billing.subscriptionExpired')}>
+            {t('settings.billing.subscriptionExpiredDesc')}
+          </StatusBanner>
         );
       }
 
@@ -289,38 +296,18 @@ const BillingSettings = () => {
       const today = new Date();
 
       if (endDate <= today) {
-        // Cancellation period has ended
         return (
-          <Alert className="flex items-center border-red-200 bg-red-50 dark:border-red-800 dark:bg-red-950">
-            <AlertTriangle className="h-4 w-4 text-red-600" />
-            <AlertDescription className="text-red-800 dark:text-red-200">
-              <strong>{t('settings.billing.subscriptionExpired')}:</strong> {t('settings.billing.subscriptionExpiredOn', { date: endDate.toLocaleDateString() })}
-            </AlertDescription>
-          </Alert>
+          <StatusBanner variant="error" title={t('settings.billing.subscriptionExpired')}>
+            {t('settings.billing.subscriptionExpiredOn', { date: endDate.toLocaleDateString() })}
+          </StatusBanner>
         );
       } else {
-        // Still has access until end date
         return (
-          <Alert className="flex items-center border-orange-200 bg-orange-50 dark:border-orange-800 dark:bg-orange-950">
-            <AlertTriangle className="h-4 w-4 text-orange-600" />
-            <AlertDescription className="text-orange-800 dark:text-orange-200">
-              <strong>{t('settings.billing.subscriptionCancelledAlert')}:</strong> {t('settings.billing.accessEndsOn', { date: endDate.toLocaleDateString() })}
-            </AlertDescription>
-          </Alert>
+          <StatusBanner variant="warning" title={t('settings.billing.subscriptionCancelledAlert')}>
+            {t('settings.billing.accessEndsOn', { date: endDate.toLocaleDateString() })}
+          </StatusBanner>
         );
       }
-    }
-
-    // Handle other problematic statuses
-    if (normalizedStatus === 'PAST_DUE' || normalizedStatus === 'UNPAID') {
-      return (
-        <Alert variant="destructive" className="flex items-center">
-          <AlertTriangle className="h-4 w-4" />
-          <AlertDescription>
-            <strong>{t('settings.billing.paymentIssue')}:</strong> {t('settings.billing.paymentIssueDesc')}
-          </AlertDescription>
-        </Alert>
-      );
     }
 
     return null;
@@ -440,6 +427,7 @@ const BillingSettings = () => {
     );
     const [aiOverageRequests, setAiOverageRequests] = useState<number>(maxAiOverageRequests ?? 0);
     const [savingOverageLimits, setSavingOverageLimits] = useState(false);
+    const hasPaymentIssue = normalizedStatus === 'PAST_DUE' || normalizedStatus === 'UNPAID';
 
     useEffect(() => {
       if (maxStorageLimitBytes) {
@@ -482,7 +470,26 @@ const BillingSettings = () => {
 
     return (
       <div className="space-y-6">
-        {/* Combined Premium Subscription & Usage */}
+        {hasPaymentIssue && (
+          <StatusBanner
+            variant="error"
+            title={t('settings.billing.paymentIssue')}
+            action={
+              <Button
+                onClick={handleCreatePortalSession}
+                disabled={isLoading}
+                className="btn-pill"
+                size="sm"
+              >
+                <CreditCard className="h-4 w-4 mr-2" />
+                {isLoading ? t('common.loading') : t('settings.billing.updatePaymentMethod')}
+              </Button>
+            }
+          >
+            {t('settings.billing.paymentIssueDesc')}
+          </StatusBanner>
+        )}
+
         <Card className="rounded-card shadow-card-inner bg-surface-2">
           <CardHeader>
             <div className="flex items-start justify-between">
@@ -494,7 +501,9 @@ const BillingSettings = () => {
                   <span className="text-2xl font-bold text-primary">$9.99/month</span>
                 </CardTitle>
                 <CardDescription className='mt-4'>
-                  {normalizedStatus === 'CANCELED' && currentPeriodEnd
+                  {hasPaymentIssue
+                    ? t('settings.billing.paymentIssueStatusDesc')
+                    : normalizedStatus === 'CANCELED' && currentPeriodEnd
                     ? t('settings.billing.accessEnds', { date: new Date(currentPeriodEnd).toLocaleDateString() })
                     : normalizedStatus === 'CANCELED' && !currentPeriodEnd
                     ? t('settings.billing.subscriptionCancelledAccessEnded')
@@ -512,7 +521,6 @@ const BillingSettings = () => {
             </div>
           </CardHeader>
           <CardContent className="space-y-6">
-            {/* Billing Management Buttons */}
             <div className="flex gap-3">
               {normalizedStatus !== 'CANCELED' && (
                 <Button
@@ -771,6 +779,18 @@ const BillingSettings = () => {
     );
   }
 
+  const renderBillingContent = () => {
+    if (isPremiumUser()) {
+      return <PremiumBillingView />;
+    }
+    
+    if (hasActiveSubscription()) {
+      return <PremiumBillingView />;
+    }
+    
+    return <FreePlanView />;
+  };
+
   return (
     <div className="space-y-8">
       <div className="flex items-center justify-between">
@@ -780,12 +800,10 @@ const BillingSettings = () => {
         </div>
       </div>
 
-      {/* Subscription Alert */}
       {getSubscriptionAlert()}
 
-      {/* Conditional rendering based on plan */}
-      {isPremiumUser() ? <PremiumBillingView /> : <FreePlanView />}
-        </div>
+      {renderBillingContent()}
+    </div>
   );
 };
 
