@@ -823,12 +823,12 @@ const SubmitTicketPage = () => {
     } else if (effectiveType === 'bug') {
       return {
         title: t('submitTicket.bugReport'),
-        description: t('submitTicket.bugReportFormDesc')
+        description: t('submitTicket.bugFormDesc')
       };
     } else if (effectiveType === 'support') {
       return {
         title: t('submitTicket.supportRequest'),
-        description: t('submitTicket.supportRequestFormDesc')
+        description: t('submitTicket.supportFormDesc')
       };
     }
     return {

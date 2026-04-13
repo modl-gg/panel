@@ -1,11 +1,11 @@
 import React, { useState, useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Globe, CheckCircle, AlertCircle, Copy, ExternalLink, RefreshCw, Check, Crown } from 'lucide-react';
+import { Globe, CheckCircle, Copy, ExternalLink, RefreshCw, Check, Crown } from 'lucide-react';
 import { Button } from '@modl-gg/shared-web/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@modl-gg/shared-web/components/ui/card';
 import { Input } from '@modl-gg/shared-web/components/ui/input';
 import { Label } from '@modl-gg/shared-web/components/ui/label';
-import { Alert, AlertDescription, AlertTitle } from '@modl-gg/shared-web/components/ui/alert';
+import { StatusBanner } from '@modl-gg/shared-web/components/ui/status-banner';
 import { Badge } from '@modl-gg/shared-web/components/ui/badge';
 import { Separator } from '@modl-gg/shared-web/components/ui/separator';
 import { useToast } from '@modl-gg/shared-web/hooks/use-toast';
@@ -319,33 +319,32 @@ const DomainSettings: React.FC = () => {
       <Card className="rounded-card shadow-card-inner bg-surface-2">
         <CardContent className="space-y-6">
           {!canManageCustomDomain && (
-            <Alert className="border-orange-200 bg-orange-50">
-              <Crown className="h-4 w-4 text-orange-600" />
-              <AlertTitle className="text-orange-800">{t('settings.domain.premiumFeature')}</AlertTitle>
-              <AlertDescription className="text-orange-700">
-                {t('settings.domain.premiumFeatureDesc')}
-              </AlertDescription>
-            </Alert>
+            <StatusBanner
+              variant="warning"
+              icon={<Crown className="h-5 w-5 text-amber-600 dark:text-amber-400" />}
+              title={t('settings.domain.premiumFeature')}
+            >
+              {t('settings.domain.premiumFeatureDesc')}
+            </StatusBanner>
           )}
 
           {accessingFromCustomDomain && (
-            <Alert className="border-orange-200 bg-orange-50">
-              <AlertCircle className="h-4 w-4 text-orange-600" />
-              <AlertTitle className="text-orange-800">{t('settings.domain.editingRestricted')}</AlertTitle>
-              <AlertDescription className="text-orange-700">
-                {t('settings.domain.editingRestrictedDesc')}
-                {' '}
-                <a
-                  href={modlSubdomainUrl}
-                  className="underline font-medium hover:text-orange-900"
-                  target="_blank"
-                  rel="noopener noreferrer"
-                >
-                  {modlSubdomainUrl}
-                </a>
-                {' '}{t('settings.domain.toMakeChanges')}
-              </AlertDescription>
-            </Alert>
+            <StatusBanner
+              variant="warning"
+              title={t('settings.domain.editingRestricted')}
+            >
+              {t('settings.domain.editingRestrictedDesc')}
+              {' '}
+              <a
+                href={modlSubdomainUrl}
+                className="underline font-medium hover:opacity-80"
+                target="_blank"
+                rel="noopener noreferrer"
+              >
+                {modlSubdomainUrl}
+              </a>
+              {' '}{t('settings.domain.toMakeChanges')}
+            </StatusBanner>
           )}
 
           <div className="mt-4">
@@ -434,11 +433,9 @@ const DomainSettings: React.FC = () => {
               </div>
 
               {domainStatus.status === 'error' && domainStatus.error && (
-                <Alert variant="destructive">
-                  <AlertCircle className="h-4 w-4" />
-                  <AlertTitle>{t('settings.domain.configurationError')}</AlertTitle>
-                  <AlertDescription>{domainStatus.error}</AlertDescription>
-                </Alert>
+                <StatusBanner variant="error" title={t('settings.domain.configurationError')}>
+                  {domainStatus.error}
+                </StatusBanner>
               )}
             </div>
           )}
@@ -457,43 +454,39 @@ const DomainSettings: React.FC = () => {
             </CardDescription>
           </CardHeader>
           <CardContent>
-            <Alert>
-              <AlertCircle className="h-4 w-4" />
-              <AlertTitle>{t('settings.domain.dnsRecordSetup')}</AlertTitle>
-              <AlertDescription>
-                <div className="space-y-3 mt-3">
-                  <div>
-                    <strong>{t('settings.domain.recordType')}:</strong> CNAME
-                  </div>
-                  <div>
-                    <strong>{t('settings.domain.nameHost')}:</strong> {customDomain.split('.')[0]} ({t('settings.domain.subdomainPart')})
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <strong>{t('settings.domain.valueTarget')}:</strong>
-                    <code className="bg-muted px-2 py-1 rounded text-sm">
-                      {currentDomain}.modl.gg
-                    </code>
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      onClick={() => copyToClipboard(`${currentDomain}.modl.gg`)}
-                    >
-                      {copied ? (
-                        <Check className="h-4 w-4" />
-                      ) : (
-                        <Copy className="h-4 w-4" />
-                      )}
-                    </Button>
-                  </div>
-                  <div>
-                    <strong>{t('settings.domain.orangeCloud')}:</strong> {t('settings.domain.enabled')}
-                  </div>
-                  <div>
-                    <strong>{t('settings.domain.ttl')}:</strong> {t('settings.domain.auto')}
-                  </div>
+            <StatusBanner variant="info" title={t('settings.domain.dnsRecordSetup')}>
+              <div className="space-y-3 mt-2">
+                <div>
+                  <strong>{t('settings.domain.recordType')}:</strong> CNAME
                 </div>
-              </AlertDescription>
-            </Alert>
+                <div>
+                  <strong>{t('settings.domain.nameHost')}:</strong> {customDomain.split('.')[0]} ({t('settings.domain.subdomainPart')})
+                </div>
+                <div className="flex items-center gap-2">
+                  <strong>{t('settings.domain.valueTarget')}:</strong>
+                  <code className="bg-muted px-2 py-1 rounded text-sm">
+                    {currentDomain}.modl.gg
+                  </code>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => copyToClipboard(`${currentDomain}.modl.gg`)}
+                  >
+                    {copied ? (
+                      <Check className="h-4 w-4" />
+                    ) : (
+                      <Copy className="h-4 w-4" />
+                    )}
+                  </Button>
+                </div>
+                <div>
+                  <strong>{t('settings.domain.orangeCloud')}:</strong> {t('settings.domain.enabled')}
+                </div>
+                <div>
+                  <strong>{t('settings.domain.ttl')}:</strong> {t('settings.domain.auto')}
+                </div>
+              </div>
+            </StatusBanner>
           </CardContent>
         </Card>
       )}

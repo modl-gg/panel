@@ -4,7 +4,7 @@ import { useLocation } from 'wouter';
 import { z } from 'zod';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
-import { AlertTriangle, SearchIcon, ShieldCheck, ShieldX, Send, File, Image, Video, FileText, X } from 'lucide-react';
+import { SearchIcon, ShieldCheck, ShieldX, Send, File, Image, Video, FileText, X } from 'lucide-react';
 import { formatDate } from '../utils/date-utils';
 import { apiFetch, getAvatarUrl } from '@/lib/api';
 import { Label } from "@modl-gg/shared-web/components/ui/label";
@@ -32,11 +32,7 @@ import {
   CardHeader,
   CardTitle,
 } from "@modl-gg/shared-web/components/ui/card";
-import {
-  Alert,
-  AlertDescription,
-  AlertTitle,
-} from "@modl-gg/shared-web/components/ui/alert";
+import { StatusBanner } from "@modl-gg/shared-web/components/ui/status-banner";
 import { useToast } from '@modl-gg/shared-web/hooks/use-toast';
 import { Separator } from '@modl-gg/shared-web/components/ui/separator';
 import { Badge } from '@modl-gg/shared-web/components/ui/badge';
@@ -1151,53 +1147,55 @@ const AppealsPage = () => {
                 </div>
                 
                 {normalizedAppealStatus === 'open' && (
-                  <Alert className="mt-4">
-                    <AlertTriangle className="h-4 w-4" />
-                    <AlertTitle>{t('appeals.appealUnderReview')}</AlertTitle>
-                    <AlertDescription>
-                      {t('appeals.appealUnderReviewDesc')}
-                    </AlertDescription>
-                  </Alert>
+                  <StatusBanner
+                    variant="info"
+                    title={t('appeals.appealUnderReview')}
+                    className="mt-4"
+                  >
+                    {t('appeals.appealUnderReviewDesc')}
+                  </StatusBanner>
                 )}
 
                 {normalizedAppealStatus === 'under_review' && (
-                  <Alert className="mt-4">
-                    <AlertTriangle className="h-4 w-4" />
-                    <AlertTitle>Appeal Under Review</AlertTitle>
-                    <AlertDescription>
-                      Staff are actively reviewing your appeal.
-                    </AlertDescription>
-                  </Alert>
+                  <StatusBanner
+                    variant="info"
+                    title="Appeal Under Review"
+                    className="mt-4"
+                  >
+                    Staff are actively reviewing your appeal.
+                  </StatusBanner>
                 )}
 
                 {normalizedAppealStatus === 'pending_player_response' && (
-                  <Alert className="mt-4">
-                    <AlertTriangle className="h-4 w-4" />
-                    <AlertTitle>Reply Needed</AlertTitle>
-                    <AlertDescription>
-                      Staff need more information before they can finish reviewing this appeal.
-                    </AlertDescription>
-                  </Alert>
+                  <StatusBanner
+                    variant="warning"
+                    title="Reply Needed"
+                    className="mt-4"
+                  >
+                    Staff need more information before they can finish reviewing this appeal.
+                  </StatusBanner>
                 )}
 
                 {normalizedAppealStatus === 'rejected' && (
-                  <Alert variant="destructive" className="mt-4">
-                    <ShieldX className="h-4 w-4" />
-                    <AlertTitle>{t('appeals.appealRejected')}</AlertTitle>
-                    <AlertDescription>
-                      {t('appeals.appealRejectedDesc')}
-                    </AlertDescription>
-                  </Alert>
+                  <StatusBanner
+                    variant="error"
+                    icon={<ShieldX className="h-5 w-5 text-red-600 dark:text-red-400" />}
+                    title={t('appeals.appealRejected')}
+                    className="mt-4"
+                  >
+                    {t('appeals.appealRejectedDesc')}
+                  </StatusBanner>
                 )}
 
                 {normalizedAppealStatus === 'approved' && (
-                  <Alert className="mt-4 border-green-500 text-green-500 bg-green-50 dark:bg-green-950 dark:bg-opacity-20">
-                    <ShieldCheck className="h-4 w-4" />
-                    <AlertTitle>{t('appeals.appealApproved')}</AlertTitle>
-                    <AlertDescription>
-                      {t('appeals.appealApprovedDesc')}
-                    </AlertDescription>
-                  </Alert>
+                  <StatusBanner
+                    variant="success"
+                    icon={<ShieldCheck className="h-5 w-5 text-green-600 dark:text-green-400" />}
+                    title={t('appeals.appealApproved')}
+                    className="mt-4"
+                  >
+                    {t('appeals.appealApprovedDesc')}
+                  </StatusBanner>
                 )}
                 
                 {/* Messages Section */}
@@ -1364,15 +1362,10 @@ const AppealsPage = () => {
               <div className="mt-8 space-y-4">
                 <Separator />
                 
-                {/* Unavailable punishment type notice */}
                 {banInfo.isAppealable === false && (
-                  <Alert variant="destructive">
-                    <AlertTriangle className="h-4 w-4" />
-                    <AlertTitle>{t('appeals.appealNotAvailable')}</AlertTitle>
-                    <AlertDescription>
-                      {t('appeals.appealNotAvailableDesc')}
-                    </AlertDescription>
-                  </Alert>
+                  <StatusBanner variant="error" title={t('appeals.appealNotAvailable')}>
+                    {t('appeals.appealNotAvailableDesc')}
+                  </StatusBanner>
                 )}
                 
                 {/* Dynamic Appeal Form */}
