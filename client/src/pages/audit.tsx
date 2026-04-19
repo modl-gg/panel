@@ -1,7 +1,6 @@
 import { useState, useMemo, useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
-  Calendar,
   ChevronDown,
   ChevronUp,
   Shield,
@@ -31,8 +30,6 @@ import { Button } from '@modl-gg/shared-web/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@modl-gg/shared-web/components/ui/card';
 import { Badge } from '@modl-gg/shared-web/components/ui/badge';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@modl-gg/shared-web/components/ui/select';
-import { Popover, PopoverContent, PopoverTrigger } from '@modl-gg/shared-web/components/ui/popover';
-import { Calendar as CalendarComponent } from '@modl-gg/shared-web/components/ui/calendar';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogPortal } from '@modl-gg/shared-web/components/ui/dialog';
 import { subDays } from 'date-fns';
 import { formatDateOnly } from '@/utils/date-utils';
@@ -60,19 +57,6 @@ interface StaffMember {
   punishmentsIssued: number;
   avgResponseTime: number;
   lastActive: string;
-}
-
-interface PunishmentAction {
-  id: string;
-  type: 'ban' | 'mute' | 'kick' | 'warn';
-  playerId: string;
-  playerName: string;
-  staffId: string;
-  staffName: string;
-  reason: string;
-  duration?: number;
-  timestamp: string;
-  canRollback: boolean;
 }
 
 const COLORS = ['#0088FE', '#00C49F', '#FFBB28', '#FF8042', '#8884d8', '#82ca9d'];
@@ -234,15 +218,6 @@ const fetchAuditLogsAnalytics = async (period = '7d') => {
   return response.json();
 };
 
-const fetchPunishments = async (limit = 50, canRollback = true): Promise<PunishmentAction[]> => {
-  const response = await fetch(getApiUrl(`/v1/panel/audit/punishments?limit=${limit}&canRollback=${canRollback}`), {
-    credentials: 'include',
-    headers: { 'X-Server-Domain': getCurrentDomain() }
-  });
-  if (!response.ok) throw new Error('Failed to fetch punishments');
-  return response.json();
-};
-
 interface ActivePunishment {
   id: string;
   playerId: string;
@@ -294,17 +269,6 @@ const CustomTooltip = ({ active, payload, label, formatValue, formatName }: any)
     );
   }
   return null;
-};
-
-const rollbackPunishment = async (id: string, reason?: string) => {
-  const csrfFetch = apiFetch;
-  const response = await csrfFetch(`/v1/panel/audit/punishments/${id}/rollback`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ reason })
-  });
-  if (!response.ok) throw new Error('Failed to rollback punishment');
-  return response.json();
 };
 
 // Staff performance modal
@@ -455,170 +419,6 @@ const StaffPerformanceModal = () => {
             </CardContent>
           </Card>
             </>
-          )}
-        </div>
-      </DialogContent>
-    </Dialog>
-  );
-};
-
-// Punishment rollback modal
-const PunishmentRollbackModal = () => {
-  const { toast } = useToast();
-  const { t } = useTranslation();
-  const [bulkTimeRange, setBulkTimeRange] = useState('24h');
-  
-  const { data: punishments = [], isLoading, refetch } = useQuery({
-    queryKey: ['punishments-rollback'],
-    queryFn: () => fetchPunishments(50, true),
-    staleTime: 5 * 60 * 1000
-  });
-  
-  const handleRollback = async (punishment: PunishmentAction) => {
-    try {
-      await rollbackPunishment(punishment.id, `Rolled back by admin`);
-      toast({
-        title: t('audit.punishmentRolledBack'),
-        description: t('audit.punishmentRolledBackDesc', { type: punishment.type, player: punishment.playerName })
-      });
-      refetch();
-    } catch (error) {
-      toast({
-        title: t('audit.rollbackFailed'),
-        description: t('audit.rollbackFailedDesc'),
-        variant: "destructive"
-      });
-    }
-  };
-
-  const handleBulkRollback = async () => {
-    if (!confirm(t('audit.bulkRollbackConfirm', { timeRange: bulkTimeRange }))) {
-      return;
-    }
-
-    try {
-      const csrfFetch = apiFetch;
-      const response = await csrfFetch('/v1/panel/audit/punishments/bulk-rollback', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          timeRange: bulkTimeRange,
-          reason: `Bulk rollback for ${bulkTimeRange} from audit panel`
-        })
-      });
-
-      if (!response.ok) throw new Error('Failed to bulk rollback');
-
-      const data = await response.json();
-      toast({
-        title: t('audit.bulkRollbackCompleted'),
-        description: t('audit.bulkRollbackCompletedDesc', { count: data.count })
-      });
-      refetch();
-    } catch (error) {
-      toast({
-        title: t('audit.bulkRollbackFailed'),
-        description: t('audit.rollbackFailedDesc'),
-        variant: "destructive"
-      });
-    }
-  };
-
-  return (
-    <Dialog>
-      <DialogTrigger asChild>
-        <Button variant="outline" size="sm">
-          <Undo2 className="h-4 w-4 mr-2" />
-          {t('audit.rollbackPunishments')}
-        </Button>
-      </DialogTrigger>
-      <DialogContent className="max-w-4xl max-h-[80vh] overflow-hidden">
-        <DialogHeader>
-          <DialogTitle>{t('audit.rollbackCenter')}</DialogTitle>
-        </DialogHeader>
-
-        {/* Bulk Rollback Controls */}
-        <div className="flex items-center gap-4 p-4 bg-muted/50 rounded-lg border">
-          <div className="flex items-center gap-2">
-            <span className="text-sm font-medium">{t('audit.bulkRollback')}:</span>
-            <Select value={bulkTimeRange} onValueChange={setBulkTimeRange}>
-              <SelectTrigger className="w-32">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="1h">{t('audit.period1h')}</SelectItem>
-                <SelectItem value="6h">{t('audit.period6h')}</SelectItem>
-                <SelectItem value="24h">{t('audit.period24h')}</SelectItem>
-                <SelectItem value="7d">{t('audit.period7d')}</SelectItem>
-                <SelectItem value="30d">{t('audit.period30d')}</SelectItem>
-                <SelectItem value="all">{t('audit.periodAll')}</SelectItem>
-              </SelectContent>
-            </Select>
-            <Button
-              variant="destructive"
-              size="sm"
-              onClick={handleBulkRollback}
-              className="ml-2"
-            >
-              <Undo2 className="h-4 w-4 mr-2" />
-              {t('audit.executeBulkRollback')}
-            </Button>
-          </div>
-        </div>
-
-        <div className="space-y-4 overflow-auto max-h-[50vh]">
-          {isLoading ? (
-            <div className="flex items-center justify-center py-8">
-              <RefreshCw className="h-6 w-6 animate-spin" />
-            </div>
-          ) : punishments.length === 0 ? (
-            <div className="text-center py-8 text-muted-foreground">
-              {t('audit.noPunishmentsForRollback')}
-            </div>
-          ) : (
-            punishments.filter(p => p.canRollback).map((punishment) => (
-            <Card key={punishment.id} className="shadow-card">
-              <CardContent className="p-4">
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-4">
-                    <div className={cn(
-                      "w-10 h-10 rounded-full flex items-center justify-center",
-                      punishment.type === 'ban' && "bg-red-100 dark:bg-red-900 text-red-600 dark:text-red-300",
-                      punishment.type === 'mute' && "bg-orange-100 dark:bg-orange-900 text-orange-600 dark:text-orange-300",
-                      punishment.type === 'kick' && "bg-yellow-100 dark:bg-yellow-900 text-yellow-600 dark:text-yellow-300",
-                      punishment.type === 'warn' && "bg-blue-100 dark:bg-blue-900 text-blue-600 dark:text-blue-300"
-                    )}>
-                      <Gavel className="h-5 w-5" />
-                    </div>
-                    <div>
-                      <div className="flex items-center gap-2">
-                        <Badge variant={punishment.type === 'ban' ? 'destructive' : 'secondary'}>
-                          {punishment.type.toUpperCase()}
-                        </Badge>
-                        <span className="font-medium">{punishment.playerName}</span>
-                      </div>
-                      <p className="text-sm text-muted-foreground">
-                        {punishment.reason} • by {punishment.staffName} • {formatRelativeTime(new Date(punishment.timestamp))}
-                      </p>
-                      {punishment.duration && (
-                        <p className="text-xs text-muted-foreground">
-                          Duration: {Math.floor(punishment.duration / 86400)}d {Math.floor((punishment.duration % 86400) / 3600)}h
-                        </p>
-                      )}
-                    </div>
-                  </div>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => handleRollback(punishment)}
-                  >
-                    <Undo2 className="h-4 w-4 mr-2" />
-                    {t('audit.rollback')}
-                  </Button>
-                </div>
-              </CardContent>
-            </Card>
-            ))
           )}
         </div>
       </DialogContent>
@@ -879,9 +679,6 @@ const StaffDetailModal = ({ staff, isOpen, onClose, initialPeriod = '30d' }: {
   initialPeriod?: string
 }) => {
   const [selectedPeriod, setSelectedPeriod] = useState(initialPeriod);
-  const [showBulkRollback, setShowBulkRollback] = useState(false);
-  const [rollbackStartDate, setRollbackStartDate] = useState<Date | undefined>(undefined);
-  const [rollbackEndDate, setRollbackEndDate] = useState<Date | undefined>(undefined);
   const { toast } = useToast();
   const { t } = useTranslation();
   const { openPlayerWindow, windows } = usePlayerWindow();
@@ -912,59 +709,6 @@ const StaffDetailModal = ({ staff, isOpen, onClose, initialPeriod = '30d' }: {
   const recentPunishments = staffDetails?.punishments || [];
   const recentTickets = staffDetails?.tickets || [];
   const evidenceCount = staffDetails?.evidenceUploads || 0;
-
-  const handleBulkRollback = async () => {
-    if (!rollbackStartDate || !rollbackEndDate) {
-      toast({
-        title: t('audit.invalidDateRange'),
-        description: t('audit.invalidDateRangeDesc'),
-        variant: "destructive"
-      });
-      return;
-    }
-
-    if (rollbackEndDate < rollbackStartDate) {
-      toast({
-        title: t('audit.invalidDateRange'),
-        description: t('audit.endDateBeforeStart'),
-        variant: "destructive"
-      });
-      return;
-    }
-
-    try {
-      const csrfFetch = apiFetch;
-      const response = await csrfFetch(`/v1/panel/audit/staff/${staff.username}/rollback-date-range`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          startDate: rollbackStartDate.toISOString(),
-          endDate: rollbackEndDate.toISOString(),
-          reason: `Bulk rollback for ${staff.username} from ${formatDateOnly(rollbackStartDate)} to ${formatDateOnly(rollbackEndDate)}`
-        })
-      });
-
-      if (!response.ok) throw new Error('Failed to rollback');
-
-      const data = await response.json();
-      toast({
-        title: t('audit.bulkRollbackCompleted'),
-        description: t('audit.bulkRollbackCompletedByDesc', { count: data.count, username: staff.username })
-      });
-
-      setShowBulkRollback(false);
-      setRollbackStartDate(undefined);
-      setRollbackEndDate(undefined);
-      // Refetch the staff details to show updated data
-      refetch();
-    } catch (error) {
-      toast({
-        title: t('audit.bulkRollbackFailed'),
-        description: t('audit.rollbackFailedDesc'),
-        variant: "destructive"
-      });
-    }
-  };
 
   return (
     <Dialog
@@ -998,104 +742,6 @@ const StaffDetailModal = ({ staff, isOpen, onClose, initialPeriod = '30d' }: {
             <Badge variant="outline">{staff.role}</Badge>
           </DialogTitle>
         </DialogHeader>
-
-        {/* Bulk Rollback Controls - Moved outside header */}
-        <div className="flex justify-end mb-4">
-          <Popover open={showBulkRollback} onOpenChange={setShowBulkRollback}>
-            <PopoverTrigger asChild>
-              <Button
-                variant="outline"
-                size="sm"
-                title={t('audit.rollbackByStaff', { username: staff.username })}
-              >
-                <Undo2 className="h-4 w-4 mr-2" />
-                {t('audit.bulkRollback')}
-              </Button>
-            </PopoverTrigger>
-            <PopoverContent className="w-80 p-4" align="end">
-              <div className="space-y-4">
-                <div>
-                  <h4 className="font-medium mb-2">{t('audit.bulkRollbackFor', { username: staff.username })}</h4>
-                  <p className="text-sm text-muted-foreground mb-3">
-                    {t('audit.rollbackDateRangeDesc')}
-                  </p>
-                </div>
-
-                <div className="grid grid-cols-2 gap-2">
-                  <div>
-                    <label className="text-xs font-medium text-muted-foreground">{t('audit.startDate')}</label>
-                    <Popover>
-                      <PopoverTrigger asChild>
-                        <Button
-                          variant="outline"
-                          className="w-full justify-start text-left font-normal h-8"
-                        >
-                          <Calendar className="mr-2 h-3 w-3" />
-                          {rollbackStartDate ? formatDateOnly(rollbackStartDate) : t('audit.selectStart')}
-                        </Button>
-                      </PopoverTrigger>
-                      <PopoverContent className="w-auto p-0" align="start">
-                        <CalendarComponent
-                          mode="single"
-                          selected={rollbackStartDate}
-                          onSelect={setRollbackStartDate}
-                          initialFocus
-                        />
-                      </PopoverContent>
-                    </Popover>
-                  </div>
-                  
-                  <div>
-                    <label className="text-xs font-medium text-muted-foreground">{t('audit.endDate')}</label>
-                    <Popover>
-                      <PopoverTrigger asChild>
-                        <Button
-                          variant="outline"
-                          className="w-full justify-start text-left font-normal h-8"
-                        >
-                          <Calendar className="mr-2 h-3 w-3" />
-                          {rollbackEndDate ? formatDateOnly(rollbackEndDate) : t('audit.selectEnd')}
-                        </Button>
-                      </PopoverTrigger>
-                      <PopoverContent className="w-auto p-0" align="start">
-                        <CalendarComponent
-                          mode="single"
-                          selected={rollbackEndDate}
-                          onSelect={setRollbackEndDate}
-                          initialFocus
-                        />
-                      </PopoverContent>
-                    </Popover>
-                  </div>
-                </div>
-                
-                <div className="flex gap-2 pt-2">
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    className="flex-1"
-                    onClick={() => {
-                      setShowBulkRollback(false);
-                      setRollbackStartDate(undefined);
-                      setRollbackEndDate(undefined);
-                    }}
-                  >
-                    {t('common.cancel')}
-                  </Button>
-                  <Button
-                    variant="destructive"
-                    size="sm"
-                    className="flex-1"
-                    onClick={handleBulkRollback}
-                    disabled={!rollbackStartDate || !rollbackEndDate}
-                  >
-                    {t('audit.applyRollback')}
-                  </Button>
-                </div>
-              </div>
-            </PopoverContent>
-          </Popover>
-        </div>
         
         <div className="space-y-6">
           {/* Period Selector */}
