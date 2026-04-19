@@ -499,6 +499,18 @@ const TicketSettings = ({
   // Ticket form management functions
   const addTicketFormField = () => {
     if (!newTicketFormFieldLabel.trim()) return;
+
+    const optionNavigationKeys = newTicketFormFieldType === 'checkbox'
+      ? ['true']
+      : (newTicketFormFieldType === 'dropdown' || newTicketFormFieldType === 'multiple_choice' || newTicketFormFieldType === 'checkboxes')
+        ? newTicketFormFieldOptions
+        : [];
+
+    const filteredOptionSectionMapping = Object.fromEntries(
+      Object.entries(newTicketFormFieldOptionSectionMapping).filter(([key, value]) =>
+        optionNavigationKeys.includes(key) && value !== '' && value !== '__none__'
+      )
+    );
     
     const newField: TicketFormField = {
       id: Date.now().toString(),
@@ -506,12 +518,10 @@ const TicketSettings = ({
       label: newTicketFormFieldLabel,
       description: newTicketFormFieldDescription || undefined,
       required: newTicketFormFieldRequired,
-      options: (newTicketFormFieldType === 'dropdown' || newTicketFormFieldType === 'multiple_choice') ? newTicketFormFieldOptions : undefined,
+      options: (newTicketFormFieldType === 'dropdown' || newTicketFormFieldType === 'multiple_choice' || newTicketFormFieldType === 'checkboxes') ? newTicketFormFieldOptions : undefined,
       order: ticketForms[selectedTicketFormType]?.fields?.length || 0,
       sectionId: newTicketFormFieldSectionId || undefined,
-      optionSectionMapping: Object.keys(newTicketFormFieldOptionSectionMapping).length > 0 ? 
-        Object.fromEntries(Object.entries(newTicketFormFieldOptionSectionMapping).filter(([, value]) => value !== '')) : 
-        undefined,
+      optionSectionMapping: Object.keys(filteredOptionSectionMapping).length > 0 ? filteredOptionSectionMapping : undefined,
     };
 
     if (selectedTicketFormField) {
@@ -521,7 +531,9 @@ const TicketSettings = ({
         [selectedTicketFormType]: {
           ...prev[selectedTicketFormType],
           fields: (prev[selectedTicketFormType]?.fields || []).map(field =>
-            field.id === selectedTicketFormField.id ? { ...newField, id: selectedTicketFormField.id } : field
+            field.id === selectedTicketFormField.id
+              ? { ...newField, id: selectedTicketFormField.id, order: field.order }
+              : field
           )
         }
       }));
@@ -592,7 +604,9 @@ const TicketSettings = ({
         [selectedTicketFormType]: {
           ...prev[selectedTicketFormType],
           sections: (prev[selectedTicketFormType]?.sections || []).map(section =>
-            section.id === selectedTicketFormSection.id ? { ...newSection, id: selectedTicketFormSection.id } : section
+            section.id === selectedTicketFormSection.id
+              ? { ...newSection, id: selectedTicketFormSection.id, order: section.order }
+              : section
           )
         }
       }));
@@ -1334,6 +1348,67 @@ const TicketSettings = ({
                 </div>
               </div>
             )}
+            {['dropdown', 'multiple_choice', 'checkbox', 'checkboxes'].includes(newTicketFormFieldType) &&
+              (newTicketFormFieldType === 'checkbox' || newTicketFormFieldOptions.length > 0) && (
+              <div className="space-y-3">
+                <button
+                  type="button"
+                  onClick={() => setIsOptionNavigationExpanded(!isOptionNavigationExpanded)}
+                  className="flex items-center gap-2 hover:bg-muted/50 p-1 rounded -ml-1 transition-colors"
+                >
+                  {isOptionNavigationExpanded ? (
+                    <ChevronDown className="h-4 w-4" />
+                  ) : (
+                    <ChevronRight className="h-4 w-4" />
+                  )}
+                  <Label className="text-sm font-medium cursor-pointer">
+                    {t('settings.tickets.optionNavigationOptional')}
+                  </Label>
+                </button>
+
+                {isOptionNavigationExpanded && (
+                  <div className="pl-6 space-y-3">
+                    <p className="text-xs text-muted-foreground">
+                      {t('settings.tickets.optionNavigationDesc')}
+                    </p>
+                    {(newTicketFormFieldType === 'checkbox'
+                      ? [{ value: 'true', label: t('settings.tickets.checkedOption') }]
+                      : newTicketFormFieldOptions.map((option) => ({ value: option, label: option }))
+                    ).map((option) => (
+                      <div key={option.value} className="flex items-center gap-3">
+                        <div className="flex-1">
+                          <Label className="text-sm font-medium">{option.label}</Label>
+                        </div>
+                        <div className="flex-1">
+                          <Select
+                            value={newTicketFormFieldOptionSectionMapping[option.value] || '__none__'}
+                            onValueChange={(value) => setNewTicketFormFieldOptionSectionMapping(prev => ({
+                              ...prev,
+                              [option.value]: value
+                            }))}
+                          >
+                            <SelectTrigger>
+                              <SelectValue placeholder={t('settings.tickets.noNavigation')} />
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="__none__">{t('settings.tickets.noNavigation')}</SelectItem>
+                              {ticketForms[selectedTicketFormType]?.sections
+                                ?.filter(section => section.id !== newTicketFormFieldSectionId || !newTicketFormFieldSectionId)
+                                ?.sort((a, b) => a.order - b.order)
+                                .map(section => (
+                                  <SelectItem key={section.id} value={section.id}>
+                                    {section.title}
+                                  </SelectItem>
+                                ))}
+                            </SelectContent>
+                          </Select>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            )}
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => setIsAddTicketFormFieldDialogOpen(false)}>{t('common.cancel')}</Button>
@@ -1374,7 +1449,12 @@ const TicketSettings = ({
                 checked={newTicketFormSectionHideByDefault}
                 onCheckedChange={setNewTicketFormSectionHideByDefault}
               />
-              <Label>{t('settings.tickets.hideByDefault')}</Label>
+              <div className="space-y-1">
+                <Label>{t('settings.tickets.hideByDefault')}</Label>
+                <p className="text-xs text-muted-foreground">
+                  {t('settings.tickets.hideByDefaultDesc')}
+                </p>
+              </div>
             </div>
           </div>
           <DialogFooter>
@@ -1551,6 +1631,7 @@ const TicketSettings = ({
                           setNewTicketFormFieldSectionId(field.sectionId || '');
                           setNewTicketFormFieldGoToSection(field.goToSection || '');
                           setNewTicketFormFieldOptionSectionMapping(field.optionSectionMapping || {});
+                          setIsOptionNavigationExpanded(Object.keys(field.optionSectionMapping || {}).length > 0);
                           setIsAddTicketFormFieldDialogOpen(true);
                         }}
                         onDeleteField={(fieldId) => {
@@ -2050,6 +2131,7 @@ const TicketSettings = ({
                                 setNewTicketFormFieldSectionId(field.sectionId || '');
                                 setNewTicketFormFieldGoToSection(field.goToSection || '');
                                 setNewTicketFormFieldOptionSectionMapping(field.optionSectionMapping || {});
+                                setIsOptionNavigationExpanded(Object.keys(field.optionSectionMapping || {}).length > 0);
                                 setIsAddTicketFormFieldDialogOpen(true);
                               }}
                               onDeleteField={(fieldId) => {
