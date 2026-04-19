@@ -531,7 +531,9 @@ const TicketSettings = ({
         [selectedTicketFormType]: {
           ...prev[selectedTicketFormType],
           fields: (prev[selectedTicketFormType]?.fields || []).map(field =>
-            field.id === selectedTicketFormField.id ? { ...newField, id: selectedTicketFormField.id } : field
+            field.id === selectedTicketFormField.id
+              ? { ...newField, id: selectedTicketFormField.id, order: field.order }
+              : field
           )
         }
       }));
@@ -602,7 +604,9 @@ const TicketSettings = ({
         [selectedTicketFormType]: {
           ...prev[selectedTicketFormType],
           sections: (prev[selectedTicketFormType]?.sections || []).map(section =>
-            section.id === selectedTicketFormSection.id ? { ...newSection, id: selectedTicketFormSection.id } : section
+            section.id === selectedTicketFormSection.id
+              ? { ...newSection, id: selectedTicketFormSection.id, order: section.order }
+              : section
           )
         }
       }));
