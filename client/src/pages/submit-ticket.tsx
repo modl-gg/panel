@@ -179,6 +179,12 @@ const SubmitTicketPage = () => {
           if (targetSection) {
             visibleSections.add(targetSection);
           }
+        } else if (field.type === 'checkbox') {
+          const targetSection = field.optionSectionMapping[fieldValue]
+            || (fieldValue === 'true' ? field.optionSectionMapping['true'] || field.optionSectionMapping['checked'] : undefined);
+          if (targetSection) {
+            visibleSections.add(targetSection);
+          }
         } else if (field.type === 'checkboxes') {
           const selectedValues = fieldValue.split(',').map((v: string) => v.trim()).filter((v: string) => v);
           selectedValues.forEach((value: string) => {
@@ -512,6 +518,12 @@ const SubmitTicketPage = () => {
         if (field.optionSectionMapping && fieldValue) {
           if (field.type === 'dropdown') {
             const targetSection = field.optionSectionMapping[fieldValue];
+            if (targetSection) {
+              visibleSections.add(targetSection);
+            }
+          } else if (field.type === 'checkbox') {
+            const targetSection = field.optionSectionMapping[fieldValue]
+              || (fieldValue === 'true' ? field.optionSectionMapping['true'] || field.optionSectionMapping['checked'] : undefined);
             if (targetSection) {
               visibleSections.add(targetSection);
             }

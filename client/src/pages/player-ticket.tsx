@@ -581,6 +581,12 @@ const PlayerTicket = () => {
           if (targetSection) {
             visibleSections.add(targetSection);
           }
+        } else if (field.type === 'checkbox') {
+          const targetSection = field.optionSectionMapping[fieldValue]
+            || (fieldValue === 'true' ? field.optionSectionMapping['true'] || field.optionSectionMapping['checked'] : undefined);
+          if (targetSection) {
+            visibleSections.add(targetSection);
+          }
         } else if (field.type === 'checkboxes') {
           const selectedValues = fieldValue.split(',').map((v: string) => v.trim()).filter((v: string) => v);
           selectedValues.forEach((value: string) => {
@@ -924,6 +930,12 @@ const PlayerTicket = () => {
           if (field.type === 'dropdown') {
             // For dropdown, check if selected value maps to a section
             const targetSection = field.optionSectionMapping[fieldValue];
+            if (targetSection) {
+              visibleSections.add(targetSection);
+            }
+          } else if (field.type === 'checkbox') {
+            const targetSection = field.optionSectionMapping[fieldValue]
+              || (fieldValue === 'true' ? field.optionSectionMapping['true'] || field.optionSectionMapping['checked'] : undefined);
             if (targetSection) {
               visibleSections.add(targetSection);
             }
