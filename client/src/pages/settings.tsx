@@ -6,6 +6,7 @@ import { setDateLocale, setDateFormat as setDateFormatUtil } from '@/utils/date-
 import i18n from '@/lib/i18n';
 import { Button } from '@modl-gg/shared-web/components/ui/button';
 import { Card, CardContent } from '@modl-gg/shared-web/components/ui/card';
+import { Skeleton } from '@modl-gg/shared-web/components/ui/skeleton';
 import { useSidebar } from '@/hooks/use-sidebar';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@modl-gg/shared-web/components/ui/tabs';
 import { Switch } from '@modl-gg/shared-web/components/ui/switch';
@@ -43,6 +44,11 @@ import {
   hasPremiumAccess,
   normalizeSubscriptionStatus,
 } from '@/lib/backend-enums';
+import {
+  canManageCustomDomainSettings,
+  hasPremiumSettingsAccess,
+  isSettingsBillingPending,
+} from '@/lib/settings-access';
 import {
   AppealFormField,
   AppealFormSection,
@@ -704,20 +710,22 @@ const Settings = () => {
   const mainContentClass = "ml-[32px] pl-8";
   const [expandedCategory, setExpandedCategory] = useState<string | null>(null);
   const [expandedSubCategory, setExpandedSubCategory] = useState<string | null>(null);
-  const { data: billingStatusTop } = useBillingStatus();
+  const {
+    data: billingStatus,
+    isLoading: isBillingStatusLoading,
+    isFetching: isFetchingBillingStatus,
+  } = useBillingStatus();
+  const isBillingAccessPending = isSettingsBillingPending(
+    billingStatus,
+    isBillingStatusLoading || isFetchingBillingStatus
+  );
 
   const isPremiumUser = () => {
-    if (!billingStatusTop) return false;
-    return hasPremiumAccess({
-      plan: billingStatusTop.plan,
-      subscriptionStatus: billingStatusTop.subscriptionStatus,
-      currentPeriodEnd: billingStatusTop.currentPeriodEnd,
-    });
+    return hasPremiumSettingsAccess(billingStatus);
   };
 
   const canManageCustomDomainFeature = () => {
-    if (!billingStatusTop) return false;
-    return isPremiumUser() || Boolean(billingStatusTop.customDomainGrandfathered);
+    return canManageCustomDomainSettings(billingStatus);
   };
 
   // Update URL when category changes
@@ -1030,7 +1038,6 @@ const Settings = () => {
   const { data: quickResponsesData, isLoading: isLoadingQuickResponses } = useQuickResponses();
   const { data: statusThresholdsData, isLoading: isLoadingStatusThresholds } = useStatusThresholds();
   const { data: ticketLabelSettingsData, isLoading: isLoadingTicketLabels } = useTicketLabelSettings();
-  const { data: billingStatus } = useBillingStatus();
   const { data: usageData } = useUsageData();
   const [currentEmail, setCurrentEmail] = useState('');
 
@@ -3328,6 +3335,33 @@ const Settings = () => {
           </div>
         </div>
 
+        {isBillingAccessPending ? (
+          <>
+            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-5">
+              {Array.from({ length: 5 }).map((_, index) => (
+                <Card key={index} className="rounded-card shadow-card">
+                  <CardContent className="p-5">
+                    <div className="flex flex-col items-center text-center space-y-3">
+                      <Skeleton className="h-14 w-14 rounded-card" />
+                      <Skeleton className="h-4 w-24" />
+                      <Skeleton className="h-8 w-full" />
+                      <Skeleton className="h-8 w-full" />
+                    </div>
+                  </CardContent>
+                </Card>
+              ))}
+            </div>
+
+            <Card className="rounded-card shadow-card">
+              <CardContent className="p-8 space-y-4">
+                <Skeleton className="h-6 w-48" />
+                <Skeleton className="h-24 w-full" />
+                <Skeleton className="h-24 w-full" />
+              </CardContent>
+            </Card>
+          </>
+        ) : (
+          <>
         {/* Category Cards Grid */}
         <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-5">
           {settingsCategories.map((category) => {
@@ -3680,6 +3714,8 @@ const Settings = () => {
           <>
             {expandedSubCategory === 'knowledgebase-articles' && <KnowledgebaseSettings />}
             {expandedSubCategory === 'homepage-cards' && <HomepageCardSettings />}
+          </>
+        )}
           </>
         )}
 
