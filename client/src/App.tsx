@@ -12,6 +12,7 @@ import { useIsMobile } from '@modl-gg/shared-web/hooks/use-mobile';
 import { useDocumentTitle } from "@/hooks/use-document-title";
 import { useProvisioningStatusCheck } from "@/hooks/use-provisioning-status";
 import { usePublicSettings } from "@/hooks/use-public-settings";
+import { RealtimeProvider } from "@/hooks/use-realtime";
 import { PlayerWindowProvider } from "@/contexts/PlayerWindowContext";
 import { WelcomeModal } from "@/components/layout/WelcomeModal";
 import { Loader2 } from "lucide-react";
@@ -246,6 +247,7 @@ function AppContent() {
 
   return (
     <>
+      <RealtimeProvider />
       <Toaster />
       <WelcomeModal isOpen={isWelcomeModalOpen} onClose={handleCloseWelcomeModal} />
       <Router />

@@ -67,6 +67,13 @@ export default defineConfig(({ mode }) => {
     server: {
       port: 3000,
       proxy: {
+        '/api/v1/realtime/ws': {
+          target: 'http://localhost:8080',
+          changeOrigin: true,
+          secure: false,
+          ws: true,
+          rewrite: (path) => path.replace(/^\/api/, ''),
+        },
         '/api': {
           target: 'http://localhost:8080',
           changeOrigin: true,
