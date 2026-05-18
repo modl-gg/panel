@@ -18,6 +18,12 @@ function toSettingsEnvelope<T>(payload: any): SettingsEnvelope<T> {
   if (payload && typeof payload === 'object' && 'data' in payload) {
     return payload as SettingsEnvelope<T>;
   }
+  if (payload && typeof payload === 'object' && '_data' in payload) {
+    return {
+      data: payload._data as T,
+      _meta: payload._meta || null,
+    };
+  }
   return {
     data: payload as T,
     _meta: {
@@ -25,6 +31,23 @@ function toSettingsEnvelope<T>(payload: any): SettingsEnvelope<T> {
       updatedAt: null,
     },
   };
+}
+
+export interface ReplayRetentionSettings {
+  enabled: boolean;
+  days: number;
+}
+
+export interface PlayerReplaySummary {
+  replayId: string;
+  targetUuid: string;
+  targetName: string;
+  mcVersion: string;
+  fileSize: number;
+  createdAt: string;
+  status: string;
+  replayUrl: string;
+  matchSource: string;
 }
 
 export function usePlayer(uuid: string) {
@@ -611,6 +634,50 @@ export function useTicketLabelSettings() {
   });
 }
 
+export function useReplayRetentionSettings() {
+  return useQuery<SettingsEnvelope<ReplayRetentionSettings> | null>({
+    queryKey: ['/v1/panel/settings/replay-retention'],
+    queryFn: async () => {
+      const res = await apiFetch('/v1/panel/settings/replay-retention');
+      if (!res.ok) {
+        if (res.status === 401 || res.status === 403) {
+          return null;
+        }
+        throw new Error('Failed to fetch replay retention settings');
+      }
+      return toSettingsEnvelope<ReplayRetentionSettings>(await res.json());
+    },
+    staleTime: 1000 * 60 * 5,
+    refetchOnWindowFocus: false
+  });
+}
+
+export function useUpdateReplayRetentionSettings() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async (settings: ReplayRetentionSettings & { expectedVersion: number }) => {
+      const res = await apiFetch('/v1/panel/settings/replay-retention', {
+        method: 'PATCH',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify(settings)
+      });
+
+      if (!res.ok) {
+        const errorText = await res.text();
+        throw new Error(errorText || 'Failed to update replay retention settings');
+      }
+
+      return toSettingsEnvelope<ReplayRetentionSettings>(await res.json());
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['/v1/panel/settings/replay-retention'] });
+    },
+  });
+}
+
 export function useStats() {
   return useQuery({
     queryKey: ['/v1/panel/stats'],
@@ -813,6 +880,25 @@ export function usePlayerAllTickets(uuid: string) {
           return [];
         }
         throw new Error('Failed to fetch player tickets');
+      }
+      return res.json();
+    },
+    enabled: !!uuid,
+    staleTime: 30000,
+    refetchOnWindowFocus: true
+  });
+}
+
+export function usePlayerReplays(uuid: string) {
+  return useQuery<PlayerReplaySummary[]>({
+    queryKey: ['/v1/panel/players', uuid, 'replays'],
+    queryFn: async () => {
+      const res = await apiFetch(`/v1/panel/players/${uuid}/replays`);
+      if (!res.ok) {
+        if (res.status === 404) {
+          return [];
+        }
+        throw new Error('Failed to fetch player replays');
       }
       return res.json();
     },

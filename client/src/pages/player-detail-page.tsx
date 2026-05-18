@@ -4,7 +4,7 @@ import { useRoute, useLocation } from 'wouter';
 import {
   ArrowLeft, Ban, RefreshCcw, Search, History,
   Link2, StickyNote, Ticket, UserRound, Shield, FileText, Upload, Loader2,
-  ChevronDown, ChevronRight, Settings, Plus, X
+  ChevronDown, ChevronRight, Settings, Plus, X, Play
 } from 'lucide-react';
 import { getAvatarUrl } from '@/lib/api';
 import { Button } from '@modl-gg/shared-web/components/ui/button';
@@ -19,6 +19,7 @@ import { toast } from '@modl-gg/shared-web/hooks/use-toast';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@modl-gg/shared-web/components/ui/select';
 import PlayerPunishment, { PlayerPunishmentData } from '@/components/ui/player-punishment';
 import MediaUpload from '@/components/MediaUpload';
+import PlayerReplaysList from '@/components/player-replays-list';
 import { formatDateWithTime } from '@/utils/date-utils';
 import { apiFetch } from '@/lib/api';
 import { formatTicketStatusLabel, normalizeTicketStatus } from '@/lib/ticket-enums';
@@ -1232,12 +1233,13 @@ const PlayerDetailPage = () => {
                 <SelectItem value="linked">{t('player.tabConnected')}</SelectItem>
                 <SelectItem value="notes">{t('player.tabNotes')}</SelectItem>
                 <SelectItem value="tickets">{t('player.tabTickets')}</SelectItem>
+                <SelectItem value="replays">{t('player.tabReplays')}</SelectItem>
                 <SelectItem value="names">{t('player.tabNames')}</SelectItem>
                 <SelectItem value="punishment">{t('player.tabPunish')}</SelectItem>
               </SelectContent>
             </Select>
           ) : (
-            <TabsList className="grid grid-cols-6 gap-1 px-1">
+            <TabsList className="grid grid-cols-7 gap-1 px-1">
               <TabsTrigger value="history" className="text-xs py-2">
                 <History className="h-3.5 w-3.5 mr-1.5" />
                 {t('player.tabHistory')}
@@ -1253,6 +1255,10 @@ const PlayerDetailPage = () => {
               <TabsTrigger value="tickets" className="text-xs py-2">
                 <Ticket className="h-3.5 w-3.5 mr-1.5" />
                 {t('player.tabTickets')}
+              </TabsTrigger>
+              <TabsTrigger value="replays" className="text-xs py-2">
+                <Play className="h-3.5 w-3.5 mr-1.5" />
+                {t('player.tabReplays')}
               </TabsTrigger>
               <TabsTrigger value="names" className="text-xs py-2">
                 <UserRound className="h-3.5 w-3.5 mr-1.5" />
@@ -2565,6 +2571,11 @@ const PlayerDetailPage = () => {
             </div>
           </TabsContent>
           
+          <TabsContent value="replays" className="space-y-2 mx-1 mt-3">
+            <h4 className="font-medium">{t('player.playerReplays')}</h4>
+            <PlayerReplaysList playerId={playerId} />
+          </TabsContent>
+
           <TabsContent value="names" className="space-y-2 mx-1 mt-3">
             <h4 className="font-medium">Previous Names</h4>
             <div className="bg-muted/30 p-3 rounded-lg">

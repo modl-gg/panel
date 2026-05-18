@@ -3,7 +3,7 @@ import { useTranslation } from 'react-i18next';
 import {
   Eye, TriangleAlert, History,
   Link2, StickyNote, Ticket, UserRound, Shield, FileText, Loader2,
-  ChevronDown, ChevronRight, Settings, Plus, X
+  ChevronDown, ChevronRight, Settings, Plus, X, Play
 } from 'lucide-react';
 import { useLocation } from 'wouter';
 import { Button } from '@modl-gg/shared-web/components/ui/button';
@@ -17,6 +17,7 @@ import { usePermissions } from '@/hooks/use-permissions';
 import { toast } from '@modl-gg/shared-web/hooks/use-toast';
 import PlayerPunishment, { PlayerPunishmentData } from '@/components/ui/player-punishment';
 import MediaUpload from '@/components/MediaUpload';
+import PlayerReplaysList from '@/components/player-replays-list';
 import { formatDateWithTime } from '@/utils/date-utils';
 import { getAvatarUrl, apiFetch } from '@/lib/api';
 import { formatTicketStatusLabel, normalizeTicketStatus } from '@/lib/ticket-enums';
@@ -1503,7 +1504,7 @@ const PlayerWindow = ({ playerId, isOpen, onClose, initialPosition }: PlayerWind
         </div>
         
         <Tabs defaultValue="history" className="w-full" onValueChange={setActiveTab}>
-          <TabsList className="grid grid-cols-6 gap-1 px-1">
+          <TabsList className="grid grid-cols-7 gap-1 px-1">
             <TabsTrigger value="history" className="text-xs py-2">
               <History className="h-3.5 w-3.5 mr-1.5" />
               {t('player.tabs.history')}
@@ -1519,6 +1520,10 @@ const PlayerWindow = ({ playerId, isOpen, onClose, initialPosition }: PlayerWind
             <TabsTrigger value="tickets" className="text-xs py-2">
               <Ticket className="h-3.5 w-3.5 mr-1.5" />
               {t('player.tabs.tickets')}
+            </TabsTrigger>
+            <TabsTrigger value="replays" className="text-xs py-2">
+              <Play className="h-3.5 w-3.5 mr-1.5" />
+              {t('player.tabs.replays')}
             </TabsTrigger>
             <TabsTrigger value="names" className="text-xs py-2">
               <UserRound className="h-3.5 w-3.5 mr-1.5" />
@@ -2975,6 +2980,11 @@ const PlayerWindow = ({ playerId, isOpen, onClose, initialPosition }: PlayerWind
             )}
           </TabsContent>
           
+          <TabsContent value="replays" className="space-y-2 mx-1 mt-3">
+            <h4 className="font-medium">{t('player.playerReplays')}</h4>
+            <PlayerReplaysList playerId={playerId} />
+          </TabsContent>
+
           <TabsContent value="names" className="space-y-2 mx-1 mt-3">
             <h4 className="font-medium">{t('player.previousNames')}</h4>
             <div className="bg-muted/30 p-3 rounded-lg">
