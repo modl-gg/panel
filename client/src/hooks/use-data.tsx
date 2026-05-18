@@ -1169,6 +1169,34 @@ export function useRecentPunishments(limit: number = 10) {
   });
 }
 
+export type SystemAlertSeverity = 'BASIC' | 'WARNING' | 'CRITICAL';
+export type SystemAlertAudience = 'ALL_PANEL_USERS' | 'SUPER_ADMINS_ONLY';
+
+export interface SystemAlert {
+  id: string;
+  message: string;
+  severity: SystemAlertSeverity;
+  audience: SystemAlertAudience;
+  expiresAt?: string;
+  createdAt?: string;
+  updatedAt?: string;
+}
+
+export function useDashboardAlerts() {
+  return useQuery({
+    queryKey: ['/v1/panel/dashboard/alerts'],
+    queryFn: async () => {
+      const res = await apiFetch('/v1/panel/dashboard/alerts');
+      if (!res.ok) {
+        throw new Error('Failed to fetch dashboard alerts');
+      }
+      return res.json() as Promise<SystemAlert[]>;
+    },
+    staleTime: 60 * 1000,
+    refetchOnWindowFocus: true,
+  });
+}
+
 export function useTicketSubscriptionUpdates(limit: number = 10) {
   return useQuery({
     queryKey: ['/v1/panel/ticket-subscriptions/updates', limit],

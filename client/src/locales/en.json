@@ -967,6 +967,14 @@
     "refreshed": "Dashboard Refreshed",
     "refreshedDesc": "All dashboard data has been updated.",
     "refreshError": "Failed to refresh dashboard. Please try again.",
+    "alerts": {
+      "expires": "Expires {{date}}",
+      "levels": {
+        "BASIC": "Notice",
+        "WARNING": "Warning",
+        "CRITICAL": "Critical Alert"
+      }
+    },
     "recentTickets": {
       "title": "Recently Opened Tickets",
       "noMessage": "No message available",

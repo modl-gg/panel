@@ -960,6 +960,14 @@
     "refreshed": "Dashboard vernieuwd",
     "refreshedDesc": "Alle dashboardgegevens zijn bijgewerkt.",
     "refreshError": "Dashboard vernieuwen mislukt. Probeer het opnieuw.",
+    "alerts": {
+      "expires": "Verloopt op {{date}}",
+      "levels": {
+        "BASIC": "Melding",
+        "WARNING": "Waarschuwing",
+        "CRITICAL": "Kritieke melding"
+      }
+    },
     "recentTickets": {
       "title": "Recent geopende tickets",
       "noMessage": "Geen bericht beschikbaar",

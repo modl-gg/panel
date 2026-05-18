@@ -960,6 +960,14 @@
     "refreshed": "Panel actualizado",
     "refreshedDesc": "Todos los datos del panel han sido actualizados.",
     "refreshError": "No se pudo actualizar el panel. Por favor inténtalo de nuevo.",
+    "alerts": {
+      "expires": "Caduca el {{date}}",
+      "levels": {
+        "BASIC": "Aviso",
+        "WARNING": "Advertencia",
+        "CRITICAL": "Alerta crítica"
+      }
+    },
     "recentTickets": {
       "title": "Tickets abiertos recientemente",
       "noMessage": "No hay mensaje disponible",
