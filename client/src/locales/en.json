@@ -969,6 +969,12 @@
     "refreshError": "Failed to refresh dashboard. Please try again.",
     "alerts": {
       "expires": "Expires {{date}}",
+      "unknownSeverity": "Alert ({{severity}})",
+      "unknownSeverityValue": "Unknown",
+      "loadingTitle": "Loading alerts",
+      "loadingDescription": "Checking for current system alerts.",
+      "loadErrorTitle": "Unable to load alerts",
+      "loadErrorDescription": "System alerts could not be loaded. Other dashboard data may still be current.",
       "levels": {
         "BASIC": "Notice",
         "WARNING": "Warning",

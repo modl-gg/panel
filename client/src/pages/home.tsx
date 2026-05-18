@@ -31,7 +31,7 @@ const Home = () => {
   const { data: recentTicketsData, isLoading: isLoadingTickets, refetch: refetchTickets } = useRecentTickets(3);
   const { data: recentPunishmentsData, isLoading: isLoadingPunishments, refetch: refetchPunishments } = useRecentPunishments(5);
   const { data: assignedUpdatesData, isLoading: isLoadingUpdates, refetch: refetchUpdates } = useAssignedTicketUpdates(10);
-  const { data: alertsData, refetch: refetchAlerts } = useDashboardAlerts();
+  const { data: alertsData, isLoading: isLoadingAlerts, isError: isAlertsError, refetch: refetchAlerts } = useDashboardAlerts();
 
   // Mutations for updates management
   const markTicketAsReadMutation = useMarkTicketAsRead();
@@ -95,7 +95,11 @@ const Home = () => {
           </div>
         </div>
 
-        <DashboardAlertsSection alerts={alertsData || []} />
+        <DashboardAlertsSection
+          alerts={alertsData}
+          loading={isLoadingAlerts}
+          error={isAlertsError}
+        />
 
         {/* Assigned Ticket Updates - Full Width */}
         <AssignedTicketUpdatesSection

@@ -962,6 +962,12 @@
     "refreshError": "Dashboard vernieuwen mislukt. Probeer het opnieuw.",
     "alerts": {
       "expires": "Verloopt op {{date}}",
+      "unknownSeverity": "Melding ({{severity}})",
+      "unknownSeverityValue": "Onbekend",
+      "loadingTitle": "Meldingen laden",
+      "loadingDescription": "Actuele systeemmeldingen worden gecontroleerd.",
+      "loadErrorTitle": "Meldingen konden niet worden geladen",
+      "loadErrorDescription": "Systeemmeldingen konden niet worden geladen. Andere dashboardgegevens kunnen nog steeds actueel zijn.",
       "levels": {
         "BASIC": "Melding",
         "WARNING": "Waarschuwing",
