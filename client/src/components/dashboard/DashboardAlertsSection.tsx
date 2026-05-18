@@ -1,6 +1,6 @@
-import { Badge } from '@modl-gg/shared-web/components/ui/badge';
 import { StatusBanner } from '@modl-gg/shared-web/components/ui/status-banner';
 import { useTranslation } from 'react-i18next';
+import ReactMarkdown from 'react-markdown';
 import type { SystemAlert, SystemAlertSeverity } from '@/hooks/use-data';
 
 interface DashboardAlertsSectionProps {
@@ -50,19 +50,6 @@ function getSeverityTitle(severity: unknown, t: ReturnType<typeof useTranslation
   return t('dashboard.alerts.unknownSeverity', { severity: normalizedSeverity });
 }
 
-function formatExpiryDate(expiresAt?: string) {
-  if (!expiresAt) {
-    return null;
-  }
-
-  const expiryDate = new Date(expiresAt);
-  if (Number.isNaN(expiryDate.getTime())) {
-    return null;
-  }
-
-  return expiryDate.toLocaleString();
-}
-
 export function DashboardAlertsSection({ alerts = [] }: DashboardAlertsSectionProps) {
   const { t } = useTranslation();
 
@@ -72,25 +59,18 @@ export function DashboardAlertsSection({ alerts = [] }: DashboardAlertsSectionPr
 
   return (
     <div className="space-y-3">
-      {alerts.map((alert) => {
-        const expiresAt = formatExpiryDate(alert.expiresAt);
-
-        return (
-          <StatusBanner
-            key={alert.id}
-            variant={getSeverityVariant(alert.severity)}
-            title={getSeverityTitle(alert.severity, t)}
-            className="shadow-card"
-            action={expiresAt ? (
-              <Badge variant="outline" className="bg-background/60">
-                {t('dashboard.alerts.expires', { date: expiresAt })}
-              </Badge>
-            ) : undefined}
-          >
-            <p className="whitespace-pre-wrap">{alert.message}</p>
-          </StatusBanner>
-        );
-      })}
+      {alerts.map((alert) => (
+        <StatusBanner
+          key={alert.id}
+          variant={getSeverityVariant(alert.severity)}
+          title={getSeverityTitle(alert.severity, t)}
+          className="shadow-card"
+        >
+          <div className="prose prose-sm max-w-none text-white prose-p:text-white prose-strong:text-white prose-em:text-white prose-li:text-white prose-ul:text-white prose-ol:text-white prose-code:text-white prose-blockquote:text-white prose-a:text-white">
+            <ReactMarkdown>{alert.message}</ReactMarkdown>
+          </div>
+        </StatusBanner>
+      ))}
     </div>
   );
 }
