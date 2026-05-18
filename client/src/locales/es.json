@@ -1032,6 +1032,7 @@
     "label": "Etiqueta",
     "assignee": "Asignado a",
     "unassigned": "Sin asignar",
+    "hidden": "Oculto",
     "newest": "Más nuevos",
     "oldest": "Más antiguos",
     "recentlyUpdated": "Actualizado recientemente",

@@ -1032,6 +1032,7 @@
     "label": "Label",
     "assignee": "Toegewezen aan",
     "unassigned": "Niet toegewezen",
+    "hidden": "Verborgen",
     "newest": "Nieuwste",
     "oldest": "Oudste",
     "recentlyUpdated": "Recent bijgewerkt",

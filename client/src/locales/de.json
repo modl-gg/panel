@@ -1032,6 +1032,7 @@
     "label": "Label",
     "assignee": "Zugewiesen an",
     "unassigned": "Nicht zugewiesen",
+    "hidden": "Ausgeblendet",
     "newest": "Neueste",
     "oldest": "Älteste",
     "recentlyUpdated": "Kürzlich aktualisiert",

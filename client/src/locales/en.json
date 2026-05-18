@@ -1039,6 +1039,7 @@
     "label": "Label",
     "assignee": "Assignee",
     "unassigned": "Unassigned",
+    "hidden": "Hidden",
     "newest": "Newest",
     "oldest": "Oldest",
     "recentlyUpdated": "Recently Updated",
