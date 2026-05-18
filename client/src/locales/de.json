@@ -960,6 +960,20 @@
     "refreshed": "Dashboard aktualisiert",
     "refreshedDesc": "Alle Dashboard-Daten wurden aktualisiert.",
     "refreshError": "Dashboard konnte nicht aktualisiert werden. Bitte versuche es erneut.",
+    "alerts": {
+      "expires": "Läuft ab am {{date}}",
+      "unknownSeverity": "Hinweis ({{severity}})",
+      "unknownSeverityValue": "Unbekannt",
+      "loadingTitle": "Hinweise werden geladen",
+      "loadingDescription": "Aktuelle Systemhinweise werden geprüft.",
+      "loadErrorTitle": "Hinweise konnten nicht geladen werden",
+      "loadErrorDescription": "Systemhinweise konnten nicht geladen werden. Andere Dashboard-Daten können trotzdem aktuell sein.",
+      "levels": {
+        "BASIC": "Hinweis",
+        "WARNING": "Warnung",
+        "CRITICAL": "Kritischer Hinweis"
+      }
+    },
     "recentTickets": {
       "title": "Kürzlich geöffnete Tickets",
       "noMessage": "Keine Nachricht verfügbar",

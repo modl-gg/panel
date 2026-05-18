@@ -11,13 +11,15 @@ import {
   useRecentTickets,
   useRecentPunishments,
   useAssignedTicketUpdates,
-  useMarkTicketAsRead
+  useMarkTicketAsRead,
+  useDashboardAlerts
 } from '@/hooks/use-data';
 import { useToast } from '@modl-gg/shared-web/hooks/use-toast';
 import PageContainer from '@/components/layout/PageContainer';
 import { RecentTicketsSection } from '@/components/dashboard/RecentTicketsSection';
 import { RecentPunishmentsSection } from '@/components/dashboard/RecentPunishmentsSection';
 import { AssignedTicketUpdatesSection } from '@/components/dashboard/AssignedTicketUpdatesSection';
+import { DashboardAlertsSection } from '@/components/dashboard/DashboardAlertsSection';
 
 const Home = () => {
   const [isSpinning, setIsSpinning] = useState(false);
@@ -29,6 +31,7 @@ const Home = () => {
   const { data: recentTicketsData, isLoading: isLoadingTickets, refetch: refetchTickets } = useRecentTickets(3);
   const { data: recentPunishmentsData, isLoading: isLoadingPunishments, refetch: refetchPunishments } = useRecentPunishments(5);
   const { data: assignedUpdatesData, isLoading: isLoadingUpdates, refetch: refetchUpdates } = useAssignedTicketUpdates(10);
+  const { data: alertsData, isLoading: isLoadingAlerts, isError: isAlertsError, refetch: refetchAlerts } = useDashboardAlerts();
 
   // Mutations for updates management
   const markTicketAsReadMutation = useMarkTicketAsRead();
@@ -41,6 +44,7 @@ const Home = () => {
         refetchTickets(),
         refetchPunishments(),
         refetchUpdates(),
+        refetchAlerts(),
         new Promise(resolve => setTimeout(resolve, 800))
       ]);
 
@@ -90,6 +94,12 @@ const Home = () => {
             </Button>
           </div>
         </div>
+
+        <DashboardAlertsSection
+          alerts={alertsData}
+          loading={isLoadingAlerts}
+          error={isAlertsError}
+        />
 
         {/* Assigned Ticket Updates - Full Width */}
         <AssignedTicketUpdatesSection

@@ -960,6 +960,20 @@
     "refreshed": "Dashboard vernieuwd",
     "refreshedDesc": "Alle dashboardgegevens zijn bijgewerkt.",
     "refreshError": "Dashboard vernieuwen mislukt. Probeer het opnieuw.",
+    "alerts": {
+      "expires": "Verloopt op {{date}}",
+      "unknownSeverity": "Melding ({{severity}})",
+      "unknownSeverityValue": "Onbekend",
+      "loadingTitle": "Meldingen laden",
+      "loadingDescription": "Actuele systeemmeldingen worden gecontroleerd.",
+      "loadErrorTitle": "Meldingen konden niet worden geladen",
+      "loadErrorDescription": "Systeemmeldingen konden niet worden geladen. Andere dashboardgegevens kunnen nog steeds actueel zijn.",
+      "levels": {
+        "BASIC": "Melding",
+        "WARNING": "Waarschuwing",
+        "CRITICAL": "Kritieke melding"
+      }
+    },
     "recentTickets": {
       "title": "Recent geopende tickets",
       "noMessage": "Geen bericht beschikbaar",

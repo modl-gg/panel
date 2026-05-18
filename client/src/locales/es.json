@@ -960,6 +960,20 @@
     "refreshed": "Panel actualizado",
     "refreshedDesc": "Todos los datos del panel han sido actualizados.",
     "refreshError": "No se pudo actualizar el panel. Por favor inténtalo de nuevo.",
+    "alerts": {
+      "expires": "Caduca el {{date}}",
+      "unknownSeverity": "Alerta ({{severity}})",
+      "unknownSeverityValue": "Desconocida",
+      "loadingTitle": "Cargando alertas",
+      "loadingDescription": "Comprobando alertas actuales del sistema.",
+      "loadErrorTitle": "No se pudieron cargar las alertas",
+      "loadErrorDescription": "No se pudieron cargar las alertas del sistema. Otros datos del panel aún pueden estar actualizados.",
+      "levels": {
+        "BASIC": "Aviso",
+        "WARNING": "Advertencia",
+        "CRITICAL": "Alerta crítica"
+      }
+    },
     "recentTickets": {
       "title": "Tickets abiertos recientemente",
       "noMessage": "No hay mensaje disponible",
