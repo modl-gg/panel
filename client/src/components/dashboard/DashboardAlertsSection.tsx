@@ -5,8 +5,6 @@ import type { SystemAlert, SystemAlertSeverity } from '@/hooks/use-data';
 
 interface DashboardAlertsSectionProps {
   alerts?: SystemAlert[];
-  loading?: boolean;
-  error?: boolean;
 }
 
 type AlertBannerVariant = 'info' | 'warning' | 'error';
@@ -65,32 +63,8 @@ function formatExpiryDate(expiresAt?: string) {
   return expiryDate.toLocaleString();
 }
 
-export function DashboardAlertsSection({ alerts = [], loading, error }: DashboardAlertsSectionProps) {
+export function DashboardAlertsSection({ alerts = [] }: DashboardAlertsSectionProps) {
   const { t } = useTranslation();
-
-  if (error) {
-    return (
-      <StatusBanner
-        variant="error"
-        title={t('dashboard.alerts.loadErrorTitle')}
-        className="shadow-card"
-      >
-        <p>{t('dashboard.alerts.loadErrorDescription')}</p>
-      </StatusBanner>
-    );
-  }
-
-  if (loading) {
-    return (
-      <StatusBanner
-        variant="info"
-        title={t('dashboard.alerts.loadingTitle')}
-        className="shadow-card"
-      >
-        <p>{t('dashboard.alerts.loadingDescription')}</p>
-      </StatusBanner>
-    );
-  }
 
   if (alerts.length === 0) {
     return null;

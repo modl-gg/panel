@@ -964,10 +964,6 @@
       "expires": "Caduca el {{date}}",
       "unknownSeverity": "Alerta ({{severity}})",
       "unknownSeverityValue": "Desconocida",
-      "loadingTitle": "Cargando alertas",
-      "loadingDescription": "Comprobando alertas actuales del sistema.",
-      "loadErrorTitle": "No se pudieron cargar las alertas",
-      "loadErrorDescription": "No se pudieron cargar las alertas del sistema. Otros datos del panel aún pueden estar actualizados.",
       "levels": {
         "BASIC": "Aviso",
         "WARNING": "Advertencia",
