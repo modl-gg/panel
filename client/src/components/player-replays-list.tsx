@@ -38,7 +38,7 @@ const getReplayIdFromReference = (replayUrl?: string) => {
 
 const getReplayId = (replay: { replayId?: string; replayUrl?: string; matchSource?: string }) => {
   if (replay.matchSource === 'TICKET_FALLBACK') {
-    return getReplayIdFromReference(replay.replayUrl);
+    return getReplayIdFromReference(replay.replayUrl) || replay.replayId || '';
   }
 
   return replay.replayId || getReplayIdFromReference(replay.replayUrl);

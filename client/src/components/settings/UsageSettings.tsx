@@ -381,7 +381,7 @@ const fetchStorageData = async () => {
   };
 
   const handleSaveReplayRetention = () => {
-    const days = Math.max(1, Math.floor(Number(replayRetentionDays) || 1));
+    const days = Math.min(365, Math.max(1, Math.floor(Number(replayRetentionDays) || 1)));
     const expectedVersion = Number(replayRetentionSettings?._meta?.version ?? 0);
 
     updateReplayRetentionSettings.mutate({
@@ -888,10 +888,44 @@ const fetchStorageData = async () => {
                   <Button
                     size="sm"
                     onClick={handleSaveReplayRetention}
-                    disabled={isLoadingReplayRetention || updateReplayRetentionSettings.isPending}
+                    disabled={isLoadingReplayRetention || updateReplayRetentionSettings.isPending || Boolean(replayRetentionError) || !replayRetentionSettings?.data}
                   >
                     {updateReplayRetentionSettings.isPending ? t('common.saving') : t('settings.usage.saveSettings')}
                   </Button>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+
+          <Card className="rounded-card shadow-card-inner bg-surface-2">
+            <CardHeader>
+              <CardTitle>{t('settings.usage.systemStatus')}</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-2">
+                <div className="flex justify-between text-sm">
+                  <span>{t('settings.usage.totalFiles')}:</span>
+                  <span>{files.length}</span>
+                </div>
+                <div className="flex justify-between text-sm">
+                  <span>{t('settings.usage.selected')}:</span>
+                  <span>{selectedFiles.size}</span>
+                </div>
+                <div className="flex justify-between text-sm">
+                  <span>{t('settings.usage.filtered')}:</span>
+                  <span>{filteredAndSortedFiles.length}</span>
+                </div>
+                <div className="flex justify-between text-sm">
+                  <span>{t('settings.usage.canUpload')}:</span>
+                  <span className={storageUsage.quota?.canUpload ? 'text-green-600' : 'text-red-600'}>
+                    {storageUsage.quota?.canUpload ? t('common.yes') : t('common.no')}
+                  </span>
+                </div>
+                <div className="flex justify-between text-sm">
+                  <span>{t('settings.usage.aiAvailable')}:</span>
+                  <span className={storageUsage.isPremium && storageUsage.aiQuota ? 'text-green-600' : 'text-red-600'}>
+                    {storageUsage.isPremium && storageUsage.aiQuota ? t('common.yes') : t('common.no')}
+                  </span>
                 </div>
               </div>
             </CardContent>
