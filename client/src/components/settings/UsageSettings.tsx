@@ -9,11 +9,13 @@ import { Progress } from '@modl-gg/shared-web/components/ui/progress';
 import { Card, CardContent, CardHeader, CardTitle } from '@modl-gg/shared-web/components/ui/card';
 import { Badge } from '@modl-gg/shared-web/components/ui/badge';
 import { Checkbox } from '@modl-gg/shared-web/components/ui/checkbox';
+import { Switch } from '@modl-gg/shared-web/components/ui/switch';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@modl-gg/shared-web/components/ui/select';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@modl-gg/shared-web/components/ui/table';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@modl-gg/shared-web/components/ui/alert-dialog';
 import { useToast } from '@modl-gg/shared-web/hooks/use-toast';
 import { formatFileSize } from '@/utils/file-utils';
+import { useReplayRetentionSettings, useUpdateReplayRetentionSettings } from '@/hooks/use-data';
 
 interface StorageFile {
   id: string;
@@ -114,12 +116,25 @@ const UsageSettings = () => {
   const [newOverageLimit, setNewOverageLimit] = useState<number>(0);
   const [currentPage, setCurrentPage] = useState(1);
   const [itemsPerPage, setItemsPerPage] = useState(25);
+  const [replayRetentionEnabled, setReplayRetentionEnabled] = useState(true);
+  const [replayRetentionDays, setReplayRetentionDays] = useState(7);
+  const { data: replayRetentionSettings, isLoading: isLoadingReplayRetention, error: replayRetentionError } = useReplayRetentionSettings();
+  const updateReplayRetentionSettings = useUpdateReplayRetentionSettings();
   const DEFAULT_AI_LIMIT = 1000;
 
   useEffect(() => {
     fetchStorageData();
     fetchStorageSettings();
   }, []);
+
+  useEffect(() => {
+    if (!replayRetentionSettings?.data) {
+      return;
+    }
+
+    setReplayRetentionEnabled(Boolean(replayRetentionSettings.data.enabled));
+    setReplayRetentionDays(Number(replayRetentionSettings.data.days || 7));
+  }, [replayRetentionSettings]);
 
 const fetchStorageData = async () => {
     try {
@@ -363,6 +378,36 @@ const fetchStorageData = async () => {
     } finally {
       setSettingsLoading(false);
     }
+  };
+
+  const handleSaveReplayRetention = () => {
+    const days = Math.min(365, Math.max(1, Math.floor(Number(replayRetentionDays) || 1)));
+    const expectedVersion = Number(replayRetentionSettings?._meta?.version ?? 0);
+
+    updateReplayRetentionSettings.mutate({
+      expectedVersion,
+      enabled: replayRetentionEnabled,
+      days,
+    }, {
+      onSuccess: (envelope) => {
+        if (envelope?.data) {
+          setReplayRetentionEnabled(Boolean(envelope.data.enabled));
+          setReplayRetentionDays(Number(envelope.data.days || days));
+        }
+
+        toast({
+          title: t('toast.success'),
+          description: t('settings.usage.replayRetentionSaved'),
+        });
+      },
+      onError: (error: any) => {
+        toast({
+          title: t('toast.error'),
+          description: error?.message || t('settings.usage.replayRetentionSaveFailed'),
+          variant: "destructive",
+        });
+      },
+    });
   };
 
   const getTypeColor = (type: string): string => {
@@ -783,6 +828,74 @@ const fetchStorageData = async () => {
               </CardContent>
             </Card>
           )}
+
+          <Card className="rounded-card shadow-card-inner bg-surface-2">
+            <CardHeader>
+              <CardTitle className="flex items-center">
+                <Play className="h-5 w-5 mr-2" />
+                {t('settings.usage.replayRetention')}
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-4">
+                {replayRetentionError && (
+                  <div className="bg-destructive/10 border border-destructive/20 text-destructive rounded-lg p-3 text-sm">
+                    {t('settings.usage.replayRetentionLoadFailed')}
+                  </div>
+                )}
+
+                <div className="flex items-center justify-between gap-3">
+                  <div>
+                    <Label htmlFor="replay-retention-enabled" className="text-sm font-medium">
+                      {t('settings.usage.replayRetentionEnabled')}
+                    </Label>
+                    <p className="text-xs text-muted-foreground mt-1">
+                      {t('settings.usage.replayRetentionEnabledDesc')}
+                    </p>
+                  </div>
+                  <Switch
+                    id="replay-retention-enabled"
+                    checked={replayRetentionEnabled}
+                    onCheckedChange={setReplayRetentionEnabled}
+                    disabled={isLoadingReplayRetention || updateReplayRetentionSettings.isPending}
+                  />
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="replay-retention-days">{t('settings.usage.replayRetentionDays')}</Label>
+                  <Input
+                    id="replay-retention-days"
+                    type="number"
+                    min="1"
+                    max="365"
+                    value={replayRetentionDays}
+                    onChange={(event) => setReplayRetentionDays(Number(event.target.value))}
+                    disabled={!replayRetentionEnabled || isLoadingReplayRetention || updateReplayRetentionSettings.isPending}
+                  />
+                  <p className="text-xs text-muted-foreground">
+                    {replayRetentionEnabled
+                      ? t('settings.usage.replayRetentionDaysDesc')
+                      : t('settings.usage.replayRetentionDisabledDesc')}
+                  </p>
+                </div>
+
+                <div className="flex items-center justify-between gap-3">
+                  <Badge variant="outline">
+                    {replayRetentionEnabled
+                      ? t('settings.usage.replayRetentionActive', { days: Math.max(1, Math.floor(Number(replayRetentionDays) || 1)) })
+                      : t('settings.usage.replayRetentionOff')}
+                  </Badge>
+                  <Button
+                    size="sm"
+                    onClick={handleSaveReplayRetention}
+                    disabled={isLoadingReplayRetention || updateReplayRetentionSettings.isPending || Boolean(replayRetentionError) || !replayRetentionSettings?.data}
+                  >
+                    {updateReplayRetentionSettings.isPending ? t('common.saving') : t('settings.usage.saveSettings')}
+                  </Button>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
 
           <Card className="rounded-card shadow-card-inner bg-surface-2">
             <CardHeader>
