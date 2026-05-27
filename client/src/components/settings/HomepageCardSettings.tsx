@@ -10,49 +10,51 @@ import { useToast } from '@modl-gg/shared-web/hooks/use-toast';
 import { queryClient } from '@/lib/queryClient';
 import { apiFetch } from '@/lib/api';
 import { useQuery, useMutation } from '@tanstack/react-query';
-import { Plus, Edit, Trash2, GripVertical, Eye, EyeOff } from 'lucide-react';
+import {
+  Plus, Edit, Trash2, GripVertical, Eye, EyeOff,
+  Shield, UserPlus, MessageCircle, Mail, Phone, Scale,
+  Users, User, UserCheck, UserX, Crown, Award,
+  BookOpen, Book, FileText, ScrollText, Newspaper,
+  Library, GraduationCap, HelpCircle, Info, AlertCircle,
+  ExternalLink, Link as LinkIcon, ArrowRight, ChevronRight, Home,
+  Search, Download, Upload, Share,
+  MessageSquare, Send, Inbox, Bell, Megaphone,
+  Radio, Headphones, Mic, Video, Calendar,
+  Gamepad2, Zap, Server, Globe, Wifi, Signal,
+  Activity, BarChart, TrendingUp, Target, Trophy,
+  Settings, Wrench, Cog, Sliders, Filter,
+  Lock, Unlock, Key, ShieldCheck, ShieldAlert,
+  Minus, Check, X, AlertTriangle, CheckCircle,
+  XCircle, Clock, Timer, Pause, Play,
+  CreditCard, DollarSign, Gift, Star, Heart, ThumbsUp,
+  Flag, Map, Compass, Navigation, Bookmark, Tag,
+} from 'lucide-react';
 import { Switch } from '@modl-gg/shared-web/components/ui/switch';
 import { Label } from '@modl-gg/shared-web/components/ui/label';
-import * as LucideIcons from 'lucide-react';
 import { DndProvider, useDrag, useDrop, DropTargetMonitor } from 'react-dnd';
 import { HTML5Backend } from 'react-dnd-html5-backend';
 
-// Get list of curated icons suitable for homepage cards
-const getAvailableIcons = () => {
-  return [
-    // Common actions
-    'Shield', 'UserPlus', 'MessageCircle', 'Mail', 'Phone', 'Scale',
-    'Users', 'User', 'UserCheck', 'UserX', 'Crown', 'Award',
-    
-    // Content & knowledge
-    'BookOpen', 'Book', 'FileText', 'File', 'ScrollText', 'Newspaper',
-    'Library', 'GraduationCap', 'HelpCircle', 'Info', 'AlertCircle',
-    
-    // Navigation & links
-    'ExternalLink', 'Link', 'ArrowRight', 'ChevronRight', 'Home',
-    'Search', 'Eye', 'Download', 'Upload', 'Share',
-    
-    // Communication
-    'MessageSquare', 'Send', 'Inbox', 'Bell', 'Megaphone',
-    'Radio', 'Headphones', 'Mic', 'Video', 'Calendar',
-    
-    // Games & servers
-    'Gamepad2', 'Zap', 'Server', 'Globe', 'Wifi', 'Signal',
-    'Activity', 'BarChart', 'TrendingUp', 'Target', 'Trophy',
-    
-    // Settings & tools
-    'Settings', 'Tool', 'Wrench', 'Cog', 'Sliders', 'Filter',
-    'Lock', 'Unlock', 'Key', 'ShieldCheck', 'ShieldAlert',
-    
-    // Actions & status
-    'Plus', 'Minus', 'Check', 'X', 'AlertTriangle', 'CheckCircle',
-    'XCircle', 'Clock', 'Timer', 'Pause', 'Play', 'Stop',
-    
-    // Commerce & misc
-    'CreditCard', 'DollarSign', 'Gift', 'Star', 'Heart', 'ThumbsUp',
-    'Flag', 'Map', 'Compass', 'Navigation', 'Bookmark', 'Tag'
-  ].sort();
+// Allowlist of icons selectable for homepage cards; keep in sync with HomePage.tsx ICONS map.
+const ICONS: Record<string, React.ComponentType<{ className?: string; style?: React.CSSProperties }>> = {
+  Shield, UserPlus, MessageCircle, Mail, Phone, Scale,
+  Users, User, UserCheck, UserX, Crown, Award,
+  BookOpen, Book, FileText, ScrollText, Newspaper,
+  Library, GraduationCap, HelpCircle, Info, AlertCircle,
+  ExternalLink, Link: LinkIcon, ArrowRight, ChevronRight, Home,
+  Search, Eye, Download, Upload, Share,
+  MessageSquare, Send, Inbox, Bell, Megaphone,
+  Radio, Headphones, Mic, Video, Calendar,
+  Gamepad2, Zap, Server, Globe, Wifi, Signal,
+  Activity, BarChart, TrendingUp, Target, Trophy,
+  Settings, Wrench, Cog, Sliders, Filter,
+  Lock, Unlock, Key, ShieldCheck, ShieldAlert,
+  Plus, Minus, Check, X, AlertTriangle, CheckCircle,
+  XCircle, Clock, Timer, Pause, Play,
+  CreditCard, DollarSign, Gift, Star, Heart, ThumbsUp,
+  Flag, Map, Compass, Navigation, Bookmark, Tag,
 };
+
+const getAvailableIcons = () => Object.keys(ICONS).sort();
 
 interface HomepageCard {
   id: string;
@@ -423,7 +425,7 @@ const HomepageCardSettings: React.FC = () => {
   };
 
   const IconPreview = ({ iconName, color }: { iconName: string; color?: string }) => {
-    const IconComponent = (LucideIcons as any)[iconName] || LucideIcons.BookOpen;
+    const IconComponent = ICONS[iconName] || BookOpen;
     return <IconComponent className="h-5 w-5" style={{ color: color || 'currentColor' }} />;
   };
 

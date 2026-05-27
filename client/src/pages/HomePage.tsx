@@ -1,16 +1,51 @@
 import React, { useState, useEffect } from 'react';
 import { Link } from 'wouter';
-import { Search, Shield, MessageCircle, UserPlus, FileText, BookOpen, ChevronDown, LogIn, Sun, Moon } from 'lucide-react';
+import {
+  Search, Shield, MessageCircle, UserPlus, FileText, BookOpen, ChevronDown, LogIn, Sun, Moon,
+  Mail, Phone, Scale, Users, User, UserCheck, UserX, Crown, Award,
+  Book, ScrollText, Newspaper, Library, GraduationCap, HelpCircle, Info, AlertCircle,
+  ExternalLink, Link as LinkIcon, ArrowRight, ChevronRight, Home,
+  Eye, Download, Upload, Share,
+  MessageSquare, Send, Inbox, Bell, Megaphone,
+  Radio, Headphones, Mic, Video, Calendar,
+  Gamepad2, Zap, Server, Globe, Wifi, Signal,
+  Activity, BarChart, TrendingUp, Target, Trophy,
+  Settings, Wrench, Cog, Sliders, Filter,
+  Lock, Unlock, Key, ShieldCheck, ShieldAlert,
+  Plus, Minus, Check, X, AlertTriangle, CheckCircle,
+  XCircle, Clock, Timer, Pause, Play,
+  CreditCard, DollarSign, Gift, Star, Heart, ThumbsUp,
+  Flag, Map, Compass, Navigation, Bookmark, Tag,
+} from 'lucide-react';
 import { Button } from '@modl-gg/shared-web/components/ui/button';
 import { Input } from '@modl-gg/shared-web/components/ui/input';
 import { Card, CardContent, CardHeader, CardTitle } from '@modl-gg/shared-web/components/ui/card';
 import { Collapsible, CollapsibleTrigger } from '@modl-gg/shared-web/components/ui/collapsible';
 import { useTheme } from 'next-themes';
 import serverLogo from '@/assets/server-logo.png';
-import * as LucideIcons from 'lucide-react';
 import { usePublicSettings } from '@/hooks/use-public-settings';
 import { useAuth } from '@/hooks/use-auth';
 import { apiFetch } from '@/lib/api';
+
+// Allowlist of icons usable by homepage cards; mirrors HomepageCardSettings curated list.
+const ICONS: Record<string, React.ComponentType<{ className?: string; style?: React.CSSProperties }>> = {
+  Shield, UserPlus, MessageCircle, Mail, Phone, Scale,
+  Users, User, UserCheck, UserX, Crown, Award,
+  BookOpen, Book, FileText, ScrollText, Newspaper,
+  Library, GraduationCap, HelpCircle, Info, AlertCircle,
+  ExternalLink, Link: LinkIcon, ArrowRight, ChevronRight, Home,
+  Search, Eye, Download, Upload, Share,
+  MessageSquare, Send, Inbox, Bell, Megaphone,
+  Radio, Headphones, Mic, Video, Calendar,
+  Gamepad2, Zap, Server, Globe, Wifi, Signal,
+  Activity, BarChart, TrendingUp, Target, Trophy,
+  Settings, Wrench, Cog, Sliders, Filter,
+  Lock, Unlock, Key, ShieldCheck, ShieldAlert,
+  Plus, Minus, Check, X, AlertTriangle, CheckCircle,
+  XCircle, Clock, Timer, Pause, Play,
+  CreditCard, DollarSign, Gift, Star, Heart, ThumbsUp,
+  Flag, Map, Compass, Navigation, Bookmark, Tag,
+};
 
 // Types for knowledgebase data
 interface ArticleStub {
@@ -137,8 +172,7 @@ const HomePage: React.FC = () => {
 
   // Function to get the icon component from Lucide
   const getIconComponent = (iconName: string) => {
-    const IconComponent = (LucideIcons as any)[iconName];
-    return IconComponent || BookOpen; // Fallback to BookOpen if icon not found
+    return ICONS[iconName] || BookOpen; // Fallback to BookOpen if icon not found
   };
 
   // Function to toggle expanded state for category dropdown cards

@@ -21,6 +21,7 @@ import { TicketFormField, TicketFormSection, TicketFormSettings, TicketFormsConf
 import { useBillingStatus } from '@/hooks/use-data';
 import { useAuth } from '@/hooks/use-auth';
 import { hasPremiumAccess } from '@/lib/backend-enums';
+import { StatusBadge } from '@/components/ui/status-badge';
 
 // Label type definition
 interface Label {
@@ -2191,10 +2192,10 @@ const TicketSettings = ({
                 <Shield className="h-4 w-4 mr-2" />
                 <h4 className="text-base font-medium">{t('settings.tickets.aiModerationSettings')}</h4>
                 {!isPremiumUser() && (
-                  <Badge variant="secondary" className="ml-2 bg-orange-100 text-orange-800 dark:bg-orange-900 dark:text-orange-100">
+                  <StatusBadge intent="warning" className="ml-2">
                     <Crown className="h-3 w-3 mr-1" />
                     Premium
-                  </Badge>
+                  </StatusBadge>
                 )}
               </div>
               <div className="flex items-center space-x-2">
@@ -2218,12 +2219,12 @@ const TicketSettings = ({
               <div className={`border rounded-lg p-4 ${!isPremiumUser() ? 'opacity-60 pointer-events-none' : ''}`}>
                 {!isPremiumUser() ? (
                   <div className="text-center py-8">
-                    <Crown className="h-12 w-12 mx-auto mb-4 text-orange-500" />
+                    <Crown className="h-12 w-12 mx-auto mb-4 text-warning" />
                     <h3 className="text-lg font-medium mb-2">{t('settings.tickets.premiumFeature')}</h3>
                     <p className="text-sm text-muted-foreground mb-4">
                       {t('settings.tickets.aiModerationPremiumDesc')}
                     </p>
-                    <Button variant="default" className="bg-orange-600 hover:bg-orange-700">
+                    <Button variant="default">
                       <Crown className="h-4 w-4 mr-2" />
                       {t('settings.tickets.upgradeToPremium')}
                     </Button>

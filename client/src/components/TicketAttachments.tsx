@@ -1,9 +1,10 @@
 import React, { useState } from 'react';
-import { Paperclip, Download, Eye, Trash2, FileText, Image, Video, File } from 'lucide-react';
+import { Paperclip, Download, Eye, Trash2, FileText, Image, Video, File, Loader2 } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { Button } from '@modl-gg/shared-web/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@modl-gg/shared-web/components/ui/card';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@modl-gg/shared-web/components/ui/dialog';
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@modl-gg/shared-web/components/ui/alert-dialog';
 import { Badge } from '@modl-gg/shared-web/components/ui/badge';
 import { useToast } from '@modl-gg/shared-web/hooks/use-toast';
 import MediaUpload from './MediaUpload';
@@ -43,6 +44,7 @@ export function TicketAttachments({
 }: TicketAttachmentsProps & { compact?: boolean }) {
   const { t } = useTranslation();
   const [attachments, setAttachments] = useState<TicketAttachment[]>(existingAttachments);
+  const [deletingIds, setDeletingIds] = useState<Set<string>>(new Set());
   const { config, deleteMedia } = useMediaUpload();
   const { toast } = useToast();
 
@@ -85,6 +87,11 @@ export function TicketAttachments({
       return;
     }
 
+    setDeletingIds(prev => {
+      const next = new Set(prev);
+      next.add(attachment.id);
+      return next;
+    });
     try {
       await deleteMedia(attachment.key);
       const updatedAttachments = attachments.filter(a => a.id !== attachment.id);
@@ -100,6 +107,12 @@ export function TicketAttachments({
         title: t('upload.deleteFailed'),
         description: t('upload.deleteAttachmentFailed'),
         variant: "destructive",
+      });
+    } finally {
+      setDeletingIds(prev => {
+        const next = new Set(prev);
+        next.delete(attachment.id);
+        return next;
       });
     }
   };
@@ -181,13 +194,52 @@ export function TicketAttachments({
                     {getFileIcon(attachment.fileType)}
                     <span className="text-xs">{truncatedName}</span>
                     {!readonly && (
-                      <button
-                        onClick={() => handleDeleteAttachment(attachment)}
-                        className="ml-1 hover:bg-destructive/10 rounded-sm p-0.5"
-                        title={publicMode ? `Remove ${attachment.fileName}` : `Delete ${attachment.fileName}`}
-                      >
-                        <Trash2 className="h-3 w-3 text-muted-foreground hover:text-destructive" />
-                      </button>
+                      publicMode ? (
+                        <button
+                          type="button"
+                          onClick={() => handleDeleteAttachment(attachment)}
+                          aria-label={`Remove ${attachment.fileName}`}
+                          className="ml-1 hover:bg-destructive/10 rounded-sm p-0.5"
+                          title={`Remove ${attachment.fileName}`}
+                        >
+                          <Trash2 className="h-3 w-3 text-muted-foreground hover:text-destructive" />
+                        </button>
+                      ) : (
+                        <AlertDialog>
+                          <AlertDialogTrigger asChild>
+                            <button
+                              type="button"
+                              aria-label={`Delete ${attachment.fileName}`}
+                              disabled={deletingIds.has(attachment.id)}
+                              className="ml-1 hover:bg-destructive/10 rounded-sm p-0.5 disabled:opacity-50"
+                              title={`Delete ${attachment.fileName}`}
+                            >
+                              {deletingIds.has(attachment.id) ? (
+                                <Loader2 className="h-3 w-3 text-muted-foreground animate-spin" />
+                              ) : (
+                                <Trash2 className="h-3 w-3 text-muted-foreground hover:text-destructive" />
+                              )}
+                            </button>
+                          </AlertDialogTrigger>
+                          <AlertDialogContent>
+                            <AlertDialogHeader>
+                              <AlertDialogTitle>{t('upload.deleteAttachmentTitle', 'Delete attachment?')}</AlertDialogTitle>
+                              <AlertDialogDescription>
+                                {t('upload.deleteAttachmentConfirm', { name: attachment.fileName, defaultValue: 'This will permanently remove "{{name}}". This action cannot be undone.' })}
+                              </AlertDialogDescription>
+                            </AlertDialogHeader>
+                            <AlertDialogFooter>
+                              <AlertDialogCancel>{t('common.cancel')}</AlertDialogCancel>
+                              <AlertDialogAction
+                                onClick={() => handleDeleteAttachment(attachment)}
+                                className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                              >
+                                {t('common.delete')}
+                              </AlertDialogAction>
+                            </AlertDialogFooter>
+                          </AlertDialogContent>
+                        </AlertDialog>
+                      )
                     )}
                   </Badge>
                 );
@@ -265,14 +317,52 @@ export function TicketAttachments({
                 </Button>
 
                 {!readonly && (
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={() => handleDeleteAttachment(attachment)}
-                    title={publicMode ? "Remove attachment" : "Delete attachment"}
-                  >
-                    <Trash2 className="h-4 w-4" />
-                  </Button>
+                  publicMode ? (
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => handleDeleteAttachment(attachment)}
+                      aria-label="Remove attachment"
+                      title="Remove attachment"
+                    >
+                      <Trash2 className="h-4 w-4" />
+                    </Button>
+                  ) : (
+                    <AlertDialog>
+                      <AlertDialogTrigger asChild>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          aria-label="Delete attachment"
+                          title="Delete attachment"
+                          disabled={deletingIds.has(attachment.id)}
+                        >
+                          {deletingIds.has(attachment.id) ? (
+                            <Loader2 className="h-4 w-4 animate-spin" />
+                          ) : (
+                            <Trash2 className="h-4 w-4" />
+                          )}
+                        </Button>
+                      </AlertDialogTrigger>
+                      <AlertDialogContent>
+                        <AlertDialogHeader>
+                          <AlertDialogTitle>{t('upload.deleteAttachmentTitle', 'Delete attachment?')}</AlertDialogTitle>
+                          <AlertDialogDescription>
+                            {t('upload.deleteAttachmentConfirm', { name: attachment.fileName, defaultValue: 'This will permanently remove "{{name}}". This action cannot be undone.' })}
+                          </AlertDialogDescription>
+                        </AlertDialogHeader>
+                        <AlertDialogFooter>
+                          <AlertDialogCancel>{t('common.cancel')}</AlertDialogCancel>
+                          <AlertDialogAction
+                            onClick={() => handleDeleteAttachment(attachment)}
+                            className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                          >
+                            {t('common.delete')}
+                          </AlertDialogAction>
+                        </AlertDialogFooter>
+                      </AlertDialogContent>
+                    </AlertDialog>
+                  )
                 )}
               </div>
             </div>

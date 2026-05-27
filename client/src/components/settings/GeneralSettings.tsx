@@ -6,6 +6,7 @@ import { Input } from '@modl-gg/shared-web/components/ui/input';
 import { Label } from '@modl-gg/shared-web/components/ui/label';
 import { Separator } from '@modl-gg/shared-web/components/ui/separator';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@modl-gg/shared-web/components/ui/collapsible';
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@modl-gg/shared-web/components/ui/alert-dialog';
 import { useAuth } from '@/hooks/use-auth';
 import { usePermissions } from '@/hooks/use-permissions';
 import BillingSettings from './BillingSettings';
@@ -261,10 +262,22 @@ const GeneralSettings = ({
                   <code className="text-sm font-mono bg-background px-2 py-1 rounded border">
                     {showApiKey ? (fullApiKey || apiKey) : maskApiKey(apiKey)}
                   </code>
-                  <Button variant="ghost" size="sm" onClick={revealApiKey}>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={revealApiKey}
+                    aria-label={showApiKey ? 'Hide API key' : 'Show API key'}
+                    title={showApiKey ? 'Hide API key' : 'Show API key'}
+                  >
                     {showApiKey ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
                   </Button>
-                  <Button variant="outline" size="sm" onClick={copyApiKey}>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={copyApiKey}
+                    aria-label="Copy API key"
+                    title="Copy API key"
+                  >
                     {apiKeyCopied ? <Check className="h-4 w-4" /> : <Copy className="h-4 w-4" />}
                   </Button>
                 </div>
@@ -272,14 +285,56 @@ const GeneralSettings = ({
             </div>
 
             <div className="flex gap-2">
-              <Button variant="outline" onClick={generateApiKey} disabled={isGeneratingApiKey}>
-                <RefreshCw className={`h-4 w-4 mr-2 ${isGeneratingApiKey ? 'animate-spin' : ''}`} />
-                {t('settings.general.regenerate')}
-              </Button>
-              <Button variant="destructive" onClick={revokeApiKey} disabled={isRevokingApiKey}>
-                <Trash2 className="h-4 w-4 mr-2" />
-                {t('settings.general.revoke')}
-              </Button>
+              <AlertDialog>
+                <AlertDialogTrigger asChild>
+                  <Button variant="outline" disabled={isGeneratingApiKey}>
+                    <RefreshCw className={`h-4 w-4 mr-2 ${isGeneratingApiKey ? 'animate-spin' : ''}`} />
+                    {t('settings.general.regenerate')}
+                  </Button>
+                </AlertDialogTrigger>
+                <AlertDialogContent>
+                  <AlertDialogHeader>
+                    <AlertDialogTitle>{t('settings.general.regenerateApiKeyTitle', 'Regenerate API key?')}</AlertDialogTitle>
+                    <AlertDialogDescription>
+                      {t('settings.general.regenerateApiKeyConfirm', 'The old key will stop working immediately and any Minecraft servers using it will lose access until updated.')}
+                    </AlertDialogDescription>
+                  </AlertDialogHeader>
+                  <AlertDialogFooter>
+                    <AlertDialogCancel>{t('common.cancel')}</AlertDialogCancel>
+                    <AlertDialogAction
+                      onClick={generateApiKey}
+                      className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                    >
+                      {t('settings.general.regenerate')}
+                    </AlertDialogAction>
+                  </AlertDialogFooter>
+                </AlertDialogContent>
+              </AlertDialog>
+              <AlertDialog>
+                <AlertDialogTrigger asChild>
+                  <Button variant="destructive" disabled={isRevokingApiKey}>
+                    <Trash2 className="h-4 w-4 mr-2" />
+                    {t('settings.general.revoke')}
+                  </Button>
+                </AlertDialogTrigger>
+                <AlertDialogContent>
+                  <AlertDialogHeader>
+                    <AlertDialogTitle>{t('settings.general.revokeApiKeyTitle', 'Revoke API key?')}</AlertDialogTitle>
+                    <AlertDialogDescription>
+                      {t('settings.general.revokeApiKeyConfirm', 'This will immediately invalidate the key. Minecraft servers using this key will lose access. This cannot be undone.')}
+                    </AlertDialogDescription>
+                  </AlertDialogHeader>
+                  <AlertDialogFooter>
+                    <AlertDialogCancel>{t('common.cancel')}</AlertDialogCancel>
+                    <AlertDialogAction
+                      onClick={revokeApiKey}
+                      className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                    >
+                      {t('settings.general.revoke')}
+                    </AlertDialogAction>
+                  </AlertDialogFooter>
+                </AlertDialogContent>
+              </AlertDialog>
             </div>
           </div>
         ) : (

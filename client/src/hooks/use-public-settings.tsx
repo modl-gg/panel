@@ -40,7 +40,6 @@ export function usePublicSettings() {
     staleTime: 1000 * 30,
     gcTime: 1000 * 60 * 10,
     refetchOnWindowFocus: true,
-    refetchInterval: 1000 * 60,
     retry: 1,
   });
 }

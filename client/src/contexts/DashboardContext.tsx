@@ -1,4 +1,4 @@
-import { createContext, useContext, useReducer, ReactNode, useCallback } from 'react';
+import { createContext, useContext, useReducer, useMemo, ReactNode, useCallback } from 'react';
 import { WindowPosition, WindowState } from '@modl-gg/shared-web/types';
 import { windowActions, initialWindowState } from '@/lib/window-manager';
 
@@ -55,16 +55,16 @@ export const DashboardProvider = ({ children }: { children: ReactNode }) => {
     dispatch({ type: 'UPDATE_SIZE', id, size });
   }, []);
 
+  const contextValue = useMemo<DashboardContextType>(() => ({
+    windowState,
+    openLookupWindow,
+    closeLookupWindow,
+    updateWindowPosition,
+    updateWindowSize
+  }), [windowState, openLookupWindow, closeLookupWindow, updateWindowPosition, updateWindowSize]);
+
   return (
-    <DashboardContext.Provider
-      value={{
-        windowState,
-        openLookupWindow,
-        closeLookupWindow,
-        updateWindowPosition,
-        updateWindowSize
-      }}
-    >
+    <DashboardContext.Provider value={contextValue}>
       {children}
     </DashboardContext.Provider>
   );

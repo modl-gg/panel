@@ -38,28 +38,23 @@ export default defineConfig(({ mode }) => {
         include: [/node_modules/, /@modl-gg\/shared-web/],
         transformMixedEsModules: true,
       },
-      chunkSizeWarningLimit: 1000,
+      sourcemap: 'hidden',
       rollupOptions: {
         output: {
-          manualChunks: {
-            "react-vendor": ["react", "react-dom"],
-            "ui-vendor": ["lucide-react", "wouter", "@tanstack/react-query"],
-            "replay-viewer": ["@modl-gg/replay-viewer", "three"],
-            "radix-vendor": [
-              "@radix-ui/react-accordion",
-              "@radix-ui/react-alert-dialog",
-              "@radix-ui/react-aspect-ratio",
-              "@radix-ui/react-avatar",
-              "@radix-ui/react-checkbox",
-              "@radix-ui/react-collapsible",
-              "@radix-ui/react-context-menu",
-              "@radix-ui/react-dialog",
-              "@radix-ui/react-dropdown-menu",
-              "@radix-ui/react-hover-card",
-              "@radix-ui/react-label",
-              "@radix-ui/react-menubar",
-              "@radix-ui/react-navigation-menu",
-            ],
+          manualChunks(id) {
+            if (id.includes('node_modules')) {
+              if (id.includes('node_modules/recharts') || id.includes('node_modules/d3-')) return 'charts-vendor';
+              if (id.includes('node_modules/@modl-gg/replay-viewer') || id.includes('node_modules/three')) return 'replay-viewer-vendor';
+              if (id.includes('node_modules/@radix-ui/')) return 'radix-vendor';
+              if (id.includes('node_modules/react-dnd') || id.includes('node_modules/dnd-core')) return 'dnd-vendor';
+              if (id.includes('node_modules/react-hook-form') || id.includes('node_modules/@hookform/') || id.includes('node_modules/zod')) return 'form-vendor';
+              if (id.includes('node_modules/i18next') || id.includes('node_modules/react-i18next')) return 'i18n-vendor';
+              if (id.includes('node_modules/react-day-picker') || id.includes('node_modules/date-fns')) return 'date-vendor';
+              if (id.includes('node_modules/react') || id.includes('node_modules/scheduler')) return 'react-vendor';
+              if (id.includes('node_modules/lucide-react')) return 'icons-vendor';
+              if (id.includes('node_modules/@tanstack/')) return 'query-vendor';
+              return 'vendor';
+            }
           },
         },
       },

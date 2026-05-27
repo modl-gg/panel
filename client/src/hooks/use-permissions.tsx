@@ -153,7 +153,7 @@ export function usePermissions() {
     return permissions.some(permission => hasPermission(permission));
   }, [user, hasPermission]);
 
-  const canAccessSettingsTab = (tabName: keyof typeof SETTINGS_PERMISSIONS): boolean => {
+  const canAccessSettingsTab = useCallback((tabName: keyof typeof SETTINGS_PERMISSIONS): boolean => {
     if (!user) return false;
     if (tabName === 'tags') {
       return hasAnyPermission([
@@ -166,14 +166,14 @@ export function usePermissions() {
     if (!requiredPermissions || !Array.isArray(requiredPermissions)) return false;
     if (requiredPermissions.length === 0) return true;
     return hasAnyPermission(requiredPermissions as unknown as string[]);
-  };
+  }, [user, hasAnyPermission]);
 
-  const getAccessibleSettingsTabs = (): string[] => {
+  const getAccessibleSettingsTabs = useCallback((): string[] => {
     if (!user) return ['account'];
-    
+
     const allTabs = Object.keys(SETTINGS_PERMISSIONS) as (keyof typeof SETTINGS_PERMISSIONS)[];
     return allTabs.filter(tab => canAccessSettingsTab(tab));
-  };
+  }, [user, canAccessSettingsTab]);
 
   const { data: rolesData } = useQuery({
     queryKey: ['/v1/panel/roles'],
@@ -188,7 +188,7 @@ export function usePermissions() {
 
   const roleHierarchy = useMemo(() => {
     return rolesData?.roles ? buildRoleHierarchy(rolesData.roles) : new Map();
-  }, [rolesData]);
+  }, [rolesData?.roles]);
 
   const canModifyUserRole = (targetUserRole: string, newRole?: string, targetUserId?: string): boolean => {
     if (!user) return false;

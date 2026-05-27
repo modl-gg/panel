@@ -265,7 +265,7 @@ const DraggableRoleCard: React.FC<DraggableRoleCardProps> = ({
             </Badge>
           )}
           {role.name === 'Super Admin' && (
-            <Badge variant="default" className="text-xs bg-yellow-500">
+            <Badge variant="default" className="text-xs bg-warning text-warning-foreground">
               {t('settings.roles.highestRank')}
             </Badge>
           )}
@@ -276,6 +276,7 @@ const DraggableRoleCard: React.FC<DraggableRoleCardProps> = ({
             size="sm"
             onClick={() => onEditRole(role)}
             disabled={role.name === 'Super Admin' || (roleOrderMap.get(currentUserRole || '') ?? 999) >= getRoleOrder(role)}
+            aria-label={t('common.edit')}
           >
             <Edit className="h-4 w-4" />
           </Button>
@@ -284,6 +285,7 @@ const DraggableRoleCard: React.FC<DraggableRoleCardProps> = ({
             size="sm"
             onClick={() => onDeleteRole(role)}
             disabled={role.name === 'Super Admin' || (roleOrderMap.get(currentUserRole || '') ?? 999) >= getRoleOrder(role)}
+            aria-label={t('common.delete')}
           >
             <Trash2 className="h-4 w-4 text-destructive" />
           </Button>
@@ -885,29 +887,29 @@ export default function StaffRolesCard() {
       </Dialog>
 
       {/* Delete Confirmation Dialog */}
-      <Dialog open={!!deleteConfirmRole} onOpenChange={(open) => !open && setDeleteConfirmRole(null)}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>{t('settings.roles.deleteRoleTitle')}</DialogTitle>
-            <DialogDescription>
+      <AlertDialog open={!!deleteConfirmRole} onOpenChange={(open) => !open && setDeleteConfirmRole(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>{t('settings.roles.deleteRoleTitle')}</AlertDialogTitle>
+            <AlertDialogDescription>
               {t('settings.roles.deleteRoleConfirm', { name: deleteConfirmRole?.name })}
-            </DialogDescription>
-          </DialogHeader>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setDeleteConfirmRole(null)}>
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel onClick={() => setDeleteConfirmRole(null)}>
               {t('common.cancel')}
-            </Button>
-            <Button
-              variant="destructive"
+            </AlertDialogCancel>
+            <AlertDialogAction
               onClick={confirmDeleteRole}
               disabled={deleteRoleMutation.isPending}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
             >
               <Trash2 className="h-4 w-4 mr-2" />
               {deleteRoleMutation.isPending ? t('common.deleting') : t('settings.roles.deleteRole')}
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
 
       {/* Role Reorder Confirmation Dialog */}
       <AlertDialog open={showReorderConfirm} onOpenChange={setShowReorderConfirm}>

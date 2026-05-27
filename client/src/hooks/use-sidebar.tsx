@@ -1,4 +1,4 @@
-import { createContext, useContext, useState, ReactNode } from 'react';
+import { createContext, useContext, useMemo, useState, ReactNode } from 'react';
 
 interface SidebarContextType {
   isSearchActive: boolean;
@@ -10,11 +10,13 @@ const SidebarContext = createContext<SidebarContextType | undefined>(undefined);
 export const SidebarProvider = ({ children }: { children: ReactNode }) => {
   const [isSearchActive, setIsSearchActive] = useState(false);
 
+  const value = useMemo<SidebarContextType>(
+    () => ({ isSearchActive, setIsSearchActive }),
+    [isSearchActive]
+  );
+
   return (
-    <SidebarContext.Provider value={{ 
-      isSearchActive,
-      setIsSearchActive
-    }}>
+    <SidebarContext.Provider value={value}>
       {children}
     </SidebarContext.Provider>
   );

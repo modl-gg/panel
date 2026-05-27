@@ -81,18 +81,12 @@ const processMarkdownContent = (content: string, disableClickablePlayers = false
 };
 
 const MarkdownRenderer = ({ content, className, allowHtml = false, disableClickablePlayers = false }: MarkdownRendererProps) => {
-  // Guard against undefined/null content - render empty for falsy values
-  if (content === undefined || content === null) {
-    return null;
-  }
-
-  // For empty strings, just return an empty container
-  if (content === '') {
-    return <div className={className}></div>;
-  }
-
-  const processedContent = processMarkdownContent(content, disableClickablePlayers);
   const { data: mediaConfig } = useMediaUploadConfig();
+
+  const processedContent = useMemo(
+    () => processMarkdownContent(content ?? '', disableClickablePlayers),
+    [content, disableClickablePlayers]
+  );
 
   const normalizedCdnHost = useMemo(() => {
     const rawDomain = mediaConfig?.cdnDomain?.trim();
@@ -105,6 +99,14 @@ const MarkdownRenderer = ({ content, className, allowHtml = false, disableClicka
       return rawDomain.replace(/^https?:\/\//i, '').split('/')[0].toLowerCase();
     }
   }, [mediaConfig?.cdnDomain]);
+
+  if (content === undefined || content === null) {
+    return null;
+  }
+
+  if (content === '') {
+    return <div className={className}></div>;
+  }
 
   const getTrustedMediaKind = (href?: string): 'image' | 'video' | null => {
     if (!href || !normalizedCdnHost) return null;

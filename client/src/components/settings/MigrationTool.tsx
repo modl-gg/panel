@@ -76,15 +76,15 @@ const MigrationTool: React.FC = () => {
     switch (status) {
       case 'idle':
       case 'building_json':
-        return <Download className="h-5 w-5 text-blue-500 animate-pulse" />;
+        return <Download className="h-5 w-5 text-info animate-pulse" />;
       case 'uploading_json':
-        return <Upload className="h-5 w-5 text-blue-500 animate-pulse" />;
+        return <Upload className="h-5 w-5 text-info animate-pulse" />;
       case 'processing_data':
-        return <Loader2 className="h-5 w-5 text-blue-500 animate-spin" />;
+        return <Loader2 className="h-5 w-5 text-info animate-spin" />;
       case 'completed':
-        return <CheckCircle2 className="h-5 w-5 text-green-500" />;
+        return <CheckCircle2 className="h-5 w-5 text-success" />;
       case 'failed':
-        return <AlertCircle className="h-5 w-5 text-red-500" />;
+        return <AlertCircle className="h-5 w-5 text-destructive" />;
       default:
         return <Clock className="h-5 w-5 text-muted-foreground" />;
     }
@@ -164,7 +164,7 @@ const MigrationTool: React.FC = () => {
 
       {/* Active Migration Progress */}
       {isActive && currentMigration && (
-        <Card className="p-4 border-blue-500/50 bg-blue-500/5">
+        <Card className="p-4 border-info/50 bg-info/5">
           <div className="space-y-4">
             <div className="flex items-start justify-between">
               <div className="flex items-center space-x-3">
@@ -210,7 +210,7 @@ const MigrationTool: React.FC = () => {
                       {currentMigration.progress.totalRecords && ` / ${currentMigration.progress.totalRecords}`}
                     </span>
                     {currentMigration.progress.recordsSkipped > 0 && (
-                      <span className="text-yellow-600">
+                      <span className="text-warning">
                         {t('settings.migration.skipped', { count: currentMigration.progress.recordsSkipped })}
                       </span>
                     )}
@@ -237,9 +237,9 @@ const MigrationTool: React.FC = () => {
           <StatusBanner
             variant={variant}
             icon={isSuccess ? (
-              <CheckCircle2 className="h-5 w-5 text-green-600 dark:text-green-400" />
+              <CheckCircle2 className="h-5 w-5 text-success" />
             ) : isCancelled ? (
-              <X className="h-5 w-5 text-amber-600 dark:text-amber-400" />
+              <X className="h-5 w-5 text-warning" />
             ) : undefined}
           >
             {isSuccess ? (
@@ -265,7 +265,7 @@ const MigrationTool: React.FC = () => {
       {onCooldown && !isActive && (
         <StatusBanner
           variant="info"
-          icon={<Clock className="h-5 w-5 text-blue-600 dark:text-blue-400" />}
+          icon={<Clock className="h-5 w-5 text-info" />}
         >
           {t('settings.migration.cooldownActive', { time: formatCooldownTime(cooldownRemainingMs) })}
         </StatusBanner>
@@ -325,9 +325,9 @@ const MigrationTool: React.FC = () => {
               >
                 <div className="flex items-center space-x-3">
                   {entry.status === 'completed' ? (
-                    <CheckCircle2 className="h-4 w-4 text-green-500" />
+                    <CheckCircle2 className="h-5 w-5 text-success" />
                   ) : (
-                    <AlertCircle className="h-4 w-4 text-red-500" />
+                    <AlertCircle className="h-5 w-5 text-destructive" />
                   )}
                   <div>
                     <p className="text-sm font-medium">
@@ -343,7 +343,7 @@ const MigrationTool: React.FC = () => {
                     {t('settings.migration.recordsCount', { count: entry.recordsProcessed })}
                   </p>
                   {entry.recordsSkipped > 0 && (
-                    <p className="text-xs text-yellow-600">
+                    <p className="text-xs text-warning">
                       {t('settings.migration.skipped', { count: entry.recordsSkipped })}
                     </p>
                   )}

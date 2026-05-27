@@ -5,6 +5,7 @@ import { useAuth } from './use-auth';
 import { apiFetch } from '@/lib/api';
 import { isPublicPage } from '@/utils/routes';
 import { getApiErrorMessage } from '@/utils/email-validation';
+import { isPanelRealtimeEnabled } from './use-realtime';
 
 type SettingsEnvelope<T> = {
   data: T;
@@ -64,7 +65,7 @@ export function usePlayer(uuid: string) {
       return res.json();
     },
     enabled: !!uuid,
-    staleTime: 1000,
+    staleTime: 30_000,
     refetchOnWindowFocus: true
   });
 }
@@ -83,7 +84,7 @@ export function useLinkedAccounts(uuid: string) {
       return res.json();
     },
     enabled: !!uuid,
-    staleTime: 1000,
+    staleTime: 30_000,
     refetchOnWindowFocus: true
   });
 }
@@ -185,7 +186,7 @@ export function useTicket(id: string) {
     enabled: !!id,
     retry: false,
     staleTime: 30000,
-    gcTime: 60000,
+    gcTime: 1000 * 60 * 10,
     refetchOnWindowFocus: true
   });
 }
@@ -243,6 +244,7 @@ export function useUpdateTicket() {
     onSuccess: (data) => {
       queryClient.invalidateQueries({ queryKey: ['/v1/panel/tickets', data._id] });
       queryClient.invalidateQueries({ queryKey: ['/v1/panel/tickets'] });
+      queryClient.invalidateQueries({ queryKey: ['/v1/panel/tickets/counts'] });
     }
   });
 }
@@ -403,7 +405,7 @@ export function useStaff() {
       }
       return res.json();
     },
-    staleTime: 1000 * 60,
+    staleTime: 1000 * 60 * 5,
   });
 }
 
@@ -678,21 +680,6 @@ export function useUpdateReplayRetentionSettings() {
   });
 }
 
-export function useStats() {
-  return useQuery({
-    queryKey: ['/v1/panel/stats'],
-    queryFn: async () => {
-      const res = await apiFetch('/v1/panel/stats');
-      if (!res.ok) {
-        throw new Error('Failed to fetch stats');
-      }
-      return res.json();
-    },
-    staleTime: 5 * 60 * 1000,
-    refetchOnWindowFocus: true,
-  });
-}
-
 export function useBillingStatus() {
   return useQuery({
     queryKey: ['/v1/panel/billing/status'],
@@ -865,7 +852,7 @@ export function usePanelTicket(id: string) {
     },
     enabled: !!id,
     staleTime: 30000,
-    gcTime: 60000,
+    gcTime: 1000 * 60 * 10,
     refetchOnWindowFocus: true
   });
 }
@@ -1205,7 +1192,6 @@ export function useAssignMinecraftPlayer() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['/v1/panel/staff'] });
-      queryClient.invalidateQueries({ queryKey: ['/v1/panel/staff/available-players'] });
     },
   });
 }
@@ -1279,7 +1265,7 @@ export function useDashboardAlerts() {
       return res.json() as Promise<SystemAlert[]>;
     },
     staleTime: 60 * 1000,
-    refetchOnWindowFocus: true,
+    refetchOnWindowFocus: false,
   });
 }
 
@@ -1396,7 +1382,8 @@ export function useTicketStatusCounts(options?: {
       return res.json() as Promise<{ open: number; closed: number }>;
     },
     staleTime: 30000,
-    refetchOnWindowFocus: true
+    refetchOnWindowFocus: true,
+    placeholderData: keepPreviousData,
   });
 }
 
@@ -1495,6 +1482,7 @@ export function usePlayerSearch(searchQuery: string, debounceMs: number = 300) {
 }
 
 export function useMigrationStatus() {
+  const realtimeEnabled = isPanelRealtimeEnabled();
   return useQuery({
     queryKey: ['/v1/panel/migration/status'],
     queryFn: async () => {
@@ -1504,7 +1492,7 @@ export function useMigrationStatus() {
       }
       return res.json();
     },
-    refetchInterval: (query) => {
+    refetchInterval: realtimeEnabled ? false : (query) => {
       const data = query.state.data;
       const currentMigration = data?.currentMigration;
       const isActive = currentMigration &&

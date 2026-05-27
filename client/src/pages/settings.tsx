@@ -622,7 +622,7 @@ const DraggableAppealFormFieldCard = ({
             <p className="text-sm font-medium">{field.label}</p>
             <div className="flex items-center gap-2 text-xs text-muted-foreground">
               <span>{getFieldTypeLabel(field.type)}</span>
-              {field.required && <span className="text-red-500">Required</span>}
+              {field.required && <span className="text-destructive">*</span>}
             </div>
           </div>
         </div>

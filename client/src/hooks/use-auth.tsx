@@ -1,4 +1,4 @@
-import { createContext, ReactNode, useContext, useState, useEffect } from "react";
+import { createContext, ReactNode, useCallback, useContext, useEffect, useMemo, useState } from "react";
 import { useLocation } from "wouter";
 import { useToast } from "@modl-gg/shared-web/hooks/use-toast";
 import { getApiUrl, getCurrentDomain } from "@/lib/api";
@@ -66,7 +66,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [isLoading, setIsLoading] = useState(true);
 
-  const fetchAuthenticatedUser = async (): Promise<User | null> => {
+  const fetchAuthenticatedUser = useCallback(async (): Promise<User | null> => {
     const response = await authFetch('/v1/panel/auth/me');
     if (!response.ok) {
       return null;
@@ -74,12 +74,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
     const userData = await response.json();
     return mapUserFromMeResponse(userData);
-  };
+  }, []);
 
-  const refreshUser = async () => {
+  const refreshUser = useCallback(async () => {
     const authenticatedUser = await fetchAuthenticatedUser();
     setUser(authenticatedUser);
-  };
+  }, [fetchAuthenticatedUser]);
 
   useEffect(() => {
     const checkSession = async () => {
@@ -96,16 +96,19 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     };
 
     checkSession();
-  }, []);
+  }, [fetchAuthenticatedUser]);
 
   useEffect(() => {
     const lang = user?.language || 'en';
+    const dateFormat = user?.dateFormat || 'MM/DD/YYYY';
     setDateLocale(lang);
-    setDateFormat(user?.dateFormat || 'MM/DD/YYYY');
-    i18n.changeLanguage(lang);
+    setDateFormat(dateFormat);
+    if (lang !== i18n.language) {
+      i18n.changeLanguage(lang);
+    }
   }, [user?.language, user?.dateFormat]);
 
-  const requestEmailVerification = async (email: string): Promise<string | undefined> => {
+  const requestEmailVerification = useCallback(async (email: string): Promise<string | undefined> => {
     try {
       const response = await authFetch('/v1/panel/auth/send-email-code', {
         method: 'POST',
@@ -144,9 +147,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       });
       return undefined;
     }
-  };
+  }, [toast]);
 
-  const login = async (email: string, code: string): Promise<boolean> => {
+  const login = useCallback(async (email: string, code: string): Promise<boolean> => {
     setIsLoading(true);
     try {
       const response = await authFetch('/v1/panel/auth/verify-email-code', {
@@ -207,9 +210,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setIsLoading(false);
       return false;
     }
-  };
+  }, [fetchAuthenticatedUser, toast]);
 
-  const checkPasskeyOptions = async (email: string): Promise<PasskeyLoginOptions> => {
+  const checkPasskeyOptions = useCallback(async (email: string): Promise<PasskeyLoginOptions> => {
     try {
       const response = await authFetch('/v1/panel/auth/webauthn/login/options', {
         method: 'POST',
@@ -228,9 +231,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     } catch {
       return { hasPasskeys: false };
     }
-  };
+  }, []);
 
-  const loginWithPasskey = async (challengeId: string, optionsJson: any): Promise<boolean> => {
+  const loginWithPasskey = useCallback(async (challengeId: string, optionsJson: any): Promise<boolean> => {
     setIsLoading(true);
     try {
       const optionsJSON = optionsJson?.publicKey ?? optionsJson;
@@ -289,9 +292,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setIsLoading(false);
       return false;
     }
-  };
+  }, [fetchAuthenticatedUser, toast]);
 
-  const loginWithDiscoverablePasskey = async (): Promise<boolean> => {
+  const loginWithDiscoverablePasskey = useCallback(async (): Promise<boolean> => {
     setIsLoading(true);
     try {
       const startRes = await authFetch('/v1/panel/auth/webauthn/login/start', {
@@ -364,9 +367,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setIsLoading(false);
       return false;
     }
-  };
+  }, [fetchAuthenticatedUser, toast]);
 
-  const logout = async () => {
+  const logout = useCallback(async () => {
     setIsLoading(true);
     let shouldRedirectToAuth = false;
 
@@ -424,22 +427,32 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         navigate('/auth');
       }
     }
-  };
+  }, [fetchAuthenticatedUser, navigate, toast]);
+
+  const contextValue = useMemo<AuthContextType>(() => ({
+    user,
+    isLoading,
+    refreshUser,
+    login,
+    logout,
+    requestEmailVerification,
+    checkPasskeyOptions,
+    loginWithPasskey,
+    loginWithDiscoverablePasskey,
+  }), [
+    user,
+    isLoading,
+    refreshUser,
+    login,
+    logout,
+    requestEmailVerification,
+    checkPasskeyOptions,
+    loginWithPasskey,
+    loginWithDiscoverablePasskey,
+  ]);
 
   return (
-    <AuthContext.Provider
-      value={{
-        user,
-        isLoading,
-        refreshUser,
-        login,
-        logout,
-        requestEmailVerification,
-        checkPasskeyOptions,
-        loginWithPasskey,
-        loginWithDiscoverablePasskey,
-      }}
-    >
+    <AuthContext.Provider value={contextValue}>
       {children}
     </AuthContext.Provider>
   );

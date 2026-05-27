@@ -100,7 +100,7 @@ export function ClickablePlayer({
   return (
     <span
       className={cn(
-        'cursor-pointer hover:underline text-blue-600 hover:text-blue-800 dark:text-blue-400 dark:hover:text-blue-300',
+        'cursor-pointer hover:underline text-primary hover:text-primary/80',
         'inline-flex items-center gap-1',
         !identifier && 'cursor-default hover:no-underline text-muted-foreground',
         className

@@ -29,6 +29,7 @@ import MediaUpload from '@/components/MediaUpload';
 import { getCreatorIdentifier } from '@/utils/creator-verification';
 import { useMediaUpload } from '@/hooks/use-media-upload';
 import { getApiErrorMessage, isValidEmail, normalizeEmail } from '@/utils/email-validation';
+import { Notice } from '@/components/ui/notice';
 
 // Map URL types to internal ticket types
 const typeMapping: Record<string, string> = {
@@ -413,20 +414,10 @@ const SubmitTicketPage = () => {
 
     if (!formConfig || !formConfig.fields) {
       return (
-        <div className="text-center py-8 border-2 border-dashed border-red-200 dark:border-red-800 bg-red-50 dark:bg-red-950 rounded-lg">
-          <div className="text-red-600 dark:text-red-400 mb-4">
-            <svg className="h-12 w-12 mx-auto" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L4.082 15.5c-.77.833.192 2.5 1.732 2.5z" />
-            </svg>
-          </div>
-          <h3 className="text-lg font-medium text-red-800 dark:text-red-300 mb-2">{t('submitTicket.formNotConfigured')}</h3>
-          <p className="text-red-700 dark:text-red-400 mb-4">
-            {t('submitTicket.noFormConfig', { type: effectiveType })}
-          </p>
-          <p className="text-sm text-red-600 dark:text-red-500">
-            {t('submitTicket.contactAdmin')}
-          </p>
-        </div>
+        <Notice variant="error" title={t('submitTicket.formNotConfigured')}>
+          <p className="mb-2">{t('submitTicket.noFormConfig', { type: effectiveType })}</p>
+          <p className="text-xs opacity-80">{t('submitTicket.contactAdmin')}</p>
+        </Notice>
       );
     }
 
@@ -458,17 +449,9 @@ const SubmitTicketPage = () => {
 
     if (fields.length === 0) {
       return (
-        <div className="text-center py-8 border-2 border-dashed border-yellow-200 dark:border-yellow-800 bg-yellow-50 dark:bg-yellow-950 rounded-lg">
-          <div className="text-yellow-600 dark:text-yellow-400 mb-4">
-            <svg className="h-12 w-12 mx-auto" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L4.082 15.5c-.77.833.192 2.5 1.732 2.5z" />
-            </svg>
-          </div>
-          <h3 className="text-lg font-medium text-yellow-800 dark:text-yellow-300 mb-2">{t('submitTicket.emptyFormConfig')}</h3>
-          <p className="text-yellow-700 dark:text-yellow-400 mb-4">
-            {t('submitTicket.emptyFormConfigDesc', { type: effectiveType })}
-          </p>
-        </div>
+        <Notice variant="warning" title={t('submitTicket.emptyFormConfig')}>
+          {t('submitTicket.emptyFormConfigDesc', { type: effectiveType })}
+        </Notice>
       );
     }
 
@@ -857,21 +840,9 @@ const SubmitTicketPage = () => {
       <div className="min-h-screen bg-background p-6">
         <div className="max-w-5xl mx-auto">
           {/* Security Disclaimer */}
-          <div className="bg-yellow-50 dark:bg-yellow-950 border border-yellow-200 dark:border-yellow-800 rounded-lg p-4 mb-6">
-            <div className="flex items-start gap-3">
-              <div className="text-yellow-600 dark:text-yellow-400 mt-0.5">
-                <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
-                  <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clipRule="evenodd" />
-                </svg>
-              </div>
-              <div>
-                <h3 className="font-medium text-yellow-800 dark:text-yellow-300">{t('submitTicket.securityNotice')}</h3>
-                <p className="text-sm text-yellow-700 dark:text-yellow-400 mt-1">
-                  {t('submitTicket.securityNoticeDesc')}
-                </p>
-              </div>
-            </div>
-          </div>
+          <Notice variant="warning" title={t('submitTicket.securityNotice')} className="mb-6">
+            {t('submitTicket.securityNoticeDesc')}
+          </Notice>
 
           <Card className="mb-6 shadow-card">
             <CardHeader>

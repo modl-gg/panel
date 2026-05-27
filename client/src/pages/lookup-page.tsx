@@ -98,6 +98,13 @@ const LookupPage = () => {
           className="pl-10 pr-10"
           value={searchQuery}
           onChange={(e) => setSearchQuery(e.target.value)}
+          onKeyDown={(e) => {
+            if (e.key === 'Enter' && filteredPlayers.length > 0) {
+              e.preventDefault();
+              handlePlayerSelect(filteredPlayers[0]);
+            }
+          }}
+          autoFocus
           autoCorrect="off"
           autoCapitalize="off"
         />

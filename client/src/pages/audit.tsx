@@ -1,4 +1,4 @@
-import { useState, useMemo, useEffect } from 'react';
+import { useState, useMemo, useEffect, useCallback } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
   ChevronDown,
@@ -25,12 +25,14 @@ import {
   ChevronLeft,
   ChevronRight
 } from 'lucide-react';
-import { getApiUrl, getCurrentDomain, apiFetch } from '@/lib/api';
+import { apiFetch } from '@/lib/api';
 import { Button } from '@modl-gg/shared-web/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@modl-gg/shared-web/components/ui/card';
 import { Badge } from '@modl-gg/shared-web/components/ui/badge';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@modl-gg/shared-web/components/ui/select';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogPortal } from '@modl-gg/shared-web/components/ui/dialog';
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@modl-gg/shared-web/components/ui/alert-dialog';
+import { Textarea } from '@modl-gg/shared-web/components/ui/textarea';
 import { subDays } from 'date-fns';
 import { formatDateOnly } from '@/utils/date-utils';
 import { useLogs } from '@/hooks/use-data';
@@ -165,55 +167,37 @@ const formatDurationDetailed = (date: Date) => {
 
 // API functions
 const fetchAnalyticsOverview = async () => {
-  const response = await fetch(getApiUrl('/v1/panel/analytics/overview'), {
-    credentials: 'include',
-    headers: { 'X-Server-Domain': getCurrentDomain() }
-  });
+  const response = await apiFetch('/v1/panel/analytics/overview');
   if (!response.ok) throw new Error('Failed to fetch analytics overview');
   return response.json();
 };
 
 const fetchStaffPerformance = async (period = '30d') => {
-  const response = await fetch(getApiUrl(`/v1/panel/audit/staff-performance?period=${period}`), {
-    credentials: 'include',
-    headers: { 'X-Server-Domain': getCurrentDomain() }
-  });
+  const response = await apiFetch(`/v1/panel/audit/staff-performance?period=${period}`);
   if (!response.ok) throw new Error('Failed to fetch staff performance');
   return response.json();
 };
 
 const fetchTicketAnalytics = async (period = '30d') => {
-  const response = await fetch(getApiUrl(`/v1/panel/analytics/tickets?period=${period}`), {
-    credentials: 'include',
-    headers: { 'X-Server-Domain': getCurrentDomain() }
-  });
+  const response = await apiFetch(`/v1/panel/analytics/tickets?period=${period}`);
   if (!response.ok) throw new Error('Failed to fetch ticket analytics');
   return response.json();
 };
 
 const fetchPunishmentAnalytics = async (period = '30d') => {
-  const response = await fetch(getApiUrl(`/v1/panel/analytics/punishments?period=${period}`), {
-    credentials: 'include',
-    headers: { 'X-Server-Domain': getCurrentDomain() }
-  });
+  const response = await apiFetch(`/v1/panel/analytics/punishments?period=${period}`);
   if (!response.ok) throw new Error('Failed to fetch punishment analytics');
   return response.json();
 };
 
 const fetchPlayerActivity = async (period = '30d') => {
-  const response = await fetch(getApiUrl(`/v1/panel/analytics/player-activity?period=${period}`), {
-    credentials: 'include',
-    headers: { 'X-Server-Domain': getCurrentDomain() }
-  });
+  const response = await apiFetch(`/v1/panel/analytics/player-activity?period=${period}`);
   if (!response.ok) throw new Error('Failed to fetch player activity');
   return response.json();
 };
 
 const fetchAuditLogsAnalytics = async (period = '7d') => {
-  const response = await fetch(getApiUrl(`/v1/panel/analytics/audit-logs?period=${period}`), {
-    credentials: 'include',
-    headers: { 'X-Server-Domain': getCurrentDomain() }
-  });
+  const response = await apiFetch(`/v1/panel/analytics/audit-logs?period=${period}`);
   if (!response.ok) throw new Error('Failed to fetch audit logs analytics');
   return response.json();
 };
@@ -239,10 +223,7 @@ interface ActivePunishment {
 }
 
 const fetchPunishmentsList = async (status: string): Promise<ActivePunishment[]> => {
-  const response = await fetch(getApiUrl(`/v1/panel/audit/punishments/active?status=${status}`), {
-    credentials: 'include',
-    headers: { 'X-Server-Domain': getCurrentDomain() }
-  });
+  const response = await apiFetch(`/v1/panel/audit/punishments/active?status=${status}`);
   if (!response.ok) throw new Error('Failed to fetch punishments');
   return response.json();
 };
@@ -254,7 +235,7 @@ const CustomTooltip = ({ active, payload, label, formatValue, formatName }: any)
       <div className="bg-background border border-border rounded-lg p-3 shadow-lg z-50 pointer-events-none">
         {label && <p className="text-sm font-medium mb-2">{label}</p>}
         {payload.map((entry: any, index: number) => (
-          <div key={index} className="flex items-center gap-2 text-sm">
+          <div key={entry?.dataKey ?? entry?.name ?? index} className="flex items-center gap-2 text-sm">
             <div 
               className="w-3 h-3 rounded-full flex-shrink-0" 
               style={{ backgroundColor: entry.color }}
@@ -441,6 +422,7 @@ const BulkPunishmentActionsModal = ({ activePunishments, onSuccess }: {
   const [isPermanent, setIsPermanent] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [open, setOpen] = useState(false);
+  const [confirmOpen, setConfirmOpen] = useState(false);
 
   // Group active punishments by type with counts + preview count in single pass
   const { typeGroups, previewCount } = useMemo(() => {
@@ -481,7 +463,7 @@ const BulkPunishmentActionsModal = ({ activePunishments, onSuccess }: {
     return durationValue * (multipliers[durationUnit] || multipliers.days);
   };
 
-  const handleSubmit = async () => {
+  const handleSubmit = () => {
     if (selectedTypes.size === 0) {
       toast({ title: 'No types selected', description: 'Select at least one punishment type.', variant: 'destructive' });
       return;
@@ -490,12 +472,11 @@ const BulkPunishmentActionsModal = ({ activePunishments, onSuccess }: {
       toast({ title: 'Reason required', description: 'Please provide a reason.', variant: 'destructive' });
       return;
     }
+    setConfirmOpen(true);
+  };
 
-    const actionLabel = operation === 'pardon' ? 'pardon' : 'set expiration on';
-    if (!window.confirm(`Are you sure you want to ${actionLabel} ${previewCount} punishment(s)? This cannot be undone.`)) {
-      return;
-    }
-
+  const performSubmit = async () => {
+    setConfirmOpen(false);
     setIsSubmitting(true);
     try {
       const endpoint = operation === 'pardon'
@@ -667,6 +648,25 @@ const BulkPunishmentActionsModal = ({ activePunishments, onSuccess }: {
           </Button>
         </div>
       </DialogContent>
+      <AlertDialog open={confirmOpen} onOpenChange={setConfirmOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Confirm Bulk Action</AlertDialogTitle>
+            <AlertDialogDescription>
+              {`Are you sure you want to ${operation === 'pardon' ? 'pardon' : 'set expiration on'} ${previewCount} punishment(s)? This cannot be undone.`}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={performSubmit}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              Confirm
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </Dialog>
   );
 };
@@ -679,6 +679,13 @@ const StaffDetailModal = ({ staff, isOpen, onClose, initialPeriod = '30d' }: {
   initialPeriod?: string
 }) => {
   const [selectedPeriod, setSelectedPeriod] = useState(initialPeriod);
+  const [rollbackDialog, setRollbackDialog] = useState<{ open: boolean; punishmentId: string | null; summary: string; reason: string; submitting: boolean }>({
+    open: false,
+    punishmentId: null,
+    summary: '',
+    reason: '',
+    submitting: false,
+  });
   const { toast } = useToast();
   const { t } = useTranslation();
   const { openPlayerWindow, windows } = usePlayerWindow();
@@ -709,6 +716,78 @@ const StaffDetailModal = ({ staff, isOpen, onClose, initialPeriod = '30d' }: {
   const recentPunishments = staffDetails?.punishments || [];
   const recentTickets = staffDetails?.tickets || [];
   const evidenceCount = staffDetails?.evidenceUploads || 0;
+
+  const openRollbackDialog = useCallback((punishmentId: string, summary: string) => {
+    setRollbackDialog({ open: true, punishmentId, summary, reason: '', submitting: false });
+  }, []);
+
+  const handleConfirmRollback = useCallback(async () => {
+    const { punishmentId, reason } = rollbackDialog;
+    if (!punishmentId || !reason.trim()) return;
+    setRollbackDialog(prev => ({ ...prev, submitting: true }));
+    try {
+      const response = await apiFetch(`/v1/panel/audit/punishments/${punishmentId}/rollback`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ reason: reason.trim() })
+      });
+
+      const responseData = await response.json();
+
+      if (!response.ok) {
+        throw new Error(responseData.error || `HTTP ${response.status}: ${response.statusText}`);
+      }
+
+      toast({
+        title: t('audit.punishmentRolledBack'),
+        description: t('audit.punishmentRolledBackSuccess', { message: responseData.message })
+      });
+      setRollbackDialog({ open: false, punishmentId: null, summary: '', reason: '', submitting: false });
+      refetch();
+    } catch (error) {
+      console.error('Rollback error:', error);
+      toast({
+        title: t('audit.rollbackFailed'),
+        description: t('audit.rollbackFailedWithError', { error: error instanceof Error ? error.message : t('audit.unknownError') }),
+        variant: 'destructive'
+      });
+      setRollbackDialog(prev => ({ ...prev, submitting: false }));
+    }
+  }, [rollbackDialog, refetch, toast, t]);
+
+  // Format helpers hoisted out of the .map for the recent punishments table
+  const formatRecentPunishmentDuration = useCallback((duration: any): string => {
+    const durationNum = typeof duration === 'number' ? duration : Number(duration);
+    if (!durationNum || durationNum === -1 || isNaN(durationNum)) return t('audit.permanent');
+
+    const days = Math.floor(durationNum / (1000 * 60 * 60 * 24));
+    const hours = Math.floor((durationNum % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
+    const minutes = Math.floor((durationNum % (1000 * 60 * 60)) / (1000 * 60));
+
+    if (days > 0) return `${days}d ${hours}h`;
+    if (hours > 0) return `${hours}h ${minutes}m`;
+    return `${minutes}m`;
+  }, [t]);
+
+  const getRecentPunishmentStatus = useCallback((punishment: any) => {
+    const hasPardon = punishment.modifications?.some((mod: any) =>
+      mod.type === 'MANUAL_PARDON' ||
+      mod.type === 'APPEAL_ACCEPT' ||
+      mod.type === 'Pardoned' ||
+      mod.type === 'Appeal Accepted' ||
+      mod.type === 'Appeal Approved'
+    );
+
+    if (hasPardon || punishment.rolledBack) {
+      return { status: t('audit.pardoned'), isActive: false, variant: 'outline' as const, color: 'bg-green-100 dark:bg-green-900 text-green-800 dark:text-green-200 border-green-300 dark:border-green-700' };
+    }
+
+    if (punishment.active === false) {
+      return { status: t('status.inactive'), isActive: false, variant: 'outline' as const, color: 'bg-gray-100 dark:bg-gray-800 text-gray-800 dark:text-gray-200 border-gray-300 dark:border-gray-700' };
+    }
+
+    return { status: t('status.active'), isActive: true, variant: 'outline' as const, color: 'bg-red-100 dark:bg-red-900 text-red-800 dark:text-red-200 border-red-300 dark:border-red-700' };
+  }, [t]);
 
   return (
     <Dialog
@@ -891,46 +970,11 @@ const StaffDetailModal = ({ staff, isOpen, onClose, initialPeriod = '30d' }: {
                     </thead>
                     <tbody>
                       {recentPunishments.length > 0 ? recentPunishments.map((punishment: any, index: number) => {
-                        // Format duration helper function
-                        const formatDuration = (duration: any) => {
-                          const durationNum = typeof duration === 'number' ? duration : Number(duration);
-                          if (!durationNum || durationNum === -1 || isNaN(durationNum)) return t('audit.permanent');
-                          
-                          const days = Math.floor(durationNum / (1000 * 60 * 60 * 24));
-                          const hours = Math.floor((durationNum % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
-                          const minutes = Math.floor((durationNum % (1000 * 60 * 60)) / (1000 * 60));
-                          
-                          if (days > 0) return `${days}d ${hours}h`;
-                          if (hours > 0) return `${hours}h ${minutes}m`;
-                          return `${minutes}m`;
-                        };
-
-                        // Determine punishment status
-                        const getPunishmentStatus = (punishment: any) => {
-                          // Check for pardoned/appeal accepted modifications
-                          const hasPardon = punishment.modifications?.some((mod: any) => 
-                            mod.type === 'MANUAL_PARDON' || 
-                            mod.type === 'APPEAL_ACCEPT' || 
-                            mod.type === 'Pardoned' || 
-                            mod.type === 'Appeal Accepted' ||
-                            mod.type === 'Appeal Approved'
-                          );
-                          
-                          if (hasPardon || punishment.rolledBack) {
-                            return { status: t('audit.pardoned'), isActive: false, variant: 'outline' as const, color: 'bg-green-100 dark:bg-green-900 text-green-800 dark:text-green-200 border-green-300 dark:border-green-700' };
-                          }
-
-                          if (punishment.active === false) {
-                            return { status: t('status.inactive'), isActive: false, variant: 'outline' as const, color: 'bg-gray-100 dark:bg-gray-800 text-gray-800 dark:text-gray-200 border-gray-300 dark:border-gray-700' };
-                          }
-
-                          return { status: t('status.active'), isActive: true, variant: 'outline' as const, color: 'bg-red-100 dark:bg-red-900 text-red-800 dark:text-red-200 border-red-300 dark:border-red-700' };
-                        };
-
-                        const statusInfo = getPunishmentStatus(punishment);
+                        const statusInfo = getRecentPunishmentStatus(punishment);
+                        const punishmentRowKey = punishment.id || `recent-punishment-${index}`;
 
                         return (
-                          <tr key={index} className="border-b">
+                          <tr key={punishmentRowKey} className="border-b">
                             <td className="p-2 font-medium">
                               <Button
                                 variant="link"
@@ -1000,7 +1044,7 @@ const StaffDetailModal = ({ staff, isOpen, onClose, initialPeriod = '30d' }: {
                                 )}
                               </div>
                             </td>
-                            <td className="p-2">{formatDuration(punishment.duration)}</td>
+                            <td className="p-2">{formatRecentPunishmentDuration(punishment.duration)}</td>
                             <td className="p-2">{formatDateOnly(new Date(punishment.issued))}</td>
                             <td className="p-2">
                               <div className="flex items-center gap-2">
@@ -1012,39 +1056,10 @@ const StaffDetailModal = ({ staff, isOpen, onClose, initialPeriod = '30d' }: {
                                     variant="outline"
                                     size="sm"
                                     className="text-xs h-5 px-1"
-                                    onClick={async () => {
-                                      try {
-                                                                          
-                                        const csrfFetch = apiFetch;
-                                        const response = await csrfFetch(`/v1/panel/audit/punishment/${punishment.id}/rollback`, {
-                                          method: 'POST',
-                                          headers: { 'Content-Type': 'application/json' },
-                                          body: JSON.stringify({ reason: 'Staff rollback from analytics panel' })
-                                        });
-                                        
-                                        const responseData = await response.json();
-
-                                        if (!response.ok) {
-                                          throw new Error(responseData.error || `HTTP ${response.status}: ${response.statusText}`);
-                                        }
-                                        
-                                        // Show success message
-                                        toast({
-                                          title: t('audit.punishmentRolledBack'),
-                                          description: t('audit.punishmentRolledBackSuccess', { message: responseData.message })
-                                        });
-
-                                        // Refresh the modal data
-                                        refetch();
-                                      } catch (error) {
-                                        console.error('Rollback error:', error);
-                                        toast({
-                                          title: t('audit.rollbackFailed'),
-                                          description: t('audit.rollbackFailedWithError', { error: error instanceof Error ? error.message : t('audit.unknownError') }),
-                                          variant: "destructive"
-                                        });
-                                      }
-                                    }}
+                                    onClick={() => openRollbackDialog(
+                                      punishment.id,
+                                      `${punishment.type || t('audit.unknown')} — ${punishment.playerName || t('audit.unknown')}`
+                                    )}
                                     title={t('audit.rollbackThisPunishment')}
                                   >
                                     <Undo2 className="h-3 w-3" />
@@ -1087,13 +1102,14 @@ const StaffDetailModal = ({ staff, isOpen, onClose, initialPeriod = '30d' }: {
                     <tbody>
                       {recentTickets && recentTickets.length > 0 ? recentTickets.map((ticket: any, index: number) => {
                         const timeSinceOpened = formatDurationDetailed(new Date(ticket.created || ticket.createdAt || ticket.timestamp));
-                        const timeSinceLastActivity = ticket.lastActivity ? formatDurationDetailed(new Date(ticket.lastActivity)) : 
+                        const timeSinceLastActivity = ticket.lastActivity ? formatDurationDetailed(new Date(ticket.lastActivity)) :
                                                      ticket.updatedAt ? formatDurationDetailed(new Date(ticket.updatedAt)) : '--';
                         const normalizedStatus = normalizeTicketStatus(ticket.status);
                         const statusLabel = formatTicketStatusLabel(ticket.status);
-                        
+                        const ticketRowKey = ticket.ticketId || ticket.id || `recent-ticket-${index}`;
+
                         return (
-                          <tr key={index} className="border-b">
+                          <tr key={ticketRowKey} className="border-b">
                             <td className="p-2 font-medium">
                               <Button
                                 variant="link"
@@ -1129,6 +1145,42 @@ const StaffDetailModal = ({ staff, isOpen, onClose, initialPeriod = '30d' }: {
           </div>
         </div>
       </DialogContent>
+      <AlertDialog
+        open={rollbackDialog.open}
+        onOpenChange={(o) => {
+          if (!o) setRollbackDialog({ open: false, punishmentId: null, summary: '', reason: '', submitting: false });
+        }}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>{t('audit.rollbackThisPunishment')}</AlertDialogTitle>
+            <AlertDialogDescription>{rollbackDialog.summary}</AlertDialogDescription>
+          </AlertDialogHeader>
+          <div className="space-y-2">
+            <label className="text-sm font-medium">{t('audit.reason') || 'Reason'}</label>
+            <Textarea
+              value={rollbackDialog.reason}
+              onChange={(e) => setRollbackDialog(prev => ({ ...prev, reason: e.target.value }))}
+              placeholder={t('audit.reason') || 'Reason'}
+              className="min-h-[80px]"
+              maxLength={500}
+            />
+          </div>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={rollbackDialog.submitting}>{t('audit.cancel') || 'Cancel'}</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={(e) => {
+                e.preventDefault();
+                handleConfirmRollback();
+              }}
+              disabled={!rollbackDialog.reason.trim() || rollbackDialog.submitting}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              {rollbackDialog.submitting ? <RefreshCw className="h-4 w-4 animate-spin" /> : t('audit.confirm') || 'Confirm'}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </Dialog>
   );
 };
@@ -1168,10 +1220,7 @@ const StaffDetailRow = ({ staff, period }: { staff: StaffMember, period: string 
 
 // API function to fetch detailed staff data
 const fetchStaffDetails = async (username: string, period: string) => {
-  const response = await fetch(getApiUrl(`/v1/panel/audit/staff/${username}/details?period=${period}`), {
-    credentials: 'include',
-    headers: { 'X-Server-Domain': getCurrentDomain() }
-  });
+  const response = await apiFetch(`/v1/panel/audit/staff/${username}/details?period=${period}`);
   if (!response.ok) throw new Error('Failed to fetch staff details');
   return response.json();
 };
@@ -1368,26 +1417,35 @@ const ActivePunishmentsCard = () => {
   const pageSize = 20;
   const { openPlayerWindow } = usePlayerWindow();
 
-  const { data: activePunishments = [], isLoading, refetch } = useQuery({
+  const { data: activePunishments = [], isLoading, refetch, dataUpdatedAt } = useQuery({
     queryKey: ['punishments-list', statusFilter],
     queryFn: () => fetchPunishmentsList(statusFilter),
-    staleTime: 5 * 60 * 1000
+    staleTime: 5 * 60 * 1000,
+    select: (rows: ActivePunishment[]): (ActivePunishment & { issuedMs: number; startedMs: number })[] =>
+      rows.map(p => ({
+        ...p,
+        issuedMs: p.issued ? new Date(p.issued).getTime() : 0,
+        startedMs: p.started ? new Date(p.started).getTime() : 0,
+      })),
   });
 
-  // Extract unique staff names and categories for filter options
+  // Extract unique staff names and categories for filter options.
+  // Dependency on dataUpdatedAt avoids rebuilds on identical-data refetches.
   const staffNames = useMemo(() => {
     const names = new Set(activePunishments.map(p => p.staffName));
     return Array.from(names).sort();
-  }, [activePunishments]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [dataUpdatedAt]);
 
   const punishmentTypes = useMemo(() => {
     const types = new Set(activePunishments.map(p => p.type));
     return Array.from(types).sort();
-  }, [activePunishments]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [dataUpdatedAt]);
 
   // Filter and sort
   const filteredPunishments = useMemo(() => {
-    let filtered = [...activePunishments];
+    let filtered = activePunishments.slice();
 
     if (staffFilter !== 'all') {
       filtered = filtered.filter(p => p.staffName === staffFilter);
@@ -1405,20 +1463,20 @@ const ActivePunishmentsCard = () => {
       let valA: number, valB: number;
       switch (sortBy) {
         case 'issued':
-          valA = new Date(a.issued).getTime();
-          valB = new Date(b.issued).getTime();
+          valA = a.issuedMs;
+          valB = b.issuedMs;
           break;
         case 'started':
-          valA = a.started ? new Date(a.started).getTime() : 0;
-          valB = b.started ? new Date(b.started).getTime() : 0;
+          valA = a.startedMs;
+          valB = b.startedMs;
           break;
         case 'duration':
           valA = a.duration ?? -1;
           valB = b.duration ?? -1;
           break;
         default:
-          valA = new Date(a.issued).getTime();
-          valB = new Date(b.issued).getTime();
+          valA = a.issuedMs;
+          valB = b.issuedMs;
       }
       return sortDir === 'desc' ? valB - valA : valA - valB;
     });
@@ -1765,6 +1823,9 @@ const AuditLog = () => {
 
   const { refetch, isRefetching } = useLogs();
 
+  // All analytics queries stay always-on: the top stat cards, the staff "active"
+  // subtitle, and the combined metrics overview chart depend on values from each
+  // of these queries regardless of which section (if any) is expanded.
   const { data: analyticsOverview } = useQuery({
     queryKey: ['analytics-overview'],
     queryFn: fetchAnalyticsOverview,
@@ -1774,25 +1835,25 @@ const AuditLog = () => {
   const { data: staffPerformanceData = [] } = useQuery({
     queryKey: ['staff-performance', analyticsPeriod],
     queryFn: () => fetchStaffPerformance(analyticsPeriod),
-    staleTime: 5 * 60 * 1000
+    staleTime: 5 * 60 * 1000,
   });
 
-  const { data: punishmentAnalytics } = useQuery({
+  const { data: punishmentAnalytics, dataUpdatedAt: punishmentUpdatedAt } = useQuery({
     queryKey: ['punishment-analytics', analyticsPeriod],
     queryFn: () => fetchPunishmentAnalytics(analyticsPeriod),
-    staleTime: 5 * 60 * 1000
+    staleTime: 5 * 60 * 1000,
   });
 
-  const { data: playerActivity } = useQuery({
+  const { data: playerActivity, dataUpdatedAt: playerActivityUpdatedAt } = useQuery({
     queryKey: ['player-activity', analyticsPeriod],
     queryFn: () => fetchPlayerActivity(analyticsPeriod),
-    staleTime: 5 * 60 * 1000
+    staleTime: 5 * 60 * 1000,
   });
 
-  const { data: ticketAnalytics } = useQuery({
+  const { data: ticketAnalytics, dataUpdatedAt: ticketUpdatedAt } = useQuery({
     queryKey: ['ticket-analytics', analyticsPeriod],
     queryFn: () => fetchTicketAnalytics(analyticsPeriod),
-    staleTime: 5 * 60 * 1000
+    staleTime: 5 * 60 * 1000,
   });
 
   // Combine all daily data for the metrics chart
@@ -1836,7 +1897,22 @@ const AuditLog = () => {
       }
       return a.date.localeCompare(b.date);
     });
-  }, [ticketAnalytics, punishmentAnalytics, playerActivity]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [ticketUpdatedAt, punishmentUpdatedAt, playerActivityUpdatedAt]);
+
+  const maxLoginsByCountry = useMemo(() => {
+    const list = playerActivity?.loginsByCountry || [];
+    if (list.length === 0) return 0;
+    let max = 0;
+    for (const item of list as Array<{ count: number }>) {
+      if (item.count > max) max = item.count;
+    }
+    return max;
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [playerActivityUpdatedAt]);
+
+  // Memoize a single CustomTooltip element used across many charts.
+  const customTooltipEl = useMemo(() => <CustomTooltip />, []);
 
   return (
     <PageContainer>
@@ -2210,7 +2286,7 @@ const AuditLog = () => {
                               <CartesianGrid strokeDasharray="3 3" className="opacity-30" />
                               <XAxis dataKey="date" className="text-muted-foreground" fontSize={12} />
                               <YAxis className="text-muted-foreground" fontSize={12} />
-                              <Tooltip content={<CustomTooltip />} />
+                              <Tooltip content={customTooltipEl} />
                               <Area type="monotone" dataKey="logins" stroke="#10b981" fill="#10b981" fillOpacity={0.3} dot={false} activeDot={false} name="Logins" />
                               <Area type="monotone" dataKey="uniquePlayers" stroke="#3b82f6" fill="#3b82f6" fillOpacity={0.3} dot={false} activeDot={false} name="Unique Players" />
                             </AreaChart>
@@ -2234,14 +2310,14 @@ const AuditLog = () => {
                         ) : (
                           <div className="space-y-2 py-4">
                             {playerActivity.loginsByCountry.slice(0, 8).map((country: any, index: number) => (
-                              <div key={index} className="flex items-center justify-between">
+                              <div key={country.country || `country-${index}`} className="flex items-center justify-between">
                                 <span>{country.country}</span>
                                 <div className="flex items-center gap-2">
                                   <div className="w-20 bg-gray-200 dark:bg-gray-700 rounded-full h-2">
                                     <div
                                       className="bg-blue-600 h-2 rounded-full"
                                       style={{
-                                        width: `${(country.count / Math.max(...playerActivity.loginsByCountry.map((c: any) => c.count))) * 100}%`
+                                        width: `${maxLoginsByCountry > 0 ? (country.count / maxLoginsByCountry) * 100 : 0}%`
                                       }}
                                     />
                                   </div>

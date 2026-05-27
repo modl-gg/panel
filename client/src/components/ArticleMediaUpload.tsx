@@ -1,11 +1,12 @@
 import React, { useState } from 'react';
-import { Image as ImageIcon, Upload, Copy, Check, Trash2 } from 'lucide-react';
+import { Image as ImageIcon, Upload, Copy, Check, Trash2, Loader2 } from 'lucide-react';
 import { Button } from '@modl-gg/shared-web/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@modl-gg/shared-web/components/ui/card';
 import { Badge } from '@modl-gg/shared-web/components/ui/badge';
 import { useToast } from '@modl-gg/shared-web/hooks/use-toast';
 import { Input } from '@modl-gg/shared-web/components/ui/input';
 import { Label } from '@modl-gg/shared-web/components/ui/label';
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@modl-gg/shared-web/components/ui/alert-dialog';
 import MediaUpload from './MediaUpload';
 import { useMediaUpload } from '@/hooks/use-media-upload';
 import { formatFileSize } from '@/utils/file-utils';
@@ -42,6 +43,7 @@ export function ArticleMediaUpload({
   const { t } = useTranslation();
   const [media, setMedia] = useState<ArticleMedia[]>(existingMedia);
   const [copiedUrl, setCopiedUrl] = useState<string | null>(null);
+  const [deletingIds, setDeletingIds] = useState<Set<string>>(new Set());
   const { config, deleteMedia } = useMediaUpload();
   const { toast } = useToast();
 
@@ -71,6 +73,11 @@ export function ArticleMediaUpload({
   };
 
   const handleDeleteMedia = async (mediaItem: ArticleMedia) => {
+    setDeletingIds(prev => {
+      const next = new Set(prev);
+      next.add(mediaItem.id);
+      return next;
+    });
     try {
       await deleteMedia(mediaItem.key);
       const updatedMedia = media.filter(m => m.id !== mediaItem.id);
@@ -86,6 +93,12 @@ export function ArticleMediaUpload({
         title: t('upload.deleteFailed'),
         description: t('upload.deleteMediaFailed'),
         variant: "destructive",
+      });
+    } finally {
+      setDeletingIds(prev => {
+        const next = new Set(prev);
+        next.delete(mediaItem.id);
+        return next;
       });
     }
   };
@@ -200,14 +213,40 @@ export function ArticleMediaUpload({
                     )}
                     
                     {!readonly && (
-                      <Button
-                        variant="destructive"
-                        size="sm"
-                        className="absolute top-2 right-2"
-                        onClick={() => handleDeleteMedia(item)}
-                      >
-                        <Trash2 className="h-3 w-3" />
-                      </Button>
+                      <AlertDialog>
+                        <AlertDialogTrigger asChild>
+                          <Button
+                            variant="destructive"
+                            size="sm"
+                            className="absolute top-2 right-2"
+                            aria-label="Delete media"
+                            disabled={deletingIds.has(item.id)}
+                          >
+                            {deletingIds.has(item.id) ? (
+                              <Loader2 className="h-3 w-3 animate-spin" />
+                            ) : (
+                              <Trash2 className="h-3 w-3" />
+                            )}
+                          </Button>
+                        </AlertDialogTrigger>
+                        <AlertDialogContent>
+                          <AlertDialogHeader>
+                            <AlertDialogTitle>{t('upload.deleteMediaTitle', 'Delete media?')}</AlertDialogTitle>
+                            <AlertDialogDescription>
+                              {t('upload.deleteMediaConfirm', { name: item.fileName, defaultValue: 'This will permanently remove "{{name}}". Articles referencing this media will show a broken image.' })}
+                            </AlertDialogDescription>
+                          </AlertDialogHeader>
+                          <AlertDialogFooter>
+                            <AlertDialogCancel>{t('common.cancel')}</AlertDialogCancel>
+                            <AlertDialogAction
+                              onClick={() => handleDeleteMedia(item)}
+                              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                            >
+                              {t('common.delete')}
+                            </AlertDialogAction>
+                          </AlertDialogFooter>
+                        </AlertDialogContent>
+                      </AlertDialog>
                     )}
                   </div>
                   

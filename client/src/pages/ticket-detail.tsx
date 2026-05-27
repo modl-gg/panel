@@ -1,4 +1,4 @@
-import { useState, useEffect, memo, useMemo, useRef } from 'react';
+import { useState, useEffect, memo, useMemo, useRef, useCallback } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useLocation, Link } from 'wouter';
 import { Popover, PopoverContent, PopoverTrigger } from '@modl-gg/shared-web/components/ui/popover';
@@ -331,7 +331,7 @@ const TicketDetail = () => {
   const { data: punishmentTypesData } = usePunishmentTypes();
 
   // Get punishment ordinal from dynamic punishment types data
-  const getPunishmentOrdinal = useMemo(() => (punishmentName: string): number => {
+  const getPunishmentOrdinal = useCallback((punishmentName: string): number => {
     // Use punishment types from dedicated endpoint
     if (punishmentTypesData && Array.isArray(punishmentTypesData)) {
       const punishmentType = punishmentTypesData.find(
@@ -347,7 +347,7 @@ const TicketDetail = () => {
   }, [punishmentTypesData]);
 
   // Convert duration to milliseconds
-  const convertDurationToMilliseconds = useMemo(() => (duration: { value: number; unit: string }): number => {
+  const convertDurationToMilliseconds = useCallback((duration: { value: number; unit: string }): number => {
     const multipliers = {
       'seconds': 1000,
       'minutes': 60 * 1000,
@@ -356,7 +356,7 @@ const TicketDetail = () => {
       'weeks': 7 * 24 * 60 * 60 * 1000,
       'months': 30 * 24 * 60 * 60 * 1000
     };
-    
+
     return duration.value * (multipliers[duration.unit as keyof typeof multipliers] || 0);
   }, []);
   
@@ -421,15 +421,15 @@ const TicketDetail = () => {
   }, [punishmentTypesByCategory, hasPermission]);
 
   // Get current punishment type from punishment data
-  const getCurrentPunishmentType = useMemo(() => (punishmentData: any) => {
+  const getCurrentPunishmentType = useCallback((punishmentData: any) => {
     if (!punishmentData?.selectedPunishmentCategory) return null;
-    
+
     const allTypes = [
       ...(punishmentTypesByCategory?.Administrative || []),
       ...(punishmentTypesByCategory?.Social || []),
       ...(punishmentTypesByCategory?.Gameplay || [])
     ];
-    
+
     return allTypes.find(type => type.name === punishmentData.selectedPunishmentCategory);
   }, [punishmentTypesByCategory]);
 
@@ -945,19 +945,19 @@ const TicketDetail = () => {
   const { data: ticketData, isLoading, isError, error, refetch } = usePanelTicket(ticketId);
   
   useEffect(() => {
-    if (ticketData) {
+    if (ticketData?.id) {
       // Backend marks the ticket as read on fetch — invalidate dashboard notification queries
       queryClient.invalidateQueries({ queryKey: ['/v1/panel/ticket-subscriptions/updates'] });
       queryClient.invalidateQueries({ queryKey: ['/v1/panel/ticket-subscriptions/assigned-updates'] });
     }
-  }, [ticketData]);
+  }, [ticketData?.id, ticketData?.updatedAt]);
 
   // Scroll to top of message list when messages load
   useEffect(() => {
     if (messageListRef.current) {
       messageListRef.current.scrollTop = 0;
     }
-  }, [ticketDetails.messages]);
+  }, [ticketDetails.messages?.length, ticketData?.id]);
   
   // Mutation hook for updating tickets
   const updateTicketMutation = useUpdateTicket();
@@ -1085,6 +1085,24 @@ const TicketDetail = () => {
       });
     }
   };
+  const ticketDataSignature = useMemo(() => {
+    if (!ticketData) return null;
+    const replies = ticketData.messages || ticketData.replies || [];
+    const lastMessageId = replies.length > 0 ? (replies[replies.length - 1]?._id || replies[replies.length - 1]?.id || replies.length) : 0;
+    return [
+      ticketData.id,
+      ticketData.updatedAt,
+      ticketData.locked,
+      ticketData.hidden,
+      ticketData.status,
+      replies.length,
+      lastMessageId,
+      (ticketData.notes || []).length,
+      (ticketData.tags || []).join(','),
+      (Array.isArray(ticketData.assignedTo) ? ticketData.assignedTo.join(',') : ticketData.assignedTo) || '',
+    ].join('|');
+  }, [ticketData]);
+
   useEffect(() => {
     if (ticketData) {
       // Process ticket data
@@ -1164,7 +1182,7 @@ const TicketDetail = () => {
         aiAnalysis: ticketData.aiAnalysis
       });
     }
-  }, [ticketData]);
+  }, [ticketDataSignature]);
 
   // Define updated handlers that save changes to MongoDB
   const handleAddNote = () => {
@@ -1906,6 +1924,7 @@ const TicketDetail = () => {
                     <Button
                       variant="outline"
                       size="sm"
+                      disabled={updateTicketMutation.isPending}
                       onClick={() => {
                         const newHidden = !ticketDetails.hidden;
                         setTicketDetails(prev => ({ ...prev, hidden: newHidden }));
@@ -1925,11 +1944,14 @@ const TicketDetail = () => {
                         });
                       }}
                     >
-                      {ticketDetails.hidden ? (
-                        <><Eye className="h-4 w-4 mr-2" />Unhide from Public</>
+                      {updateTicketMutation.isPending ? (
+                        <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                      ) : ticketDetails.hidden ? (
+                        <Eye className="h-4 w-4 mr-2" />
                       ) : (
-                        <><EyeOff className="h-4 w-4 mr-2" />Hide from Public</>
+                        <EyeOff className="h-4 w-4 mr-2" />
                       )}
+                      {ticketDetails.hidden ? 'Unhide from Public' : 'Hide from Public'}
                     </Button>
                   </div>
                 )}
@@ -2664,9 +2686,10 @@ const TicketDetail = () => {
                         />
                         
                         <div className="flex justify-end">
-                          <Button 
-                            variant="default" 
+                          <Button
+                            variant="default"
                             size="sm"
+                            disabled={updateTicketMutation.isPending}
                             onClick={() => {
                               // Set action to Reopen
                               if (!ticketDetails.newReply) {
@@ -2722,7 +2745,11 @@ const TicketDetail = () => {
                               });
                             }}
                           >
-                            <UnlockIcon className="h-4 w-4 mr-2" />
+                            {updateTicketMutation.isPending ? (
+                              <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                            ) : (
+                              <UnlockIcon className="h-4 w-4 mr-2" />
+                            )}
                             Reopen & Reply
                           </Button>
                         </div>
@@ -2736,7 +2763,7 @@ const TicketDetail = () => {
                 <div className="space-y-4">
                   <div className="space-y-4 mb-5 max-h-[480px] overflow-y-auto p-2">
                     {(ticketDetails.notes || []).map((note, idx) => (
-                      <div key={idx} className="bg-muted/20 p-4 rounded-lg">
+                      <div key={`${note.date}-${note.issuerName || note.author || 'staff'}-${idx}`} className="bg-muted/20 p-4 rounded-lg">
                         <div className="flex justify-between items-start mb-3">
                           <span className="font-medium text-sm text-foreground">{note.issuerName || note.author || 'Staff'}</span>
                           <span className="text-xs text-muted-foreground flex-shrink-0">{formatDate(note.date)}</span>
@@ -2751,9 +2778,9 @@ const TicketDetail = () => {
                           <div className="mt-3 pt-3 border-t border-border/50">
                             <p className="text-xs text-muted-foreground mb-2">Attachments:</p>
                             <div className="flex flex-wrap gap-2">
-                              {note.attachments.map((att, attIdx) => (
+                              {note.attachments.map((att) => (
                                 <a
-                                  key={attIdx}
+                                  key={att.id || att.url}
                                   href={att.url}
                                   target="_blank"
                                   rel="noopener noreferrer"
@@ -3474,7 +3501,7 @@ const PunishmentDetailsCard = ({ punishmentId }: { punishmentId: string }) => {
                         
                         // Refresh punishment data
                         const { getApiUrl, getCurrentDomain } = await import('@/lib/api');
-                        const refreshResponse = await fetch(getApiUrl(`/v1/panel/players/punishment/${punishmentId}`), {
+                        const refreshResponse = await fetch(getApiUrl(`/v1/panel/players/punishments/${punishmentId}`), {
                           credentials: 'include',
                           headers: { 'X-Server-Domain': getCurrentDomain() }
                         });

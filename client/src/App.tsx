@@ -217,7 +217,7 @@ function AppContent() {
     if (!hasSeenModal && isOnPanelHomePage && !isFromProvisioning && !isOnExcludedPage && !isOnPlayerTicketPage && !isOnAcceptInvitationPage && user?.role === 'Super Admin') {
       setWelcomeModalOpen(true);
     }
-  }, [location, user]);
+  }, [location, user?.role]);
 
   const handleCloseWelcomeModal = () => {
     localStorage.setItem("hasSeenWelcomeModal", "true");

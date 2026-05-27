@@ -35,6 +35,7 @@ import { StatusBanner } from '@modl-gg/shared-web/components/ui/status-banner';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@modl-gg/shared-web/components/ui/alert-dialog';
 import { Slider } from '@modl-gg/shared-web/components/ui/slider';
 import { Label } from '@modl-gg/shared-web/components/ui/label';
+import { StatusBadge } from '@/components/ui/status-badge';
 
 // Initialize Stripe lazily - only when a valid key is present
 let stripePromise: ReturnType<typeof loadStripe> | null = null;
@@ -322,22 +323,22 @@ const BillingSettings = () => {
     // Special handling for cancelled subscriptions
     if (normalizedStatus === 'CANCELED') {
       if (!currentPeriodEnd) {
-        return <Badge variant="secondary" className="bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-100"><AlertTriangle className="h-3 w-3 mr-1" />{t('settings.billing.expired')}</Badge>;
+        return <StatusBadge intent="destructive"><AlertTriangle className="h-3 w-3 mr-1" />{t('settings.billing.expired')}</StatusBadge>;
       }
       const endDate = new Date(currentPeriodEnd);
       const today = new Date();
       if (endDate <= today) {
-        return <Badge variant="secondary" className="bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-100"><AlertTriangle className="h-3 w-3 mr-1" />{t('settings.billing.expired')}</Badge>;
+        return <StatusBadge intent="destructive"><AlertTriangle className="h-3 w-3 mr-1" />{t('settings.billing.expired')}</StatusBadge>;
       } else {
-        return <Badge variant="secondary" className="bg-orange-100 text-orange-800 dark:bg-orange-900 dark:text-orange-100"><AlertTriangle className="h-3 w-3 mr-1" />{t('settings.billing.cancelled')}</Badge>;
+        return <StatusBadge intent="warning"><AlertTriangle className="h-3 w-3 mr-1" />{t('settings.billing.cancelled')}</StatusBadge>;
       }
     }
 
     switch (normalizedStatus) {
       case 'ACTIVE':
-        return <Badge variant="secondary" className="bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-100"><CheckCircle className="h-3 w-3 mr-1" />{t('status.active')}</Badge>;
+        return <StatusBadge intent="success"><CheckCircle className="h-3 w-3 mr-1" />{t('status.active')}</StatusBadge>;
       case 'TRIALING':
-        return <Badge variant="secondary" className="bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-100"><Clock className="h-3 w-3 mr-1" />{t('settings.billing.trial')}</Badge>;
+        return <StatusBadge intent="info"><Clock className="h-3 w-3 mr-1" />{t('settings.billing.trial')}</StatusBadge>;
       case 'PAST_DUE':
         return <Badge variant="destructive"><AlertTriangle className="h-3 w-3 mr-1" />{t('settings.billing.pastDue')}</Badge>;
       default:
@@ -353,10 +354,10 @@ const BillingSettings = () => {
       <Card className={`relative rounded-card shadow-card hover:shadow-card-hover transition-all ${isCurrent ? 'shadow-card-elevated ring-2 ring-primary' : ''}`}>
         {isCurrent && plan.id === 'premium' && (
           <div className="absolute -top-3 right-4">
-            <Badge variant="secondary" className="bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-100">
+            <StatusBadge intent="success">
               <Check className="h-3 w-3 mr-1" />
               {t('settings.billing.currentPlan')}
-            </Badge>
+            </StatusBadge>
           </div>
         )}
         
@@ -374,7 +375,7 @@ const BillingSettings = () => {
             {plan.features.map((feature, index) => (
               <div key={index} className={`flex items-center gap-3 ${!feature.included ? 'opacity-50' : ''}`}>
                 {feature.included ? (
-                  <Check className="h-4 w-4 text-green-600 flex-shrink-0" />
+                  <Check className="h-4 w-4 text-success flex-shrink-0" />
                 ) : (
                   <div className="h-4 w-4 flex-shrink-0" />
                 )}
@@ -495,7 +496,7 @@ const BillingSettings = () => {
             <div className="flex items-start justify-between">
               <div>
                 <CardTitle className="flex items-center gap-2">
-                  <Crown className="h-10 w-10 text-yellow-600" />
+                  <Crown className="h-10 w-10 text-warning" />
                   {t('settings.billing.premiumSubscription')}
                   <span className="text-muted-foreground mx-2">—</span>
                   <span className="text-2xl font-bold text-primary">$9.99/month</span>
@@ -705,7 +706,7 @@ const BillingSettings = () => {
         <div className="flex items-center justify-between">
           <div>
                 <CardTitle className="flex items-center gap-2">
-                  <Crown className="h-10 w-10 text-yellow-600" />
+                  <Crown className="h-10 w-10 text-warning" />
                   {t('settings.billing.upgradeToPremium')}
                 </CardTitle>
                 <CardDescription className="mt-1">{t('settings.billing.upgradeToPremiumDesc')}</CardDescription>
@@ -739,7 +740,7 @@ const BillingSettings = () => {
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                   {premiumFeatures.map((feature, index) => (
                     <div key={index} className="flex items-center gap-3">
-                      <Check className="h-4 w-4 text-green-600 flex-shrink-0" />
+                      <Check className="h-4 w-4 text-success flex-shrink-0" />
                       {feature.icon && (
                         <div className="text-foreground">
                           {feature.icon}

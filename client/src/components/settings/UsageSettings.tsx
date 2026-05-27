@@ -16,6 +16,7 @@ import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, 
 import { useToast } from '@modl-gg/shared-web/hooks/use-toast';
 import { formatFileSize } from '@/utils/file-utils';
 import { useReplayRetentionSettings, useUpdateReplayRetentionSettings } from '@/hooks/use-data';
+import { Notice } from '@/components/ui/notice';
 
 interface StorageFile {
   id: string;
@@ -412,12 +413,12 @@ const fetchStorageData = async () => {
 
   const getTypeColor = (type: string): string => {
     switch (type) {
-      case 'ticket': return 'bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-300';
-      case 'evidence': return 'bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-300';
-      case 'logs': return 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-300';
-      case 'backup': return 'bg-purple-100 text-purple-800 dark:bg-purple-900/30 dark:text-purple-300';
-      case 'replay': return 'bg-orange-100 text-orange-800 dark:bg-orange-900/30 dark:text-orange-300';
-      default: return 'bg-gray-100 text-gray-800 dark:bg-gray-800 dark:text-gray-300';
+      case 'ticket': return 'bg-info/20 text-info border-info/30';
+      case 'evidence': return 'bg-destructive/20 text-destructive border-destructive/30';
+      case 'logs': return 'bg-success/20 text-success border-success/30';
+      case 'backup': return 'bg-accent/20 text-accent border-accent/30';
+      case 'replay': return 'bg-warning/20 text-warning border-warning/30';
+      default: return 'bg-muted text-muted-foreground border-border';
     }
   };
 
@@ -609,20 +610,14 @@ const fetchStorageData = async () => {
       
       {/* Free User Limit Warning */}
       {!storageUsage?.quota?.isPaid && storageUsage?.quota?.baseUsagePercentage >= 80 && (
-        <div className="bg-blue-50 dark:bg-blue-900/10 border border-blue-200 dark:border-blue-800 rounded-lg p-4">
-          <div className="flex items-start gap-3">
-            <AlertCircle className="h-5 w-5 text-blue-600 dark:text-blue-400 mt-0.5 flex-shrink-0" />
-            <div>
-              <h3 className="font-medium text-blue-800 dark:text-blue-200">{t('settings.usage.storageLimitWarning')}</h3>
-              <p className="text-sm text-blue-700 dark:text-blue-300 mt-1">
-                {t('settings.usage.storageLimitWarningDesc', { percentage: storageUsage.quota.baseUsagePercentage, limit: storageUsage.quota.baseLimitFormatted })}
-              </p>
-              <p className="text-xs text-blue-600 dark:text-blue-400 mt-2">
-                {t('settings.usage.upgradePremiumStorage')}
-              </p>
-            </div>
-          </div>
-        </div>
+        <Notice variant="info" title={t('settings.usage.storageLimitWarning')}>
+          <p>
+            {t('settings.usage.storageLimitWarningDesc', { percentage: storageUsage.quota.baseUsagePercentage, limit: storageUsage.quota.baseLimitFormatted })}
+          </p>
+          <p className="text-xs mt-2 opacity-80">
+            {t('settings.usage.upgradePremiumStorage')}
+          </p>
+        </Notice>
       )}
 
       {/* Storage Overview */}
@@ -896,40 +891,6 @@ const fetchStorageData = async () => {
               </div>
             </CardContent>
           </Card>
-
-          <Card className="rounded-card shadow-card-inner bg-surface-2">
-            <CardHeader>
-              <CardTitle>{t('settings.usage.systemStatus')}</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="space-y-2">
-                <div className="flex justify-between text-sm">
-                  <span>{t('settings.usage.totalFiles')}:</span>
-                  <span>{files.length}</span>
-                </div>
-                <div className="flex justify-between text-sm">
-                  <span>{t('settings.usage.selected')}:</span>
-                  <span>{selectedFiles.size}</span>
-                </div>
-                <div className="flex justify-between text-sm">
-                  <span>{t('settings.usage.filtered')}:</span>
-                  <span>{filteredAndSortedFiles.length}</span>
-                </div>
-                <div className="flex justify-between text-sm">
-                  <span>{t('settings.usage.canUpload')}:</span>
-                  <span className={storageUsage.quota?.canUpload ? 'text-green-600' : 'text-red-600'}>
-                    {storageUsage.quota?.canUpload ? t('common.yes') : t('common.no')}
-                  </span>
-                </div>
-                <div className="flex justify-between text-sm">
-                  <span>{t('settings.usage.aiAvailable')}:</span>
-                  <span className={storageUsage.isPremium && storageUsage.aiQuota ? 'text-green-600' : 'text-red-600'}>
-                    {storageUsage.isPremium && storageUsage.aiQuota ? t('common.yes') : t('common.no')}
-                  </span>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
         </div>
       )}
 
@@ -1089,6 +1050,7 @@ const fetchStorageData = async () => {
                           variant="ghost"
                           size="sm"
                           onClick={() => window.open(file.url, '_blank')}
+                          aria-label={t('common.download')}
                         >
                           <Download className="h-4 w-4" />
                         </Button>
@@ -1096,8 +1058,9 @@ const fetchStorageData = async () => {
                           variant="ghost"
                           size="sm"
                           onClick={() => handleDeleteFile(file.id)}
+                          aria-label={t('common.delete')}
                         >
-                          <Trash2 className="h-4 w-4" />
+                          <Trash2 className="h-4 w-4 text-destructive" />
                         </Button>
                       </div>
                     </TableCell>
@@ -1177,7 +1140,7 @@ const fetchStorageData = async () => {
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel>{t('common.cancel')}</AlertDialogCancel>
-            <AlertDialogAction onClick={confirmDelete} className="bg-destructive text-destructive-foreground">
+            <AlertDialogAction onClick={confirmDelete} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
               {t('common.delete')}
             </AlertDialogAction>
           </AlertDialogFooter>
@@ -1232,8 +1195,8 @@ const fetchStorageData = async () => {
               </div>
             )}
 
-            <div className="bg-amber-50 dark:bg-amber-900/10 p-3 rounded-lg">
-              <p className="text-sm text-amber-800 dark:text-amber-200">
+            <div className="bg-warning/10 p-3 rounded-lg">
+              <p className="text-sm text-warning">
                 <strong>{t('common.important')}:</strong> {t('settings.usage.overageLimitWarning')}
               </p>
             </div>

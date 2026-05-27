@@ -3,6 +3,7 @@ import { useRouter } from 'wouter';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@modl-gg/shared-web/components/ui/card';
 import { Button } from '@modl-gg/shared-web/components/ui/button';
 import { AlertCircle, Clock, RefreshCw } from 'lucide-react';
+import { Notice } from '@/components/ui/notice';
 import { useTranslation } from 'react-i18next';
 
 interface RateLimitInfo {
@@ -88,31 +89,31 @@ export default function RateLimitPage() {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-50 to-slate-100 dark:from-slate-900 dark:to-slate-800 flex items-center justify-center p-4">
+    <div className="min-h-screen bg-background flex items-center justify-center p-4">
       <Card className="w-full max-w-md mx-auto shadow-card">
         <CardHeader className="text-center">
-          <div className="mx-auto mb-4 w-16 h-16 bg-orange-100 dark:bg-orange-900/20 rounded-full flex items-center justify-center">
-            <AlertCircle className="w-8 h-8 text-orange-600 dark:text-orange-400" />
+          <div className="mx-auto mb-4 w-16 h-16 bg-warning/10 rounded-full flex items-center justify-center">
+            <AlertCircle className="w-8 h-8 text-warning" />
           </div>
-          <CardTitle className="text-2xl font-bold text-gray-900 dark:text-gray-100">
+          <CardTitle className="text-2xl font-bold text-foreground">
             {t('pages.rateLimit.title')}
           </CardTitle>
-          <CardDescription className="text-gray-600 dark:text-gray-400">
+          <CardDescription className="text-muted-foreground">
             {t('pages.rateLimit.description')}
           </CardDescription>
         </CardHeader>
-        
+
         <CardContent className="space-y-6">
           {/* Time remaining display */}
           {timeLeft > 0 && (
-            <div className="text-center bg-orange-50 dark:bg-orange-900/10 rounded-lg p-4">
+            <div className="text-center bg-warning/10 rounded-lg p-4">
               <div className="flex items-center justify-center gap-2 mb-2">
-                <Clock className="w-5 h-5 text-orange-600 dark:text-orange-400" />
-                <span className="font-semibold text-orange-800 dark:text-orange-300">
+                <Clock className="w-5 h-5 text-warning" />
+                <span className="font-semibold text-warning">
                   {t('pages.rateLimit.timeRemaining')}
                 </span>
               </div>
-              <div className="text-3xl font-mono font-bold text-orange-600 dark:text-orange-400">
+              <div className="text-3xl font-mono font-bold text-warning">
                 {formatTime(timeLeft)}
               </div>
             </div>
@@ -120,23 +121,23 @@ export default function RateLimitPage() {
 
           {/* Rate limit details */}
           {rateLimitInfo.rateLimit && (
-            <div className="text-center text-sm text-gray-600 dark:text-gray-400">
+            <div className="text-center text-sm text-muted-foreground">
               <strong>{t('pages.rateLimit.rateLimitLabel')}</strong> {rateLimitInfo.rateLimit}
             </div>
           )}
 
           {/* Custom message */}
           {rateLimitInfo.message && (
-            <div className="text-sm text-gray-700 dark:text-gray-300 bg-gray-50 dark:bg-gray-800 rounded-lg p-3">
+            <div className="text-sm text-foreground bg-muted rounded-lg p-3">
               {rateLimitInfo.message}
             </div>
           )}
 
           {/* Security note */}
           {rateLimitInfo.securityNote && (
-            <div className="text-sm text-blue-700 dark:text-blue-300 bg-blue-50 dark:bg-blue-900/20 rounded-lg p-3">
-              <strong>{t('pages.rateLimit.securityInfo')}</strong> {rateLimitInfo.securityNote}
-            </div>
+            <Notice variant="info" title={t('pages.rateLimit.securityInfo')}>
+              {rateLimitInfo.securityNote}
+            </Notice>
           )}
 
           {/* Action buttons */}
@@ -173,7 +174,7 @@ export default function RateLimitPage() {
           </div>
 
           {/* Help text */}
-          <div className="text-xs text-gray-500 dark:text-gray-400 text-center">
+          <div className="text-xs text-muted-foreground text-center">
             {t('pages.rateLimit.helpText')}
           </div>
         </CardContent>

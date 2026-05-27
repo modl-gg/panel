@@ -188,9 +188,9 @@ const CategoryItem: React.FC<CategoryItemProps> = ({
                 <Button variant="ghost" size="sm" onClick={() => setEditingCategory(null)}>{t('common.cancel')}</Button>
               </>
             ) : (
-              <Button variant="ghost" size="sm" onClick={() => onEdit(category)}><Edit className="h-4 w-4" /></Button>
+              <Button variant="ghost" size="sm" onClick={() => onEdit(category)} aria-label={t('common.edit')}><Edit className="h-4 w-4" /></Button>
             )}
-            <Button variant="ghost" size="sm" onClick={() => onDelete(category)} disabled={deleteCategoryMutation.isPending}><Trash2 className="h-4 w-4 text-destructive" /></Button>
+            <Button variant="ghost" size="sm" onClick={() => onDelete(category)} disabled={deleteCategoryMutation.isPending} aria-label={t('common.delete')}><Trash2 className="h-4 w-4 text-destructive" /></Button>
           </div>
         </div>
         <div className="mt-4 pl-6 space-y-3">

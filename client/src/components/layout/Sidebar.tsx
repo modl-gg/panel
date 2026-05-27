@@ -1,7 +1,7 @@
 import { useLocation } from "wouter";
 import { cn } from "@/lib/utils";
 import { useSidebar } from "@/hooks/use-sidebar";
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useMemo, useRef } from "react";
 import { useTranslation } from "react-i18next";
 import {
   Home,
@@ -19,31 +19,46 @@ import {
 import { Button } from "@modl-gg/shared-web/components/ui/button";
 import { Input } from "@modl-gg/shared-web/components/ui/input";
 import { useDashboard } from "@/contexts/DashboardContext";
-import PlayerWindow from "../../components/windows/PlayerWindow";
+import { usePlayerWindow } from "@/contexts/PlayerWindowContext";
 import serverLogo from "../../assets/server-logo.png";
 import { usePublicSettings } from "@/hooks/use-public-settings";
 import { usePunishmentLookup } from "@/hooks/use-player-lookup";
 import { usePermissions, PERMISSIONS } from "@/hooks/use-permissions";
 import { useAuth } from "@/hooks/use-auth";
 import { usePlayerSearch } from "@/hooks/use-data";
-import { useQuery } from '@tanstack/react-query';
+import { useIsFetching } from '@tanstack/react-query';
 import { queryClient } from "@/lib/queryClient";
 import { apiFetch } from "@/lib/api";
+
+interface Player {
+  uuid?: string;
+  minecraftUuid?: string;
+  username?: string;
+  status?: string;
+  lastOnline?: string;
+  isOnline?: boolean;
+  online?: boolean;
+  data?: any;
+}
+
+const HOME_ICON = <Home className="h-5 w-5" />;
+const SEARCH_ICON = <Search className="h-5 w-5" />;
+const TICKET_ICON = <Ticket className="h-5 w-5" />;
+const AUDIT_ICON = <FileText className="h-5 w-5" />;
+const SETTINGS_ICON = <Settings className="h-5 w-5" />;
 
 const Sidebar = () => {
   const { t } = useTranslation();
   const { isSearchActive, setIsSearchActive } = useSidebar();
   const { openLookupWindow: openDashboardLookupWindow } = useDashboard();
+  const { openPlayerWindow: openPlayerWindowFromContext } = usePlayerWindow();
   const [location, navigate] = useLocation();
   const { data: publicSettings } = usePublicSettings();
   const { hasPermission } = usePermissions();
   const { user } = useAuth();
-  
-  // Check if permissions are still loading from server
-  const { isLoading: permissionsLoading } = useQuery({
-    queryKey: ['userPermissions', user?.role],
-    enabled: false, // We just want the loading state
-  });
+
+  const fetchingCount = useIsFetching({ queryKey: ['userPermissions', user?.role] });
+  const permissionsLoading = fetchingCount > 0;
   const [isLookupOpen, setIsLookupOpen] = useState(false);
   const [isLookupClosing, setIsLookupClosing] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
@@ -85,50 +100,32 @@ const Sidebar = () => {
   // Function to handle player selection and update recent searches
   const handlePlayerSelect = (player: Player) => {
     const uuid = getPlayerUuid(player);
-    
+
     if (!uuid) return; // Guard against empty UUID
-    
+
     // Update recent searches
     const timestamp = Date.now();
     const existing = recentSearches.filter(s => getPlayerUuid(s.player) !== uuid);
     const newSearches = [{player, timestamp}, ...existing].slice(0, 10);
     setRecentSearches(newSearches);
-    
+
     // Save to localStorage
     localStorage.setItem('recentPlayerSearches', JSON.stringify(newSearches));
-    
+
     // Open player window and close lookup
     const url = new URL(window.location.href);
     url.searchParams.set("player", uuid);
     window.history.pushState({}, "", url.toString());
-    openPlayerWindow(uuid);
+    openPlayerWindow(uuid, player.username);
     closeLookup();
   };
 
-  // Track multiple windows with a map of id -> isOpen state
-  const [playerWindows, setPlayerWindows] = useState<Record<string, boolean>>(
-    {},
-  );
   const closeTimeoutRef = useRef<number | null>(null);
 
   // Function to open player window when clicked from search
-  const openPlayerWindow = (playerId: string) => {
-    // Add this window to our tracked windows
-    setPlayerWindows((prev) => ({
-      ...prev,
-      [playerId]: true, // Set this player's window to open
-    }));
+  const openPlayerWindow = (playerId: string, username?: string) => {
+    openPlayerWindowFromContext(playerId, username);
     openDashboardLookupWindow(); // Also open at dashboard level for tracking
-  };
-
-  // Function to close a specific player window
-  const closePlayerWindow = (playerId: string) => {
-    setPlayerWindows((prev) => {
-      // Create a new object excluding this player
-      const newWindows = { ...prev };
-      delete newWindows[playerId];
-      return newWindows;
-    });
   };
 
   const openLookup = () => {
@@ -191,14 +188,10 @@ const Sidebar = () => {
     const playerIdFromUrl = url.searchParams.get("player");
 
     if (playerIdFromUrl) {
-      // Open this player's window
-      setPlayerWindows((prev) => ({
-        ...prev,
-        [playerIdFromUrl]: true,
-      }));
+      openPlayerWindowFromContext(playerIdFromUrl);
       openDashboardLookupWindow();
     }
-  }, [openDashboardLookupWindow]);
+  }, [openDashboardLookupWindow, openPlayerWindowFromContext]);
 
   // Clean up any timeouts when component unmounts
   useEffect(() => {
@@ -246,11 +239,11 @@ const Sidebar = () => {
     }
   };
 
-  const allNavItems = [
+  const allNavItems = useMemo(() => [
     {
       name: t('nav.home'),
       path: "/panel",
-      icon: <Home className="h-5 w-5" />,
+      icon: HOME_ICON,
       onClick: () => {
         if (isLookupOpen) closeLookup();
         navigate("/panel");
@@ -259,7 +252,7 @@ const Sidebar = () => {
     {
       name: t('nav.lookup'),
       path: "/panel/lookup",
-      icon: <Search className="h-5 w-5" />,
+      icon: SEARCH_ICON,
       onClick: () => {
         if (isLookupOpen) {
           closeLookup();
@@ -271,7 +264,7 @@ const Sidebar = () => {
     {
       name: t('nav.tickets'),
       path: "/panel/tickets",
-      icon: <Ticket className="h-5 w-5" />,
+      icon: TICKET_ICON,
       onClick: () => {
         if (isLookupOpen) closeLookup();
         navigate("/panel/tickets");
@@ -280,7 +273,7 @@ const Sidebar = () => {
     {
       name: t('nav.audit'),
       path: "/panel/audit",
-      icon: <FileText className="h-5 w-5" />,
+      icon: AUDIT_ICON,
       permission: PERMISSIONS.ADMIN_AUDIT_VIEW,
       onClick: () => {
         if (isLookupOpen) closeLookup();
@@ -290,13 +283,13 @@ const Sidebar = () => {
     {
       name: t('nav.settings'),
       path: "/panel/settings",
-      icon: <Settings className="h-5 w-5" />,
+      icon: SETTINGS_ICON,
       onClick: () => {
         if (isLookupOpen) closeLookup();
         navigate("/panel/settings");
       },
     },
-  ];
+  ], [t, isLookupOpen, navigate]);
 
   // Filter nav items based on permissions
   // Don't show permission-based items while permissions are loading to prevent flash
@@ -308,17 +301,6 @@ const Sidebar = () => {
 
   // Calculate sidebar height dynamically (navItems * 56px + top/bottom padding of 32px)
   const sidebarHeight = Math.max(200, navItems.length * 56 + 16);
-
-  interface Player {
-    uuid?: string;
-    minecraftUuid?: string;
-    username?: string;
-    status?: string;
-    lastOnline?: string;
-    isOnline?: boolean;
-    online?: boolean;
-    data?: any;
-  }
 
   const isPlayerOnline = (player: Player) => {
     if (player.status === 'Online') return true;
@@ -559,9 +541,9 @@ const Sidebar = () => {
                       <div className="py-1 px-2 mb-2 text-xs text-muted-foreground">
                         {t('search.playersFound')}
                       </div>
-                      {filteredLookups.map((player: Player, index: number) => (
+                      {filteredLookups.map((player: Player) => (
                         <Button
-                          key={index}
+                          key={getPlayerUuid(player) || player.username || ''}
                           variant="ghost"
                           className="w-full justify-start text-xs py-2 px-3 h-auto mb-1"
                           onClick={() => handlePlayerSelect(player)}
@@ -601,9 +583,9 @@ const Sidebar = () => {
                       {recentSearches
                         .sort((a, b) => b.timestamp - a.timestamp)
                         .slice(0, 5)
-                        .map(({player}, index) => (
+                        .map(({player}) => (
                         <Button
-                          key={index}
+                          key={getPlayerUuid(player) || player.username || ''}
                           variant="ghost"
                           className="w-full justify-start text-xs py-2 px-3 h-auto mb-1"
                           onClick={() => handlePlayerSelect(player)}
@@ -629,36 +611,6 @@ const Sidebar = () => {
           </div>
         )}
 
-        {/* Render multiple player windows with offset positioning */}
-        {Object.entries(playerWindows).map(([playerId, isOpen], index) => (
-          <PlayerWindow
-            key={playerId}
-            playerId={playerId}
-            isOpen={isOpen}
-            initialPosition={{
-              x: Math.max(100, window.innerWidth / 2 - 325) + index * 40,
-              y: Math.max(100, window.innerHeight / 2 - 275) + index * 30,
-            }}
-            onClose={() => {
-              // Close this specific window
-              closePlayerWindow(playerId);
-
-              // Update URL parameters - we keep other players in the URL
-              const url = new URL(window.location.href);
-              url.searchParams.delete("player");
-
-              // If we have other windows open, add the first one to the URL
-              const remainingPlayers = Object.keys(playerWindows).filter(
-                (id) => id !== playerId,
-              );
-              if (remainingPlayers.length > 0) {
-                url.searchParams.set("player", remainingPlayers[0]);
-              }
-
-              window.history.pushState({}, "", url.toString());
-            }}
-          />
-        ))}
       </div>
     </div>
   );

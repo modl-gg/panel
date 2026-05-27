@@ -32,6 +32,7 @@ import MarkdownRenderer from '@/components/ui/markdown-renderer';
 import MarkdownHelp from '@/components/ui/markdown-help';
 import { formatDate } from '@/utils/date-utils';
 import { getCreatorIdentifier, getUnverifiedExplanation } from '@/utils/creator-verification';
+import { Notice } from '@/components/ui/notice';
 import { useMediaUpload } from '@/hooks/use-media-upload';
 import { isValidEmail, normalizeEmail } from '@/utils/email-validation';
 import { normalizeTicketStatus } from '@/lib/ticket-enums';
@@ -131,8 +132,8 @@ const MessageAvatar = ({ message, creatorUuid }: { message: TicketMessage, creat
     }
     // Fallback for player without UUID
     return (
-      <div className="h-8 w-8 bg-blue-100 dark:bg-blue-900 rounded-md flex items-center justify-center flex-shrink-0">
-        <span className="text-xs font-bold text-blue-600 dark:text-blue-300">{message.sender?.substring(0, 2) || 'U'}</span>
+      <div className="h-8 w-8 bg-primary/15 rounded-md flex items-center justify-center flex-shrink-0">
+        <span className="text-xs font-bold text-primary">{message.sender?.substring(0, 2) || 'U'}</span>
       </div>
     );
   }
@@ -166,16 +167,16 @@ const MessageAvatar = ({ message, creatorUuid }: { message: TicketMessage, creat
 
     // Fallback for staff without assigned Minecraft UUID
     return (
-      <div className="h-8 w-8 bg-green-100 dark:bg-green-900 rounded-md flex items-center justify-center flex-shrink-0">
-        <span className="text-xs font-bold text-green-600 dark:text-green-300">{message.sender?.substring(0, 2) || 'S'}</span>
+      <div className="h-8 w-8 bg-success/15 rounded-md flex items-center justify-center flex-shrink-0">
+        <span className="text-xs font-bold text-success">{message.sender?.substring(0, 2) || 'S'}</span>
       </div>
     );
   }
 
   // System messages
   return (
-    <div className="h-8 w-8 bg-gray-100 dark:bg-gray-800 rounded-md flex items-center justify-center flex-shrink-0">
-      <span className="text-xs font-bold text-gray-600 dark:text-gray-300">SY</span>
+    <div className="h-8 w-8 bg-muted rounded-md flex items-center justify-center flex-shrink-0">
+      <span className="text-xs font-bold text-muted-foreground">SY</span>
     </div>
   );
 };
@@ -221,9 +222,9 @@ const PlayerTicket = () => {
   });
 
   const statusColors = {
-    'Unfinished': 'bg-gray-50 dark:bg-gray-800 text-gray-700 dark:text-gray-300 border-gray-200 dark:border-gray-700',
-    'Open': 'bg-green-50 dark:bg-green-900 text-green-700 dark:text-green-300 border-green-200 dark:border-green-700',
-    'Closed': 'bg-gray-50 dark:bg-gray-800 text-gray-700 dark:text-gray-300 border-gray-200 dark:border-gray-700'
+    'Unfinished': 'bg-muted text-muted-foreground border-border',
+    'Open': 'bg-success/10 text-success border-success/20',
+    'Closed': 'bg-muted text-muted-foreground border-border'
   };
 
   // Update ticket details when data is fetched
@@ -810,20 +811,10 @@ const PlayerTicket = () => {
     // If no form config found, show error - no fallback
     if (!formConfig || !formConfig.fields) {
       return (
-        <div className="text-center py-8 border-2 border-dashed border-red-200 dark:border-red-800 bg-red-50 dark:bg-red-950 rounded-lg">
-          <div className="text-red-600 dark:text-red-400 mb-4">
-            <svg className="h-12 w-12 mx-auto" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L4.082 15.5c-.77.833.192 2.5 1.732 2.5z" />
-            </svg>
-          </div>
-          <h3 className="text-lg font-medium text-red-800 dark:text-red-300 mb-2">{t('submitTicket.formNotConfigured')}</h3>
-          <p className="text-red-700 dark:text-red-400 mb-4">
-            {t('submitTicket.noFormConfig', { type: ticketDetails.type })}
-          </p>
-          <p className="text-sm text-red-600 dark:text-red-500">
-            {t('submitTicket.contactAdmin')}
-          </p>
-        </div>
+        <Notice variant="error" title={t('submitTicket.formNotConfigured')}>
+          <p className="mb-2">{t('submitTicket.noFormConfig', { type: ticketDetails.type })}</p>
+          <p className="text-xs opacity-80">{t('submitTicket.contactAdmin')}</p>
+        </Notice>
       );
     }
     
@@ -858,20 +849,10 @@ const PlayerTicket = () => {
     // Ensure we have fields to render
     if (fields.length === 0) {
       return (
-        <div className="text-center py-8 border-2 border-dashed border-yellow-200 dark:border-yellow-800 bg-yellow-50 dark:bg-yellow-950 rounded-lg">
-          <div className="text-yellow-600 dark:text-yellow-400 mb-4">
-            <svg className="h-12 w-12 mx-auto" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L4.082 15.5c-.77.833.192 2.5 1.732 2.5z" />
-            </svg>
-          </div>
-          <h3 className="text-lg font-medium text-yellow-800 dark:text-yellow-300 mb-2">{t('submitTicket.emptyFormConfig')}</h3>
-          <p className="text-yellow-700 dark:text-yellow-400 mb-4">
-            {t('submitTicket.emptyFormConfigDesc', { type: ticketDetails.type })}
-          </p>
-          <p className="text-sm text-yellow-600 dark:text-yellow-500">
-            {t('submitTicket.contactAdmin')}
-          </p>
-        </div>
+        <Notice variant="warning" title={t('submitTicket.emptyFormConfig')}>
+          <p className="mb-2">{t('submitTicket.emptyFormConfigDesc', { type: ticketDetails.type })}</p>
+          <p className="text-xs opacity-80">{t('submitTicket.contactAdmin')}</p>
+        </Notice>
       );
     }
     
@@ -1229,24 +1210,15 @@ const PlayerTicket = () => {
       <div className="min-h-screen bg-background p-6">
         <div className="max-w-5xl mx-auto">
         {/* Security Disclaimer */}
-        <div className={`${ticketData?.emailAuthEnabled ? 'bg-green-50 dark:bg-green-950 border-green-200 dark:border-green-800' : 'bg-yellow-50 dark:bg-yellow-950 border-yellow-200 dark:border-yellow-800'} border rounded-lg p-4 mb-6`}>
-          <div className="flex items-start gap-3">
-            <div className={`${ticketData?.emailAuthEnabled ? 'text-green-600 dark:text-green-400' : 'text-yellow-600 dark:text-yellow-400'} mt-0.5`}>
-              <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
-                <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clipRule="evenodd" />
-              </svg>
-            </div>
-            <div>
-              <h3 className={`font-medium ${ticketData?.emailAuthEnabled ? 'text-green-800 dark:text-green-300' : 'text-yellow-800 dark:text-yellow-300'}`}>{t('submitTicket.securityNotice')}</h3>
-              <p className={`text-sm mt-1 ${ticketData?.emailAuthEnabled ? 'text-green-700 dark:text-green-400' : 'text-yellow-700 dark:text-yellow-400'}`}>
-                {ticketData?.emailAuthEnabled
-                  ? t('submitTicket.securityNoticeProtected')
-                  : t('submitTicket.securityNoticeDesc')
-                }
-              </p>
-            </div>
-          </div>
-        </div>
+        <Notice
+          variant={ticketData?.emailAuthEnabled ? 'success' : 'warning'}
+          title={t('submitTicket.securityNotice')}
+          className="mb-6"
+        >
+          {ticketData?.emailAuthEnabled
+            ? t('submitTicket.securityNoticeProtected')
+            : t('submitTicket.securityNoticeDesc')}
+        </Notice>
         
         {/* Check if the ticket is unfinished and needs a form */}
         {ticketDetails.status === 'Unfinished' ? (

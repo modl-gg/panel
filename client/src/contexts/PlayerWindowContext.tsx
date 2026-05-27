@@ -1,4 +1,4 @@
-import { createContext, useContext, useState, useCallback, ReactNode } from 'react';
+import { createContext, useContext, useState, useCallback, useMemo, ReactNode } from 'react';
 import { createPortal } from 'react-dom';
 import PlayerWindow from '@/components/windows/PlayerWindow';
 
@@ -29,7 +29,7 @@ const getNextWindowPosition = (existingWindows: PlayerWindowState[]): WindowPosi
   const baseX = 100;
   const baseY = 100;
   const offset = 50;
-  
+
   const count = existingWindows.length;
   return {
     x: baseX + (count * offset),
@@ -37,20 +37,38 @@ const getNextWindowPosition = (existingWindows: PlayerWindowState[]): WindowPosi
   };
 };
 
+const setPlayerUrlParam = (playerId: string) => {
+  if (typeof window === 'undefined') return;
+  const url = new URL(window.location.href);
+  if (url.searchParams.get('player') === playerId) return;
+  url.searchParams.set('player', playerId);
+  window.history.replaceState({}, '', url.toString());
+};
+
+const clearPlayerUrlParam = (playerId: string) => {
+  if (typeof window === 'undefined') return;
+  const url = new URL(window.location.href);
+  if (url.searchParams.get('player') !== playerId) return;
+  url.searchParams.delete('player');
+  url.searchParams.delete('punishment');
+  window.history.replaceState({}, '', url.toString());
+};
+
 export function PlayerWindowProvider({ children }: { children: ReactNode }) {
   const [windows, setWindows] = useState<PlayerWindowState[]>([]);
 
   const openPlayerWindow = useCallback((playerId: string, username?: string) => {
+    setPlayerUrlParam(playerId);
     setWindows(prevWindows => {
       const windowId = generateWindowId(playerId);
-      
+
       const existingWindowIndex = prevWindows.findIndex(w => w.id === windowId);
       if (existingWindowIndex !== -1) {
         const existingWindow = prevWindows[existingWindowIndex];
         const otherWindows = prevWindows.filter((_, index) => index !== existingWindowIndex);
         return [...otherWindows, { ...existingWindow, isOpen: true }];
       }
-      
+
       const position = getNextWindowPosition(prevWindows);
       const newWindow: PlayerWindowState = {
         id: windowId,
@@ -58,31 +76,31 @@ export function PlayerWindowProvider({ children }: { children: ReactNode }) {
         isOpen: true,
         position
       };
-      
+
       return [...prevWindows, newWindow];
     });
   }, []);
 
   const closePlayerWindow = useCallback((windowId: string) => {
-    setWindows(prevWindows => 
-      prevWindows.map(window => 
-        window.id === windowId 
-          ? { ...window, isOpen: false }
-          : window
-      )
-    );
+    setWindows(prevWindows => {
+      const closing = prevWindows.find(w => w.id === windowId);
+      if (closing) {
+        clearPlayerUrlParam(closing.playerId);
+      }
+      return prevWindows.filter(w => w.id !== windowId);
+    });
   }, []);
 
   const focusPlayerWindow = useCallback((playerId: string, username?: string) => {
     openPlayerWindow(playerId, username);
   }, [openPlayerWindow]);
 
-  const contextValue: PlayerWindowContextType = {
+  const contextValue = useMemo<PlayerWindowContextType>(() => ({
     windows,
     openPlayerWindow,
     closePlayerWindow,
     focusPlayerWindow
-  };
+  }), [windows, openPlayerWindow, closePlayerWindow, focusPlayerWindow]);
 
   return (
     <PlayerWindowContext.Provider value={contextValue}>

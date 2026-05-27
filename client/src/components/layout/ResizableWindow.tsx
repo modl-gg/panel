@@ -38,9 +38,12 @@ const ResizableWindow = ({
   const windowRef = useRef<HTMLDivElement>(null);
   const headerRef = useRef<HTMLDivElement>(null);
   const minimizedHeaderRef = useRef<HTMLDivElement>(null);
+  const initialPositionRef = useRef(initialPosition);
   const [isDragging, setIsDragging] = useState(false);
   const [position, setPosition] = useState(initialPosition);
   const [size, setSize] = useState(initialSize);
+  const positionRef = useRef(position);
+  const sizeRef = useRef(size);
   const [isMaximized, setIsMaximized] = useState(false);
   const [isMinimized, setIsMinimized] = useState(false);
   const [dragStart, setDragStart] = useState({ x: 0, y: 0 });
@@ -51,62 +54,72 @@ const ResizableWindow = ({
   }>({ position: initialPosition, size: initialSize });
   const [isInitialized, setIsInitialized] = useState(false);
 
+  useEffect(() => {
+    positionRef.current = position;
+  }, [position]);
+
+  useEffect(() => {
+    sizeRef.current = size;
+  }, [size]);
+
   // Initialize position once
   useEffect(() => {
     if (!isOpen || !windowRef.current || isInitialized) return;
-    
-// Use the global last known window configuration for player windows
+
+    const initial = initialPositionRef.current;
+
+    // Use the global last known window configuration for player windows
     if (id.startsWith('player-')) {
-      // Apply the size from the last window 
+      // Apply the size from the last window
       setSize(lastPlayerWindowConfig.size);
-      
+
       // Stagger the position slightly for multiple windows
       const offset = 20;
       const totalOpen = document.querySelectorAll('.resizable-window').length - 1;
-      
-      if (typeof lastPlayerWindowConfig.position.x === 'number' && 
+
+      if (typeof lastPlayerWindowConfig.position.x === 'number' &&
           typeof lastPlayerWindowConfig.position.y === 'number') {
-        setPosition({ 
+        setPosition({
           x: lastPlayerWindowConfig.position.x + (offset * totalOpen),
           y: lastPlayerWindowConfig.position.y + (offset * totalOpen)
         });
       } else {
         setPosition(lastPlayerWindowConfig.position);
       }
-      
+
       setIsInitialized(true);
     }
     // Center the window if initial position is percentage based
-    if (typeof initialPosition.x === 'string' && initialPosition.x.includes('%')) {
+    if (typeof initial.x === 'string' && initial.x.includes('%')) {
       const windowWidth = windowRef.current.offsetWidth;
       const windowHeight = windowRef.current.offsetHeight;
       const viewportWidth = window.innerWidth;
       const viewportHeight = window.innerHeight;
-      
+
       // Safe parsing of percentage values
       let xPercent = 0.5; // Default to 50%
       let yPercent = 0.5; // Default to 50%
-      
-      if (typeof initialPosition.x === 'string') {
-        const parsedX = parseFloat(initialPosition.x);
+
+      if (typeof initial.x === 'string') {
+        const parsedX = parseFloat(initial.x);
         if (!isNaN(parsedX)) {
           xPercent = parsedX / 100;
         }
       }
-      
-      if (typeof initialPosition.y === 'string') {
-        const parsedY = parseFloat(initialPosition.y);
+
+      if (typeof initial.y === 'string') {
+        const parsedY = parseFloat(initial.y);
         if (!isNaN(parsedY)) {
           yPercent = parsedY / 100;
         }
       }
-      
+
       const xPos = viewportWidth * xPercent - windowWidth * xPercent;
       const yPos = viewportHeight * yPercent - windowHeight * yPercent;
-      
+
       setPosition({ x: xPos, y: yPos });
       setIsInitialized(true);
-      
+
       // Store this as the last known configuration if it's a player window
       if (id.startsWith('player-')) {
         // Update the global config
@@ -114,7 +127,7 @@ const ResizableWindow = ({
         lastPlayerWindowConfig.position = { x: xPos, y: yPos };
       }
     }
-  }, [isOpen, initialPosition, isInitialized, id]);
+  }, [isOpen, isInitialized, id]);
 
   // Handle dragging
   useEffect(() => {
@@ -138,14 +151,14 @@ const ResizableWindow = ({
 
     const handleMouseUp = () => {
       setIsDragging(false);
-      
+
       // Save position for new windows
       if (id.startsWith('player-')) {
-        // Update the global window state
-        lastPlayerWindowConfig.size = size;
+        // Update the global window state using freshest values via refs
+        lastPlayerWindowConfig.size = sizeRef.current;
         lastPlayerWindowConfig.position = {
-          x: typeof position.x === 'number' ? position.x : 0,
-          y: typeof position.y === 'number' ? position.y : 0
+          x: typeof positionRef.current.x === 'number' ? positionRef.current.x : 0,
+          y: typeof positionRef.current.y === 'number' ? positionRef.current.y : 0
         };
       }
     };
@@ -159,7 +172,7 @@ const ResizableWindow = ({
       document.removeEventListener('mousemove', handleMouseMove);
       document.removeEventListener('mouseup', handleMouseUp);
     };
-  }, [isDragging, dragStart]);
+  }, [isDragging, dragStart, id]);
 
   const handleMouseDown = (e: React.MouseEvent) => {
     if (!windowRef.current) return;

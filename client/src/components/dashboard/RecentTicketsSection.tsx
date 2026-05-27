@@ -5,6 +5,23 @@ import { useLocation } from 'wouter';
 import { formatTimeAgo } from '@/utils/date-utils';
 import { stripMarkdown } from '@/utils/markdown-utils';
 import { useTranslation } from 'react-i18next';
+import { StatusBadge } from '@/components/ui/status-badge';
+
+type Intent = 'info' | 'success' | 'warning' | 'destructive' | 'neutral';
+
+const statusIntents: Record<string, Intent> = {
+  open: 'info',
+  closed: 'success',
+  unfinished: 'neutral',
+};
+
+const priorityIntents: Record<string, Intent> = {
+  low: 'neutral',
+  normal: 'info',
+  medium: 'info',
+  high: 'warning',
+  urgent: 'destructive',
+};
 
 export interface RecentTicket {
   id: string;
@@ -21,20 +38,6 @@ interface RecentTicketsSectionProps {
   tickets: RecentTicket[];
   loading: boolean;
 }
-
-const statusColors: Record<string, string> = {
-  open: 'bg-blue-500/20 text-blue-500',
-  closed: 'bg-green-500/20 text-green-500',
-  unfinished: 'bg-gray-500/20 text-gray-500'
-};
-
-const priorityColors: Record<string, string> = {
-  low: 'bg-gray-500/20 text-gray-500',
-  normal: 'bg-blue-500/20 text-blue-500',
-  medium: 'bg-blue-500/20 text-blue-500',
-  high: 'bg-orange-500/20 text-orange-500',
-  urgent: 'bg-red-500/20 text-red-500'
-};
 
 export function RecentTicketsSection({ tickets, loading }: RecentTicketsSectionProps) {
   const { t } = useTranslation();
@@ -102,14 +105,14 @@ export function RecentTicketsSection({ tickets, loading }: RecentTicketsSectionP
                   <h4 className="font-medium text-sm line-clamp-1">{ticket.title}</h4>
                   <div className="flex items-center gap-2 ml-2 flex-shrink-0">
                     {ticket.priority && (
-                      <Badge variant="secondary" className={`text-xs ${priorityColors[ticket.priority] || ''}`}>
+                      <StatusBadge intent={priorityIntents[ticket.priority] || 'neutral'} className="text-xs">
                         {ticket.priority.toUpperCase()}
-                      </Badge>
+                      </StatusBadge>
                     )}
                     {ticket.status && (
-                      <Badge variant="secondary" className={`text-xs ${statusColors[ticket.status] || ''}`}>
+                      <StatusBadge intent={statusIntents[ticket.status] || 'neutral'} className="text-xs">
                         {ticket.status.replace('_', ' ').toUpperCase()}
-                      </Badge>
+                      </StatusBadge>
                     )}
                   </div>
                 </div>

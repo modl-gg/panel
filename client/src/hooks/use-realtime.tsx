@@ -312,6 +312,9 @@ export function useRealtimeInvalidation(): void {
           break;
         }
         default:
+          if (import.meta.env.DEV) {
+            console.warn('[realtime] unhandled envelope payload case:', envelope.payload?.case);
+          }
           break;
       }
     };

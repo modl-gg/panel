@@ -1,3 +1,4 @@
+import { useEffect, useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { apiFetch } from '@/lib/api';
 
@@ -92,13 +93,23 @@ interface PunishmentLookupResult {
   };
 }
 
-export function usePunishmentLookup(punishmentId: string) {
-  return useQuery({
-    queryKey: ['punishment-lookup', punishmentId],
-    queryFn: async (): Promise<PunishmentLookupResult> => {
-      if (!punishmentId) throw new Error('No punishment ID provided');
+export function usePunishmentLookup(punishmentId: string, debounceMs: number = 300) {
+  const [debouncedId, setDebouncedId] = useState(punishmentId);
 
-      const res = await apiFetch(`/v1/panel/players/punishments/${punishmentId}`);
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setDebouncedId(punishmentId);
+    }, debounceMs);
+
+    return () => clearTimeout(timer);
+  }, [punishmentId, debounceMs]);
+
+  return useQuery({
+    queryKey: ['punishment-lookup', debouncedId],
+    queryFn: async (): Promise<PunishmentLookupResult> => {
+      if (!debouncedId) throw new Error('No punishment ID provided');
+
+      const res = await apiFetch(`/v1/panel/players/punishments/${debouncedId}`);
       if (!res.ok) {
         if (res.status === 404) {
           throw new Error('Punishment not found');
@@ -121,7 +132,7 @@ export function usePunishmentLookup(punishmentId: string) {
         },
       };
     },
-    enabled: !!punishmentId && punishmentId.length > 0,
+    enabled: !!debouncedId && debouncedId.length > 0,
     staleTime: 1000 * 60 * 5,
     retry: false
   });
