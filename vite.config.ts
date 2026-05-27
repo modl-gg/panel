@@ -43,7 +43,18 @@ export default defineConfig(({ mode }) => {
         output: {
           manualChunks(id) {
             if (id.includes('node_modules')) {
-              if (id.includes('node_modules/recharts') || id.includes('node_modules/d3-')) return 'charts-vendor';
+              // Anything that imports recharts/d3 at module top-level must live in
+              // the same chunk: victory-vendor re-exports `d3-*`, and shared-web's
+              // chart wrapper does `import * as RechartsPrimitive from "recharts"`.
+              // Leaving them in vendor builds a charts-vendor <-> vendor cycle,
+              // which triggers a TDZ on the cross-chunk React import at load time.
+              if (
+                id.includes('node_modules/recharts') ||
+                id.includes('node_modules/victory-vendor') ||
+                id.includes('node_modules/d3-') ||
+                id.includes('node_modules/internmap') ||
+                /@modl-gg\/shared-web\/.*\/components\/ui\/chart\.js$/.test(id)
+              ) return 'charts-vendor';
               if (id.includes('node_modules/@modl-gg/replay-viewer') || id.includes('node_modules/three')) return 'replay-viewer-vendor';
               if (id.includes('node_modules/@radix-ui/')) return 'radix-vendor';
               if (id.includes('node_modules/react-dnd') || id.includes('node_modules/dnd-core')) return 'dnd-vendor';
