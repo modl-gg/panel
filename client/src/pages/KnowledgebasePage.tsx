@@ -42,7 +42,7 @@ const KnowledgebasePage: React.FC = () => {
           throw new Error(`HTTP error! status: ${response.status}`);
         }
         const data = await response.json();
-        setCategories(data);
+        setCategories(Array.isArray(data.categories) ? data.categories : []);
         setError(null);
       } catch (e: any) {
         setError(e.message || 'Failed to load categories.');
@@ -72,7 +72,7 @@ const KnowledgebasePage: React.FC = () => {
           throw new Error(`HTTP error! status: ${response.status}`);
         }
         const data = await response.json();
-        setSearchResults(data);
+        setSearchResults(Array.isArray(data.articles) ? data.articles : []);
       } catch (e: any) {
         console.error('Search failed:', e);
         setSearchResults([]); // Clear results on error

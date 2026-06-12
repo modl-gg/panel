@@ -37,7 +37,7 @@ const fetchCategories = async (): Promise<KnowledgebaseCategory[]> => {
     throw new Error('Failed to fetch categories');
   }
   const data = await response.json();
-  return Array.isArray(data) ? data.map(normalizeCategory) : [];
+  return Array.isArray(data.categories) ? data.categories.map(normalizeCategory) : [];
 };
 const ItemTypes = {
   CATEGORY: 'category',

@@ -8,6 +8,7 @@ import {
   ClientKind,
   ErrorCode,
   HeartbeatSchema,
+  PanelResource,
   RealtimeEnvelope,
   RealtimeEnvelopeSchema,
   ReconnectAction,
@@ -29,14 +30,65 @@ const PANEL_TOPICS = [
   Topic.PANEL_TICKETS,
   Topic.PANEL_ASSIGNED_TICKETS,
   Topic.PANEL_MIGRATIONS,
+  Topic.PANEL_PLAYERS,
+  Topic.PANEL_PUNISHMENTS,
+  Topic.PANEL_STAFF,
+  Topic.PANEL_ROLES,
+  Topic.PANEL_SETTINGS,
+  Topic.PANEL_PUNISHMENT_TYPES,
+  Topic.PANEL_KNOWLEDGEBASE,
+  Topic.PANEL_AUDIT,
+  Topic.PANEL_HOMEPAGE,
+  Topic.PANEL_APPEALS,
+  Topic.PANEL_DASHBOARD,
+  Topic.PANEL_NOTIFICATIONS,
 ] as const;
 const PANEL_TOPIC_SET = new Set<Topic>(PANEL_TOPICS);
 
 type InvalidateQueries = Pick<QueryClient, 'invalidateQueries'>;
 type InvalidationTarget = readonly unknown[];
 
+const STAFF_TARGETS: InvalidationTarget[] = [
+  ['/v1/panel/staff'],
+  ['/v1/panel/roles'],
+  ['/v1/panel/roles/permissions'],
+  ['userPermissions'],
+];
+
+const ALL_SETTINGS_TARGETS: InvalidationTarget[] = [
+  ['/v1/settings'],
+  ['/v1/panel/settings/punishment-types'],
+  ['/v1/panel/settings/ticket-forms'],
+  ['/v1/panel/settings/quick-responses'],
+  ['/v1/panel/settings/status-thresholds'],
+  ['/v1/panel/settings/ticket-labels'],
+  ['/v1/panel/settings/replay-retention'],
+];
+
+const DASHBOARD_TARGETS: InvalidationTarget[] = [
+  ['/v1/panel/dashboard/metrics'],
+  ['/v1/panel/dashboard/recent-tickets'],
+  ['/v1/panel/dashboard/recent-punishments'],
+  ['/v1/panel/dashboard/alerts'],
+];
+
+const AUDIT_TARGETS: InvalidationTarget[] = [
+  ['analytics-overview'],
+  ['staff-performance'],
+  ['punishment-analytics'],
+  ['player-activity'],
+  ['ticket-analytics'],
+  ['punishments-list'],
+  ['staff-details'],
+];
+
+const NOTIFICATION_TARGETS: InvalidationTarget[] = [
+  ['/v1/panel/ticket-subscriptions/updates'],
+  ['/v1/panel/ticket-subscriptions/assigned-updates'],
+];
+
 export function isPanelRealtimeEnabled(): boolean {
-  return import.meta.env.VITE_REALTIME_ENABLED === 'true';
+  return import.meta.env.VITE_REALTIME_ENABLED !== 'false';
 }
 
 export function createRealtimeWebSocketUrl(location: Location): string {
@@ -55,6 +107,39 @@ export function getAdvisedReconnectDelayMs(retryAfterMs: number, random: () => n
   return cappedDelay + Math.floor(random() * Math.min(Math.max(cappedDelay, 1), 1_000));
 }
 
+function getTopicForPanelResource(resource: PanelResource): Topic | null {
+  switch (resource) {
+    case PanelResource.PLAYERS:
+      return Topic.PANEL_PLAYERS;
+    case PanelResource.PUNISHMENTS:
+      return Topic.PANEL_PUNISHMENTS;
+    case PanelResource.STAFF:
+      return Topic.PANEL_STAFF;
+    case PanelResource.ROLES:
+      return Topic.PANEL_ROLES;
+    case PanelResource.SETTINGS:
+      return Topic.PANEL_SETTINGS;
+    case PanelResource.PUNISHMENT_TYPES:
+      return Topic.PANEL_PUNISHMENT_TYPES;
+    case PanelResource.KNOWLEDGEBASE:
+      return Topic.PANEL_KNOWLEDGEBASE;
+    case PanelResource.AUDIT:
+      return Topic.PANEL_AUDIT;
+    case PanelResource.HOMEPAGE:
+      return Topic.PANEL_HOMEPAGE;
+    case PanelResource.APPEALS:
+      return Topic.PANEL_APPEALS;
+    case PanelResource.TICKETS:
+      return Topic.PANEL_TICKETS;
+    case PanelResource.DASHBOARD:
+      return Topic.PANEL_DASHBOARD;
+    case PanelResource.NOTIFICATIONS:
+      return Topic.PANEL_NOTIFICATIONS;
+    default:
+      return null;
+  }
+}
+
 export function getRequiredTopicForRealtimePayload(envelope: RealtimeEnvelope): Topic | null {
   switch (envelope.payload.case) {
     case 'ticketChanged':
@@ -63,8 +148,60 @@ export function getRequiredTopicForRealtimePayload(envelope: RealtimeEnvelope): 
       return Topic.PANEL_ASSIGNED_TICKETS;
     case 'migrationStatusChanged':
       return Topic.PANEL_MIGRATIONS;
+    case 'panelInvalidated':
+      return getTopicForPanelResource(envelope.payload.value.resource);
     default:
       return null;
+  }
+}
+
+function getPanelResourceInvalidationTargets(resource: PanelResource, resourceId?: string): InvalidationTarget[] {
+  const id = resourceId?.trim();
+  switch (resource) {
+    case PanelResource.PLAYERS:
+      return id
+        ? [
+            ['/v1/panel/players', id],
+            ['/v1/panel/players/linked', id],
+            ['/v1/panel/players', id, 'replays'],
+          ]
+        : [['/v1/panel/players']];
+    case PanelResource.PUNISHMENTS:
+      return id
+        ? [
+            ['/v1/panel/players', id],
+            ['/v1/panel/players/punishments', id, 'linked-bans'],
+          ]
+        : [['/v1/panel/players']];
+    case PanelResource.STAFF:
+    case PanelResource.ROLES:
+      return STAFF_TARGETS;
+    case PanelResource.SETTINGS:
+    case PanelResource.PUNISHMENT_TYPES:
+      return ALL_SETTINGS_TARGETS;
+    case PanelResource.KNOWLEDGEBASE:
+      return [['knowledgebaseCategories'], ['homepageCards']];
+    case PanelResource.HOMEPAGE:
+      return [['homepageCards']];
+    case PanelResource.AUDIT:
+      return AUDIT_TARGETS;
+    case PanelResource.APPEALS:
+      return [
+        ['/v1/panel/appeals'],
+        ...(id ? [['/v1/panel/appeals/punishment', id] as const] : []),
+      ];
+    case PanelResource.TICKETS:
+      return [
+        ['/v1/panel/tickets'],
+        ['/v1/panel/tickets/counts'],
+        ...(id ? [['/v1/panel/tickets', id] as const] : []),
+      ];
+    case PanelResource.DASHBOARD:
+      return DASHBOARD_TARGETS;
+    case PanelResource.NOTIFICATIONS:
+      return NOTIFICATION_TARGETS;
+    default:
+      return [];
   }
 }
 
@@ -85,6 +222,11 @@ export function getRealtimeInvalidationTargets(envelope: RealtimeEnvelope): Inva
       ];
     case 'migrationStatusChanged':
       return [['/v1/panel/migration/status']];
+    case 'panelInvalidated':
+      return getPanelResourceInvalidationTargets(
+        envelope.payload.value.resource,
+        envelope.payload.value.resourceId,
+      );
     default:
       return [];
   }
@@ -104,6 +246,27 @@ function getTopicInvalidationTargets(topic: Topic): InvalidationTarget[] {
       ];
     case Topic.PANEL_MIGRATIONS:
       return [['/v1/panel/migration/status']];
+    case Topic.PANEL_PLAYERS:
+    case Topic.PANEL_PUNISHMENTS:
+      return [['/v1/panel/players']];
+    case Topic.PANEL_STAFF:
+    case Topic.PANEL_ROLES:
+      return STAFF_TARGETS;
+    case Topic.PANEL_SETTINGS:
+    case Topic.PANEL_PUNISHMENT_TYPES:
+      return ALL_SETTINGS_TARGETS;
+    case Topic.PANEL_KNOWLEDGEBASE:
+      return [['knowledgebaseCategories'], ['homepageCards']];
+    case Topic.PANEL_HOMEPAGE:
+      return [['homepageCards']];
+    case Topic.PANEL_AUDIT:
+      return AUDIT_TARGETS;
+    case Topic.PANEL_APPEALS:
+      return [['/v1/panel/appeals']];
+    case Topic.PANEL_DASHBOARD:
+      return DASHBOARD_TARGETS;
+    case Topic.PANEL_NOTIFICATIONS:
+      return NOTIFICATION_TARGETS;
     default:
       return [];
   }
@@ -304,7 +467,8 @@ export function useRealtimeInvalidation(): void {
           break;
         case 'ticketChanged':
         case 'assignedTicketSubscriptionChanged':
-        case 'migrationStatusChanged': {
+        case 'migrationStatusChanged':
+        case 'panelInvalidated': {
           const requiredTopic = getRequiredTopicForRealtimePayload(envelope);
           if (requiredTopic !== null && subscribedTopics.includes(requiredTopic) && markEventId(recentEventIds, envelope.eventId)) {
             invalidateRealtimeTargets(queryClient, getRealtimeInvalidationTargets(envelope));

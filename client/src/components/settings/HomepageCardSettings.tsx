@@ -94,7 +94,8 @@ const fetchHomepageCards = async (): Promise<HomepageCard[]> => {
   if (!response.ok) {
     throw new Error('Failed to fetch homepage cards');
   }
-  return response.json();
+  const data = await response.json();
+  return Array.isArray(data.cards) ? data.cards : [];
 };
 
 const fetchCategories = async (): Promise<KnowledgebaseCategory[]> => {
@@ -106,7 +107,8 @@ const fetchCategories = async (): Promise<KnowledgebaseCategory[]> => {
   if (!response.ok) {
     throw new Error('Failed to fetch categories');
   }
-  return response.json();
+  const data = await response.json();
+  return Array.isArray(data.categories) ? data.categories : [];
 };
 
 const ITEM_TYPE_HOMEPAGE_CARD = 'homepage-card';

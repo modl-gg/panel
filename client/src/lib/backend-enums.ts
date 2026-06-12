@@ -77,7 +77,9 @@ export function normalizeSubscriptionStatus(value: NullableString): Subscription
 }
 
 export function normalizeProvisioningStatus(value: NullableString): ProvisioningStatus {
-  const normalized = normalizeEnumKey(value);
+  // Backend now emits the proto enum names (PROVISIONING_STATUS_COMPLETED), so strip that
+  // prefix before matching while still accepting the legacy bare/lowercase forms.
+  const normalized = normalizeEnumKey(value).replace(/^PROVISIONING_STATUS_/, "");
   return PROVISIONING_STATUS_SET.has(normalized as ProvisioningStatus)
     ? (normalized as ProvisioningStatus)
     : "PENDING";

@@ -64,7 +64,8 @@ const PasskeySettings = () => {
     try {
       const res = await passkeyFetch('/v1/panel/auth/webauthn/credentials');
       if (res.ok) {
-        setCredentials(await res.json());
+        const data = await res.json();
+        setCredentials(Array.isArray(data.credentials) ? data.credentials : []);
       }
     } catch {
       // silently fail
