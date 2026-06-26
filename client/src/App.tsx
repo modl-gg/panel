@@ -67,8 +67,9 @@ function Router() {
   const isUploadEvidencePage = location.startsWith('/upload-evidence');
   const isVerifyPage = location.startsWith('/verify/');
   const isReplayPage = location.startsWith('/replay');
+  const isRateLimitPage = location.startsWith('/rate-limit');
 
-  if (!isAdminPanelRoute && !isAuthPage && !isAppealsPage && !isPlayerTicketPage && !isSubmitTicketPage && !isProvisioningPage && !isAcceptInvitationPage && !isVerifyEmailPage && !isUploadEvidencePage && !isVerifyPage && !isReplayPage) {
+  if (!isAdminPanelRoute && !isAuthPage && !isAppealsPage && !isPlayerTicketPage && !isSubmitTicketPage && !isProvisioningPage && !isAcceptInvitationPage && !isVerifyEmailPage && !isUploadEvidencePage && !isVerifyPage && !isReplayPage && !isRateLimitPage) {
     return (
       <main className="h-full bg-background">
         <Suspense fallback={<PageLoader />}>
@@ -83,7 +84,7 @@ function Router() {
     );
   }
 
-  if (isAuthPage || isAppealsPage || isPlayerTicketPage || isSubmitTicketPage || isProvisioningPage || isAcceptInvitationPage || isVerifyEmailPage || isUploadEvidencePage || isVerifyPage || isReplayPage) {
+  if (isAuthPage || isAppealsPage || isPlayerTicketPage || isSubmitTicketPage || isProvisioningPage || isAcceptInvitationPage || isVerifyEmailPage || isUploadEvidencePage || isVerifyPage || isReplayPage || isRateLimitPage) {
     return (
       <main className="h-full bg-background">
         <Suspense fallback={<PageLoader />}>
@@ -100,6 +101,7 @@ function Router() {
             <Route path="/upload-evidence/:token" component={UploadEvidencePage} />
             <Route path="/verify/:token" component={VerifyPage} />
             <Route path="/replay" component={ReplayPage} />
+            <Route path="/rate-limit" component={RateLimitPage} />
           </Switch>
         </Suspense>
       </main>
@@ -187,9 +189,20 @@ function Router() {
   );
 }
 
+// Recovery/verification flows that must stay reachable even when the tenant is not fully
+// provisioned (serverExists===false) or the platform is in maintenance mode.
+const ALWAYS_REACHABLE_PATHS = ['/verify-email', '/verify/', '/replay'];
+const isAlwaysReachablePath = (loc: string) =>
+  ALWAYS_REACHABLE_PATHS.some((p) => loc.startsWith(p));
+
 function AppContent() {
   const { user, isLoading } = useAuth();
-  const { data: publicSettings, isLoading: isLoadingSettings } = usePublicSettings();
+  const {
+    data: publicSettings,
+    isLoading: isLoadingSettings,
+    isError: isSettingsError,
+    refetch: refetchSettings,
+  } = usePublicSettings();
   const [location] = useLocation();
   const [isWelcomeModalOpen, setWelcomeModalOpen] = useState(false);
 
@@ -232,8 +245,30 @@ function AppContent() {
     );
   }
 
+  // A transport/network failure of /v1/public/settings is transient, NOT a real "server not found".
+  // Only collapse to an error screen when we have no last-good settings to fall back to; otherwise the
+  // stale-but-valid `publicSettings` keeps the app usable (e.g. an authenticated staff session) and the
+  // next successful refetch self-heals. Never coerce a fetch failure into serverExists:false.
+  if (isSettingsError && !publicSettings && !isAlwaysReachablePath(location)) {
+    return (
+      <div className="flex flex-col items-center justify-center min-h-screen gap-4 px-4 text-center">
+        <h1 className="text-xl font-semibold">Unable to reach the server</h1>
+        <p className="text-muted-foreground max-w-md">
+          We couldn't load this page right now. This is usually temporary — please check your connection and try again.
+        </p>
+        <button
+          type="button"
+          onClick={() => { void refetchSettings(); }}
+          className="inline-flex items-center justify-center rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90"
+        >
+          Retry
+        </button>
+      </div>
+    );
+  }
+
   // Skip server-not-found check for verify-email/verify/replay pages (needed for email verification flow)
-  if (publicSettings?.serverExists === false && !location.startsWith('/verify-email') && !location.startsWith('/verify/') && !location.startsWith('/replay')) {
+  if (publicSettings?.serverExists === false && !isAlwaysReachablePath(location)) {
     return (
       <Suspense fallback={<div className="flex items-center justify-center min-h-screen"><Loader2 className="h-8 w-8 animate-spin text-primary" /></div>}>
         <ServerNotFoundPage />
@@ -241,7 +276,8 @@ function AppContent() {
     );
   }
 
-  if (maintenanceMode) {
+  // Keep recovery/verification flows reachable during maintenance, matching the serverExists carve-out above.
+  if (maintenanceMode && !isAlwaysReachablePath(location)) {
     return <MaintenancePage message={maintenanceMessage} />;
   }
 

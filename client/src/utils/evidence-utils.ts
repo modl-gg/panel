@@ -60,7 +60,9 @@ export function getEvidenceClickUrl(evidenceItem: any): string {
 
 export function isEvidenceClickable(evidenceItem: any): boolean {
   const url = getEvidenceClickUrl(evidenceItem);
-  return url && (url.startsWith('http') || url.startsWith('/'));
+  // Coerce to a real boolean: a falsy url ('') would otherwise leak through the `&&`
+  // as the empty string, contradicting the declared boolean return type.
+  return Boolean(url) && (url.startsWith('http') || url.startsWith('/'));
 }
 
 export function getEvidenceShortName(evidenceItem: any, maxLength: number = 15): string {

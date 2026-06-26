@@ -22,6 +22,13 @@ import { formatDateWithTime } from '@/utils/date-utils';
 import { getAvatarUrl, apiFetch } from '@/lib/api';
 import { formatTicketStatusLabel, normalizeTicketStatus } from '@/lib/ticket-enums';
 
+// Modification types that mark a punishment as pardoned. Mirrors the backend
+// PunishmentModificationType.isPardon() set (MANUAL_PARDON, APPEAL_ACCEPT,
+// SYSTEM_PARDON) so system/auto pardons display as "Pardoned" rather than a
+// generic "Inactive".
+const PARDON_MODIFICATION_TYPES = ['MANUAL_PARDON', 'APPEAL_ACCEPT', 'SYSTEM_PARDON'];
+const isPardonModification = (mod: any) => PARDON_MODIFICATION_TYPES.includes(mod?.type);
+
 // Local type definitions
 interface WindowPosition {
   x: number;
@@ -1183,10 +1190,8 @@ const PlayerWindow = ({ playerId, isOpen, onClose, initialPosition }: PlayerWind
   // Helper function to determine if a punishment is currently active based on expiry logic
   const isPunishmentCurrentlyActive = (warning: any, effectiveState: any) => {
     // Check if punishment is pardoned/revoked
-    const pardonModification = effectiveState.modifications.find((mod: any) => 
-      mod.type === 'MANUAL_PARDON' || mod.type === 'APPEAL_ACCEPT'
-    );
-    
+    const pardonModification = effectiveState.modifications.find(isPardonModification);
+
     if (pardonModification) {
       return false; // Pardoned punishments are always inactive
     }
@@ -1311,15 +1316,16 @@ const PlayerWindow = ({ playerId, isOpen, onClose, initialPosition }: PlayerWind
     let effectiveExpiry = originalExpiry;
     let effectiveDuration = originalDuration;
     
-    // Apply modifications in chronological order
-    const sortedModifications = modifications.sort((a: any, b: any) => {
+    // Apply modifications in chronological order (copy before sorting so we don't
+    // mutate the react-query-owned modifications array in place).
+    const sortedModifications = [...modifications].sort((a: any, b: any) => {
       const dateA = a.date ? new Date(a.date).getTime() : 0;
       const dateB = b.date ? new Date(b.date).getTime() : 0;
       return dateA - dateB;
     });
 
     for (const mod of sortedModifications) {
-      if (mod.type === 'MANUAL_PARDON' || mod.type === 'APPEAL_ACCEPT') {
+      if (isPardonModification(mod)) {
         effectiveActive = false;
       } else if (mod.type === 'MANUAL_DURATION_CHANGE' || mod.type === 'APPEAL_DURATION_CHANGE') {
         if (mod.effectiveDuration !== undefined) {
@@ -1577,10 +1583,8 @@ const PlayerWindow = ({ playerId, isOpen, onClose, initialPosition }: PlayerWind
                             const isInactive = !effectiveState.effectiveActive;
                             
                             // Check if punishment is pardoned
-                            const pardonModification = effectiveState.modifications.find((mod: any) => 
-                              mod.type === 'MANUAL_PARDON' || mod.type === 'APPEAL_ACCEPT'
-                            );
-                            
+                            const pardonModification = effectiveState.modifications.find(isPardonModification);
+
                             if (pardonModification) {
                               return (
                                 <Badge variant="outline" className="text-xs bg-blue-100 dark:bg-blue-900 text-blue-800 dark:text-blue-200 border-blue-300 dark:border-blue-700">
@@ -1665,17 +1669,16 @@ const PlayerWindow = ({ playerId, isOpen, onClose, initialPosition }: PlayerWind
                                 }                              };
 
                               // Check if punishment is inactive/pardoned
-                              const pardonModification = effectiveState.modifications.find((mod: any) => 
-                                mod.type === 'MANUAL_PARDON' || mod.type === 'APPEAL_ACCEPT'
-                              );
-                              
+                              const pardonModification = effectiveState.modifications.find(isPardonModification);
+
                               // Check if punishment is inactive (either pardoned or naturally expired/inactive)
                               const isInactive = !effectiveState.effectiveActive;
-                              
+
                               if (pardonModification) {
-                                // Calculate time since pardoned
-                                if (pardonModification.issued) {
-                                  const pardonDate = new Date(pardonModification.issued);
+                                // Calculate time since pardoned. Modifications carry `date`
+                                // (ISO from the mapper), not `issued`.
+                                if (pardonModification.date) {
+                                  const pardonDate = new Date(pardonModification.date);
                                   if (!isNaN(pardonDate.getTime())) {
                                     const now = new Date();
                                     const timeDiff = now.getTime() - pardonDate.getTime();
@@ -2081,7 +2084,11 @@ const PlayerWindow = ({ playerId, isOpen, onClose, initialPosition }: PlayerWind
                                         variant="outline"
                                         size="sm"
                                         className="h-6 px-2 text-xs"
-                                        onClick={() => openWindow('ticket', { ticketId: mod.appealTicketId })}
+                                        onClick={() => {
+                                          // Replace # with ID- for URL compatibility (matches ticket links above)
+                                          const urlSafeTicketId = String(mod.appealTicketId).replace('#', 'ID-');
+                                          setLocation(`/panel/tickets/${urlSafeTicketId}`);
+                                        }}
                                       >
                                         <Link2 className="h-3 w-3 mr-1" />
                                         View Appeal
@@ -3017,7 +3024,7 @@ const PlayerWindow = ({ playerId, isOpen, onClose, initialPosition }: PlayerWind
                 statWiping: playerInfo.statWiping || false,
                 silentPunishment: playerInfo.silentPunishment || false,
                 kickSameIP: playerInfo.kickSameIP || false,
-                attachReports: playerInfo.attachReports || [],
+                attachReports: playerInfo.attachedReports || [],
                 banToLink: playerInfo.banToLink || '',
                 banLinkedAccounts: playerInfo.banLinkedAccounts || false
               }}
@@ -3036,7 +3043,7 @@ const PlayerWindow = ({ playerId, isOpen, onClose, initialPosition }: PlayerWind
                   statWiping: data.statWiping || false,
                   silentPunishment: data.silentPunishment || false,
                   kickSameIP: data.kickSameIP || false,
-                  attachReports: data.attachReports || [],
+                  attachedReports: data.attachReports || [],
                   banToLink: data.banToLink || '',
                   banLinkedAccounts: data.banLinkedAccounts || false
                 }));

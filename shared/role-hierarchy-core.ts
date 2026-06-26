@@ -41,8 +41,10 @@ export function canModifyRole(
   if (isSuperAdminRole(newRole) && !isSuperAdminRole(modifierRole)) return false;
 
   const canModifyTarget = hasHigherAuthority(modifierRole, targetRole, roleHierarchy);
-  const canAssignNewRole = hasHigherOrEqualAuthority(modifierRole, newRole, roleHierarchy);
-  
+  // Mirror backend StaffService.validateGrantableRole: a performer may only grant a role with
+  // STRICTLY higher authority (performer.order < target.order); equal-order (peer) grants are forbidden.
+  const canAssignNewRole = hasHigherAuthority(modifierRole, newRole, roleHierarchy);
+
   return canModifyTarget && canAssignNewRole;
 }
 

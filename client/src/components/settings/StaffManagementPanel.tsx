@@ -120,10 +120,10 @@ const StaffManagementPanel = () => {
       });
 
       if (!response.ok) {
-        const errorData = await response.json().catch(() => ({ message: t('settings.staff.removeStaffFailed') }));
+        const errorData = await response.json().catch(() => ({}));
         toast({
           title: t('toast.error'),
-          description: errorData.message || t('settings.staff.removeStaffFailed'),
+          description: errorData.error || errorData.message || t('settings.staff.removeStaffFailed'),
           variant: 'destructive',
         });
         return;
@@ -149,8 +149,8 @@ const StaffManagementPanel = () => {
         method: 'POST',
       });
       if (!response.ok) {
-        const errorData = await response.json().catch(() => ({ message: t('settings.staff.resendInvitationFailed') }));
-        throw new Error(errorData.message);
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(errorData.error || errorData.message || t('settings.staff.resendInvitationFailed'));
       }
       toast({
         title: t('toast.success'),

@@ -51,30 +51,36 @@ function isMobileUserAgent(ua: string): boolean {
   return /Android|iPhone|iPad|Mobile/.test(ua);
 }
 
-function SessionsSection({ onSignOutAll }: { onSignOutAll: () => void }) {
+function SessionsSection({ onSignOut }: { onSignOut: () => void }) {
   const { t } = useTranslation();
-  const { toast } = useToast();
   const [sessions, setSessions] = useState<SessionInfo[]>([]);
   const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState(false);
   const [signingOut, setSigningOut] = useState(false);
 
   useEffect(() => {
     apiFetch('/v1/panel/auth/sessions')
-      .then(r => r.ok ? r.json() : [])
-      .then(setSessions)
-      .catch(() => setSessions([]))
+      .then(r => {
+        if (!r.ok) throw new Error('Failed to load sessions');
+        return r.json();
+      })
+      .then((data) => {
+        setSessions(Array.isArray(data) ? data : []);
+        setLoadError(false);
+      })
+      .catch(() => {
+        setSessions([]);
+        setLoadError(true);
+      })
       .finally(() => setLoading(false));
   }, []);
 
-  const handleSignOutAll = async () => {
+  // The backend logout endpoint only invalidates the current browser's session,
+  // so this button signs out this device only. onSignOut (useAuth().logout)
+  // already POSTs /v1/panel/auth/logout, so we must NOT call it again here.
+  const handleSignOut = () => {
     setSigningOut(true);
-    try {
-      await apiFetch('/v1/panel/auth/logout', { method: 'POST' });
-      onSignOutAll();
-    } catch {
-      toast({ title: t('common.error'), variant: 'destructive' });
-      setSigningOut(false);
-    }
+    onSignOut();
   };
 
   return (
@@ -86,6 +92,8 @@ function SessionsSection({ onSignOutAll }: { onSignOutAll: () => void }) {
 
       {loading ? (
         <p className="text-sm text-muted-foreground">Loading…</p>
+      ) : loadError ? (
+        <p className="text-sm text-destructive">Failed to load sessions.</p>
       ) : sessions.length === 0 ? (
         <p className="text-sm text-muted-foreground">No active sessions.</p>
       ) : (
@@ -121,11 +129,11 @@ function SessionsSection({ onSignOutAll }: { onSignOutAll: () => void }) {
       <Button
         variant="outline"
         size="sm"
-        onClick={handleSignOutAll}
+        onClick={handleSignOut}
         disabled={signingOut}
       >
         <LogOut className="h-4 w-4 mr-2" />
-        Sign out all
+        {t('common.signOut')}
       </Button>
     </div>
   );
@@ -348,7 +356,7 @@ const AccountSettings = ({
         {/* MIDDLE: passkeys + sessions */}
         <div className="border-l border-border px-6 space-y-6">
           <PasskeySettings />
-          <SessionsSection onSignOutAll={logout} />
+          <SessionsSection onSignOut={logout} />
         </div>
 
         {/* RIGHT: small offset column aligned with sign-out button */}

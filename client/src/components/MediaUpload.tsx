@@ -1,4 +1,4 @@
-import React, { useState, useRef, useCallback, useMemo } from 'react';
+import React, { useState, useRef, useCallback, useMemo, useEffect } from 'react';
 import { Upload, X, FileText, Image, Video, File, Loader2, Check, AlertCircle } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { Button } from '@modl-gg/shared-web/components/ui/button';
@@ -86,9 +86,17 @@ export function MediaUpload({
   const [uploadedFiles, setUploadedFiles] = useState<UploadedFile[]>([]);
   const [isDragging, setIsDragging] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const isMountedRef = useRef(true);
   const { toast } = useToast();
   const { uploadMedia } = useMediaUpload();
   const { data: mediaConfig } = useMediaUploadConfig();
+
+  useEffect(() => {
+    isMountedRef.current = true;
+    return () => {
+      isMountedRef.current = false;
+    };
+  }, []);
 
   const isUploading = uploadedFiles.some(f => f.status === 'uploading');
 
@@ -128,6 +136,7 @@ export function MediaUpload({
 
   const uploadFile = async (file: File, fileId: string): Promise<{ url: string; key: string } | null> => {
     const result = await uploadMedia(file, uploadType, metadata, (progress) => {
+      if (!isMountedRef.current) return;
       setUploadedFiles(prev => prev.map(f =>
         f.id === fileId
           ? { ...f, progress: progress.percentage }
@@ -165,8 +174,24 @@ export function MediaUpload({
       return;
     }
 
-    const newFiles = Array.from(files).slice(0, maxFiles - uploadedFiles.length);
-    
+    // Only count in-flight + successfully uploaded files toward the cap.
+    // Validation-error rows are stale UI artifacts and must not shrink the
+    // available slots for a subsequent valid selection.
+    const activeCount = uploadedFiles.filter(f => f.status !== 'error').length;
+    const remainingSlots = Math.max(0, maxFiles - activeCount);
+    const newFiles = Array.from(files).slice(0, remainingSlots);
+
+    if (newFiles.length < files.length) {
+      toast({
+        title: t('upload.maxFilesReached', 'Maximum files reached'),
+        description: t('upload.maxFilesReachedDesc', {
+          count: maxFiles,
+          defaultValue: 'You can upload at most {{count}} files. Some files were not added.',
+        }),
+        variant: "destructive",
+      });
+    }
+
     for (const file of newFiles) {
       const fileId = `${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
       
@@ -203,34 +228,40 @@ export function MediaUpload({
 
       try {
         const result = await uploadFile(file, fileId);
-        
+
+        // If the component unmounted while this upload was in flight, do not
+        // touch React state or fire parent callbacks against a stale parent.
+        if (!isMountedRef.current) continue;
+
         if (result) {
           // Update file status to success
-          setUploadedFiles(prev => prev.map(f => 
-            f.id === fileId 
+          setUploadedFiles(prev => prev.map(f =>
+            f.id === fileId
               ? { ...f, status: 'success', progress: 100, url: result.url, key: result.key }
               : f
           ));
-          
+
           onUploadComplete?.(result, file);
-          
+
           toast({
             title: t('upload.uploadSuccessful'),
             description: t('upload.uploadedSuccess', { name: file.name }),
           });
         }
       } catch (error) {
+        if (!isMountedRef.current) continue;
+
         const errorMessage = error instanceof Error ? error.message : 'Upload failed';
-        
+
         // Update file status to error
-        setUploadedFiles(prev => prev.map(f => 
-          f.id === fileId 
+        setUploadedFiles(prev => prev.map(f =>
+          f.id === fileId
             ? { ...f, status: 'error', progress: 0, error: errorMessage }
             : f
         ));
-        
+
         onUploadError?.(errorMessage);
-        
+
         toast({
           title: t('upload.uploadFailed'),
           description: t('upload.uploadFailedDesc', { name: file.name, error: errorMessage }),

@@ -70,6 +70,7 @@ const DEFAULT_PERMISSIONS: Permission[] = [
   { id: 'admin.audit.view.logs', name: 'View Logs', description: 'View audit trail of staff actions', category: 'admin', parentId: 'admin.audit.view' },
 
   // Punishment permissions
+  { id: 'punishment.view', name: 'View Punishments', description: 'View player profiles, punishments, and linked accounts', category: 'punishment', parentId: null },
   { id: 'punishment.modify', name: 'Modify Punishments', description: 'Full control over existing punishments (includes all sub-permissions)', category: 'punishment', parentId: null },
   { id: 'punishment.modify.pardon', name: 'Pardon Punishments', description: 'Pardon punishments and clear associated points', category: 'punishment', parentId: 'punishment.modify' },
   { id: 'punishment.modify.duration', name: 'Modify Duration', description: 'Change punishment duration', category: 'punishment', parentId: 'punishment.modify' },
@@ -369,10 +370,6 @@ export default function StaffRolesCard() {
     });
   }
   
-  if (!currentUser) {
-    return <div>{t('common.loadingUser')}</div>;
-  }
-
   // Update local roles when server data changes
   useEffect(() => {
     if (effectiveRoles.length > 0) {
@@ -386,6 +383,12 @@ export default function StaffRolesCard() {
       setOriginalRoles(sortedRoles);
     }
   }, [effectiveRoles]);
+
+  // Guard placed AFTER all hook declarations so the hook count never changes
+  // between renders (Rules of Hooks).
+  if (!currentUser) {
+    return <div>{t('common.loadingUser')}</div>;
+  }
 
   // Handle drag start
   const handleDragStart = () => {
@@ -430,11 +433,41 @@ export default function StaffRolesCard() {
       // Filter out Super Admin from the reorder request since it should never be reordered
       // Super Admin should always stay at order 0, other roles start from order 1
       const nonSuperAdminRoles = pendingReorder.filter(role => role.name !== 'Super Admin');
-      const roleOrder = nonSuperAdminRoles.map((role, index) => ({ 
-        id: role.id, 
-        order: index + 1  // Start from 1 since Super Admin is always 0
-      }));
-      
+
+      let roleOrder: Array<{ id: string; order: number }>;
+      if (isSuperAdmin) {
+        // Super Admin has authority over every role, so it may renumber the
+        // entire non-super-admin hierarchy starting at 1.
+        roleOrder = nonSuperAdminRoles.map((role, index) => ({
+          id: role.id,
+          order: index + 1, // Start from 1 since Super Admin is always 0
+        }));
+      } else {
+        // A non-super-admin performer may only reorder roles STRICTLY below
+        // their own authority. The backend rejects the whole request if any
+        // submitted role is at/above the performer's order, so we must:
+        //  (1) only submit roles whose order is greater than the performer's, and
+        //  (2) assign new orders that remain strictly greater than performerOrder,
+        //      preserving the existing higher-authority roles' positions.
+        const performerOrder = roleOrderMap.get(currentUser.role) ?? 999;
+        const editableRoles = nonSuperAdminRoles.filter(role => {
+          const currentOrder = role.order ?? 999;
+          return currentOrder > performerOrder;
+        });
+        roleOrder = editableRoles.map((role, index) => ({
+          id: role.id,
+          order: performerOrder + 1 + index,
+        }));
+      }
+
+      if (roleOrder.length === 0) {
+        // Nothing the performer is allowed to reorder; treat as a no-op success.
+        setOriginalRoles([...localRoles]);
+        setPendingReorder(null);
+        setShowReorderConfirm(false);
+        return;
+      }
+
       const response = await apiFetch('/v1/panel/roles/reorder', {
         method: 'POST',
         headers: {

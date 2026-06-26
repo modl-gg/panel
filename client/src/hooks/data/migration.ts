@@ -8,7 +8,6 @@ import {
 } from '@modl-gg/proto/modl/v1/migration_pb.ts';
 import { protoFetch, protoSend, ProtoHttpError } from '@/lib/proto-fetch';
 import { tsToMillis, toNum } from '@/lib/proto-ui';
-import { isPanelRealtimeEnabled } from '../use-realtime';
 
 // The migration status endpoint historically returned plain JSON consumed loosely by
 // MigrationTool.tsx (epoch-millis timestamps, numeric cooldown). Decode the proto message
@@ -48,14 +47,18 @@ function remapMigrationStatus(res: MigrationStatusResponse): any {
 }
 
 export function useMigrationStatus() {
-  const realtimeEnabled = isPanelRealtimeEnabled();
   return useQuery({
     queryKey: ['/v1/panel/migration/status'],
     queryFn: async () => {
       const res = await protoFetch(MigrationStatusResponseSchema, '/v1/panel/migration/status');
       return remapMigrationStatus(res);
     },
-    refetchInterval: realtimeEnabled ? false : (query) => {
+    // Always keep a polling safety-net: realtime invalidation (migrationStatusChanged) refreshes
+    // promptly when the socket is healthy, but the WS can be permanently stopped for an auth
+    // session (close 1008/1013 -> stopForAuthSession) while the env flag still reads "enabled".
+    // Gating polling purely on that static flag would freeze an in-progress migration's progress.
+    // Poll fast (5s) while a migration is active, slow (30s) otherwise as a background fallback.
+    refetchInterval: (query) => {
       const data = query.state.data;
       const currentMigration = data?.currentMigration;
       const isActive = currentMigration &&

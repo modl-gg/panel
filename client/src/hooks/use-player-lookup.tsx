@@ -51,9 +51,13 @@ export function usePlayerLookup(identifier: string) {
       if (!res.ok) {
         throw new Error('Player not found');
       }
-      
-      const players = await res.json();
-      if (!players || players.length === 0) {
+
+      // The backend returns proto-JSON PlayerSearchResultsResponse, i.e. the wrapper object
+      // { items: [...] }, NOT a bare array. Unwrap `.items` (default to []) and guard so a
+      // plain object never reaches players.find(...) (which would throw TypeError).
+      const body = await res.json();
+      const players: PlayerLookupResultItem[] = Array.isArray(body?.items) ? body.items : [];
+      if (players.length === 0) {
         throw new Error('Player not found');
       }
 

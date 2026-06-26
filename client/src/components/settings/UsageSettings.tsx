@@ -97,6 +97,11 @@ interface StorageSettings {
   };
 }
 
+// Clamp a usage percentage to [0, 100] (and guard NaN/Infinity) so over-quota
+// tenants don't render a broken Progress bar or a misleading ">100%" label.
+const clampPercent = (n: number) =>
+  Math.max(0, Math.min(100, Math.round((Number.isFinite(n) ? n : 0) * 100) / 100));
+
 const UsageSettings = () => {
   const { toast } = useToast();
   const { t } = useTranslation();
@@ -220,8 +225,8 @@ const fetchStorageData = async () => {
           overageCost: usageData.cdn?.overageCost ?? 0,
           isPaid: billingUsageData?.usageBillingEnabled ?? usageData.usageBillingEnabled ?? false,
           canUpload: cdnPercentage < 100,
-          usagePercentage: Math.round(cdnPercentage * 100) / 100,
-          baseUsagePercentage: Math.round(cdnPercentage * 100) / 100
+          usagePercentage: clampPercent(cdnPercentage),
+          baseUsagePercentage: clampPercent(cdnPercentage)
         },
         aiQuota: isPremium && billingUsageData?.ai ? {
           totalUsed: Number(billingUsageData.ai.used ?? 0),
@@ -229,7 +234,7 @@ const fetchStorageData = async () => {
           overageUsed: Number(billingUsageData.ai.overage ?? 0),
           overageCost: Number(billingUsageData.ai.overageCost ?? 0),
           canUseAI: Number(billingUsageData.ai.used ?? 0) < Number(billingUsageData.ai.limit ?? DEFAULT_AI_LIMIT),
-          usagePercentage: Math.max(0, Math.min(100, Math.round(Number(billingUsageData.ai.percentage ?? 0) * 100) / 100)),
+          usagePercentage: clampPercent(Number(billingUsageData.ai.percentage ?? 0)),
           byService: {
             moderation: 0,
             ticket_analysis: 0,
@@ -242,7 +247,7 @@ const fetchStorageData = async () => {
           overageUsed: usageData.aiQuota.overageUsed ?? 0,
           overageCost: usageData.aiQuota.overageCost ?? 0,
           canUseAI: usageData.aiQuota.canUseAI ?? false,
-          usagePercentage: Math.round((usageData.aiQuota.usagePercentage ?? 0) * 100) / 100,
+          usagePercentage: clampPercent(usageData.aiQuota.usagePercentage ?? 0),
           byService: usageData.aiQuota.byService ? {
             moderation: usageData.aiQuota.byService.moderation ?? 0,
             ticket_analysis: usageData.aiQuota.byService.ticket_analysis ?? 0,
@@ -260,7 +265,7 @@ const fetchStorageData = async () => {
           overageUsed: usageData.ai.overage ?? 0,
           overageCost: usageData.ai.overageCost ?? 0,
           canUseAI: (usageData.ai.percentage ?? 0) < 100,
-          usagePercentage: Math.round((usageData.ai.percentage ?? 0) * 100) / 100,
+          usagePercentage: clampPercent(usageData.ai.percentage ?? 0),
           byService: {
             moderation: 0,
             ticket_analysis: 0,

@@ -1,4 +1,4 @@
-import { useMemo } from 'react';
+import { useMemo, type ReactNode } from 'react';
 import ReactMarkdown from 'react-markdown';
 import { cn } from '@modl-gg/shared-web/lib/utils';
 import { ClickablePlayer } from './clickable-player';
@@ -129,9 +129,43 @@ const MarkdownRenderer = ({ content, className, allowHtml = false, disableClicka
     return null;
   };
 
-  // Check if content contains structured form data (bullet points, bold labels)
-  const hasStructuredContent = /\*\*[^*]+\*\*:\s*\n(•[^\n]*\n?)+/.test(content);
-  
+  // Check if content contains structured form data (bullet points, bold labels).
+  // Detect AND render from processedContent so the structured branch consumes the
+  // same string as the ReactMarkdown branch (player markers + chat formatting).
+  const hasStructuredContent = /\*\*[^*]+\*\*:\s*\n(•[^\n]*\n?)+/.test(processedContent);
+
+  // Render a single structured-content line, turning inline **[PLAYER:username]**
+  // markers (injected by processMarkdownContent) into clickable player links so
+  // chat-message lines inside structured content behave like the markdown branch.
+  const renderStructuredLine = (line: string): ReactNode => {
+    const tokenRegex = /\*\*\[PLAYER:([^\]]+)\]\*\*/g;
+    if (disableClickablePlayers || !tokenRegex.test(line)) {
+      // No player markers to linkify; strip any leftover bold markers for display.
+      return line.replace(/\*\*\[PLAYER:([^\]]+)\]\*\*/g, '$1');
+    }
+    const parts: ReactNode[] = [];
+    let lastIndex = 0;
+    let match: RegExpExecArray | null;
+    tokenRegex.lastIndex = 0;
+    let key = 0;
+    while ((match = tokenRegex.exec(line)) !== null) {
+      if (match.index > lastIndex) {
+        parts.push(line.slice(lastIndex, match.index));
+      }
+      const username = match[1];
+      parts.push(
+        <ClickablePlayer key={key++} playerText={username} variant="text" showIcon={false}>
+          <span className="text-primary cursor-pointer hover:underline">{username}</span>
+        </ClickablePlayer>
+      );
+      lastIndex = match.index + match[0].length;
+    }
+    if (lastIndex < line.length) {
+      parts.push(line.slice(lastIndex));
+    }
+    return parts;
+  };
+
   if (hasStructuredContent) {
     // For structured content (like appeal form data), use pre-wrap to preserve formatting
     return (
@@ -140,10 +174,26 @@ const MarkdownRenderer = ({ content, className, allowHtml = false, disableClicka
         className
       )}>
         {/* Parse and render the structured content manually */}
-        {content.split('\n').map((line, index) => {
+        {processedContent.split('\n').map((line, index) => {
           // Handle bold labels
           if (line.match(/^\*\*[^*]+\*\*:/)) {
             const label = line.replace(/^\*\*([^*]+)\*\*:/, '$1');
+            // A label of the form [PLAYER:username] is a clickable-player marker
+            // injected by processMarkdownContent; render it as a player link.
+            const playerMatch = label.match(/^\[PLAYER:(.*)\]$/);
+            if (playerMatch && !disableClickablePlayers) {
+              const username = playerMatch[1];
+              return (
+                <div key={index} className="font-semibold mt-2 first:mt-0">
+                  <ClickablePlayer playerText={username} variant="text" showIcon={false}>
+                    <span className="text-primary cursor-pointer hover:underline">
+                      {username}
+                    </span>
+                  </ClickablePlayer>
+                  :
+                </div>
+              );
+            }
             return (
               <div key={index} className="font-semibold mt-2 first:mt-0">
                 {label}:
@@ -154,7 +204,7 @@ const MarkdownRenderer = ({ content, className, allowHtml = false, disableClicka
           if (line.startsWith('• ')) {
             return (
               <div key={index} className="ml-4">
-                {line}
+                {renderStructuredLine(line)}
               </div>
             );
           }
@@ -162,7 +212,7 @@ const MarkdownRenderer = ({ content, className, allowHtml = false, disableClicka
           if (line.trim()) {
             return (
               <div key={index}>
-                {line}
+                {renderStructuredLine(line)}
               </div>
             );
           }

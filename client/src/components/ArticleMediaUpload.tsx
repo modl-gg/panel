@@ -52,7 +52,7 @@ export function ArticleMediaUpload({
     const fileName = file?.name || result.url.split('/').pop() || 'uploaded-file';
     
     const newMedia: ArticleMedia = {
-      id: Date.now().toString(),
+      id: `${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
       url: result.url,
       key: result.key,
       fileName: fileName,
@@ -62,9 +62,11 @@ export function ArticleMediaUpload({
       altText: fileName.split('.')[0] // Use filename without extension as default alt text
     };
 
-    const updatedMedia = [...media, newMedia];
-    setMedia(updatedMedia);
-    onMediaUpdate?.(updatedMedia);
+    setMedia(prev => {
+      const updatedMedia = [...prev, newMedia];
+      onMediaUpdate?.(updatedMedia);
+      return updatedMedia;
+    });
 
     toast({
       title: t('upload.mediaUploaded'),

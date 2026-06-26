@@ -2055,8 +2055,10 @@ const TicketDetail = () => {
               </Card>
             )}
 
-            {/* AI Analysis Section - Show for any ticket with AI analysis that hasn't been applied or dismissed */}
-            {ticketDetails.aiAnalysis && !ticketDetails.aiAnalysis.dismissed && !ticketDetails.aiAnalysis.wasAppliedAutomatically && (
+            {/* AI Analysis Section - Show for an OPEN ticket whose suggestion hasn't been applied or dismissed.
+                A manual apply closes the ticket (wasAppliedAutomatically stays false), so gating on the open
+                status collapses this card after a manual apply and avoids the 2s forced-reload loop. */}
+            {ticketDetails.aiAnalysis && !ticketDetails.aiAnalysis.dismissed && !ticketDetails.aiAnalysis.wasAppliedAutomatically && ticketDetails.status !== 'Closed' && (
               <div className="bg-blue-50 dark:bg-blue-950 border border-blue-200 dark:border-blue-800 rounded-lg p-4 mb-4" data-testid="ai-analysis">
                 <div className="flex items-start gap-3">
                   <div className="p-2 bg-blue-100 dark:bg-blue-900 rounded-full">
@@ -2107,8 +2109,8 @@ const TicketDetail = () => {
                             </p>
                           </div>
                           
-                          {/* Action buttons - only show if not automatically applied and not dismissed */}
-                          {!ticketDetails.aiAnalysis.wasAppliedAutomatically && !ticketDetails.aiAnalysis.dismissed && (
+                          {/* Action buttons - only show on an open, not-yet-applied, not-dismissed suggestion */}
+                          {!ticketDetails.aiAnalysis.wasAppliedAutomatically && !ticketDetails.aiAnalysis.dismissed && ticketDetails.status !== 'Closed' && (
                             <div className="flex gap-2">
                               <Button 
                                 size="sm" 
@@ -2149,15 +2151,23 @@ const TicketDetail = () => {
               </div>
             )}
 
-            {/* Show AI status when suggestion has been applied or dismissed */}
-            {ticketDetails.aiAnalysis && (ticketDetails.aiAnalysis.wasAppliedAutomatically || ticketDetails.aiAnalysis.dismissed) && (
+            {/* Show AI status when the suggestion has been applied (auto or manually) or dismissed.
+                A manual apply leaves wasAppliedAutomatically false but closes the ticket, so a closed
+                ticket with a still-present, non-dismissed suggestion is treated as manually applied. */}
+            {ticketDetails.aiAnalysis && (
+              ticketDetails.aiAnalysis.wasAppliedAutomatically ||
+              ticketDetails.aiAnalysis.dismissed ||
+              (ticketDetails.status === 'Closed' && !!ticketDetails.aiAnalysis.suggestedAction)
+            ) && (
               <div className="bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-lg p-3 mb-4">
                 <div className="flex items-center gap-2 text-sm">
                   <ShieldCheck className="h-4 w-4 text-green-600 dark:text-green-400" />
                   <span className="text-gray-700 dark:text-gray-300">
-                    {ticketDetails.aiAnalysis.wasAppliedAutomatically 
+                    {ticketDetails.aiAnalysis.wasAppliedAutomatically
                       ? 'AI suggestion was automatically applied'
-                      : 'AI suggestion was dismissed'}
+                      : ticketDetails.aiAnalysis.dismissed
+                        ? 'AI suggestion was dismissed'
+                        : 'AI suggestion was applied by staff'}
                   </span>
                 </div>
               </div>

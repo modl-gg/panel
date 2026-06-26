@@ -106,7 +106,7 @@ const HomePage: React.FC = () => {
           throw new Error(`HTTP error! status: ${response.status}`);
         }
         const data = await response.json();
-        setCategories(data);
+        setCategories(Array.isArray(data.categories) ? data.categories : []);
       } catch (e: any) {
         console.error('Failed to load categories:', e);
         setCategories([]);
@@ -126,7 +126,7 @@ const HomePage: React.FC = () => {
           throw new Error(`HTTP error! status: ${response.status}`);
         }
         const data = await response.json();
-        setHomepageCards(data);
+        setHomepageCards(Array.isArray(data.cards) ? data.cards : []);
       } catch (e: any) {
         console.error('Failed to load homepage cards:', e);
         // Fallback to default cards if no custom cards are found
@@ -154,7 +154,7 @@ const HomePage: React.FC = () => {
           throw new Error(`HTTP error! status: ${response.status}`);
         }
         const data = await response.json();
-        setSearchResults(data);
+        setSearchResults(Array.isArray(data.articles) ? data.articles : []);
       } catch (e: any) {
         console.error('Search failed:', e);
         setSearchResults([]);

@@ -11,6 +11,7 @@ interface TokenInfo {
 }
 
 interface UploadedFile {
+  id: string;
   file: File;
   url: string;
   key: string;
@@ -20,6 +21,14 @@ interface UploadedFile {
   progress: number;
   status: "pending" | "uploading" | "uploaded" | "error";
   error?: string;
+}
+
+// Stable unique id per file row so all state updates key by id, never by array position.
+function makeFileId(): string {
+  if (typeof crypto !== "undefined" && typeof crypto.randomUUID === "function") {
+    return crypto.randomUUID();
+  }
+  return `file-${Date.now()}-${Math.random().toString(36).slice(2)}`;
 }
 
 export default function UploadEvidencePage() {
@@ -53,7 +62,7 @@ export default function UploadEvidencePage() {
           issuerName: data.issuerName,
         });
       } else {
-        setError(data.message || "Invalid or expired upload token");
+        setError(data.message || data.error || "Invalid or expired upload token");
       }
     } catch {
       setError("Failed to validate upload token");
@@ -77,6 +86,7 @@ export default function UploadEvidencePage() {
       }
 
       const uploadEntries: UploadedFile[] = newFiles.map((file) => ({
+        id: makeFileId(),
         file,
         url: "",
         key: "",
@@ -89,16 +99,17 @@ export default function UploadEvidencePage() {
 
       setFiles((prev) => [...prev, ...uploadEntries]);
 
-      // Upload each file
+      // Upload each file. All state updates key by entry.id (never by array position),
+      // so overlapping batches and mid-upload removals can't corrupt other rows.
       for (let i = 0; i < uploadEntries.length; i++) {
         const entry = uploadEntries[i];
-        const fileIndex = files.length + i;
+        const fileId = entry.id;
 
         try {
           // Update status to uploading
           setFiles((prev) =>
-            prev.map((f, idx) =>
-              idx === fileIndex ? { ...f, status: "uploading" as const } : f
+            prev.map((f) =>
+              f.id === fileId ? { ...f, status: "uploading" as const } : f
             )
           );
 
@@ -118,7 +129,7 @@ export default function UploadEvidencePage() {
 
           const presignData = await presignResponse.json();
           if (presignData.status !== 200) {
-            throw new Error(presignData.message || "Failed to get upload URL");
+            throw new Error(presignData.message || presignData.error || "Failed to get upload URL");
           }
 
           // Upload to S3 via XHR for progress tracking
@@ -131,8 +142,8 @@ export default function UploadEvidencePage() {
                   (event.loaded / event.total) * 100
                 );
                 setFiles((prev) =>
-                  prev.map((f, idx) =>
-                    idx === fileIndex ? { ...f, progress: percentage } : f
+                  prev.map((f) =>
+                    f.id === fileId ? { ...f, progress: percentage } : f
                   )
                 );
               }
@@ -187,14 +198,14 @@ export default function UploadEvidencePage() {
           const confirmData = await confirmResponse.json();
           if (confirmData.status !== 200) {
             throw new Error(
-              confirmData.message || "Failed to confirm upload"
+              confirmData.message || confirmData.error || "Failed to confirm upload"
             );
           }
 
           // Mark as uploaded
           setFiles((prev) =>
-            prev.map((f, idx) =>
-              idx === fileIndex
+            prev.map((f) =>
+              f.id === fileId
                 ? {
                     ...f,
                     status: "uploaded" as const,
@@ -207,8 +218,8 @@ export default function UploadEvidencePage() {
           );
         } catch (err) {
           setFiles((prev) =>
-            prev.map((f, idx) =>
-              idx === fileIndex
+            prev.map((f) =>
+              f.id === fileId
                 ? {
                     ...f,
                     status: "error" as const,
@@ -221,11 +232,11 @@ export default function UploadEvidencePage() {
         }
       }
     },
-    [token, files.length, submitted]
+    [token, submitted]
   );
 
-  const removeFile = (index: number) => {
-    setFiles((prev) => prev.filter((_, i) => i !== index));
+  const removeFile = (id: string) => {
+    setFiles((prev) => prev.filter((f) => f.id !== id));
   };
 
   const handleSubmit = async () => {
@@ -257,7 +268,7 @@ export default function UploadEvidencePage() {
       if (data.status === 200) {
         setSubmitted(true);
       } else {
-        setError(data.message || "Failed to submit evidence");
+        setError(data.message || data.error || "Failed to submit evidence");
       }
     } catch {
       setError("Failed to submit evidence");
@@ -385,9 +396,9 @@ export default function UploadEvidencePage() {
         {/* File list */}
         {files.length > 0 && (
           <div className="mt-6 space-y-3">
-            {files.map((f, idx) => (
+            {files.map((f) => (
               <div
-                key={idx}
+                key={f.id}
                 className="flex items-center gap-3 p-3 rounded-lg border bg-card"
               >
                 <FileIcon className="h-5 w-5 flex-shrink-0 text-muted-foreground" />
@@ -420,7 +431,7 @@ export default function UploadEvidencePage() {
                   )}
                   {(f.status === "uploaded" || f.status === "error") && (
                     <button
-                      onClick={() => removeFile(idx)}
+                      onClick={() => removeFile(f.id)}
                       className="ml-2 p-1 hover:bg-muted rounded"
                     >
                       <X className="h-3 w-3" />

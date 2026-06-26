@@ -10,6 +10,7 @@ import MediaUpload from './MediaUpload';
 import { useMediaUpload } from '@/hooks/use-media-upload';
 import { formatFileSize } from '@/utils/file-utils';
 import { useTranslation } from 'react-i18next';
+import { useAuth } from '@/hooks/use-auth';
 
 interface EvidenceItem {
   id: string;
@@ -41,6 +42,7 @@ export function EvidenceUpload({
   readonly = false
 }: EvidenceUploadProps) {
   const { t } = useTranslation();
+  const { user } = useAuth();
   const [evidence, setEvidence] = useState<EvidenceItem[]>(existingEvidence);
   const [deletingIds, setDeletingIds] = useState<Set<string>>(new Set());
   const { deleteMedia } = useMediaUpload();
@@ -51,20 +53,22 @@ export function EvidenceUpload({
     const fileName = file?.name || result.url.split('/').pop() || 'uploaded-file';
     
     const newEvidence: EvidenceItem = {
-      id: Date.now().toString(),
+      id: `${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
       url: result.url,
       key: result.key,
       fileName: fileName,
       fileType: file?.type || 'application/octet-stream',
       fileSize: file?.size || 0,
       uploadedAt: new Date().toISOString(),
-      uploadedBy: 'Current User', // This should come from auth context
+      uploadedBy: user?.username || user?.email || 'Unknown',
       category
     };
 
-    const updatedEvidence = [...evidence, newEvidence];
-    setEvidence(updatedEvidence);
-    onEvidenceUpdate?.(updatedEvidence);
+    setEvidence(prev => {
+      const updatedEvidence = [...prev, newEvidence];
+      onEvidenceUpdate?.(updatedEvidence);
+      return updatedEvidence;
+    });
 
     toast({
       title: t('upload.evidenceUploaded'),

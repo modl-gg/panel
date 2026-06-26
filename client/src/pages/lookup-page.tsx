@@ -176,7 +176,7 @@ const LookupPage = () => {
             <div className="space-y-3">
               <h2 className="text-sm font-medium text-muted-foreground mb-4">{t('pages.lookup.recentLookups')}</h2>
               
-              {recentSearches
+              {[...recentSearches]
                 .sort((a, b) => b.timestamp - a.timestamp)
                 .slice(0, 5)
                 .map(({player}) => (

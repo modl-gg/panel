@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { useRouter } from 'wouter';
+import { useLocation } from 'wouter';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@modl-gg/shared-web/components/ui/card';
 import { Button } from '@modl-gg/shared-web/components/ui/button';
 import { AlertCircle, Clock, RefreshCw } from 'lucide-react';
@@ -17,7 +17,7 @@ interface RateLimitInfo {
 
 export default function RateLimitPage() {
   const { t } = useTranslation();
-  const [, navigate] = useRouter();
+  const [, navigate] = useLocation();
   const [timeLeft, setTimeLeft] = useState<number>(0);
   const [rateLimitInfo, setRateLimitInfo] = useState<RateLimitInfo>({});
 
@@ -77,7 +77,7 @@ export default function RateLimitPage() {
     sessionStorage.removeItem('rateLimitInfo');
     
     // Try to go back to the previous page, or dashboard as fallback
-    const returnPath = sessionStorage.getItem('preRateLimitPath') || '/dashboard';
+    const returnPath = sessionStorage.getItem('preRateLimitPath') || '/panel';
     sessionStorage.removeItem('preRateLimitPath');
     navigate(returnPath);
   };
@@ -85,7 +85,7 @@ export default function RateLimitPage() {
   const handleDashboard = () => {
     sessionStorage.removeItem('rateLimitInfo');
     sessionStorage.removeItem('preRateLimitPath');
-    navigate('/dashboard');
+    navigate('/panel');
   };
 
   return (

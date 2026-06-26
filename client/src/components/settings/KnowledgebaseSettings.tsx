@@ -95,7 +95,9 @@ const CategoryItem: React.FC<CategoryItemProps> = ({
 
   useEffect(() => {
     if (category.articles) {
-      setDisplayedCategoryArticles(category.articles.sort((a,b) => a.ordinal - b.ordinal));
+      // Copy before sorting: Array.prototype.sort mutates in place, and
+      // category.articles is owned by the react-query cache.
+      setDisplayedCategoryArticles([...category.articles].sort((a,b) => a.ordinal - b.ordinal));
     }
   }, [category.articles]);
 
@@ -339,7 +341,9 @@ const KnowledgebaseSettings: React.FC = () => {
 
   useEffect(() => {
     if (categories) {
-      setDisplayedCategories(categories.sort((a, b) => a.ordinal - b.ordinal));
+      // Copy before sorting: Array.prototype.sort mutates in place, and
+      // categories is the array held in the react-query cache.
+      setDisplayedCategories([...categories].sort((a, b) => a.ordinal - b.ordinal));
     }
   }, [categories]);
 

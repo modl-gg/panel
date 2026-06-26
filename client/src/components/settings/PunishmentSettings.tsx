@@ -119,7 +119,9 @@ const PunishmentSettings = ({
                     ...prev,
                     gameplay: {
                       ...prev.gameplay,
-                      medium: values[0]
+                      medium: values[0],
+                      // Keep habitual strictly above medium so offense-level ordering stays valid.
+                      habitual: Math.max(prev.gameplay.habitual, values[0] + 1)
                     }
                   }))}
                 />
@@ -190,7 +192,9 @@ const PunishmentSettings = ({
                     ...prev,
                     social: {
                       ...prev.social,
-                      medium: values[0]
+                      medium: values[0],
+                      // Keep habitual strictly above medium so offense-level ordering stays valid.
+                      habitual: Math.max(prev.social.habitual, values[0] + 1)
                     }
                   }))}
                 />

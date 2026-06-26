@@ -28,7 +28,14 @@ import { useAuth } from "@/hooks/use-auth";
 import { usePlayerSearch } from "@/hooks/use-data";
 import { useIsFetching } from '@tanstack/react-query';
 import { queryClient } from "@/lib/queryClient";
-import { apiFetch } from "@/lib/api";
+import { protoFetch } from "@/lib/proto-fetch";
+import { toNum } from "@/lib/proto-ui";
+import {
+  DashboardRecentTicketsResponseSchema,
+  DashboardRecentPunishmentsResponseSchema,
+} from "@modl-gg/proto/modl/v1/dashboard_pb.ts";
+import { PaginatedTicketsResponseSchema } from "@modl-gg/proto/modl/v1/ticket_pb.ts";
+import { PanelPunishmentTypesResponseSchema } from "@modl-gg/proto/modl/v1/settings_pb.ts";
 
 interface Player {
   uuid?: string;
@@ -202,37 +209,90 @@ const Sidebar = () => {
     };
   }, []);
 
+  // IMPORTANT: prefetch must decode + map identically to the real data hooks
+  // (useRecentTickets/useRecentPunishments/useTickets/usePunishmentTypes), since
+  // react-query keys purely by queryKey. Storing the raw proto-JSON wrapper here
+  // would let a hover-then-navigate serve a wrong-shaped cached value and crash
+  // the consuming page.
   const prefetchRouteData = (path: string) => {
-    const prefetchFn = async (url: string) => {
-      const res = await apiFetch(url);
-      if (!res.ok) throw new Error('Prefetch failed');
-      return res.json();
-    };
-
     switch (path) {
       case '/panel':
         queryClient.prefetchQuery({
           queryKey: ['/v1/panel/dashboard/recent-tickets', 3],
-          queryFn: () => prefetchFn('/v1/panel/dashboard/recent-tickets?limit=3'),
+          queryFn: async () => {
+            const res = await protoFetch(
+              DashboardRecentTicketsResponseSchema,
+              '/v1/panel/dashboard/recent-tickets?limit=3',
+            );
+            return res.tickets.map((ticket) => ({
+              id: ticket.id,
+              title: ticket.title,
+              initialMessage: ticket.initialMessage,
+              status: ticket.status,
+              priority: ticket.priority,
+              createdAt: new Date(toNum(ticket.createdAt)),
+              playerName: ticket.playerName,
+              type: ticket.type,
+            }));
+          },
           staleTime: 2 * 60 * 1000,
         });
         queryClient.prefetchQuery({
           queryKey: ['/v1/panel/dashboard/recent-punishments', 5],
-          queryFn: () => prefetchFn('/v1/panel/dashboard/recent-punishments?limit=5'),
+          queryFn: async () => {
+            const res = await protoFetch(
+              DashboardRecentPunishmentsResponseSchema,
+              '/v1/panel/dashboard/recent-punishments?limit=5',
+            );
+            return res.punishments.map((punishment) => ({
+              id: punishment.id,
+              playerName: punishment.playerName,
+              playerUuid: punishment.playerUuid,
+              type: punishment.type,
+              reason: punishment.reason,
+              issuerName: punishment.issuerName,
+              issued: new Date(toNum(punishment.issued)),
+              active: punishment.active,
+            }));
+          },
           staleTime: 2 * 60 * 1000,
         });
         break;
       case '/panel/tickets':
         queryClient.prefetchQuery({
           queryKey: ['/v1/panel/tickets', { page: 1, limit: 10, search: '', status: '', types: [], author: '', labels: [], assignees: [], sort: 'newest' }],
-          queryFn: () => prefetchFn('/v1/panel/tickets?page=1&limit=10&sort=newest'),
+          queryFn: async () => {
+            const response = await protoFetch(
+              PaginatedTicketsResponseSchema,
+              '/v1/panel/tickets?page=1&limit=10&sort=newest',
+            );
+            return {
+              tickets: response.tickets.map((item) => ({
+                ...item,
+                date: Number(item.date),
+                lastReply: item.lastReply
+                  ? { ...item.lastReply, created: Number(item.lastReply.created) }
+                  : undefined,
+              })),
+              pagination: response.pagination
+                ? { ...response.pagination, totalTickets: Number(response.pagination.totalTickets) }
+                : undefined,
+              filters: response.filters,
+            };
+          },
           staleTime: 30000,
         });
         break;
       case '/panel/settings':
         queryClient.prefetchQuery({
           queryKey: ['/v1/panel/settings/punishment-types'],
-          queryFn: () => prefetchFn('/v1/panel/settings/punishment-types'),
+          queryFn: async () => {
+            const response = await protoFetch(
+              PanelPunishmentTypesResponseSchema,
+              '/v1/panel/settings/punishment-types',
+            );
+            return response.punishmentTypes as any[];
+          },
           staleTime: 5 * 60 * 1000,
         });
         break;

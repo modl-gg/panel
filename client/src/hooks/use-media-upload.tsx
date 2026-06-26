@@ -301,7 +301,13 @@ export function useMediaUpload() {
   };
 
   const deleteMedia = async (key: string): Promise<void> => {
-    const response = await apiFetch(`/v1/panel/media/${encodeURIComponent(key)}`, {
+    // S3 object keys are multi-segment ({databaseName}/{type}/...). encodeURIComponent on the
+    // whole key turns every '/' into %2F, which the backend's {*key} path-capture route + Tomcat
+    // (encoded-slash REJECT by default) refuse. Encode each segment individually so the literal
+    // '/' separators survive for the catch-all capture. Use getEndpointPrefix() for parity with
+    // the rest of the hook (panel vs public) instead of hardcoding the panel prefix.
+    const encodedKey = key.split('/').map(encodeURIComponent).join('/');
+    const response = await apiFetch(`${getEndpointPrefix()}/${encodedKey}`, {
       method: 'DELETE',
     });
 

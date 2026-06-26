@@ -38,35 +38,35 @@ import { Separator } from '@modl-gg/shared-web/components/ui/separator';
 import { Badge } from '@modl-gg/shared-web/components/ui/badge';
 import { useCreateAppeal } from '@/hooks/use-data';
 import { formatAppealStatusLabel, isTerminalAppealStatus, normalizeAppealStatus } from '@/lib/ticket-enums';
+import type { AppealFormField, AppealFormSettings } from '@/types/forms';
 
-interface AppealFormField {
-  id: string;
-  type: 'text' | 'textarea' | 'dropdown' | 'multiple_choice' | 'checkbox' | 'file_upload' | 'checkboxes';
-  label: string;
-  description?: string;
-  required: boolean;
-  options?: string[];
-  order: number;
-  sectionId?: string;
-  goToSection?: string;
-  optionSectionMapping?: Record<string, string>;
-}
+// proto int64 timestamp fields serialize to JSON as epoch-millis strings (e.g. "1700000000000").
+// new Date("1700000000000") yields Invalid Date, so coerce to a Number before formatting.
+const formatEpochMillis = (value: string | number | undefined | null): string => {
+  if (value === undefined || value === null || value === '') {
+    return 'Unknown';
+  }
+  const millis = typeof value === 'number' ? value : Number(value);
+  if (!Number.isFinite(millis)) {
+    // Fall back to string parsing for ISO/date strings.
+    return formatDate(String(value));
+  }
+  return formatDate(new Date(millis).toISOString());
+};
 
-interface AppealFormSection {
-  id: string;
-  title: string;
-  description?: string;
-  order: number;
-  showIfFieldId?: string;
-  showIfValue?: string;
-  showIfValues?: string[];
-  hideByDefault?: boolean;
-}
-
-interface AppealFormSettings {
-  fields: AppealFormField[];
-  sections: AppealFormSection[];
-}
+// Convert a proto int64 epoch-millis string (or number/ISO string) to an ISO string that
+// formatDate / new Date can parse. Returns undefined when no usable timestamp is present.
+const epochMillisToISO = (value: string | number | undefined | null): string | undefined => {
+  if (value === undefined || value === null || value === '') {
+    return undefined;
+  }
+  const millis = typeof value === 'number' ? value : Number(value);
+  if (Number.isFinite(millis)) {
+    return new Date(millis).toISOString();
+  }
+  // Already an ISO/date string.
+  return String(value);
+};
 
 // Format date to MM/dd/yy HH:mm in browser's timezone
 
@@ -325,10 +325,10 @@ const AppealsPage = () => {
       const banInfo: BanInfo = {
         id: punishment.id,
         reason: 'Punishment details are not available publicly', // Reason is no longer provided by public API
-        date: formatDate(punishment.issued),
+        date: formatEpochMillis(punishment.issued),
         staffMember: 'Staff', // Public API doesn't expose staff member names
         status: punishment.active ? 'Active' : 'Expired',
-        expiresIn: punishment.expires ? formatDate(punishment.expires) : 'Permanent', // Use the expires field from API
+        expiresIn: punishment.expires ? formatEpochMillis(punishment.expires) : 'Permanent', // Use the expires field from API
         type: punishment.type,
         playerUuid: punishment.playerUuid, // Use the actual UUID from the API response
         isAppealable: punishment.appealable, // Use the appealable field from public API
@@ -604,13 +604,14 @@ const AppealsPage = () => {
         submittedOn: appealData.created || appealData.submittedDate,
         status: appealData.appealWorkflowStatus || appealData.status,
         lastUpdate: appealData.updatedAt || appealData.created,
-        messages: (appealData.replies || []).map((reply: any) => ({
-          id: reply._id || reply.id || `msg-${Date.now()}-${Math.random()}`,
-          sender: reply.type === 'player' || reply.senderType === 'user' ? 'player' : 
-                  reply.type === 'staff' || reply.senderType === 'staff' ? 'staff' : 'system',
+        messages: (appealData.messages || []).map((reply: any) => ({
+          id: reply.id || `msg-${Date.now()}-${Math.random()}`,
+          // proto TicketReply exposes staff-ness via the `staff` boolean, not a senderType/type string.
+          sender: reply.staff ? 'staff' : 'player',
           senderName: reply.name || reply.sender,
           content: reply.content,
-          timestamp: reply.created || reply.timestamp,
+          // `created` is a proto int64 -> epoch-millis string; coerce so formatDate works.
+          timestamp: epochMillisToISO(reply.created) || reply.timestamp,
           isStaffNote: reply.type === 'staff-note',
           attachments: reply.attachments || []
         }))

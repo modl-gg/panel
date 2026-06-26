@@ -1251,10 +1251,7 @@ const Settings = () => {
   // Unified API Key management functions
   const loadApiKey = async () => {
     try {
-      const response = await fetch(getApiUrl('/v1/panel/settings/api-keys/panel/exists'), {
-        credentials: 'include',
-        headers: { 'X-Server-Domain': getCurrentDomain() }
-      });
+      const response = await apiFetch('/v1/panel/settings/api-keys/panel/exists');
       if (response.ok) {
         const data = await response.json();
         if (data.exists) {
@@ -1352,10 +1349,7 @@ const Settings = () => {
     // Show the key - fetch full key if we don't have it
     if (!fullApiKey) {
       try {
-        const response = await fetch(getApiUrl('/v1/panel/settings/api-keys/panel/reveal'), {
-          credentials: 'include',
-          headers: { 'X-Server-Domain': getCurrentDomain() }
-        });
+        const response = await apiFetch('/v1/panel/settings/api-keys/panel/reveal');
         if (response.ok) {
           const data = await response.json();
           setFullApiKey(data.apiKey);

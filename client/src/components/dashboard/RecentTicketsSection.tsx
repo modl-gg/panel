@@ -47,6 +47,18 @@ export function RecentTicketsSection({ tickets, loading }: RecentTicketsSectionP
     setLocation(`/panel/tickets/${ticketId}`);
   };
 
+  // A ticket missing its creation timestamp arrives as epoch 0 (new Date(0)),
+  // which is a valid Date so formatTimeAgo would render a "decades ago" value.
+  // Treat epoch 0 / falsy timestamps as unknown instead.
+  const formatCreatedAt = (createdAt: string | Date) => {
+    if (!createdAt) return t('search.unknown');
+    const date = new Date(createdAt);
+    if (isNaN(date.getTime()) || date.getTime() === 0) {
+      return t('search.unknown');
+    }
+    return formatTimeAgo(createdAt);
+  };
+
   const truncateMessage = (message: string | undefined | null, maxLength: number = 120) => {
     if (!message) return t('dashboard.recentTickets.noMessage');
     const messageStr = stripMarkdown(String(message));
@@ -129,7 +141,7 @@ export function RecentTicketsSection({ tickets, loading }: RecentTicketsSectionP
                     </div>
                     <div className="flex items-center gap-1">
                       <Clock className="h-3 w-3" />
-                      <span>{formatTimeAgo(ticket.createdAt)}</span>
+                      <span>{formatCreatedAt(ticket.createdAt)}</span>
                     </div>
                   </div>
                   {ticket.type && (

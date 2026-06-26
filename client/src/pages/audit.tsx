@@ -43,6 +43,7 @@ import { PermissionWrapper } from '@/components/PermissionWrapper';
 import { PERMISSIONS } from '@/hooks/use-permissions';
 import { StatusBanner } from '@modl-gg/shared-web/components/ui/status-banner';
 import { cn } from '@modl-gg/shared-web/lib/utils';
+import { openExternalUrl } from '@/lib/utils';
 import { usePlayerWindow } from '@/contexts/PlayerWindowContext';
 import { useAuth } from '@/hooks/use-auth';
 import { Checkbox } from '@modl-gg/shared-web/components/ui/checkbox';
@@ -1005,7 +1006,7 @@ const StaffDetailModal = ({ staff, isOpen, onClose, initialPeriod = '30d' }: {
                                         className={`text-xs ${isClickable ? 'cursor-pointer hover:bg-primary/10 transition-colors' : 'cursor-default'}`}
                                         onClick={() => {
                                           if (isClickable) {
-                                            window.open(clickUrl, '_blank');
+                                            openExternalUrl(clickUrl);
                                           }
                                         }}
                                         title={isClickable ? `Click to view: ${displayText}` : displayText}
@@ -1101,7 +1102,10 @@ const StaffDetailModal = ({ staff, isOpen, onClose, initialPeriod = '30d' }: {
                     </thead>
                     <tbody>
                       {recentTickets && recentTickets.length > 0 ? recentTickets.map((ticket: any, index: number) => {
-                        const timeSinceOpened = formatDurationDetailed(new Date(ticket.created || ticket.createdAt || ticket.timestamp));
+                        // StaffDetailsResponse.TicketDetail exposes no opened/created timestamp,
+                        // so only render a duration when such a field is actually present (avoids a misleading "0m").
+                        const openedRaw = ticket.created || ticket.createdAt || ticket.timestamp;
+                        const timeSinceOpened = openedRaw ? formatDurationDetailed(new Date(openedRaw)) : '--';
                         const timeSinceLastActivity = ticket.lastActivity ? formatDurationDetailed(new Date(ticket.lastActivity)) :
                                                      ticket.updatedAt ? formatDurationDetailed(new Date(ticket.updatedAt)) : '--';
                         const normalizedStatus = normalizeTicketStatus(ticket.status);
@@ -1696,7 +1700,7 @@ const ActivePunishmentsCard = () => {
                               key={idx}
                               variant="outline"
                               className={cn("text-xs", ev.url && "cursor-pointer hover:bg-primary/10 transition-colors")}
-                              onClick={() => ev.url && window.open(ev.url, '_blank')}
+                              onClick={() => openExternalUrl(ev.url)}
                               title={ev.text || ev.fileName || 'Evidence'}
                             >
                               <Paperclip className="h-3 w-3 mr-1" />

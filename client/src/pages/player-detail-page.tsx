@@ -2065,7 +2065,7 @@ const PlayerDetailPage = () => {
                                     };
                                     
                                     if (playerInfo.selectedModificationType === 'MANUAL_DURATION_CHANGE' && playerInfo.newDuration) {
-                                      modificationData.newDuration = durationToMilliseconds(playerInfo.newDuration);
+                                      modificationData.newDuration = playerInfo.newDuration; // { value, unit }; the hook converts to ms
                                     }
                                     
                                     await modifyPunishment.mutateAsync({

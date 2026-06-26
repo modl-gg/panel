@@ -10,7 +10,7 @@ import { apiFetch } from '@/lib/api';
 
 const ProfileSettings = () => {
   const { t } = useTranslation();
-  const { user } = useAuth();
+  const { user, refreshUser } = useAuth();
   const { toast } = useToast();
   
   const [profileUsername, setProfileUsername] = useState('');
@@ -40,13 +40,12 @@ const ProfileSettings = () => {
           title: t('settings.account.profileUpdated'),
           description: t('settings.account.profileUpdatedDesc')
         });
-        // Refresh the page to update the user context
-        setTimeout(() => {
-          window.location.reload();
-        }, 1000);
+        // Refresh the user context without a full SPA reload.
+        await refreshUser();
       } else {
-        const errorData = await response.json();
-        throw new Error(errorData.message || t('settings.account.updateProfileFailed'));
+        // Backend /v1 panel errors use ErrorResponseDTO { status, error }.
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(errorData.error || errorData.message || t('settings.account.updateProfileFailed'));
       }
     } catch (error) {
       toast({

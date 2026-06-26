@@ -45,7 +45,7 @@ const MigrationTool: React.FC = () => {
     }
     
     return undefined;
-  }, [currentMigration?.id, currentMigration?.status]);
+  }, [currentMigration?.taskId, currentMigration?.status]);
   
   const handleStartMigration = async () => {
     if (!selectedType || onCooldown || isActive) return;
@@ -103,17 +103,27 @@ const MigrationTool: React.FC = () => {
       case 'completed':
         return t('settings.migration.statusCompleted');
       case 'failed':
-        return t('settings.migration.statusFailed', { type: currentMigration.migrationType });
+        return t('settings.migration.statusFailed', { type: currentMigration?.type });
       default:
         return t('settings.migration.statusUnknown');
     }
   };
 
   const getProgressPercentage = (status: string, progress?: any) => {
-    if (progress?.totalRecords && progress?.recordsProcessed) {
-      return Math.round((progress.recordsProcessed / progress.totalRecords) * 100);
+    // A completed migration is always 100%, regardless of how many records
+    // were skipped vs processed.
+    if (status === 'completed') {
+      return 100;
     }
-    
+
+    if (progress?.totalRecords) {
+      // Skipped records (duplicates/invalid) still represent progress through
+      // the source set, so count them alongside processed records; otherwise a
+      // run with many skips would stall the bar below 100%.
+      const handled = (progress.recordsProcessed ?? 0) + (progress.recordsSkipped ?? 0);
+      return Math.min(100, Math.round((handled / progress.totalRecords) * 100));
+    }
+
     switch (status) {
       case 'idle':
         return 5;
@@ -134,11 +144,6 @@ const MigrationTool: React.FC = () => {
     const hours = Math.floor(ms / (60 * 60 * 1000));
     const minutes = Math.floor((ms % (60 * 60 * 1000)) / (60 * 1000));
     return `${hours}h ${minutes}m`;
-  };
-
-  const formatDate = (dateString: string) => {
-    const date = new Date(dateString);
-    return date.toLocaleString();
   };
 
   if (statusLoading) {
@@ -172,7 +177,7 @@ const MigrationTool: React.FC = () => {
                 <div>
                   <p className="font-medium">{getStatusText(currentMigration.status)}</p>
                   <p className="text-sm text-muted-foreground">
-                    {t('settings.migration.migratingFrom', { type: currentMigration.migrationType })}
+                    {t('settings.migration.migratingFrom', { type: currentMigration.type })}
                   </p>
                 </div>
               </div>
@@ -229,7 +234,8 @@ const MigrationTool: React.FC = () => {
       )}
 
       {showCompletedAlert && lastCompletedMigration && (() => {
-        const isCancelled = lastCompletedMigration.error?.toLowerCase().includes('cancelled');
+        const lowerError = lastCompletedMigration.error?.toLowerCase() ?? '';
+        const isCancelled = lowerError.includes('cancelled') || lowerError.includes('canceled');
         const isSuccess = lastCompletedMigration.status === 'completed';
         const variant = isSuccess ? 'success' : (isCancelled ? 'warning' : 'error');
 
@@ -313,53 +319,6 @@ const MigrationTool: React.FC = () => {
         </div>
       )}
 
-      {/* Migration History */}
-      {migrationStatus?.history && migrationStatus.history.length > 0 && (
-        <div className="space-y-3">
-          <h5 className="text-sm font-medium">{t('settings.migration.recentMigrations')}</h5>
-          <div className="space-y-2">
-            {migrationStatus.history.slice(0, 5).map((entry: any, index: number) => (
-              <div
-                key={entry.id || index}
-                className="flex items-center justify-between p-3 rounded-lg border bg-muted/30"
-              >
-                <div className="flex items-center space-x-3">
-                  {entry.status === 'completed' ? (
-                    <CheckCircle2 className="h-5 w-5 text-success" />
-                  ) : (
-                    <AlertCircle className="h-5 w-5 text-destructive" />
-                  )}
-                  <div>
-                    <p className="text-sm font-medium">
-                      {entry.migrationType.toUpperCase()}
-                    </p>
-                    <p className="text-xs text-muted-foreground">
-                      {formatDate(entry.completedAt)}
-                    </p>
-                  </div>
-                </div>
-                <div className="text-right">
-                  <p className="text-sm">
-                    {t('settings.migration.recordsCount', { count: entry.recordsProcessed })}
-                  </p>
-                  {entry.recordsSkipped > 0 && (
-                    <p className="text-xs text-warning">
-                      {t('settings.migration.skipped', { count: entry.recordsSkipped })}
-                    </p>
-                  )}
-                </div>
-              </div>
-            ))}
-          </div>
-        </div>
-      )}
-
-      {/* Last Migration Timestamp */}
-      {migrationStatus?.lastMigrationTimestamp && (
-        <p className="text-xs text-muted-foreground">
-          {t('settings.migration.lastSuccessfulMigration', { date: formatDate(migrationStatus.lastMigrationTimestamp) })}
-        </p>
-      )}
     </div>
   );
 };

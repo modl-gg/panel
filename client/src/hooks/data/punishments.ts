@@ -119,7 +119,15 @@ export function useModifyPunishment() {
           'months': 30 * 24 * 60 * 60 * 1000
         };
 
-        const durationMs = newDuration.value * (multipliers[newDuration.unit as keyof typeof multipliers] || 0);
+        // An unrecognized unit must NOT silently fall back to 0ms: the backend treats
+        // effectiveDuration <= 0 as PERMANENT, so a typo/casing drift would convert a finite
+        // duration change into a permanent punishment with no feedback. Validate and throw instead.
+        const multiplier = multipliers[newDuration.unit as keyof typeof multipliers];
+        if (multiplier === undefined) {
+          throw new Error(`Invalid duration unit: "${newDuration.unit}". Expected one of ${Object.keys(multipliers).join(', ')}.`);
+        }
+
+        const durationMs = newDuration.value * multiplier;
         request.effectiveDuration = BigInt(Math.trunc(durationMs));
       }
 

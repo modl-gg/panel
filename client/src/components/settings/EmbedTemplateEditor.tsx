@@ -240,31 +240,8 @@ const EmbedTemplateEditor: React.FC<EmbedTemplateEditorProps> = ({
                 while (i < fields.length) {
                   const currentField = fields[i];
                   
-                  if (currentField.inline && i < fields.length - 1 && fields[i + 1].inline) {
-                    // Two inline fields side by side
-                    result.push(
-                      <div key={`inline-row-${i}`} className="flex gap-4">
-                        <div className="flex-1">
-                          <div className="text-white font-medium text-xs mb-1">
-                            {replaceVariablesForPreview(currentField.name)}
-                          </div>
-                          <div className="text-[#dcddde] text-xs">
-                            {replaceVariablesForPreview(currentField.value)}
-                          </div>
-                        </div>
-                        <div className="flex-1">
-                          <div className="text-white font-medium text-xs mb-1">
-                            {replaceVariablesForPreview(fields[i + 1].name)}
-                          </div>
-                          <div className="text-[#dcddde] text-xs">
-                            {replaceVariablesForPreview(fields[i + 1].value)}
-                          </div>
-                        </div>
-                      </div>
-                    );
-                    i += 2; // Skip next field as we've already processed it
-                  } else if (currentField.inline && i < fields.length - 1 && fields[i + 1].inline && i < fields.length - 2 && fields[i + 2].inline) {
-                    // Three inline fields in a row
+                  if (currentField.inline && i < fields.length - 2 && fields[i + 1].inline && fields[i + 2].inline) {
+                    // Three inline fields in a row (test most-specific case first)
                     result.push(
                       <div key={`inline-row-${i}`} className="flex gap-2">
                         <div className="flex-1">
@@ -294,6 +271,29 @@ const EmbedTemplateEditor: React.FC<EmbedTemplateEditorProps> = ({
                       </div>
                     );
                     i += 3; // Skip next two fields
+                  } else if (currentField.inline && i < fields.length - 1 && fields[i + 1].inline) {
+                    // Two inline fields side by side
+                    result.push(
+                      <div key={`inline-row-${i}`} className="flex gap-4">
+                        <div className="flex-1">
+                          <div className="text-white font-medium text-xs mb-1">
+                            {replaceVariablesForPreview(currentField.name)}
+                          </div>
+                          <div className="text-[#dcddde] text-xs">
+                            {replaceVariablesForPreview(currentField.value)}
+                          </div>
+                        </div>
+                        <div className="flex-1">
+                          <div className="text-white font-medium text-xs mb-1">
+                            {replaceVariablesForPreview(fields[i + 1].name)}
+                          </div>
+                          <div className="text-[#dcddde] text-xs">
+                            {replaceVariablesForPreview(fields[i + 1].value)}
+                          </div>
+                        </div>
+                      </div>
+                    );
+                    i += 2; // Skip next field as we've already processed it
                   } else {
                     // Single field (either non-inline or single inline)
                     result.push(

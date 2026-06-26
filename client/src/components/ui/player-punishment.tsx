@@ -274,14 +274,16 @@ const PlayerPunishment: React.FC<PlayerPunishmentProps> = ({
 
   // Function to search for active punishments by ID or player name
   const searchLinkedBan = async (query: string) => {
-    if (!query.trim()) {
+    // Backend requires q to be at least 2 characters (@Size(min=2)); avoid firing
+    // a request that would 400 for empty/single-character queries.
+    if (query.trim().length < 2) {
       setLinkedBanSearchResults([]);
       return;
     }
 
     try {
       const { getApiUrl, getCurrentDomain } = await import('@/lib/api');
-      const response = await fetch(getApiUrl(`/v1/panel/punishments/search?q=${encodeURIComponent(query)}&activeOnly=true`), {
+      const response = await fetch(getApiUrl(`/v1/panel/players/punishments/search?q=${encodeURIComponent(query)}&activeOnly=true`), {
         credentials: 'include',
         headers: { 'X-Server-Domain': getCurrentDomain() }
       });
@@ -296,6 +298,22 @@ const PlayerPunishment: React.FC<PlayerPunishmentProps> = ({
     updateData({ banToLink: punishment.id });
     setLinkedBanSearch(`${punishment.id} - ${punishment.playerName}`);
     setLinkedBanSearchResults([]);
+  };
+
+  // The search API serializes PunishmentSearchResult with `typeOrdinal` (an int),
+  // not a human-readable `type`. Resolve the ordinal to a punishment-type name
+  // using the tenant's configured types so the result row shows a real label.
+  const resolvePunishmentTypeName = (result: any): string => {
+    if (result?.type) return result.type; // future-proof if server ever sends a name
+    const ordinal = result?.typeOrdinal;
+    if (ordinal === undefined || ordinal === null) return '';
+    const allTypes = [
+      ...(punishmentTypesByCategory.Administrative || []),
+      ...(punishmentTypesByCategory.Social || []),
+      ...(punishmentTypesByCategory.Gameplay || []),
+    ];
+    const match = allTypes.find((type: any) => type.ordinal === ordinal || type.id === ordinal);
+    return match?.name ?? String(ordinal);
   };
 
   const renderCategoryGrid = (types: any[], title: string) => (
@@ -526,7 +544,7 @@ const PlayerPunishment: React.FC<PlayerPunishmentProps> = ({
                     >
                       <div className="text-sm font-medium">{punishment.id}</div>
                       <div className="text-xs text-muted-foreground">
-                        {punishment.playerName} - {punishment.type} - {punishment.status}
+                        {punishment.playerName} - {resolvePunishmentTypeName(punishment)} - {punishment.status}
                       </div>
                     </div>
                   ))}

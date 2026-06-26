@@ -53,7 +53,7 @@ export function TicketAttachments({
     const fileName = file?.name || result.url.split('/').pop() || 'uploaded-file';
     
     const newAttachment: TicketAttachment = {
-      id: Date.now().toString(),
+      id: `${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
       url: result.url,
       key: result.key,
       fileName: fileName,
@@ -63,9 +63,11 @@ export function TicketAttachments({
       uploadedBy: 'Current User' // This should come from auth context
     };
 
-    const updatedAttachments = [...attachments, newAttachment];
-    setAttachments(updatedAttachments);
-    onAttachmentsUpdate?.(updatedAttachments);
+    setAttachments(prev => {
+      const updatedAttachments = [...prev, newAttachment];
+      onAttachmentsUpdate?.(updatedAttachments);
+      return updatedAttachments;
+    });
 
     toast({
       title: t('upload.attachmentUploaded'),

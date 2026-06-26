@@ -327,8 +327,9 @@ const SubmitTicketPage = () => {
       const tempTicketId = `temp-${Date.now()}`;
       const creatorIdentifier = getCreatorIdentifier(tempTicketId);
 
-      // Format the creator name as "{name} (Web User)" for unverified submissions
-      const webCreatorName = `${displayName.trim()} (Web User)`;
+      // proto CreateTicketRequest.creator_name has max_len = 16, so send the trimmed display
+      // name truncated to that limit. (Web origin is conveyed server-side, not embedded here.)
+      const webCreatorName = displayName.trim().slice(0, 16);
 
       if (hiddenExcludedFiles > 0) {
         toast({
@@ -349,7 +350,6 @@ const SubmitTicketPage = () => {
           fieldLabels: fieldLabelsMapping,
           attachments,
           creatorIdentifier: creatorIdentifier,
-          createdServer: 'Web',
           emailAuthEnabled: formConfig.requireEmailAuth === true || formData['emailAuthEnabled'] === 'true',
         }),
       });
