@@ -166,7 +166,7 @@ const LookupPage = () => {
             ))
           ) : (
             <div className="text-center py-6">
-              <p className="text-muted-foreground">{t('search.noPlayersFound')}</p>
+              <p className="text-muted-foreground">{t('search.noPlayersFound', { query: searchQuery })}</p>
             </div>
           )}
         </div>

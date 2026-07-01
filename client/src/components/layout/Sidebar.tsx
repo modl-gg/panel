@@ -629,7 +629,7 @@ const Sidebar = () => {
                   {/* Show no results message */}
                   {!isPunishmentLookup && filteredLookups.length === 0 && !punishmentLookupResult && (
                     <div className="py-3 text-center text-xs text-muted-foreground">
-                      {t('search.noPlayersFound')}
+                      {t('search.noPlayersFound', { query: searchQuery })}
                     </div>
                   )}
                 </div>
