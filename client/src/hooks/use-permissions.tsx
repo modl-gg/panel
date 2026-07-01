@@ -80,7 +80,8 @@ export function usePermissions() {
           if (response.status === 401) return [];
           throw new Error('Failed to fetch permissions');
         }
-        return response.json();
+        const data = await response.json();
+        return Array.isArray(data) ? data : (data?.permissions ?? []);
       } catch {
         return null;
       }

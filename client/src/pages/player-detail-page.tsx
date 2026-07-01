@@ -2519,10 +2519,10 @@ const PlayerDetailPage = () => {
                   const statusLabel = formatTicketStatusLabel(ticket.status);
 
                   return (
-                    <div 
-                      key={ticket._id} 
+                    <div
+                      key={ticket.id}
                       className="bg-muted/30 p-3 rounded-lg hover:bg-muted/40 transition-colors cursor-pointer"
-                      onClick={() => handleTicketClick(ticket._id)}
+                      onClick={() => handleTicketClick(ticket.id)}
                     >
                       <div className="flex justify-between items-start">
                         <div className="flex-1">
@@ -2540,12 +2540,9 @@ const PlayerDetailPage = () => {
                           </div>
                           <div className="text-sm">
                             <p className="font-medium">{ticket.subject || 'No subject'}</p>
-                            <p className="text-muted-foreground mt-1 line-clamp-2">
-                              {ticket.description || ticket.message || 'No description available'}
-                            </p>
                           </div>
                           <div className="text-xs text-muted-foreground mt-2">
-                            Created: {ticket.createdAt ? formatDateWithTime(ticket.createdAt) : 'Unknown'}
+                            Created: {ticket.created ? formatDateWithTime(ticket.created) : 'Unknown'}
                             {(() => {
                               const assigneeDisplay = Array.isArray(ticket.assignedTo)
                                 ? ticket.assignedTo.join(', ')
@@ -2556,7 +2553,7 @@ const PlayerDetailPage = () => {
                         </div>
                         <div className="ml-2">
                           <Badge variant="outline" className="text-xs">
-                            #{ticket._id?.slice(-6) || 'N/A'}
+                            #{ticket.id?.slice(-6) || 'N/A'}
                           </Badge>
                         </div>
                       </div>

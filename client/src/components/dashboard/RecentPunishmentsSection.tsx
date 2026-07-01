@@ -138,7 +138,7 @@ export function RecentPunishmentsSection({ punishments, loading }: RecentPunishm
                         {punishment.playerName}
                       </Button>
                       <span className="text-sm text-muted-foreground">
-                        {punishment.type || t('dashboard.recentPunishments.punishment')} {t('dashboard.recentPunishments.by')} {punishment.issuerName || t('search.unknown')}
+                        {punishment.type || t('dashboard.recentPunishments.punishment')} {t('dashboard.recentPunishments.by', { issuer: punishment.issuerName || t('search.unknown') })}
                       </span>
                     </div>
                   </div>

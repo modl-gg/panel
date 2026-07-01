@@ -47,7 +47,7 @@ import { Button } from '@modl-gg/shared-web/components/ui/button';
 import { Badge } from '@modl-gg/shared-web/components/ui/badge';
 import { Skeleton } from '@modl-gg/shared-web/components/ui/skeleton';
 import { Checkbox } from '@modl-gg/shared-web/components/ui/checkbox';
-import { usePanelTicket, useUpdateTicket, useSettings, useStaff, useModifyPunishment, useApplyPunishment, useQuickResponses, usePunishmentTypes, useLabels } from '@/hooks/use-data';
+import { usePanelTicket, useUpdateTicket, useSettings, useStaff, useModifyPunishment, useApplyPunishment, useQuickResponses, usePunishmentTypes, useLabels, usePunishmentById } from '@/hooks/use-data';
 import { LabelBadge } from '@/components/ui/label-badge';
 import { QuickResponsesConfiguration, defaultQuickResponsesConfig } from '@/types/quickResponses';
 import { useToast } from '@modl-gg/shared-web/hooks/use-toast';
@@ -2007,46 +2007,36 @@ const TicketDetail = () => {
                 <CardContent>
                   <div className="max-h-[300px] overflow-y-auto space-y-1 font-mono text-sm bg-muted/50 rounded-lg p-3">
                     {ticketData.chatMessages.map((msg: any, index: number) => {
-                      // Parse message - could be JSON object or have content property
-                      let username = 'Unknown';
-                      let message = '';
-                      let timestamp = '';
+                      const raw = typeof msg === 'string' ? msg : (msg?.content ?? '');
+                      let sender = typeof msg === 'object' && msg ? (msg.sender ?? msg.username ?? '') : '';
+                      let text = raw;
+                      let time: unknown = typeof msg === 'object' && msg ? (msg.timestamp ?? '') : '';
 
-                      if (typeof msg === 'object') {
-                        if (msg.content) {
-                          // Legacy format: {content: "json string", timestamp: ...}
-                          try {
-                            const parsed = JSON.parse(msg.content);
-                            username = parsed.username || 'Unknown';
-                            message = parsed.message || '';
-                            timestamp = parsed.timestamp || '';
-                          } catch {
-                            message = msg.content;
-                          }
-                        } else {
-                          // Direct format: {username, message, timestamp}
-                          username = msg.username || 'Unknown';
-                          message = msg.message || '';
-                          timestamp = msg.timestamp || '';
-                        }
-                      } else if (typeof msg === 'string') {
+                      if (!sender && raw) {
                         try {
-                          const parsed = JSON.parse(msg);
-                          username = parsed.username || 'Unknown';
-                          message = parsed.message || '';
-                          timestamp = parsed.timestamp || '';
+                          const parsed = JSON.parse(raw);
+                          sender = parsed.username ?? parsed.sender ?? '';
+                          text = parsed.message ?? parsed.content ?? raw;
+                          time = parsed.timestamp ?? time;
                         } catch {
-                          message = msg;
+                          text = raw;
                         }
                       }
 
+                      const structured = sender !== '';
+                      const hasTime = time !== '' && time !== null && time !== undefined;
+                      const timeMs = hasTime ? (typeof time === 'string' ? Date.parse(time) : Number(time)) : NaN;
+                      const timeLabel = structured && Number.isFinite(timeMs) ? new Date(timeMs).toLocaleTimeString() : '';
+
                       return (
                         <div key={index} className="flex gap-2 py-0.5 hover:bg-muted/70 px-1 rounded">
-                          <span className="text-muted-foreground shrink-0">
-                            {timestamp ? new Date(timestamp).toLocaleTimeString() : ''}
-                          </span>
-                          <span className="font-semibold text-primary">{username}:</span>
-                          <span className="text-foreground break-all">{message}</span>
+                          {timeLabel ? (
+                            <span className="text-muted-foreground shrink-0">{timeLabel}</span>
+                          ) : null}
+                          {structured ? (
+                            <span className="font-semibold text-primary">{sender}:</span>
+                          ) : null}
+                          <span className="text-foreground break-all">{text}</span>
                         </div>
                       );
                     })}
@@ -2931,9 +2921,7 @@ const TicketDetail = () => {
 
 // Component to display punishment details for appeals
 const PunishmentDetailsCard = ({ punishmentId }: { punishmentId: string }) => {
-  const [punishmentData, setPunishmentData] = useState<any>(null);
-  const [isLoading, setIsLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  const { data: punishmentData, isLoading, error } = usePunishmentById(punishmentId);
   const [isAddingEvidence, setIsAddingEvidence] = useState(false);
   const [newEvidence, setNewEvidence] = useState('');
   const [uploadedFile, setUploadedFile] = useState<{
@@ -2968,38 +2956,6 @@ const PunishmentDetailsCard = ({ punishmentId }: { punishmentId: string }) => {
       return false;
     }
   };
-
-  useEffect(() => {
-    const fetchPunishmentDetails = async () => {
-      try {
-        setIsLoading(true);
-        setError(null);
-        
-        // Fetch punishment details from the player API
-        const { getApiUrl, getCurrentDomain } = await import('@/lib/api');
-        const response = await fetch(getApiUrl(`/v1/panel/players/punishments/${punishmentId}`), {
-          credentials: 'include',
-          headers: { 'X-Server-Domain': getCurrentDomain() }
-        });
-        
-        if (!response.ok) {
-          throw new Error('Failed to fetch punishment details');
-        }
-        
-        const data = await response.json();
-        setPunishmentData(data);
-      } catch (err) {
-        console.error('Error fetching punishment details:', err);
-        setError(err instanceof Error ? err.message : 'Unknown error');
-      } finally {
-        setIsLoading(false);
-      }
-    };
-
-    if (punishmentId) {
-      fetchPunishmentDetails();
-    }
-  }, [punishmentId]);
 
   const formatExpiryStatus = (expires: string | null, active: boolean): string => {
     if (!expires) {
@@ -3295,11 +3251,12 @@ const PunishmentDetailsCard = ({ punishmentId }: { punishmentId: string }) => {
                   } else if (typeof evidenceItem === 'object' && evidenceItem.text) {
                     // New object format
                     evidenceText = evidenceItem.text;
-                    const issuer = evidenceItem.issuerName || 'System';
-                    const date = evidenceItem.date ? formatDate(evidenceItem.date) : 'Unknown';
+                    const issuer = evidenceItem.uploadedBy || evidenceItem.issuerName || 'System';
+                    const dateValue = evidenceItem.uploadedAt || evidenceItem.date;
+                    const date = dateValue ? formatDate(dateValue) : 'Unknown';
                     issuerInfo = `By: ${issuer} on ${date}`;
                     evidenceType = evidenceItem.type || 'text';
-                    fileUrl = evidenceItem.fileUrl || '';
+                    fileUrl = evidenceItem.url || evidenceItem.fileUrl || '';
                     fileName = evidenceItem.fileName || '';
                     fileType = evidenceItem.fileType || '';
                   }
@@ -3509,17 +3466,8 @@ const PunishmentDetailsCard = ({ punishmentId }: { punishmentId: string }) => {
                           description: 'Evidence has been added to the punishment successfully'
                         });
                         
-                        // Refresh punishment data
-                        const { getApiUrl, getCurrentDomain } = await import('@/lib/api');
-                        const refreshResponse = await fetch(getApiUrl(`/v1/panel/players/punishments/${punishmentId}`), {
-                          credentials: 'include',
-                          headers: { 'X-Server-Domain': getCurrentDomain() }
-                        });
-                        if (refreshResponse.ok) {
-                          const refreshedData = await refreshResponse.json();
-                          setPunishmentData(refreshedData);
-                        }
-                        
+                        queryClient.invalidateQueries({ queryKey: ['/v1/panel/players/punishments', punishmentId] });
+
                         // Reset form
                         setIsAddingEvidence(false);
                         setNewEvidence('');
@@ -3631,7 +3579,7 @@ const PunishmentDetailsCard = ({ punishmentId }: { punishmentId: string }) => {
               <div className="space-y-2">
                 {punishmentData.modifications.map((mod: any, index: number) => {
                   const issuer = mod.issuerName || 'System';
-                  const date = mod.issued ? formatDate(mod.issued) : 'Unknown';
+                  const date = mod.date ? formatDate(mod.date) : 'Unknown';
                   const issuerInfo = `By: ${issuer} on ${date}`;
                   const modType = mod.type.replace(/_/g, ' ').toLowerCase().replace(/\b\w/g, (l: string) => l.toUpperCase());
                   

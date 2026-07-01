@@ -766,9 +766,11 @@ const Settings = () => {
         'homepage': 'knowledgebase',
       };
       const mappedCategory = categoryMap[urlCategory] || urlCategory;
+      const categoryPermissionKey: Record<string, string> = { tickets: 'tags' };
+      const accessPermissionKey = categoryPermissionKey[mappedCategory] || mappedCategory;
 
       // Check if user can access the requested category
-      if (canAccessSettingsTab(mappedCategory as any)) {
+      if (canAccessSettingsTab(accessPermissionKey as any)) {
         setExpandedCategory(mappedCategory);
         if (urlSubCategory) {
           const subCat = urlSubCategory.split(',')[0];
@@ -1306,10 +1308,6 @@ const Settings = () => {
   };
 
   const revokeApiKey = async () => {
-    if (!confirm('Are you sure you want to revoke the API key? This will invalidate all existing integrations using this key.')) {
-      return;
-    }
-    
     setIsRevokingApiKey(true);
     try {
       const csrfFetch = apiFetch;

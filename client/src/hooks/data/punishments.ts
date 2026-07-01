@@ -9,7 +9,9 @@ import {
   PanelAddModificationRequestSchema,
   PanelAddPunishmentNoteRequestSchema,
   ModifyPunishmentTicketsRequestSchema,
+  PunishmentResponseSchema,
 } from '@modl-gg/proto/modl/v1/punishment_pb.ts';
+import { mapPunishment } from '@/lib/punishment-mapping';
 import {
   PanelLinkedBansResponseSchema,
 } from '@modl-gg/proto/modl/v1/player_pb.ts';
@@ -225,6 +227,22 @@ export function useModifyPunishmentTickets() {
     onError: (error) => {
       console.error('Error modifying punishment tickets:', error);
     }
+  });
+}
+
+export function usePunishmentById(punishmentId: string | null) {
+  return useQuery({
+    queryKey: ['/v1/panel/players/punishments', punishmentId],
+    queryFn: async (): Promise<any> => {
+      if (!punishmentId) return null;
+      const response = await protoFetchOrNull(
+        PunishmentResponseSchema,
+        `/v1/panel/players/punishments/${punishmentId}`,
+      );
+      return response ? mapPunishment(response) : null;
+    },
+    enabled: !!punishmentId,
+    staleTime: 30000,
   });
 }
 

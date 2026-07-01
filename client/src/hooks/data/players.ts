@@ -3,6 +3,7 @@ import { useQuery, useMutation } from '@tanstack/react-query';
 import { queryClient } from '../../lib/queryClient';
 import { protoFetch, protoFetchOrNull } from '@/lib/proto-fetch';
 import { toNum } from '@/lib/proto-ui';
+import { mapPunishment } from '@/lib/punishment-mapping';
 import {
   PlayerDetailResponseSchema,
   PanelLinkedAccountsResponseSchema,
@@ -12,12 +13,6 @@ import {
   type PlayerDetailResponse,
   type PlayerReplayResponse,
 } from '@modl-gg/proto/modl/v1/player_pb.ts';
-import type {
-  PunishmentResponse,
-  PunishmentModification,
-  PunishmentNote,
-  PunishmentEvidence,
-} from '@modl-gg/proto/modl/v1/punishment_pb.ts';
 
 export interface PlayerReplaySummary {
   replayId: string;
@@ -30,39 +25,6 @@ export interface PlayerReplaySummary {
   replayUrl: string;
   matchSource: string;
 }
-
-// Player detail punishment date fields arrive as int64 epoch millis. The legacy JSON delivered
-// them as ISO strings, and the consumers pass them straight to `new Date(...)` and to
-// `formatDateWithTime`, which only accepts strings/Dates (a raw number throws). Convert back to ISO.
-const epochToIso = (millis: bigint | undefined): string | null =>
-  millis === undefined ? null : new Date(toNum(millis)).toISOString();
-
-const mapModification = (mod: PunishmentModification) => ({
-  ...mod,
-  date: epochToIso(mod.date),
-  effectiveDuration: mod.effectiveDuration === undefined ? undefined : toNum(mod.effectiveDuration),
-});
-
-const mapNote = (note: PunishmentNote) => ({
-  ...note,
-  date: epochToIso(note.date),
-});
-
-const mapEvidence = (evidence: PunishmentEvidence) => ({
-  ...evidence,
-  uploadedAt: epochToIso(evidence.uploadedAt),
-  fileSize: evidence.fileSize === undefined ? undefined : toNum(evidence.fileSize),
-});
-
-const mapPunishment = (punishment: PunishmentResponse) => ({
-  ...punishment,
-  issued: epochToIso(punishment.issued),
-  expires: epochToIso(punishment.expires),
-  started: epochToIso(punishment.started),
-  modifications: punishment.modifications.map(mapModification),
-  notes: punishment.notes.map(mapNote),
-  evidence: punishment.evidence.map(mapEvidence),
-});
 
 // Remap PlayerDetailResponse to the legacy player object the player pages consume. `latestIpData`
 // is renamed to `latestIPData` (the casing every consumer reads), and `data` stays a plain object

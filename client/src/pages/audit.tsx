@@ -50,6 +50,10 @@ import { Checkbox } from '@modl-gg/shared-web/components/ui/checkbox';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell, LineChart, Line, Area, AreaChart } from 'recharts';
 import { getEvidenceDisplayText, getEvidenceClickUrl, getEvidenceShortName, isEvidenceClickable } from '@/utils/evidence-utils';
 import { formatTicketStatusLabel, normalizeTicketStatus } from '@/lib/ticket-enums';
+import { protoFetch } from '@/lib/proto-fetch';
+import { toNum, tsToDate } from '@/lib/proto-ui';
+import { StaffPerformanceListResponseSchema, ActivePunishmentsAuditResponseSchema } from '@modl-gg/proto/modl/v1/audit_pb.ts';
+import { AnalyticsOverviewResponseSchema } from '@modl-gg/proto/modl/v1/analytics_pb.ts';
 
 interface StaffMember {
   id: string;
@@ -166,17 +170,43 @@ const formatDurationDetailed = (date: Date) => {
   return parts.length > 0 ? parts.join(' ') : '0m';
 };
 
-// API functions
-const fetchAnalyticsOverview = async () => {
-  const response = await apiFetch('/v1/panel/analytics/overview');
-  if (!response.ok) throw new Error('Failed to fetch analytics overview');
-  return response.json();
+interface AnalyticsOverview {
+  totalTickets: number;
+  totalPlayers: number;
+  totalStaff: number;
+  activeTickets: number;
+  ticketChange: number;
+  playerChange: number;
+}
+
+const fetchAnalyticsOverview = async (): Promise<AnalyticsOverview> => {
+  const res = await protoFetch(AnalyticsOverviewResponseSchema, '/v1/panel/analytics/overview');
+  const overview = res.overview['overview'];
+  return {
+    totalTickets: overview ? toNum(overview.totalTickets) : 0,
+    totalPlayers: overview ? toNum(overview.totalPlayers) : 0,
+    totalStaff: overview ? toNum(overview.totalStaff) : 0,
+    activeTickets: overview ? toNum(overview.activeTickets) : 0,
+    ticketChange: overview?.ticketChange ?? 0,
+    playerChange: overview?.playerChange ?? 0,
+  };
 };
 
-const fetchStaffPerformance = async (period = '30d') => {
-  const response = await apiFetch(`/v1/panel/audit/staff-performance?period=${period}`);
-  if (!response.ok) throw new Error('Failed to fetch staff performance');
-  return response.json();
+const fetchStaffPerformance = async (period = '30d'): Promise<StaffMember[]> => {
+  const res = await protoFetch(
+    StaffPerformanceListResponseSchema,
+    `/v1/panel/audit/staff-performance?period=${period}`,
+  );
+  return res.staff.map((member) => ({
+    id: member.id,
+    username: member.username,
+    role: member.role,
+    totalActions: member.totalActions,
+    ticketResponses: member.ticketResponses,
+    punishmentsIssued: member.punishmentsIssued,
+    avgResponseTime: member.avgResponseTime,
+    lastActive: tsToDate(member.lastActive)?.toISOString() ?? '',
+  }));
 };
 
 const fetchTicketAnalytics = async (period = '30d') => {
@@ -224,9 +254,34 @@ interface ActivePunishment {
 }
 
 const fetchPunishmentsList = async (status: string): Promise<ActivePunishment[]> => {
-  const response = await apiFetch(`/v1/panel/audit/punishments/active?status=${status}`);
-  if (!response.ok) throw new Error('Failed to fetch punishments');
-  return response.json();
+  const res = await protoFetch(
+    ActivePunishmentsAuditResponseSchema,
+    `/v1/panel/audit/punishments/active?status=${status}`,
+  );
+  return res.punishments.map((punishment) => ({
+    id: punishment.id,
+    playerId: punishment.playerId,
+    playerName: punishment.playerName,
+    type: punishment.type,
+    typeOrdinal: punishment.typeOrdinal,
+    category: punishment.category,
+    staffName: punishment.staffName,
+    reason: punishment.reason,
+    duration: punishment.duration !== undefined ? toNum(punishment.duration) : null,
+    issued: tsToDate(punishment.issued)?.toISOString() ?? '',
+    started: tsToDate(punishment.started)?.toISOString() ?? null,
+    expires: tsToDate(punishment.expires)?.toISOString() ?? null,
+    active: punishment.active,
+    hasEvidence: punishment.hasEvidence,
+    evidenceCount: punishment.evidenceCount,
+    evidence: punishment.evidence.map((item) => ({
+      text: item.text,
+      url: item.url,
+      type: item.type,
+      fileName: item.fileName,
+    })),
+    attachedTicketIds: punishment.attachedTicketIds,
+  }));
 };
 
 // Custom themed tooltip component for charts
@@ -1954,11 +2009,11 @@ const AuditLog = () => {
           {/* Tickets Opened */}
           <StatCard
             title={t('audit.ticketsOpened')}
-            value={analyticsOverview?.overview.totalTickets || 0}
+            value={analyticsOverview?.totalTickets ?? 0}
             icon={FileText}
             iconColor="text-blue-600"
-            trend={analyticsOverview?.overview.ticketChange >= 0 ? 'up' : 'down'}
-            trendValue={analyticsOverview?.overview.ticketChange}
+            trend={(analyticsOverview?.ticketChange ?? 0) >= 0 ? 'up' : 'down'}
+            trendValue={analyticsOverview?.ticketChange}
             isExpanded={expandedSection === 'tickets'}
             onToggle={() => toggleSection('tickets')}
           />
@@ -1976,8 +2031,8 @@ const AuditLog = () => {
           {/* Staff Members */}
           <StatCard
             title={t('audit.staffMembers')}
-            value={analyticsOverview?.overview.totalStaff || 0}
-            subtitle={t('audit.activeStaff', { count: staffPerformanceData.filter((s: any) => new Date(s.lastActive) > subDays(new Date(), 7)).length })}
+            value={analyticsOverview?.totalStaff ?? 0}
+            subtitle={t('audit.activeStaff', { count: staffPerformanceData.filter((s) => new Date(s.lastActive) > subDays(new Date(), 7)).length })}
             icon={Users}
             iconColor="text-purple-600"
             isExpanded={expandedSection === 'staff'}
@@ -1987,11 +2042,11 @@ const AuditLog = () => {
           {/* Players Joined */}
           <StatCard
             title={t('audit.playersJoined')}
-            value={analyticsOverview?.overview.totalPlayers || 0}
+            value={analyticsOverview?.totalPlayers ?? 0}
             icon={User}
             iconColor="text-green-600"
-            trend={analyticsOverview?.overview.playerChange >= 0 ? 'up' : 'down'}
-            trendValue={analyticsOverview?.overview.playerChange}
+            trend={(analyticsOverview?.playerChange ?? 0) >= 0 ? 'up' : 'down'}
+            trendValue={analyticsOverview?.playerChange}
             isExpanded={expandedSection === 'players'}
             onToggle={() => toggleSection('players')}
           />

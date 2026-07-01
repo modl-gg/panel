@@ -181,20 +181,20 @@ const fetchStorageData = async () => {
         cdnPercentage = usageData.cdn?.percentage ?? (cdnLimit > 0 ? (cdnUsed / cdnLimit) * 100 : 0);
       } else {
         // Old format: values are already in bytes
-        cdnUsedBytes = usageData.usedBytes ?? 0;
-        cdnLimitBytes = usageData.maxBytes ?? 0;
+        cdnUsedBytes = Number(usageData.usedBytes ?? 0);
+        cdnLimitBytes = Number(usageData.maxBytes ?? 0);
         cdnPercentage = usageData.usedPercentage ?? (cdnLimitBytes > 0 ? (cdnUsedBytes / cdnLimitBytes) * 100 : 0);
       }
       
       // Transform the data to match expected format
       // Use byType from backend if available, otherwise fallback to putting all in "other"
       const byType = usageData.byType ? {
-        ticket: usageData.byType.ticket ?? 0,
-        evidence: usageData.byType.evidence ?? 0,
-        logs: usageData.byType.logs ?? 0,
-        backup: usageData.byType.backup ?? 0,
-        replay: usageData.byType.replay ?? 0,
-        other: usageData.byType.other ?? 0
+        ticket: Number(usageData.byType.ticket ?? 0),
+        evidence: Number(usageData.byType.evidence ?? 0),
+        logs: Number(usageData.byType.logs ?? 0),
+        backup: Number(usageData.byType.backup ?? 0),
+        replay: Number(usageData.byType.replay ?? 0),
+        other: Number(usageData.byType.other ?? 0)
       } : {
         ticket: 0,
         evidence: 0,

@@ -65,7 +65,7 @@ function SessionsSection({ onSignOut }: { onSignOut: () => void }) {
         return r.json();
       })
       .then((data) => {
-        setSessions(Array.isArray(data) ? data : []);
+        setSessions(Array.isArray(data?.sessions) ? data.sessions : []);
         setLoadError(false);
       })
       .catch(() => {

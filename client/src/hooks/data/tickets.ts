@@ -14,6 +14,7 @@ import {
   type TicketResponse,
   type TicketReply,
   type TicketNote,
+  type TicketChatMessage,
   TicketCountsResponseSchema,
   CreateTicketRequestSchema,
   CreateTicketResponseSchema,
@@ -66,6 +67,10 @@ function mapNote(note: TicketNote) {
   return { ...note, date: millisToNumber(note.date) };
 }
 
+function mapChatMessage(message: TicketChatMessage) {
+  return { content: message.content, sender: message.sender, timestamp: millisToNumber(message.timestamp) };
+}
+
 // Returns `any` on purpose: the legacy hook returned res.json() (untyped), and consumers
 // (including the frozen ticket-detail.tsx) read fields the proto message does not model.
 // Keeping the loose contract leaves those consumers untouched.
@@ -76,6 +81,7 @@ function mapTicketResponse(ticket: TicketResponse): any {
     date: millisToNumber(ticket.date),
     messages: ticket.messages.map(mapReply),
     notes: ticket.notes.map(mapNote),
+    chatMessages: ticket.chatMessages.map(mapChatMessage),
   };
 }
 
@@ -391,7 +397,13 @@ export function usePlayerAllTickets(uuid: string) {
         }
         throw new Error('Failed to fetch player tickets');
       }
-      return res.json();
+      const data = await res.json();
+      const items = Array.isArray(data) ? data : [];
+      return items.map((ticket: any) => {
+        const createdDate = ticket.created ? new Date(ticket.created) : null;
+        const created = createdDate && !isNaN(createdDate.getTime()) ? createdDate.toISOString() : null;
+        return { ...ticket, created };
+      });
     },
     enabled: !!uuid,
     staleTime: 30000,

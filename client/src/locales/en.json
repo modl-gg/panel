@@ -585,6 +585,7 @@
       "addLabel": "Add Label",
       "quickColors": "Quick colors:",
       "deleteLabelTitle": "Delete Label",
+      "deleteLabelConfirm": "Are you sure you want to delete the label \"{{name}}\"? This action cannot be undone.",
       "quickResponses": "Quick Responses",
       "quickResponsesDesc": "Create pre-written responses that staff can quickly apply to tickets.",
       "noCategoriesYet": "No categories yet. Create one to get started.",
