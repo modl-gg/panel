@@ -1,6 +1,5 @@
 import { Loader2, Play, TriangleAlert } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
-import { useLocation } from 'wouter';
 import { Badge } from '@modl-gg/shared-web/components/ui/badge';
 import { Button } from '@modl-gg/shared-web/components/ui/button';
 import { usePlayerReplays } from '@/hooks/use-data';
@@ -46,7 +45,6 @@ const getReplayId = (replay: { replayId?: string; replayUrl?: string; matchSourc
 
 const PlayerReplaysList = ({ playerId }: PlayerReplaysListProps) => {
   const { t } = useTranslation();
-  const [, navigate] = useLocation();
   const { data: replays, isLoading, error } = usePlayerReplays(playerId);
 
   if (isLoading) {
@@ -112,7 +110,7 @@ const PlayerReplaysList = ({ playerId }: PlayerReplaysListProps) => {
               <Button
                 variant="outline"
                 size="sm"
-                onClick={() => navigate(`/replay?id=${encodeURIComponent(replayId)}`)}
+                onClick={() => window.open(`/replay?id=${encodeURIComponent(replayId)}`, '_blank', 'noopener,noreferrer')}
                 disabled={!canOpenReplay}
               >
                 <Play className="h-3.5 w-3.5 mr-1.5" />
