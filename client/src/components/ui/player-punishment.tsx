@@ -6,6 +6,7 @@ import { Badge } from '@modl-gg/shared-web/components/ui/badge';
 import { Input } from '@modl-gg/shared-web/components/ui/input';
 import { useToast } from '@modl-gg/shared-web/hooks/use-toast';
 import MediaUpload from '@/components/MediaUpload';
+import { usePunishmentPreview } from '@/hooks/data/punishments';
 
 export interface PlayerPunishmentData {
   selectedPunishmentCategory?: string;
@@ -109,6 +110,20 @@ const PlayerPunishment: React.FC<PlayerPunishmentProps> = ({
     return allTypes.find(type => type.name === data.selectedPunishmentCategory);
   };
 
+  const currentPunishmentType = getCurrentPunishmentType();
+  const { data: punishmentPreview } = usePunishmentPreview(playerId, currentPunishmentType?.ordinal);
+
+  const getSelectedSeverityPreview = () => {
+    if (!punishmentPreview) return null;
+    if (currentPunishmentType?.singleSeverityPunishment) {
+      return punishmentPreview.singleSeverity ?? null;
+    }
+    if (data.selectedSeverity === 'Lenient') return punishmentPreview.lenient ?? null;
+    if (data.selectedSeverity === 'Regular') return punishmentPreview.regular ?? null;
+    if (data.selectedSeverity === 'Aggravated') return punishmentPreview.aggravated ?? null;
+    return null;
+  };
+
   const getPunishmentPreview = () => {
     const punishmentType = getCurrentPunishmentType();
     if (!punishmentType) return '';
@@ -128,6 +143,7 @@ const PlayerPunishment: React.FC<PlayerPunishmentProps> = ({
     let actionType = '';
     let durationValue: number | undefined;
     let durationUnit: string | undefined;
+    let durationText: string | undefined;
     let isPermanentPunishment = false;
     
     // Handle administrative punishments
@@ -153,8 +169,15 @@ const PlayerPunishment: React.FC<PlayerPunishmentProps> = ({
       actionType = 'blacklist';
       isPermanentPunishment = true;
     } else {
-      // For configured punishment types, get duration from the configuration
-      if (punishmentType.singleSeverityPunishment && punishmentType.singleSeverityDurations && data.selectedOffenseLevel) {
+      const severityPreview = getSelectedSeverityPreview();
+      if (severityPreview) {
+        actionType = severityPreview.punishmentType || 'ban';
+        if (severityPreview.permanent) {
+          isPermanentPunishment = true;
+        } else {
+          durationText = severityPreview.durationFormatted;
+        }
+      } else if (punishmentType.singleSeverityPunishment && punishmentType.singleSeverityDurations && data.selectedOffenseLevel) {
         const durationConfig = punishmentType.singleSeverityDurations[data.selectedOffenseLevel];
         if (durationConfig) {
           actionType = durationConfig.type?.includes('ban') ? 'ban' : 'mute';
@@ -168,10 +191,10 @@ const PlayerPunishment: React.FC<PlayerPunishmentProps> = ({
       } else if (punishmentType.durations && data.selectedSeverity) {
         const severityMap = { 'lenient': 'low', 'regular': 'regular', 'aggravated': 'severe' };
         const mappedSeverity = severityMap[data.selectedSeverity.toLowerCase() as keyof typeof severityMap] || 'regular';
-        
+
         const offenseLevel = data.selectedOffenseLevel || 'first';
         const durationConfig = punishmentType.durations[mappedSeverity as keyof typeof punishmentType.durations]?.[offenseLevel];
-        
+
         if (durationConfig) {
           actionType = durationConfig.type?.includes('ban') ? 'ban' : 'mute';
           if (durationConfig.type?.includes('permanent')) {
@@ -182,25 +205,24 @@ const PlayerPunishment: React.FC<PlayerPunishmentProps> = ({
           }
         }
       }
-      
-      // Default fallback
+
       if (!actionType) {
         actionType = 'ban';
       }
     }
-    
-    // Add duration and action type
+
+    if (!durationText && durationValue && durationUnit) {
+      durationText = `${durationValue} ${durationUnit}`;
+    }
+
     if (isPermanentPunishment) {
       preview += ` - Permanent ${actionType}`;
-    } else if (durationValue && durationUnit) {
-      preview += ` - ${durationValue} ${durationUnit} ${actionType}`;
-    } else if (actionType === 'kick') {
-      // Kicks don't have duration
-      preview += ` - ${actionType}`;
+    } else if (durationText) {
+      preview += ` - ${durationText} ${actionType}`;
     } else if (actionType) {
       preview += ` - ${actionType}`;
     }
-    
+
     return preview;
   };
 

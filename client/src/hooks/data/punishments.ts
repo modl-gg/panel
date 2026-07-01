@@ -10,6 +10,7 @@ import {
   PanelAddPunishmentNoteRequestSchema,
   ModifyPunishmentTicketsRequestSchema,
   PunishmentResponseSchema,
+  PunishmentPreviewResponseSchema,
 } from '@modl-gg/proto/modl/v1/punishment_pb.ts';
 import { mapPunishment } from '@/lib/punishment-mapping';
 import {
@@ -45,6 +46,20 @@ function applyPunishmentError(error: unknown): Error {
   }
 
   return error instanceof Error ? error : new Error('Failed to apply punishment');
+}
+
+export function usePunishmentPreview(uuid: string | undefined, typeOrdinal: number | undefined) {
+  return useQuery({
+    queryKey: ['/v1/panel/players', uuid, 'punishment-preview', typeOrdinal],
+    queryFn: async () => {
+      return await protoFetchOrNull(
+        PunishmentPreviewResponseSchema,
+        `/v1/panel/players/${uuid}/punishments/preview?typeOrdinal=${typeOrdinal}`,
+      );
+    },
+    enabled: uuid != null && uuid !== '' && typeOrdinal != null && typeOrdinal >= 6,
+    staleTime: 15_000,
+  });
 }
 
 export function useApplyPunishment() {
