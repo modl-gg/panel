@@ -9,7 +9,7 @@ import {
   ErrorCode,
   HeartbeatSchema,
   PanelResource,
-  RealtimeEnvelope,
+  type RealtimeEnvelope,
   RealtimeEnvelopeSchema,
   ReconnectAction,
   ReconnectReason,

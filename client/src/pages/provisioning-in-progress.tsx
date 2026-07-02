@@ -3,6 +3,7 @@ import { useLocation } from 'wouter';
 import PageContainer from '@/components/layout/PageContainer';
 import { Loader2 } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
+import { errorMessageOr } from '@/utils/errors';
 
 const ProvisioningInProgressPage: React.FC = () => {
   const { t } = useTranslation();
@@ -72,14 +73,14 @@ const ProvisioningInProgressPage: React.FC = () => {
         setRetryCount(0);
         setTimeout(checkStatus, 3000);
       }
-    } catch (err: any) {
+    } catch (err) {
       console.error('Error checking provisioning status:', err);
       if (retryCount < maxRetries) {
         setStatusMessage(t('pages.provisioning.retrying', { current: retryCount + 1, max: maxRetries }));
         setRetryCount(prev => prev + 1);
         setTimeout(checkStatus, 5000 * (retryCount + 1)); // Exponential backoff for retries
       } else {
-        setError(err.message || t('pages.provisioning.errorUnexpected'));
+        setError(errorMessageOr(err, t('pages.provisioning.errorUnexpected')));
         setStatusMessage(t('pages.provisioning.setupFailed'));
       }
     }

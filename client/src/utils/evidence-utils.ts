@@ -9,8 +9,10 @@ export interface EvidenceItem {
   fileSize?: number;
 }
 
+export type EvidenceLike = string | Partial<EvidenceItem>;
+
 /** Prevents "[object Object]" display issues */
-export function getEvidenceDisplayText(evidenceItem: any): string {
+export function getEvidenceDisplayText(evidenceItem: EvidenceLike): string {
   if (typeof evidenceItem === 'string') {
     return evidenceItem;
   }
@@ -36,7 +38,7 @@ export function getEvidenceDisplayText(evidenceItem: any): string {
   return 'Evidence';
 }
 
-export function getEvidenceClickUrl(evidenceItem: any): string {
+export function getEvidenceClickUrl(evidenceItem: EvidenceLike): string {
   if (typeof evidenceItem === 'string') {
     return evidenceItem.startsWith('http') ? evidenceItem : `/uploads/evidence/${evidenceItem}`;
   }
@@ -58,14 +60,14 @@ export function getEvidenceClickUrl(evidenceItem: any): string {
   return '';
 }
 
-export function isEvidenceClickable(evidenceItem: any): boolean {
+export function isEvidenceClickable(evidenceItem: EvidenceLike): boolean {
   const url = getEvidenceClickUrl(evidenceItem);
   // Coerce to a real boolean: a falsy url ('') would otherwise leak through the `&&`
   // as the empty string, contradicting the declared boolean return type.
   return Boolean(url) && (url.startsWith('http') || url.startsWith('/'));
 }
 
-export function getEvidenceShortName(evidenceItem: any, maxLength: number = 15): string {
+export function getEvidenceShortName(evidenceItem: EvidenceLike, maxLength: number = 15): string {
   const displayText = getEvidenceDisplayText(evidenceItem);
   const fileName = displayText.includes('/') ? displayText.split('/').pop() : displayText;
   

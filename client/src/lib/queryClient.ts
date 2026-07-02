@@ -1,4 +1,4 @@
-import { QueryClient, QueryFunction } from "@tanstack/react-query";
+import { QueryClient, type QueryFunction } from "@tanstack/react-query";
 import { getApiUrl } from "./api";
 
 function resolveCredentials(url: string, credentials?: RequestCredentials): RequestCredentials {
@@ -70,8 +70,9 @@ export const queryClient = new QueryClient({
         if (failureCount >= 1) return false;
         if (error instanceof Error) {
           const statusMatch = error.message.match(/^(\d{3}):/);
-          if (statusMatch) {
-            return parseInt(statusMatch[1], 10) >= 500;
+          const statusCode = statusMatch?.[1];
+          if (statusCode) {
+            return parseInt(statusCode, 10) >= 500;
           }
         }
         return true;

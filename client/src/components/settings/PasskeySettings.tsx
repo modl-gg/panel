@@ -1,7 +1,8 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Fingerprint, Plus, Pencil, Trash2, Loader2 } from 'lucide-react';
-import { startRegistration } from '@simplewebauthn/browser';
+import { startRegistration, type PublicKeyCredentialCreationOptionsJSON } from '@simplewebauthn/browser';
+import { isWebAuthnCancellation, unwrapPublicKeyOptions, type MaybePublicKeyWrapped } from '@/utils/webauthn';
 import { Button } from '@modl-gg/shared-web/components/ui/button';
 import { Input } from '@modl-gg/shared-web/components/ui/input';
 import { useToast } from '@modl-gg/shared-web/hooks/use-toast';
@@ -87,15 +88,15 @@ const PasskeySettings = () => {
         return;
       }
 
-      const { challengeId, options } = await optionsRes.json();
-      const attResp = await startRegistration({ optionsJSON: options?.publicKey ?? options });
+      const { challengeId, options }: { challengeId: string; options: MaybePublicKeyWrapped<PublicKeyCredentialCreationOptionsJSON> } = await optionsRes.json();
+      const attResp = await startRegistration({ optionsJSON: unwrapPublicKeyOptions(options) });
 
       setPendingChallengeId(challengeId);
       setPendingResponse(JSON.stringify(attResp));
       setCredentialName('');
       setNameDialogOpen(true);
-    } catch (e: any) {
-      if (e.name !== 'NotAllowedError') {
+    } catch (e) {
+      if (!isWebAuthnCancellation(e)) {
         toast({ title: t('toast.error'), description: t('settings.passkey.registrationCancelledOrFailed'), variant: 'destructive' });
       }
     } finally {

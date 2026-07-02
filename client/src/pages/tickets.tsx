@@ -359,11 +359,6 @@ const Tickets = () => {
     resetPageAndSelection();
   }, [resetPageAndSelection]);
 
-  const handleAuthorFilterChange = useCallback((value: string[]) => {
-    setAuthorFilter(value);
-    resetPageAndSelection();
-  }, [resetPageAndSelection]);
-
   const handleLabelFiltersChange = useCallback((value: string[]) => {
     setLabelFilters(value);
     resetPageAndSelection();

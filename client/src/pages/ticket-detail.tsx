@@ -1,6 +1,6 @@
 import { useState, useEffect, memo, useMemo, useRef, useCallback } from 'react';
 import { useTranslation } from 'react-i18next';
-import { useLocation, Link } from 'wouter';
+import { useLocation } from 'wouter';
 import { Popover, PopoverContent, PopoverTrigger } from '@modl-gg/shared-web/components/ui/popover';
 import { queryClient } from '@/lib/queryClient';
 import { getAvatarUrl } from '@/lib/api';
@@ -9,7 +9,6 @@ import { usePermissions } from '@/hooks/use-permissions';
 import { formatDate, formatDateWithRelative } from '../utils/date-utils';
 import {
   MessageSquare,
-  User,
   AlertCircle,
   Clock,
   FileText,
@@ -22,7 +21,6 @@ import {
   StickyNote,
   ArrowLeft,
   ThumbsUp,
-  Bug,
   Axe,
   Tag,
   Plus,
@@ -49,7 +47,7 @@ import { Skeleton } from '@modl-gg/shared-web/components/ui/skeleton';
 import { Checkbox } from '@modl-gg/shared-web/components/ui/checkbox';
 import { usePanelTicket, useUpdateTicket, useSettings, useStaff, useModifyPunishment, useApplyPunishment, useQuickResponses, usePunishmentTypes, useLabels, usePunishmentById } from '@/hooks/use-data';
 import { LabelBadge } from '@/components/ui/label-badge';
-import { QuickResponsesConfiguration, defaultQuickResponsesConfig } from '@/types/quickResponses';
+import { type QuickResponsesConfiguration, defaultQuickResponsesConfig } from '@/types/quickResponses';
 import { useToast } from '@modl-gg/shared-web/hooks/use-toast';
 import PageContainer from '@/components/layout/PageContainer';
 import { apiFetch } from '@/lib/api';
@@ -59,54 +57,10 @@ import MarkdownHelp from '@/components/ui/markdown-help';
 import { ClickablePlayer } from '@/components/ui/clickable-player';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@modl-gg/shared-web/components/ui/tooltip';
 import { getUnverifiedExplanation } from '@/utils/creator-verification';
-import PlayerPunishment, { PlayerPunishmentData } from '@/components/ui/player-punishment';
+import PlayerPunishment, { type PlayerPunishmentData } from '@/components/ui/player-punishment';
 import MediaUpload from '@/components/MediaUpload';
-import TicketAttachments from '@/components/TicketAttachments';
 import { useMediaUpload, useMediaUploadConfig } from '@/hooks/use-media-upload';
 import { isClosedTicketStatus } from '@/lib/ticket-enums';
-
-interface PunishmentType {
-  id: number;
-  name: string;
-  category: 'Gameplay' | 'Social' | 'Administrative';
-  isCustomizable: boolean;
-  ordinal: number;
-  durations?: {
-    low: { 
-      first: { value: number; unit: 'seconds' | 'minutes' | 'hours' | 'days' | 'weeks' | 'months'; banValue?: number; banUnit?: 'seconds' | 'minutes' | 'hours' | 'days' | 'weeks' | 'months'; };
-      medium: { value: number; unit: 'seconds' | 'minutes' | 'hours' | 'days' | 'weeks' | 'months'; banValue?: number; banUnit?: 'seconds' | 'minutes' | 'hours' | 'days' | 'weeks' | 'months'; };
-      habitual: { value: number; unit: 'seconds' | 'minutes' | 'hours' | 'days' | 'weeks' | 'months'; banValue?: number; banUnit?: 'seconds' | 'minutes' | 'hours' | 'days' | 'weeks' | 'months'; };
-    };
-    regular: {
-      first: { value: number; unit: 'seconds' | 'minutes' | 'hours' | 'days' | 'weeks' | 'months'; banValue?: number; banUnit?: 'seconds' | 'minutes' | 'hours' | 'days' | 'weeks' | 'months'; };
-      medium: { value: number; unit: 'seconds' | 'minutes' | 'hours' | 'days' | 'weeks' | 'months'; banValue?: number; banUnit?: 'seconds' | 'minutes' | 'hours' | 'days' | 'weeks' | 'months'; };
-      habitual: { value: number; unit: 'seconds' | 'minutes' | 'hours' | 'days' | 'weeks' | 'months'; banValue?: number; banUnit?: 'seconds' | 'minutes' | 'hours' | 'days' | 'weeks' | 'months'; };
-    };
-    severe: {
-      first: { value: number; unit: 'seconds' | 'minutes' | 'hours' | 'days' | 'weeks' | 'months'; banValue?: number; banUnit?: 'seconds' | 'minutes' | 'hours' | 'days' | 'weeks' | 'months'; };
-      medium: { value: number; unit: 'seconds' | 'minutes' | 'hours' | 'days' | 'weeks' | 'months'; banValue?: number; banUnit?: 'seconds' | 'minutes' | 'hours' | 'days' | 'weeks' | 'months'; };
-      habitual: { value: number; unit: 'seconds' | 'minutes' | 'hours' | 'days' | 'weeks' | 'months'; banValue?: number; banUnit?: 'seconds' | 'minutes' | 'hours' | 'days' | 'weeks' | 'months'; };
-    };
-  };
-  points?: {
-    low: number;
-    regular: number;
-    severe: number;
-  };
-  customPoints?: number;
-  staffDescription?: string;
-  playerDescription?: string;
-  canBeAltBlocking?: boolean;
-  canBeStatWiping?: boolean;
-  isAppealable?: boolean;
-  singleSeverityPunishment?: boolean;
-  singleSeverityDurations?: {
-    first: { value: number; unit: 'seconds' | 'minutes' | 'hours' | 'days' | 'weeks' | 'months'; type: 'mute' | 'ban'; };
-    medium: { value: number; unit: 'seconds' | 'minutes' | 'hours' | 'days' | 'weeks' | 'months'; type: 'mute' | 'ban'; };
-    habitual: { value: number; unit: 'seconds' | 'minutes' | 'hours' | 'days' | 'weeks' | 'months'; type: 'mute' | 'ban'; };
-  };
-  singleSeverityPoints?: number;
-}
 
 export interface TicketMessage {
   id: string;
@@ -190,6 +144,7 @@ const FilePreview = memo(({ file }: { file: File }) => {
       setUrl(objectUrl);
       return () => URL.revokeObjectURL(objectUrl);
     }
+    return undefined;
   }, [file]);
 
   if (url) {
@@ -326,7 +281,7 @@ const TicketDetail = () => {
   const applyPunishment = useApplyPunishment();
 
   // Get settings data early so it's available for useMemo hooks
-  const { data: settingsData } = useSettings();
+  useSettings();
   const { data: quickResponsesData } = useQuickResponses();
   const { data: punishmentTypesData } = usePunishmentTypes();
 
@@ -644,8 +599,9 @@ const TicketDetail = () => {
           if (report && report !== 'ticket-new') {
             // Extract ticket ID from format like "ticket-123"
             const ticketMatch = report.match(/ticket-(\w+)/);
-            if (ticketMatch && !attachedTicketIds.includes(ticketMatch[1])) {
-              attachedTicketIds.push(ticketMatch[1]);
+            const matchedTicketId = ticketMatch?.[1];
+            if (matchedTicketId && !attachedTicketIds.includes(matchedTicketId)) {
+              attachedTicketIds.push(matchedTicketId);
             }
           }
         });
@@ -739,7 +695,7 @@ const TicketDetail = () => {
         throw new Error('No player UUID found for this ticket. Only username available: ' + ticketDetails.relatedPlayer);
       }
       
-      const result = await applyPunishment.mutateAsync({
+      await applyPunishment.mutateAsync({
         uuid: ticketDetails.relatedPlayerId,
         punishmentData: punishmentApiData
       });
@@ -760,22 +716,6 @@ const TicketDetail = () => {
     }
   };
 
-  // Helper function to convert duration to milliseconds
-  const convertDurationToMs = (duration: { value: number; unit: string }) => {
-    const multipliers = {
-      'seconds': 1000,
-      'minutes': 60 * 1000,
-      'hours': 60 * 60 * 1000,
-      'days': 24 * 60 * 60 * 1000,
-      'weeks': 7 * 24 * 60 * 60 * 1000,
-      'months': 30 * 24 * 60 * 60 * 1000
-    };
-    
-    return duration.value * (multipliers[duration.unit as keyof typeof multipliers] || 0);
-  };
-
-  const [formSubject, setFormSubject] = useState('');
-  const [formData, setFormData] = useState<Record<string, string>>({});
   const [replyAttachments, setReplyAttachments] = useState<Array<{id: string, url: string, key: string, fileName: string, fileType: string, fileSize: number, uploadedAt: string, uploadedBy: string}>>([]);
   const [noteAttachments, setNoteAttachments] = useState<Array<{id: string, url: string, key: string, fileName: string, fileType: string, fileSize: number, uploadedAt: string, uploadedBy: string}>>([]);
   const [pendingFiles, setPendingFiles] = useState<File[]>([]);
@@ -790,7 +730,7 @@ const TicketDetail = () => {
       const parsed = new URL(rawDomain.startsWith('http') ? rawDomain : `https://${rawDomain}`);
       return parsed.hostname.toLowerCase();
     } catch {
-      return rawDomain.replace(/^https?:\/\//i, '').split('/')[0].toLowerCase();
+      return (rawDomain.replace(/^https?:\/\//i, '').split('/')[0] ?? '').toLowerCase();
     }
   }, [mediaConfig?.cdnDomain]);
 
@@ -826,7 +766,7 @@ const TicketDetail = () => {
   const pathParts = path.split('/');
   
   // Get the last part of the URL which should be the ticket ID
-  let ticketId = pathParts[pathParts.length - 1];
+  let ticketId = pathParts[pathParts.length - 1] ?? '';
   
   // Reverse the transformation done in navigation (ID- back to #)
   if (ticketId.startsWith('ID-')) {
@@ -930,19 +870,8 @@ const TicketDetail = () => {
     }
   });
 
-  // Simplified status colors - just Open and Closed
-  const statusColors = {
-    'Open': 'bg-green-50 text-green-700 border-green-200',
-    'Closed': 'bg-red-50 text-red-700 border-red-200'
-  };
-
-  const priorityColors = {
-    'Critical': 'bg-destructive/10 text-destructive border-destructive/20',
-    'Medium': 'bg-warning/10 text-warning border-warning/20',
-    'Low': 'bg-info/10 text-info border-info/20',
-    'Fixed': 'bg-success/10 text-success border-success/20'
-  };  // Use React Query to fetch ticket data from panel API
-  const { data: ticketData, isLoading, isError, error, refetch } = usePanelTicket(ticketId);
+  // Use React Query to fetch ticket data from panel API
+  const { data: ticketData, isLoading, isError, refetch } = usePanelTicket(ticketId);
   
   useEffect(() => {
     if (ticketData?.id) {
@@ -1246,19 +1175,6 @@ const TicketDetail = () => {
     return "Type your reply here...";
   };
 
-  // Helper function to convert duration to milliseconds
-  const getDurationMultiplier = (unit: string): number => {
-    switch (unit) {
-      case 'seconds': return 1000;
-      case 'minutes': return 60 * 1000;
-      case 'hours': return 60 * 60 * 1000;
-      case 'days': return 24 * 60 * 60 * 1000;
-      case 'weeks': return 7 * 24 * 60 * 60 * 1000;
-      case 'months': return 30 * 24 * 60 * 60 * 1000;
-      default: return 1000;
-    }
-  };
-
   const handleSendReply = async () => {
     const hasAttachments = pendingFiles.length > 0 || replyAttachments.length > 0;
     if ((!ticketDetails.newReply?.trim() && !hasAttachments) && !ticketDetails.selectedAction) return;
@@ -1428,14 +1344,16 @@ const TicketDetail = () => {
                 });
               } else if (appealAction === 'reduce') {
                 // Determine the new duration
-                let newDuration;
+                let newDuration: { value: number; unit: string };
 
+                const durationValue = ticketDetails.duration?.value;
+                const durationUnit = ticketDetails.duration?.unit;
                 if (ticketDetails.isPermanent) {
                   // Permanent punishment - send 0 value
                   newDuration = { value: 0, unit: 'seconds' };
-                } else if (ticketDetails.duration?.value && ticketDetails.duration?.unit) {
+                } else if (durationValue && durationUnit) {
                   // Use the provided duration - the hook will convert to milliseconds
-                  newDuration = ticketDetails.duration;
+                  newDuration = { value: durationValue, unit: durationUnit };
                 } else {
                   throw new Error('Invalid duration specified for reduction');
                 }
@@ -1521,37 +1439,18 @@ const TicketDetail = () => {
     handleUpdateTagsWithPersistence(newTags);
   };
   
-  const handleStatusChange = (newStatus: 'Open' | 'Closed', lockTicket = false) => {
-    setTicketDetails(prev => ({
-      ...prev,
-      status: newStatus,
-      locked: lockTicket || newStatus === 'Closed' ? true : prev.locked
-    }));
-    
-    updateTicketMutation.mutate({
-      id: ticketDetails.id,
-      data: {
-        status: newStatus,
-        locked: lockTicket || newStatus === 'Closed' ? true : ticketDetails.locked
-      }
-    });
-  };
-  
   const handleTicketAction = (action: string) => {
     setTicketDetails(prev => ({
       ...prev,
       selectedAction: action
     }));
     
-    let newStatus: 'Open' | 'Closed' = ticketDetails.status;
     let text = '';
-    
+
     // Handle special actions
     if (action === 'Close') {
-      newStatus = 'Closed';
       text = 'This ticket has been closed. Please create a new ticket if you need further assistance.';
     } else if (action === 'Reopen') {
-      newStatus = 'Open';
       text = 'This ticket has been reopened.';
     } else if (action === 'Comment') {
       // Clear the reply for comment mode
@@ -1564,19 +1463,14 @@ const TicketDetail = () => {
       // Get quick response configuration
       const actions = getQuickResponsesForTicket(ticketDetails.category);
       const actionConfig = actions.find(act => act.name === action);
-      
+
       if (actionConfig) {
         // Use quick response message
         text = actionConfig.message;
-        
+
         // Replace placeholders
         if (ticketDetails.relatedPlayer && text.includes('{reported-player}')) {
           text = text.replace('{reported-player}', ticketDetails.relatedPlayer);
-        }
-        
-        // Check if this action should close the ticket
-        if (actionConfig.closeTicket) {
-          newStatus = 'Closed';
         }
       }
     }
@@ -2100,10 +1994,10 @@ const TicketDetail = () => {
                           </div>
                           
                           {/* Action buttons - only show on an open, not-yet-applied, not-dismissed suggestion */}
-                          {!ticketDetails.aiAnalysis.wasAppliedAutomatically && !ticketDetails.aiAnalysis.dismissed && ticketDetails.status !== 'Closed' && (
+                          {!ticketDetails.aiAnalysis.wasAppliedAutomatically && !ticketDetails.aiAnalysis.dismissed && (
                             <div className="flex gap-2">
-                              <Button 
-                                size="sm" 
+                              <Button
+                                size="sm"
                                 variant="default"
                                 className="bg-green-600 hover:bg-green-700 dark:bg-green-700 dark:hover:bg-green-800"
                                 onClick={applyAISuggestion}
@@ -2395,7 +2289,7 @@ const TicketDetail = () => {
                           </Button>
                           
                           {/* Dynamic quick response actions */}
-                          {getQuickResponsesForTicket(ticketDetails.category).map((action, index) => {
+                          {getQuickResponsesForTicket(ticketDetails.category).map((action) => {
                             // Get icon based on action type
                             const getActionIcon = (actionName: string) => {
                               if (actionName.toLowerCase().includes('accept') || actionName.toLowerCase().includes('completed') || actionName.toLowerCase().includes('fixed')) {
@@ -2943,7 +2837,7 @@ const PunishmentDetailsCard = ({ punishmentId }: { punishmentId: string }) => {
       const parsed = new URL(rawDomain.startsWith('http') ? rawDomain : `https://${rawDomain}`);
       return parsed.hostname.toLowerCase();
     } catch {
-      return rawDomain.replace(/^https?:\/\//i, '').split('/')[0].toLowerCase();
+      return (rawDomain.replace(/^https?:\/\//i, '').split('/')[0] ?? '').toLowerCase();
     }
   }, [mediaConfig?.cdnDomain]);
 
@@ -2954,38 +2848,6 @@ const PunishmentDetailsCard = ({ punishmentId }: { punishmentId: string }) => {
       return parsed.hostname.toLowerCase() === normalizedCdnHost;
     } catch {
       return false;
-    }
-  };
-
-  const formatExpiryStatus = (expires: string | null, active: boolean): string => {
-    if (!expires) {
-      return active ? 'Permanent' : 'Inactive';
-    }
-
-    const expiryDate = new Date(expires);
-    const now = new Date();
-    const timeDiff = expiryDate.getTime() - now.getTime();
-
-    const formatTimeDifference = (timeDiff: number) => {
-      const days = Math.floor(Math.abs(timeDiff) / (24 * 60 * 60 * 1000));
-      const hours = Math.floor((Math.abs(timeDiff) % (24 * 60 * 60 * 1000)) / (60 * 60 * 1000));
-      const minutes = Math.floor((Math.abs(timeDiff) % (60 * 60 * 1000)) / (60 * 1000));
-      
-      if (days > 0) {
-        return `${days}d${hours > 0 ? ` ${hours}h` : ''}`;
-      } else if (hours > 0) {
-        return `${hours}h${minutes > 0 && hours < 24 ? ` ${minutes}m` : ''}`;
-      } else {
-        return `${minutes}m`;
-      }
-    };
-
-    if (timeDiff > 0) {
-      const timeLeft = formatTimeDifference(timeDiff);
-      return `expires in ${timeLeft}`;
-    } else {
-      const timeAgo = formatTimeDifference(timeDiff);
-      return `expired ${timeAgo} ago`;
     }
   };
 
@@ -3241,8 +3103,7 @@ const PunishmentDetailsCard = ({ punishmentId }: { punishmentId: string }) => {
                   let evidenceType = 'text';
                   let fileUrl = '';
                   let fileName = '';
-                  let fileType = '';
-                  
+
                   if (typeof evidenceItem === 'string') {
                     // Legacy string format
                     evidenceText = evidenceItem;
@@ -3258,7 +3119,6 @@ const PunishmentDetailsCard = ({ punishmentId }: { punishmentId: string }) => {
                     evidenceType = evidenceItem.type || 'text';
                     fileUrl = evidenceItem.url || evidenceItem.fileUrl || '';
                     fileName = evidenceItem.fileName || '';
-                    fileType = evidenceItem.fileType || '';
                   }
                   
                   // Helper function to detect media type from URL

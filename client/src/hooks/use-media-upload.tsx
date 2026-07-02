@@ -151,7 +151,7 @@ function resolveUploadContext(metadata: UploadMetadata = {}): { entityId?: strin
   if (!accessToken && entityId) {
     const normalized = entityId.toLowerCase();
     if (normalized !== 'new' && normalized !== 'unknown') {
-      accessToken = getCookieValue(`ticket_auth_${entityId}`);
+      accessToken = getCookieValue(`ticket_auth_${entityId}`) ?? undefined;
     }
   }
 

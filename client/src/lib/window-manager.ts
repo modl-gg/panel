@@ -28,51 +28,43 @@ export const initialWindowState: WindowState = {
 };
 
 export const windowActions = {
-  open: (state: WindowState, id: string): WindowState => ({
-    ...state,
-    windows: {
-      ...state.windows,
-      [id]: {
-        ...state.windows[id],
-        isOpen: true
-      }
-    }
-  }),
-  
-  close: (state: WindowState, id: string): WindowState => ({
-    ...state,
-    windows: {
-      ...state.windows,
-      [id]: {
-        ...state.windows[id],
-        isOpen: false
-      }
-    }
-  }),
-  
-  updatePosition: (state: WindowState, id: string, position: WindowPosition): WindowState => ({
-    ...state,
-    windows: {
-      ...state.windows,
-      [id]: {
-        ...state.windows[id],
-        position
-      }
-    }
-  }),
-  
-  updateSize: (state: WindowState, id: string, size: { width: number; height: number }): WindowState => ({
-    ...state,
-    windows: {
-      ...state.windows,
-      [id]: {
-        ...state.windows[id],
-        size
-      }
-    }
-  }),
-  
-  bringToFront: (state: WindowState, id: string): WindowState => {
+  open: (state: WindowState, id: string): WindowState => {
+    const window = state.windows[id];
+    if (!window) return state;
+    return {
+      ...state,
+      windows: { ...state.windows, [id]: { ...window, isOpen: true } }
+    };
+  },
+
+  close: (state: WindowState, id: string): WindowState => {
+    const window = state.windows[id];
+    if (!window) return state;
+    return {
+      ...state,
+      windows: { ...state.windows, [id]: { ...window, isOpen: false } }
+    };
+  },
+
+  updatePosition: (state: WindowState, id: string, position: WindowPosition): WindowState => {
+    const window = state.windows[id];
+    if (!window) return state;
+    return {
+      ...state,
+      windows: { ...state.windows, [id]: { ...window, position } }
+    };
+  },
+
+  updateSize: (state: WindowState, id: string, size: { width: number; height: number }): WindowState => {
+    const window = state.windows[id];
+    if (!window) return state;
+    return {
+      ...state,
+      windows: { ...state.windows, [id]: { ...window, size } }
+    };
+  },
+
+  bringToFront: (state: WindowState, _id: string): WindowState => {
     // Would handle z-index logic in a more complex implementation
     return state;
   }

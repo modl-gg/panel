@@ -91,10 +91,10 @@ const ChangeRoleModal: React.FC<ChangeRoleModalProps> = ({ isOpen, onClose, staf
       // Refresh the staff list
       queryClient.invalidateQueries({ queryKey: ['/v1/panel/staff'] });
       onClose();
-    } catch (error: any) {
+    } catch (error) {
       toast({
         title: t('toast.error'),
-        description: error.message,
+        description: error instanceof Error ? error.message : undefined,
         variant: 'destructive',
       });
     }

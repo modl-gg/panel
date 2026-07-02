@@ -96,7 +96,7 @@ const MarkdownRenderer = ({ content, className, allowHtml = false, disableClicka
       const parsed = new URL(rawDomain.startsWith('http') ? rawDomain : `https://${rawDomain}`);
       return parsed.hostname.toLowerCase();
     } catch {
-      return rawDomain.replace(/^https?:\/\//i, '').split('/')[0].toLowerCase();
+      return (rawDomain.replace(/^https?:\/\//i, '').split('/')[0] ?? '').toLowerCase();
     }
   }, [mediaConfig?.cdnDomain]);
 
@@ -152,7 +152,7 @@ const MarkdownRenderer = ({ content, className, allowHtml = false, disableClicka
       if (match.index > lastIndex) {
         parts.push(line.slice(lastIndex, match.index));
       }
-      const username = match[1];
+      const username = match[1] ?? '';
       parts.push(
         <ClickablePlayer key={key++} playerText={username} variant="text" showIcon={false}>
           <span className="text-primary cursor-pointer hover:underline">{username}</span>
@@ -182,7 +182,7 @@ const MarkdownRenderer = ({ content, className, allowHtml = false, disableClicka
             // injected by processMarkdownContent; render it as a player link.
             const playerMatch = label.match(/^\[PLAYER:(.*)\]$/);
             if (playerMatch && !disableClickablePlayers) {
-              const username = playerMatch[1];
+              const username = playerMatch[1] ?? '';
               return (
                 <div key={index} className="font-semibold mt-2 first:mt-0">
                   <ClickablePlayer playerText={username} variant="text" showIcon={false}>
@@ -244,7 +244,7 @@ const MarkdownRenderer = ({ content, className, allowHtml = false, disableClicka
             const playerMatch = text.match(/^\[PLAYER:(.*)\]$/);
             
             if (playerMatch && !disableClickablePlayers) {
-              const username = playerMatch[1];
+              const username = playerMatch[1] ?? '';
               return (
                 <ClickablePlayer playerText={username} variant="text" showIcon={false}>
                   <strong className="text-primary cursor-pointer hover:underline">

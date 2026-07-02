@@ -1,9 +1,10 @@
 import React, { useRef } from 'react';
-import { useDrag, useDrop, DropTargetMonitor } from 'react-dnd';
+import { useDrag, useDrop, type DropTargetMonitor } from 'react-dnd';
+import type { Identifier } from 'dnd-core';
 import { Card } from '@modl-gg/shared-web/components/ui/card';
 import { Button } from '@modl-gg/shared-web/components/ui/button';
 import { GripVertical, Edit, Trash2, Eye, EyeOff } from 'lucide-react';
-import { KnowledgebaseArticle } from '@modl-gg/shared-web/types';
+import { type KnowledgebaseArticleStub } from '@modl-gg/shared-web/types';
 
 export const ItemTypes = {
   ARTICLE: 'article',
@@ -17,11 +18,11 @@ interface ArticleDragItem {
 }
 
 interface ArticleListItemProps {
-  article: KnowledgebaseArticle;
+  article: KnowledgebaseArticleStub;
   index: number;
   categoryId: string;
   moveArticle: (categoryId: string, dragIndex: number, hoverIndex: number) => void;
-  onEdit: (article: KnowledgebaseArticle) => void;
+  onEdit: (article: KnowledgebaseArticleStub) => void;
   onDelete: (categoryId: string, articleId: string, title: string) => void;
   onDropArticle: (categoryId: string) => void;
 }
@@ -37,7 +38,7 @@ const ArticleListItem: React.FC<ArticleListItemProps> = ({
 }) => {
   const ref = useRef<HTMLDivElement>(null);
 
-  const [{ handlerId }, drop] = useDrop<ArticleDragItem, void, { handlerId: any }>({
+  const [{ handlerId }, drop] = useDrop<ArticleDragItem, void, { handlerId: Identifier | null }>({
     accept: ItemTypes.ARTICLE,
     collect(monitor) {
       return {

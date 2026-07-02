@@ -7,14 +7,12 @@ import {
   AlertCircle,
   AlertTriangle,
   Activity,
-  Bot,
   User,
   FileText,
   TrendingUp,
   TrendingDown,
   RefreshCw,
   Eye,
-  Settings,
   Users,
   Clock,
   Undo2,
@@ -48,7 +46,8 @@ import { usePlayerWindow } from '@/contexts/PlayerWindowContext';
 import { useAuth } from '@/hooks/use-auth';
 import { Checkbox } from '@modl-gg/shared-web/components/ui/checkbox';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell, LineChart, Line, Area, AreaChart } from 'recharts';
-import { getEvidenceDisplayText, getEvidenceClickUrl, getEvidenceShortName, isEvidenceClickable } from '@/utils/evidence-utils';
+import type { PieLabelRenderProps } from 'recharts';
+import { getEvidenceDisplayText, getEvidenceClickUrl, getEvidenceShortName, isEvidenceClickable, type EvidenceLike } from '@/utils/evidence-utils';
 import { formatTicketStatusLabel, normalizeTicketStatus } from '@/lib/ticket-enums';
 import { protoFetch } from '@/lib/proto-fetch';
 import { toNum, tsToDate } from '@/lib/proto-ui';
@@ -66,93 +65,48 @@ interface StaffMember {
   lastActive: string;
 }
 
+interface StaffDetailPunishment {
+  id: string;
+  playerId: string;
+  playerName: string;
+  type: string;
+  reason: string;
+  duration: string | number | null;
+  issued: string | number;
+  active: boolean;
+  rolledBack: boolean;
+  modifications?: Array<{ type: string }>;
+  evidence?: EvidenceLike[];
+  attachedTicketIds?: unknown[];
+}
+
+interface StaffDetailTicket {
+  id: string;
+  ticketId?: string;
+  subject: string;
+  title?: string;
+  category: string;
+  status: string;
+  replyCount?: number;
+  created?: string | number;
+  createdAt?: string | number;
+  timestamp?: string | number;
+  updatedAt?: string | number;
+  lastActivity: string | number | null;
+  responseTime: number;
+}
+
+interface StaffDetails {
+  username: string;
+  period: string;
+  punishments: StaffDetailPunishment[];
+  tickets: StaffDetailTicket[];
+  dailyActivity: Array<{ date: string; punishments: number; tickets: number; evidence: number }>;
+  punishmentTypeBreakdown: Array<{ type: string; count: number }>;
+  evidenceUploads: number;
+}
+
 const COLORS = ['#0088FE', '#00C49F', '#FFBB28', '#FF8042', '#8884d8', '#82ca9d'];
-
-// Enhanced action type mapping with icons
-const getActionDetails = (level: string, source: string, description: string) => {
-  const descLower = description.toLowerCase();
-  
-  if (descLower.includes('ban') || descLower.includes('mute') || descLower.includes('kick') || descLower.includes('punishment')) {
-    return { 
-      actionType: 'moderation', 
-      color: 'destructive', 
-      userType: 'Moderation',
-      icon: <Shield className="h-4 w-4" />
-    };
-  }
-  
-  if (descLower.includes('ticket')) {
-    return { 
-      actionType: 'ticket', 
-      color: 'primary', 
-      userType: 'Support',
-      icon: <FileText className="h-4 w-4" />
-    };
-  }
-  
-  if (descLower.includes('setting') || descLower.includes('config')) {
-    return { 
-      actionType: 'settings', 
-      color: 'secondary', 
-      userType: 'Configuration',
-      icon: <Settings className="h-4 w-4" />
-    };
-  }
-  
-  switch (level) {
-    case 'moderation':
-      return { 
-        actionType: 'moderation', 
-        color: 'warning', 
-        userType: 'Staff',
-        icon: <Shield className="h-4 w-4" />
-      };
-    case 'error':
-      return { 
-        actionType: 'error', 
-        color: 'destructive', 
-        userType: 'System',
-        icon: <AlertCircle className="h-4 w-4" />
-      };
-    case 'warning':
-      return { 
-        actionType: 'warning', 
-        color: 'warning', 
-        userType: 'System',
-        icon: <AlertTriangle className="h-4 w-4" />
-      };
-    case 'info':
-    default:
-      if (source !== 'system' && source !== 'System') {
-        return { 
-          actionType: 'user', 
-          color: 'primary', 
-          userType: 'User',
-          icon: <User className="h-4 w-4" />
-        };
-      }
-      return { 
-        actionType: 'system', 
-        color: 'secondary', 
-        userType: 'System',
-        icon: <Bot className="h-4 w-4" />
-      };
-  }
-};
-
-const formatRelativeTime = (date: Date) => {
-  const now = new Date();
-  const diffMs = now.getTime() - date.getTime();
-  const diffMins = Math.floor(diffMs / 60000);
-  const diffHours = Math.floor(diffMs / 3600000);
-  const diffDays = Math.floor(diffMs / 86400000);
-  
-  if (diffMins < 1) return 'just now';
-  if (diffMins < 60) return `${diffMins}m ago`;
-  if (diffHours < 24) return `${diffHours}h ago`;
-  if (diffDays < 7) return `${diffDays}d ago`;
-  return formatDateOnly(date);
-};
 
 const formatDurationDetailed = (date: Date) => {
   const now = new Date();
@@ -209,27 +163,41 @@ const fetchStaffPerformance = async (period = '30d'): Promise<StaffMember[]> => 
   }));
 };
 
-const fetchTicketAnalytics = async (period = '30d') => {
+interface TicketAnalytics {
+  byStatus: Array<{ status: string; count: number }>;
+  byCategory: Array<{ category: string; count: number }>;
+  avgResolutionByCategory: Array<{ category: string; avgHours: number }>;
+  dailyTickets: Array<{ date: string; count: number }>;
+}
+
+interface PunishmentAnalytics {
+  byType: Array<{ type: string; count: number }>;
+  dailyPunishments: Array<{ date: string; count: number }>;
+  byStaff: Array<{ username: string; count: number }>;
+}
+
+interface PlayerActivity {
+  newPlayersTrend: Array<{ date: string; count: number }>;
+  loginsByCountry: Array<{ country: string; count: number }>;
+  loginTrend?: Array<{ date: string; logins: number; uniquePlayers: number }>;
+  suspiciousActivity: { proxyCount: number; hostingCount: number };
+}
+
+const fetchTicketAnalytics = async (period = '30d'): Promise<TicketAnalytics> => {
   const response = await apiFetch(`/v1/panel/analytics/tickets?period=${period}`);
   if (!response.ok) throw new Error('Failed to fetch ticket analytics');
   return response.json();
 };
 
-const fetchPunishmentAnalytics = async (period = '30d') => {
+const fetchPunishmentAnalytics = async (period = '30d'): Promise<PunishmentAnalytics> => {
   const response = await apiFetch(`/v1/panel/analytics/punishments?period=${period}`);
   if (!response.ok) throw new Error('Failed to fetch punishment analytics');
   return response.json();
 };
 
-const fetchPlayerActivity = async (period = '30d') => {
+const fetchPlayerActivity = async (period = '30d'): Promise<PlayerActivity> => {
   const response = await apiFetch(`/v1/panel/analytics/player-activity?period=${period}`);
   if (!response.ok) throw new Error('Failed to fetch player activity');
-  return response.json();
-};
-
-const fetchAuditLogsAnalytics = async (period = '7d') => {
-  const response = await apiFetch(`/v1/panel/analytics/audit-logs?period=${period}`);
-  if (!response.ok) throw new Error('Failed to fetch audit logs analytics');
   return response.json();
 };
 
@@ -284,13 +252,28 @@ const fetchPunishmentsList = async (status: string): Promise<ActivePunishment[]>
   }));
 };
 
+interface ChartTooltipEntry {
+  dataKey: string;
+  name?: string;
+  value: number | string;
+  color?: string;
+}
+
+interface CustomTooltipProps {
+  active?: boolean;
+  payload?: ChartTooltipEntry[];
+  label?: string | number;
+  formatValue?: (value: number | string, name?: string) => string;
+  formatName?: (name: string) => string;
+}
+
 // Custom themed tooltip component for charts
-const CustomTooltip = ({ active, payload, label, formatValue, formatName }: any) => {
+const CustomTooltip = ({ active, payload, label, formatValue, formatName }: CustomTooltipProps) => {
   if (active && payload && payload.length) {
     return (
       <div className="bg-background border border-border rounded-lg p-3 shadow-lg z-50 pointer-events-none">
         {label && <p className="text-sm font-medium mb-2">{label}</p>}
-        {payload.map((entry: any, index: number) => (
+        {payload.map((entry, index) => (
           <div key={entry?.dataKey ?? entry?.name ?? index} className="flex items-center gap-2 text-sm">
             <div 
               className="w-3 h-3 rounded-full flex-shrink-0" 
@@ -308,168 +291,12 @@ const CustomTooltip = ({ active, payload, label, formatValue, formatName }: any)
   return null;
 };
 
-// Staff performance modal
-const StaffPerformanceModal = () => {
-  const [period, setPeriod] = useState('30d');
-  const { t } = useTranslation();
-
-  const { data: staffData = [], isLoading } = useQuery({
-    queryKey: ['staff-performance', period],
-    queryFn: () => fetchStaffPerformance(period),
-    staleTime: 5 * 60 * 1000
-  });
-  return (
-    <Dialog modal={false}>
-      <DialogTrigger asChild>
-        <Button variant="outline" size="sm">
-          <Users className="h-4 w-4 mr-2" />
-          {t('audit.staffPerformance')}
-        </Button>
-      </DialogTrigger>
-      <DialogContent
-        className="max-w-6xl max-h-[80vh] overflow-hidden"
-        {...({ overlayClassName: "pointer-events-none" } as any)}
-        onInteractOutside={(e) => e.preventDefault()}
-      >
-        <DialogHeader>
-          <DialogTitle className="flex items-center justify-between">
-            {t('audit.staffPerformanceAnalytics')}
-            <Select value={period} onValueChange={setPeriod}>
-              <SelectTrigger className="w-32">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="7d">{t('audit.period7d')}</SelectItem>
-                <SelectItem value="30d">{t('audit.period30d')}</SelectItem>
-                <SelectItem value="90d">{t('audit.period90d')}</SelectItem>
-                <SelectItem value="all">{t('audit.periodAll')}</SelectItem>
-              </SelectContent>
-            </Select>
-          </DialogTitle>
-        </DialogHeader>
-        <div className="space-y-6 overflow-auto max-h-[60vh]">
-          {isLoading ? (
-            <div className="flex items-center justify-center py-8">
-              <RefreshCw className="h-6 w-6 animate-spin" />
-            </div>
-          ) : (
-            <>
-
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            <Card className="shadow-card">
-              <CardHeader>
-                <CardTitle className="text-base">{t('audit.actionsByStaff')}</CardTitle>
-              </CardHeader>
-              <CardContent>
-                {!staffData || staffData.length === 0 ? (
-                  <div className="flex items-center justify-center h-[200px] text-muted-foreground">
-                    <div className="text-center">
-                      <Users className="h-8 w-8 mx-auto mb-2 opacity-50" />
-                      <p className="text-sm">{t('audit.noStaffActionData')}</p>
-                    </div>
-                  </div>
-                ) : (
-                  <ResponsiveContainer width="100%" height={200}>
-                    <BarChart data={staffData}>
-                      <CartesianGrid strokeDasharray="3 3" className="opacity-30" />
-                      <XAxis dataKey="username" className="text-muted-foreground" fontSize={12} />
-                      <YAxis className="text-muted-foreground" fontSize={12} />
-                      <Tooltip cursor={false} content={<CustomTooltip />} />
-                      <Bar dataKey="totalActions" fill="#8884d8" />
-                    </BarChart>
-                  </ResponsiveContainer>
-                )}
-              </CardContent>
-            </Card>
-            
-            <Card className="shadow-card">
-              <CardHeader>
-                <CardTitle className="text-base">{t('audit.responseTimes')}</CardTitle>
-              </CardHeader>
-              <CardContent>
-                {!staffData || staffData.length === 0 ? (
-                  <div className="flex items-center justify-center h-[200px] text-muted-foreground">
-                    <div className="text-center">
-                      <Clock className="h-8 w-8 mx-auto mb-2 opacity-50" />
-                      <p className="text-sm">{t('audit.noResponseTimeData')}</p>
-                    </div>
-                  </div>
-                ) : (
-                  <ResponsiveContainer width="100%" height={200}>
-                    <BarChart data={staffData}>
-                      <CartesianGrid strokeDasharray="3 3" className="opacity-30" />
-                      <XAxis dataKey="username" className="text-muted-foreground" fontSize={12} />
-                      <YAxis className="text-muted-foreground" fontSize={12} />
-                      <Tooltip content={<CustomTooltip formatValue={(value: any, name: any) => name?.includes('ResponseTime') ? `${value}h` : value} />} />
-                      <Bar dataKey="avgResponseTime" fill="#82ca9d" />
-                    </BarChart>
-                  </ResponsiveContainer>
-                )}
-              </CardContent>
-            </Card>
-          </div>
-          
-          <Card className="shadow-card">
-            <CardHeader>
-              <CardTitle className="text-base">{t('audit.staffActivityDetails')}</CardTitle>
-            </CardHeader>
-            <CardContent>
-              {!staffData || staffData.length === 0 ? (
-                <div className="flex items-center justify-center h-[200px] text-muted-foreground">
-                  <div className="text-center">
-                    <Shield className="h-8 w-8 mx-auto mb-2 opacity-50" />
-                    <p className="text-sm">{t('audit.noStaffActivityData')}</p>
-                  </div>
-                </div>
-              ) : (
-                <div className="overflow-x-auto">
-                  <table className="w-full text-sm">
-                    <thead>
-                      <tr className="border-b">
-                        <th className="text-left p-2">{t('audit.colUsername')}</th>
-                        <th className="text-left p-2">{t('audit.colRole')}</th>
-                        <th className="text-left p-2">{t('audit.colTotalActions')}</th>
-                        <th className="text-left p-2">{t('audit.colTicketResponses')}</th>
-                        <th className="text-left p-2">{t('audit.colPunishments')}</th>
-                        <th className="text-left p-2">{t('audit.colAvgResponse')}</th>
-                        <th className="text-left p-2">{t('audit.colLastActive')}</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {staffData.map((staff: StaffMember) => (
-                        <tr key={staff.id} className="border-b">
-                          <td className="p-2 font-medium">{staff.username}</td>
-                          <td className="p-2">
-                            <Badge variant="outline">{staff.role}</Badge>
-                          </td>
-                          <td className="p-2">{staff.totalActions}</td>
-                          <td className="p-2">{staff.ticketResponses}</td>
-                          <td className="p-2">{staff.punishmentsIssued}</td>
-                          <td className="p-2">{staff.avgResponseTime}m</td>
-                          <td className="p-2">{formatRelativeTime(new Date(staff.lastActive))}</td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
-              )}
-            </CardContent>
-          </Card>
-            </>
-          )}
-        </div>
-      </DialogContent>
-    </Dialog>
-  );
-};
-
 // Bulk punishment actions modal (superadmin only)
 const BulkPunishmentActionsModal = ({ activePunishments, onSuccess }: {
   activePunishments: ActivePunishment[];
   onSuccess: () => void;
 }) => {
   const { toast } = useToast();
-  const { t } = useTranslation();
   const [operation, setOperation] = useState<'pardon' | 'set-expiration'>('pardon');
   const [selectedTypes, setSelectedTypes] = useState<Set<number>>(new Set());
   const [reason, setReason] = useState('');
@@ -511,12 +338,13 @@ const BulkPunishmentActionsModal = ({ activePunishments, onSuccess }: {
 
   const durationToMs = (): number => {
     if (isPermanent) return 0;
-    const multipliers: Record<string, number> = {
+    const multipliers = {
       minutes: 60 * 1000,
       hours: 60 * 60 * 1000,
       days: 24 * 60 * 60 * 1000,
     };
-    return durationValue * (multipliers[durationUnit] || multipliers.days);
+    const multiplier = multipliers[durationUnit as keyof typeof multipliers] || multipliers.days;
+    return durationValue * multiplier;
   };
 
   const handleSubmit = () => {
@@ -744,7 +572,7 @@ const StaffDetailModal = ({ staff, isOpen, onClose, initialPeriod = '30d' }: {
   });
   const { toast } = useToast();
   const { t } = useTranslation();
-  const { openPlayerWindow, windows } = usePlayerWindow();
+  const { openPlayerWindow } = usePlayerWindow();
 
   // Sync selectedPeriod with initialPeriod when modal opens
   useEffect(() => {
@@ -759,7 +587,7 @@ const StaffDetailModal = ({ staff, isOpen, onClose, initialPeriod = '30d' }: {
   };
 
   // Fetch detailed staff data including punishments, tickets, evidence
-  const { data: staffDetails, isLoading, refetch } = useQuery({
+  const { data: staffDetails, refetch } = useQuery({
     queryKey: ['staff-details', staff.username, selectedPeriod],
     queryFn: () => fetchStaffDetails(staff.username, selectedPeriod),
     enabled: isOpen,
@@ -812,7 +640,7 @@ const StaffDetailModal = ({ staff, isOpen, onClose, initialPeriod = '30d' }: {
   }, [rollbackDialog, refetch, toast, t]);
 
   // Format helpers hoisted out of the .map for the recent punishments table
-  const formatRecentPunishmentDuration = useCallback((duration: any): string => {
+  const formatRecentPunishmentDuration = useCallback((duration: string | number | null | undefined): string => {
     const durationNum = typeof duration === 'number' ? duration : Number(duration);
     if (!durationNum || durationNum === -1 || isNaN(durationNum)) return t('audit.permanent');
 
@@ -825,8 +653,8 @@ const StaffDetailModal = ({ staff, isOpen, onClose, initialPeriod = '30d' }: {
     return `${minutes}m`;
   }, [t]);
 
-  const getRecentPunishmentStatus = useCallback((punishment: any) => {
-    const hasPardon = punishment.modifications?.some((mod: any) =>
+  const getRecentPunishmentStatus = useCallback((punishment: StaffDetailPunishment) => {
+    const hasPardon = punishment.modifications?.some((mod) =>
       mod.type === 'MANUAL_PARDON' ||
       mod.type === 'APPEAL_ACCEPT' ||
       mod.type === 'Pardoned' ||
@@ -990,9 +818,9 @@ const StaffDetailModal = ({ staff, isOpen, onClose, initialPeriod = '30d' }: {
                         outerRadius={80}
                         fill="#8884d8"
                         dataKey="count"
-                        label={({ type, percent }) => `${type} ${((percent || 0) * 100).toFixed(0)}%`}
+                        label={({ type, percent }: PieLabelRenderProps & { type?: string }) => `${type} ${((percent || 0) * 100).toFixed(0)}%`}
                       >
-                        {punishmentTypeData.map((entry: any, index: number) => (
+                        {punishmentTypeData.map((_entry: unknown, index: number) => (
                           <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
                         ))}
                       </Pie>
@@ -1025,7 +853,7 @@ const StaffDetailModal = ({ staff, isOpen, onClose, initialPeriod = '30d' }: {
                       </tr>
                     </thead>
                     <tbody>
-                      {recentPunishments.length > 0 ? recentPunishments.map((punishment: any, index: number) => {
+                      {recentPunishments.length > 0 ? recentPunishments.map((punishment, index) => {
                         const statusInfo = getRecentPunishmentStatus(punishment);
                         const punishmentRowKey = punishment.id || `recent-punishment-${index}`;
 
@@ -1048,7 +876,7 @@ const StaffDetailModal = ({ staff, isOpen, onClose, initialPeriod = '30d' }: {
                             <td className="p-2">
                               <div className="flex gap-1 flex-wrap">
                                 {punishment.evidence && punishment.evidence.length > 0 ? (
-                                  punishment.evidence.map((evidenceItem: any, idx: number) => {
+                                  punishment.evidence.map((evidenceItem, idx) => {
                                     const displayText = getEvidenceDisplayText(evidenceItem);
                                     const clickUrl = getEvidenceClickUrl(evidenceItem);
                                     const shortName = getEvidenceShortName(evidenceItem);
@@ -1078,7 +906,7 @@ const StaffDetailModal = ({ staff, isOpen, onClose, initialPeriod = '30d' }: {
                             <td className="p-2">
                               <div className="flex gap-1 flex-wrap">
                                 {punishment.attachedTicketIds && punishment.attachedTicketIds.length > 0 ? (
-                                  punishment.attachedTicketIds.map((ticketId: any, idx: number) => {
+                                  punishment.attachedTicketIds.map((ticketId, idx) => {
                                     const ticketStr = typeof ticketId === 'string' ? ticketId : String(ticketId);
                                     return (
                                       <Badge 
@@ -1156,7 +984,7 @@ const StaffDetailModal = ({ staff, isOpen, onClose, initialPeriod = '30d' }: {
                       </tr>
                     </thead>
                     <tbody>
-                      {recentTickets && recentTickets.length > 0 ? recentTickets.map((ticket: any, index: number) => {
+                      {recentTickets && recentTickets.length > 0 ? recentTickets.map((ticket, index) => {
                         // StaffDetailsResponse.TicketDetail exposes no opened/created timestamp,
                         // so only render a duration when such a field is actually present (avoids a misleading "0m").
                         const openedRaw = ticket.created || ticket.createdAt || ticket.timestamp;
@@ -1278,7 +1106,7 @@ const StaffDetailRow = ({ staff, period }: { staff: StaffMember, period: string 
 };
 
 // API function to fetch detailed staff data
-const fetchStaffDetails = async (username: string, period: string) => {
+const fetchStaffDetails = async (username: string, period: string): Promise<StaffDetails> => {
   const response = await apiFetch(`/v1/panel/audit/staff/${username}/details?period=${period}`);
   if (!response.ok) throw new Error('Failed to fetch staff details');
   return response.json();
@@ -1295,14 +1123,14 @@ const TicketAnalyticsSection = ({ analyticsPeriod }: { analyticsPeriod: string }
 
   // Calculate totals from the data
   const totalTickets = useMemo(() => {
-    return (ticketAnalytics?.byStatus || []).reduce((sum: number, item: any) => sum + item.count, 0);
+    return (ticketAnalytics?.byStatus || []).reduce((sum: number, item) => sum + item.count, 0);
   }, [ticketAnalytics]);
 
   // Calculate average resolution time
   const avgResolutionHours = useMemo(() => {
     const resolutions = ticketAnalytics?.avgResolutionByCategory || [];
     if (resolutions.length === 0) return 0;
-    const total = resolutions.reduce((sum: number, item: any) => sum + (item.avgHours || 0), 0);
+    const total = resolutions.reduce((sum: number, item) => sum + (item.avgHours || 0), 0);
     return Math.round(total / resolutions.length);
   }, [ticketAnalytics]);
 
@@ -1360,9 +1188,9 @@ const TicketAnalyticsSection = ({ analyticsPeriod }: { analyticsPeriod: string }
                     outerRadius={80}
                     fill="#8884d8"
                     dataKey="count"
-                    label={({ status, percent }) => `${status} ${((percent || 0) * 100).toFixed(0)}%`}
+                    label={({ status, percent }: PieLabelRenderProps & { status?: string }) => `${status} ${((percent || 0) * 100).toFixed(0)}%`}
                   >
-                    {ticketAnalytics.byStatus.map((entry: any, index: number) => (
+                    {ticketAnalytics.byStatus.map((_entry: unknown, index: number) => (
                       <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
                     ))}
                   </Pie>
@@ -1450,7 +1278,7 @@ const TicketAnalyticsSection = ({ analyticsPeriod }: { analyticsPeriod: string }
                 <YAxis className="text-muted-foreground" fontSize={12} />
                 <Tooltip
                   cursor={false}
-                  content={<CustomTooltip formatValue={(value: any) => `${Number(value).toFixed(1)}h`} />}
+                  content={<CustomTooltip formatValue={(value) => `${Number(value).toFixed(1)}h`} />}
                 />
                 <Bar dataKey="avgHours" fill="#10b981" style={{ filter: 'none' }} name="Avg Hours" />
               </BarChart>
@@ -1493,13 +1321,11 @@ const ActivePunishmentsCard = () => {
   const staffNames = useMemo(() => {
     const names = new Set(activePunishments.map(p => p.staffName));
     return Array.from(names).sort();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [dataUpdatedAt]);
 
   const punishmentTypes = useMemo(() => {
     const types = new Set(activePunishments.map(p => p.type));
     return Array.from(types).sort();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [dataUpdatedAt]);
 
   // Filter and sort
@@ -1921,7 +1747,7 @@ const AuditLog = () => {
 
     // Add ticket data
     if (ticketAnalytics?.dailyTickets) {
-      ticketAnalytics.dailyTickets.forEach((item: any) => {
+      ticketAnalytics.dailyTickets.forEach((item) => {
         const existing = dateMap.get(item.date) || { date: item.date, tickets: 0, punishments: 0, players: 0 };
         existing.tickets = item.count || 0;
         dateMap.set(item.date, existing);
@@ -1930,7 +1756,7 @@ const AuditLog = () => {
 
     // Add punishment data
     if (punishmentAnalytics?.dailyPunishments) {
-      punishmentAnalytics.dailyPunishments.forEach((item: any) => {
+      punishmentAnalytics.dailyPunishments.forEach((item) => {
         const existing = dateMap.get(item.date) || { date: item.date, tickets: 0, punishments: 0, players: 0 };
         existing.punishments = item.count || 0;
         dateMap.set(item.date, existing);
@@ -1939,7 +1765,7 @@ const AuditLog = () => {
 
     // Add player data
     if (playerActivity?.newPlayersTrend) {
-      playerActivity.newPlayersTrend.forEach((item: any) => {
+      playerActivity.newPlayersTrend.forEach((item) => {
         const existing = dateMap.get(item.date) || { date: item.date, tickets: 0, punishments: 0, players: 0 };
         existing.players = item.count || 0;
         dateMap.set(item.date, existing);
@@ -1956,18 +1782,16 @@ const AuditLog = () => {
       }
       return a.date.localeCompare(b.date);
     });
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [ticketUpdatedAt, punishmentUpdatedAt, playerActivityUpdatedAt]);
 
   const maxLoginsByCountry = useMemo(() => {
     const list = playerActivity?.loginsByCountry || [];
     if (list.length === 0) return 0;
     let max = 0;
-    for (const item of list as Array<{ count: number }>) {
+    for (const item of list) {
       if (item.count > max) max = item.count;
     }
     return max;
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [playerActivityUpdatedAt]);
 
   // Memoize a single CustomTooltip element used across many charts.
@@ -2021,7 +1845,7 @@ const AuditLog = () => {
           {/* Punishments Issued */}
           <StatCard
             title={t('audit.punishmentsIssued')}
-            value={punishmentAnalytics?.byType?.reduce((sum: number, item: any) => sum + item.count, 0) || 0}
+            value={punishmentAnalytics?.byType?.reduce((sum: number, item) => sum + item.count, 0) || 0}
             icon={Gavel}
             iconColor="text-red-600"
             isExpanded={expandedSection === 'punishments'}
@@ -2152,7 +1976,7 @@ const AuditLog = () => {
                               <CartesianGrid strokeDasharray="3 3" className="opacity-30" />
                               <XAxis dataKey="type" className="text-muted-foreground" fontSize={12} />
                               <YAxis className="text-muted-foreground" fontSize={12} />
-                              <Tooltip cursor={false} content={<CustomTooltip formatName={(name: any) => name === "count" ? "Count" : name} />} />
+                              <Tooltip cursor={false} content={<CustomTooltip formatName={(name) => name === "count" ? "Count" : name} />} />
                               <Bar dataKey="count" fill="#ef4444" style={{ filter: 'none' }} />
                             </BarChart>
                           </ResponsiveContainer>
@@ -2178,7 +2002,7 @@ const AuditLog = () => {
                               <CartesianGrid strokeDasharray="3 3" className="opacity-30" />
                               <XAxis dataKey="date" className="text-muted-foreground" fontSize={12} />
                               <YAxis className="text-muted-foreground" fontSize={12} />
-                              <Tooltip content={<CustomTooltip formatName={(name: any) => name === "count" ? "Count" : name} />} />
+                              <Tooltip content={<CustomTooltip formatName={(name) => name === "count" ? "Count" : name} />} />
                               <Line type="monotone" dataKey="count" stroke="#ef4444" strokeWidth={2} dot={{r:0}} activeDot={false} />
                             </LineChart>
                           </ResponsiveContainer>
@@ -2201,7 +2025,7 @@ const AuditLog = () => {
                         </div>
                       ) : (
                         <div className="space-y-2">
-                          {punishmentAnalytics.byStaff.map((staff: any, index: number) => (
+                          {punishmentAnalytics.byStaff.map((staff, index) => (
                             <div key={staff.username || `punisher-${index}`} className="flex items-center justify-between p-2 border rounded">
                               <div className="flex items-center gap-2">
                                 <Shield className="h-4 w-4 text-blue-600" />
@@ -2240,7 +2064,7 @@ const AuditLog = () => {
                               <CartesianGrid strokeDasharray="3 3" className="opacity-30" />
                               <XAxis dataKey="username" className="text-muted-foreground" fontSize={12} />
                               <YAxis className="text-muted-foreground" fontSize={12} />
-                              <Tooltip cursor={false} content={<CustomTooltip formatName={(name: any) => name === "totalActions" ? "Total Actions" : name} />} />
+                              <Tooltip cursor={false} content={<CustomTooltip formatName={(name) => name === "totalActions" ? "Total Actions" : name} />} />
                               <Bar dataKey="totalActions" fill="#8884d8" style={{ filter: 'none' }} />
                             </BarChart>
                           </ResponsiveContainer>
@@ -2266,7 +2090,7 @@ const AuditLog = () => {
                               <CartesianGrid strokeDasharray="3 3" className="opacity-30" />
                               <XAxis dataKey="username" className="text-muted-foreground" fontSize={12} />
                               <YAxis className="text-muted-foreground" fontSize={12} />
-                              <Tooltip cursor={false} content={<CustomTooltip formatName={(name: any) => name === "ticketResponses" ? "Ticket Responses" : name} />} />
+                              <Tooltip cursor={false} content={<CustomTooltip formatName={(name) => name === "ticketResponses" ? "Ticket Responses" : name} />} />
                               <Bar dataKey="ticketResponses" fill="#82ca9d" style={{ filter: 'none' }} />
                             </BarChart>
                           </ResponsiveContainer>
@@ -2300,7 +2124,7 @@ const AuditLog = () => {
                               </tr>
                             </thead>
                             <tbody>
-                              {staffPerformanceData.map((staff: any) => (
+                              {staffPerformanceData.map((staff) => (
                                 <StaffDetailRow key={staff.id} staff={staff} period={analyticsPeriod} />
                               ))}
                             </tbody>
@@ -2334,7 +2158,7 @@ const AuditLog = () => {
                                 <CartesianGrid strokeDasharray="3 3" className="opacity-30" />
                                 <XAxis dataKey="date" className="text-muted-foreground" fontSize={12} />
                                 <YAxis className="text-muted-foreground" fontSize={12} />
-                                <Tooltip content={<CustomTooltip formatName={(name: any) => name === "count" ? "New Players" : name} />} />
+                                <Tooltip content={<CustomTooltip formatName={(name) => name === "count" ? "New Players" : name} />} />
                                 <Area type="monotone" dataKey="count" stroke="#10b981" fill="#10b981" fillOpacity={0.3} dot={false} activeDot={false} name="New Players" />
                               </AreaChart>
                             </ResponsiveContainer>
@@ -2368,7 +2192,7 @@ const AuditLog = () => {
                           </div>
                         ) : (
                           <div className="space-y-2 py-4">
-                            {playerActivity.loginsByCountry.slice(0, 8).map((country: any, index: number) => (
+                            {playerActivity.loginsByCountry.slice(0, 8).map((country, index) => (
                               <div key={country.country || `country-${index}`} className="flex items-center justify-between">
                                 <span>{country.country}</span>
                                 <div className="flex items-center gap-2">

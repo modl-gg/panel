@@ -105,8 +105,6 @@ const SubmitTicketPage = () => {
 
     if (!effectiveType) return;
 
-    const typeConfig = ticketTypes.find(t => t.id === effectiveType);
-
     // For staff/application forms, auto-generate the subject
     const finalSubject = (effectiveType === 'staff' || effectiveType === 'application')
       ? `${displayName.trim() || 'User'}'s Staff Application`
@@ -165,7 +163,7 @@ const SubmitTicketPage = () => {
         const triggerFieldValue = formData[section.showIfFieldId];
         if (section.showIfValue && triggerFieldValue === section.showIfValue) {
           visibleSections.add(section.id);
-        } else if (section.showIfValues && section.showIfValues.includes(triggerFieldValue)) {
+        } else if (triggerFieldValue !== undefined && section.showIfValues && section.showIfValues.includes(triggerFieldValue)) {
           visibleSections.add(section.id);
         }
       }
@@ -231,7 +229,8 @@ const SubmitTicketPage = () => {
       if (field.type === 'description') {
         continue;
       }
-      if (field.required && (!formData[field.id] || formData[field.id].trim() === '')) {
+      const fieldValue = formData[field.id];
+      if (field.required && (!fieldValue || fieldValue.trim() === '')) {
         toast({
           title: t('submitTicket.requiredFieldMissing'),
           description: t('submitTicket.requiredFieldMissingDesc', { label: field.label }),
@@ -461,17 +460,15 @@ const SubmitTicketPage = () => {
 
     fields.forEach((field: FormField) => {
       if (field.sectionId) {
-        if (!fieldsBySection[field.sectionId]) {
-          fieldsBySection[field.sectionId] = [];
-        }
-        fieldsBySection[field.sectionId].push(field);
+        const sectionFields = fieldsBySection[field.sectionId] ?? (fieldsBySection[field.sectionId] = []);
+        sectionFields.push(field);
       } else {
         fieldsWithoutSection.push(field);
       }
     });
 
-    Object.keys(fieldsBySection).forEach(sectionId => {
-      fieldsBySection[sectionId].sort((a, b) => a.order - b.order);
+    Object.values(fieldsBySection).forEach(sectionFields => {
+      sectionFields.sort((a, b) => a.order - b.order);
     });
 
     fieldsWithoutSection.sort((a, b) => a.order - b.order);
@@ -490,7 +487,7 @@ const SubmitTicketPage = () => {
           const triggerFieldValue = formData[section.showIfFieldId];
           if (section.showIfValue && triggerFieldValue === section.showIfValue) {
             visibleSections.add(section.id);
-          } else if (section.showIfValues && section.showIfValues.includes(triggerFieldValue)) {
+          } else if (triggerFieldValue !== undefined && section.showIfValues && section.showIfValues.includes(triggerFieldValue)) {
             visibleSections.add(section.id);
           }
         }
@@ -638,7 +635,8 @@ const SubmitTicketPage = () => {
                     id={`${field.id}-${option}`}
                     checked={formData[field.id]?.includes(option) || false}
                     onCheckedChange={(checked: boolean) => {
-                      const currentValues = formData[field.id] ? formData[field.id].split(',') : [];
+                      const fieldValue = formData[field.id];
+                      const currentValues = fieldValue ? fieldValue.split(',') : [];
                       if (checked) {
                         const newValues = [...currentValues, option].filter(v => v.trim() !== '');
                         handleFormFieldChange(field.id, newValues.join(','));
@@ -680,9 +678,9 @@ const SubmitTicketPage = () => {
                 variant="compact"
                 maxFiles={1}
               />
-              {formPendingFiles[field.id]?.length ? (
+              {formPendingFiles[field.id]?.[0] ? (
                 <div className="text-sm text-muted-foreground">
-                  Selected file: {formPendingFiles[field.id][0].name} (uploads on submit)
+                  Selected file: {formPendingFiles[field.id]?.[0]?.name} (uploads on submit)
                 </div>
               ) : null}
             </div>

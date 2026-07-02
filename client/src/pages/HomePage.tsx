@@ -86,7 +86,7 @@ interface HomepageCard {
 }
 
 const HomePage: React.FC = () => {
-  const [categories, setCategories] = useState<CategoryWithArticles[]>([]);
+  const [, setCategories] = useState<CategoryWithArticles[]>([]);
   const [homepageCards, setHomepageCards] = useState<HomepageCard[]>([]);
   const [searchTerm, setSearchTerm] = useState('');
   const [searchResults, setSearchResults] = useState<ArticleStub[]>([]);
@@ -107,7 +107,7 @@ const HomePage: React.FC = () => {
         }
         const data = await response.json();
         setCategories(Array.isArray(data.categories) ? data.categories : []);
-      } catch (e: any) {
+      } catch (e) {
         console.error('Failed to load categories:', e);
         setCategories([]);
       }
@@ -127,7 +127,7 @@ const HomePage: React.FC = () => {
         }
         const data = await response.json();
         setHomepageCards(Array.isArray(data.cards) ? data.cards : []);
-      } catch (e: any) {
+      } catch (e) {
         console.error('Failed to load homepage cards:', e);
         // Fallback to default cards if no custom cards are found
         setHomepageCards([]);
@@ -155,7 +155,7 @@ const HomePage: React.FC = () => {
         }
         const data = await response.json();
         setSearchResults(Array.isArray(data.articles) ? data.articles : []);
-      } catch (e: any) {
+      } catch (e) {
         console.error('Search failed:', e);
         setSearchResults([]);
       } finally {
@@ -189,7 +189,7 @@ const HomePage: React.FC = () => {
   };
 
   // Function to render a single homepage card
-  const renderHomepageCard = (card: HomepageCard, index: number) => {
+  const renderHomepageCard = (card: HomepageCard, _index: number) => {
     const IconComponent = getIconComponent(card.icon);
     const isExpanded = expandedCards.has(card.id);
     const iconColor = card.iconColor || '#3b82f6'; // Default to blue if no color specified

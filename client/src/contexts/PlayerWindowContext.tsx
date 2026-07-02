@@ -1,4 +1,4 @@
-import { createContext, useContext, useState, useCallback, useMemo, ReactNode } from 'react';
+import { createContext, useContext, useState, useCallback, useMemo, type ReactNode } from 'react';
 import { createPortal } from 'react-dom';
 import PlayerWindow from '@/components/windows/PlayerWindow';
 
@@ -57,15 +57,14 @@ const clearPlayerUrlParam = (playerId: string) => {
 export function PlayerWindowProvider({ children }: { children: ReactNode }) {
   const [windows, setWindows] = useState<PlayerWindowState[]>([]);
 
-  const openPlayerWindow = useCallback((playerId: string, username?: string) => {
+  const openPlayerWindow = useCallback((playerId: string, _username?: string) => {
     setPlayerUrlParam(playerId);
     setWindows(prevWindows => {
       const windowId = generateWindowId(playerId);
 
-      const existingWindowIndex = prevWindows.findIndex(w => w.id === windowId);
-      if (existingWindowIndex !== -1) {
-        const existingWindow = prevWindows[existingWindowIndex];
-        const otherWindows = prevWindows.filter((_, index) => index !== existingWindowIndex);
+      const existingWindow = prevWindows.find(w => w.id === windowId);
+      if (existingWindow) {
+        const otherWindows = prevWindows.filter(w => w.id !== windowId);
         return [...otherWindows, { ...existingWindow, isOpen: true }];
       }
 

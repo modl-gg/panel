@@ -115,15 +115,17 @@ const PunishmentSettings = ({
                   min={1}
                   max={20}
                   step={1}
-                  onValueChange={values => setStatusThresholds(prev => ({
-                    ...prev,
-                    gameplay: {
-                      ...prev.gameplay,
-                      medium: values[0],
-                      // Keep habitual strictly above medium so offense-level ordering stays valid.
-                      habitual: Math.max(prev.gameplay.habitual, values[0] + 1)
-                    }
-                  }))}
+                  onValueChange={values => {
+                    const medium = values[0] ?? statusThresholds.gameplay.medium;
+                    setStatusThresholds(prev => ({
+                      ...prev,
+                      gameplay: {
+                        ...prev.gameplay,
+                        medium,
+                        habitual: Math.max(prev.gameplay.habitual, medium + 1)
+                      }
+                    }));
+                  }}
                 />
               </div>
 
@@ -138,13 +140,16 @@ const PunishmentSettings = ({
                   min={statusThresholds.gameplay.medium + 1}
                   max={30}
                   step={1}
-                  onValueChange={values => setStatusThresholds(prev => ({
-                    ...prev,
-                    gameplay: {
-                      ...prev.gameplay,
-                      habitual: values[0]
-                    }
-                  }))}
+                  onValueChange={values => {
+                    const habitual = values[0] ?? statusThresholds.gameplay.habitual;
+                    setStatusThresholds(prev => ({
+                      ...prev,
+                      gameplay: {
+                        ...prev.gameplay,
+                        habitual
+                      }
+                    }));
+                  }}
                 />
               </div>
 
@@ -159,13 +164,16 @@ const PunishmentSettings = ({
                   min={1}
                   max={60}
                   step={1}
-                  onValueChange={values => setStatusThresholds(prev => ({
-                    ...prev,
-                    gameplay: {
-                      ...prev.gameplay,
-                      pointExpiryMonths: values[0]
-                    }
-                  }))}
+                  onValueChange={values => {
+                    const pointExpiryMonths = values[0] ?? statusThresholds.gameplay.pointExpiryMonths;
+                    setStatusThresholds(prev => ({
+                      ...prev,
+                      gameplay: {
+                        ...prev.gameplay,
+                        pointExpiryMonths
+                      }
+                    }));
+                  }}
                 />
               </div>
             </div>
@@ -188,15 +196,17 @@ const PunishmentSettings = ({
                   min={1}
                   max={20}
                   step={1}
-                  onValueChange={values => setStatusThresholds(prev => ({
-                    ...prev,
-                    social: {
-                      ...prev.social,
-                      medium: values[0],
-                      // Keep habitual strictly above medium so offense-level ordering stays valid.
-                      habitual: Math.max(prev.social.habitual, values[0] + 1)
-                    }
-                  }))}
+                  onValueChange={values => {
+                    const medium = values[0] ?? statusThresholds.social.medium;
+                    setStatusThresholds(prev => ({
+                      ...prev,
+                      social: {
+                        ...prev.social,
+                        medium,
+                        habitual: Math.max(prev.social.habitual, medium + 1)
+                      }
+                    }));
+                  }}
                 />
               </div>
 
@@ -211,13 +221,16 @@ const PunishmentSettings = ({
                   min={statusThresholds.social.medium + 1}
                   max={30}
                   step={1}
-                  onValueChange={values => setStatusThresholds(prev => ({
-                    ...prev,
-                    social: {
-                      ...prev.social,
-                      habitual: values[0]
-                    }
-                  }))}
+                  onValueChange={values => {
+                    const habitual = values[0] ?? statusThresholds.social.habitual;
+                    setStatusThresholds(prev => ({
+                      ...prev,
+                      social: {
+                        ...prev.social,
+                        habitual
+                      }
+                    }));
+                  }}
                 />
               </div>
 
@@ -232,13 +245,16 @@ const PunishmentSettings = ({
                   min={1}
                   max={60}
                   step={1}
-                  onValueChange={values => setStatusThresholds(prev => ({
-                    ...prev,
-                    social: {
-                      ...prev.social,
-                      pointExpiryMonths: values[0]
-                    }
-                  }))}
+                  onValueChange={values => {
+                    const pointExpiryMonths = values[0] ?? statusThresholds.social.pointExpiryMonths;
+                    setStatusThresholds(prev => ({
+                      ...prev,
+                      social: {
+                        ...prev.social,
+                        pointExpiryMonths
+                      }
+                    }));
+                  }}
                 />
               </div>
             </div>

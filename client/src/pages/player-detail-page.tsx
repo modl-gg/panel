@@ -2,7 +2,7 @@ import { useState, useEffect, useCallback, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useRoute, useLocation } from 'wouter';
 import {
-  ArrowLeft, Ban, RefreshCcw, Search, History,
+  ArrowLeft, RefreshCcw, Search, History,
   Link2, StickyNote, Ticket, UserRound, Shield, FileText, Upload, Loader2,
   ChevronDown, ChevronRight, Settings, Plus, X, Play
 } from 'lucide-react';
@@ -17,12 +17,23 @@ import { usePermissions } from '@/hooks/use-permissions';
 import { useIsMobile } from '@modl-gg/shared-web/hooks/use-mobile';
 import { toast } from '@modl-gg/shared-web/hooks/use-toast';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@modl-gg/shared-web/components/ui/select';
-import PlayerPunishment, { PlayerPunishmentData } from '@/components/ui/player-punishment';
+import PlayerPunishment from '@/components/ui/player-punishment';
 import MediaUpload from '@/components/MediaUpload';
 import PlayerReplaysList from '@/components/player-replays-list';
 import { formatDateWithTime } from '@/utils/date-utils';
 import { apiFetch } from '@/lib/api';
 import { formatTicketStatusLabel, normalizeTicketStatus } from '@/lib/ticket-enums';
+
+interface EvidenceEntry {
+  text: string;
+  issuerName: string;
+  date: string;
+  type?: string;
+  fileUrl?: string;
+  fileName?: string;
+  fileType?: string;
+  fileSize?: number;
+}
 
 interface PlayerInfo {
   username: string;
@@ -45,7 +56,7 @@ interface PlayerInfo {
     id?: string;
     severity?: string;
     status?: string;
-    evidence?: (string | {text: string; issuerName: string; date: string})[];
+    evidence?: (string | EvidenceEntry)[];
     notes?: Array<{text: string; issuerName: string; date: string}>;
     attachedTicketIds?: string[];
     active?: boolean;
@@ -188,8 +199,6 @@ const PlayerDetailPage = () => {
   const isMobile = useIsMobile();
 
   const [activeTab, setActiveTab] = useState('history');
-  const [banSearchResults, setBanSearchResults] = useState<{id: string; player: string}[]>([]);
-  const [showBanSearchResults, setShowBanSearchResults] = useState(false);
   const [avatarError, setAvatarError] = useState(false);
   const [avatarLoading, setAvatarLoading] = useState(true);
   const [isApplyingPunishment, setIsApplyingPunishment] = useState(false);
@@ -733,30 +742,6 @@ const PlayerDetailPage = () => {
   }, [player, playerId, triggerLinkedAccountSearch]);
 
   // Mock function to simulate ban search results
-  const searchBans = (query: string) => {
-    if (!query || query.length < 2) {
-      setBanSearchResults([]);
-      return;
-    }
-    
-    // Simulate API call delay
-    setTimeout(() => {
-      // Mock data for demonstration
-      const results = [
-        { id: 'ban-123', player: 'MineKnight45' },
-        { id: 'ban-456', player: 'DiamondMiner99' },
-        { id: 'ban-789', player: 'CraftMaster21' },
-        { id: 'ban-012', player: 'StoneBlazer76' }
-      ].filter(item => 
-        item.id.toLowerCase().includes(query.toLowerCase()) || 
-        item.player.toLowerCase().includes(query.toLowerCase())
-      );
-      
-      setBanSearchResults(results);
-      setShowBanSearchResults(results.length > 0);
-    }, 300);
-  };
-
   // Helper function to find punishment type for a given warning
   const findPunishmentTypeForWarning = (warning: any) => {
     if (!warning.type) return null;
@@ -899,7 +884,7 @@ const PlayerDetailPage = () => {
           if (report && report !== 'ticket-new') {
             // Extract ticket ID from format like "ticket-123" or use raw ID
             const ticketMatch = report.match(/ticket-(\w+)/);
-            if (ticketMatch) {
+            if (ticketMatch && ticketMatch[1]) {
               attachedTicketIds.push(ticketMatch[1]);
             } else if (report.trim()) {
               attachedTicketIds.push(report.trim());
@@ -1425,8 +1410,7 @@ const PlayerDetailPage = () => {
                                 let evidenceType = 'text';
                                 let fileUrl = '';
                                 let fileName = '';
-                                let fileType = '';
-                                
+
                                 if (typeof evidenceItem === 'string') {
                                   // Legacy string format
                                   evidenceText = evidenceItem;
@@ -1441,7 +1425,6 @@ const PlayerDetailPage = () => {
                                   evidenceType = evidenceItem.type || 'text';
                                   fileUrl = evidenceItem.fileUrl || '';
                                   fileName = evidenceItem.fileName || '';
-                                  fileType = evidenceItem.fileType || '';
                                 }
                                 
                                 // Helper function to detect media type from URL
@@ -1640,7 +1623,7 @@ const PlayerDetailPage = () => {
                         )}
 
                         {/* Linked Bans Display */}
-                        {warning.data?.altBlocking && (
+                        {warning.data?.altBlocking && warning.id && (
                           <LinkedBansDisplayDetail punishmentId={warning.id} onPlayerClick={(uuid: string) => {
                             navigate(`/panel/player/${uuid}`);
                           }} />
@@ -1887,7 +1870,7 @@ const PlayerDetailPage = () => {
                                     } else {
                                       // Text evidence
                                       evidenceData = {
-                                        text: playerInfo.newPunishmentEvidence.trim(),
+                                        text: playerInfo.newPunishmentEvidence?.trim() ?? '',
                                         issuerName: user?.username || 'Admin',
                                         issuerId: user?.id,
                                         date: new Date().toISOString()
@@ -2345,7 +2328,7 @@ const PlayerDetailPage = () => {
                           className="text-xs h-6 px-2"
                           onClick={() => {
                             // Navigate to the linked account's player page using UUID
-                            const uuid = account.uuid || account._id;
+                            const uuid = account.uuid;
                             if (uuid) {
                               navigate(`/panel/player/${uuid}`);
                             } else {
@@ -2357,7 +2340,7 @@ const PlayerDetailPage = () => {
                               });
                             }
                           }}
-                          disabled={!account.uuid && !account._id}
+                          disabled={!account.uuid}
                         >
                           <Search className="h-3 w-3 mr-1" />
                           View
@@ -2399,7 +2382,7 @@ const PlayerDetailPage = () => {
                   (playerInfo.notes || []).map((note, idx) => (
                     <li key={idx} className="text-sm flex items-start">
                       <StickyNote className="h-3.5 w-3.5 mr-2 mt-0.5 text-muted-foreground" />
-                      <span>{typeof note === 'string' ? note : note.text}</span>
+                      <span>{note}</span>
                     </li>
                   ))
                 ) : (
@@ -2634,7 +2617,7 @@ const PlayerDetailPage = () => {
                   banLinkedAccounts: data.banLinkedAccounts
                 }));
               }}
-              onApply={async (data) => {
+              onApply={async () => {
                 // Use the existing handleApplyPunishment logic
                 await handleApplyPunishment();
               }}

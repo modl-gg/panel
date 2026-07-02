@@ -67,6 +67,8 @@ export const SETTINGS_PERMISSIONS = {
   homepage: [PERMISSIONS.ADMIN_SETTINGS_VIEW, PERMISSIONS.ADMIN_SETTINGS_VIEW_CONTENT],
 } as const;
 
+export type SettingsTab = keyof typeof SETTINGS_PERMISSIONS;
+
 export function usePermissions() {
   const { user } = useAuth();
   
@@ -154,7 +156,7 @@ export function usePermissions() {
     return permissions.some(permission => hasPermission(permission));
   }, [user, hasPermission]);
 
-  const canAccessSettingsTab = useCallback((tabName: keyof typeof SETTINGS_PERMISSIONS): boolean => {
+  const canAccessSettingsTab = useCallback((tabName: SettingsTab): boolean => {
     if (!user) return false;
     if (tabName === 'tags') {
       return hasAnyPermission([
@@ -191,7 +193,7 @@ export function usePermissions() {
     return rolesData?.roles ? buildRoleHierarchy(rolesData.roles) : new Map();
   }, [rolesData?.roles]);
 
-  const canModifyUserRole = (targetUserRole: string, newRole?: string, targetUserId?: string): boolean => {
+  const canModifyUserRole = (targetUserRole: string, newRole?: string, _targetUserId?: string): boolean => {
     if (!user) return false;
     if (!newRole) {
       if (user.role === 'Super Admin' && targetUserRole !== 'Super Admin') {
@@ -210,7 +212,7 @@ export function usePermissions() {
     return canRemoveUser(user.role, targetUserRole, roleHierarchy);
   };
 
-  const canAssignStaffMinecraftPlayer = (targetUserRole: string, targetUserId: string): boolean => {
+  const canAssignStaffMinecraftPlayer = (_targetUserRole: string, targetUserId: string): boolean => {
     if (!user) return false;
     if (user.role === 'Super Admin') return true;
     return user.id === targetUserId;

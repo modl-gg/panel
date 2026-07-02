@@ -101,8 +101,7 @@ export default function UploadEvidencePage() {
 
       // Upload each file. All state updates key by entry.id (never by array position),
       // so overlapping batches and mid-upload removals can't corrupt other rows.
-      for (let i = 0; i < uploadEntries.length; i++) {
-        const entry = uploadEntries[i];
+      for (const entry of uploadEntries) {
         const fileId = entry.id;
 
         try {

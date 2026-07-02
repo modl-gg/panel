@@ -64,10 +64,7 @@ export function usePunishmentPreview(uuid: string | undefined, typeOrdinal: numb
 
 export function useApplyPunishment() {
   return useMutation({
-    mutationFn: async ({ uuid, punishmentData }: { uuid: string, punishmentData: any }) => {
-      // punishmentData keeps the legacy `any` contract (the player/ticket pages build it in
-      // proto-JSON shape with a free-form `data` Struct and number-typed int64 fields). fromJson
-      // coerces those natively; create() cannot. Strip undefined keys, which fromJson rejects.
+    mutationFn: async ({ uuid, punishmentData }: { uuid: string, punishmentData: Record<string, unknown> }) => {
       const json: Record<string, JsonValue> = {};
       for (const [key, value] of Object.entries(punishmentData)) {
         if (value !== undefined && value !== null) {
@@ -248,7 +245,7 @@ export function useModifyPunishmentTickets() {
 export function usePunishmentById(punishmentId: string | null) {
   return useQuery({
     queryKey: ['/v1/panel/players/punishments', punishmentId],
-    queryFn: async (): Promise<any> => {
+    queryFn: async () => {
       if (!punishmentId) return null;
       const response = await protoFetchOrNull(
         PunishmentResponseSchema,
@@ -285,9 +282,7 @@ export function usePunishmentTypes() {
         PanelPunishmentTypesResponseSchema,
         '/v1/panel/settings/punishment-types',
       );
-      // Loose array: consumers bucket these into their own local PunishmentType shape (a different
-      // type than the proto message), so keep the legacy untyped contract to avoid new errors.
-      return response.punishmentTypes as any[];
+      return response.punishmentTypes;
     },
     staleTime: 1000 * 60 * 5,
     refetchOnWindowFocus: false

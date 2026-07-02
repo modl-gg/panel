@@ -15,7 +15,7 @@ import { ClickablePlayer } from '@/components/ui/clickable-player';
 import { useAuth } from '@/hooks/use-auth';
 import { usePermissions } from '@/hooks/use-permissions';
 import { toast } from '@modl-gg/shared-web/hooks/use-toast';
-import PlayerPunishment, { PlayerPunishmentData } from '@/components/ui/player-punishment';
+import PlayerPunishment, { type PlayerPunishmentData } from '@/components/ui/player-punishment';
 import MediaUpload from '@/components/MediaUpload';
 import PlayerReplaysList from '@/components/player-replays-list';
 import { formatDateWithTime } from '@/utils/date-utils';
@@ -33,11 +33,6 @@ const isPardonModification = (mod: any) => PARDON_MODIFICATION_TYPES.includes(mo
 interface WindowPosition {
   x: number;
   y: number;
-}
-
-interface Player {
-  _id: string;
-  username: string;
 }
 
 interface PlayerWindowProps {
@@ -215,7 +210,7 @@ const LinkedBansDisplay = ({ punishmentId, onPlayerClick }: { punishmentId: stri
 
 const PlayerWindow = ({ playerId, isOpen, onClose, initialPosition }: PlayerWindowProps) => {
   const { t } = useTranslation();
-  const [activeTab, setActiveTab] = useState('history');
+  const [, setActiveTab] = useState('history');
   const [avatarError, setAvatarError] = useState(false);
   const [avatarLoading, setAvatarLoading] = useState(true);
   const [expandedPunishments, setExpandedPunishments] = useState<Set<string>>(new Set());
@@ -477,7 +472,7 @@ const PlayerWindow = ({ playerId, isOpen, onClose, initialPosition }: PlayerWind
           if (report && report !== 'ticket-new') {
             // Extract ticket ID from format like "ticket-123" or use raw ID
             const ticketMatch = report.match(/ticket-(\w+)/);
-            if (ticketMatch) {
+            if (ticketMatch && ticketMatch[1]) {
               attachedTicketIds.push(ticketMatch[1]);
             } else if (report.trim()) {
               attachedTicketIds.push(report.trim());
@@ -1218,73 +1213,6 @@ const PlayerWindow = ({ playerId, isOpen, onClose, initialPosition }: PlayerWind
     return effectiveState.effectiveActive;
   };
 
-  // Helper function to format punishment preview
-  const getPunishmentPreview = () => {
-    const punishmentType = getCurrentPunishmentType();
-    if (!punishmentType) return '';
-    
-    // Determine if this is a ban or mute action
-    const getBanOrMuteAction = (typeName: string, punishmentType: any) => {
-      // Check for explicit ban/mute in the name
-      if (typeName.toLowerCase().includes('mute')) return 'Mute';
-      if (typeName.toLowerCase().includes('ban') || typeName.toLowerCase().includes('blacklist')) return 'Ban';
-      
-      // Check if the punishment type has an action property
-      if (punishmentType.action) {
-        return punishmentType.action === 'ban' ? 'Ban' : 
-               punishmentType.action === 'mute' ? 'Mute' : null;
-      }
-      
-      // For other punishment types, check for duration-based actions
-      // If it has durations, it's likely a ban or mute (most gameplay punishments are bans)
-      if (punishmentType.durations || punishmentType.singleSeverityDurations) {
-        return 'Ban'; // Default assumption for most punishment types
-      }
-      
-      return null;
-    };
-    
-    const action = getBanOrMuteAction(punishmentType.name, punishmentType);
-    let preview = action ? `${action} - ${punishmentType.name}` : punishmentType.name;
-    
-    if (punishmentType.singleSeverityPunishment) {
-      if (punishmentType.singleSeverityDurations) {
-        // For single-severity punishments, use the selected offense level or default to 'first'
-        const offenseLevel = playerInfo.selectedOffenseLevel || 'first';
-        const duration = punishmentType.singleSeverityDurations[offenseLevel];
-        if (duration) {
-          preview += ` (${duration.value} ${duration.unit})`;
-        }
-      }
-    } else if (punishmentType.durations && playerInfo.selectedSeverity) {
-      const severityKey = playerInfo.selectedSeverity === 'Lenient' ? 'low' : 
-                         playerInfo.selectedSeverity === 'Regular' ? 'regular' : 'severe';
-      const duration = punishmentType.durations[severityKey]?.first;
-      if (duration) {
-        preview += ` (${duration.value} ${duration.unit})`;
-      }
-    }
-    
-    // For administrative punishments with manual duration settings
-    if (['Manual Mute', 'Manual Ban'].includes(punishmentType.name) && playerInfo.duration) {
-      if (playerInfo.isPermanent) {
-        preview += ' (Permanent)';
-      } else if (playerInfo.duration.value) {
-        preview += ` (${playerInfo.duration.value} ${playerInfo.duration.unit})`;
-      }
-    }
-    
-    const options = [];
-    if (playerInfo.altBlocking && punishmentType.canBeAltBlocking) options.push('Alt-blocking');
-    if (playerInfo.statWiping && punishmentType.canBeStatWiping) options.push('Stat-wiping');
-    if (playerInfo.silentPunishment) options.push('Silent');
-    
-    if (options.length > 0) {
-      preview += ` [${options.join(', ')}]`;
-    }
-      return preview;
-  };
-
   // Helper function to safely get data from player.data (handles both Map and plain object)
   const getPlayerData = (player: any, key: string) => {
     if (!player?.data) return undefined;
@@ -1624,7 +1552,7 @@ const PlayerWindow = ({ playerId, isOpen, onClose, initialPosition }: PlayerWind
                                 'bg-orange-100 dark:bg-orange-900 text-orange-800 dark:text-orange-200 border-orange-300 dark:border-orange-700' :
                                 'bg-red-100 dark:bg-red-900 text-red-800 dark:text-red-200 border-red-300 dark:border-red-700'
                             }`}>
-                              {mapSeverityForDisplay(warning.severity)}
+                              {mapSeverityForDisplay(warning.severity ?? '')}
                             </Badge>
                           )}
                           {isValidBadgeValue(warning.status) &&
@@ -1860,7 +1788,6 @@ const PlayerWindow = ({ playerId, isOpen, onClose, initialPosition }: PlayerWind
                                 let evidenceType = 'text';
                                 let fileUrl = '';
                                 let fileName = '';
-                                let fileType = '';
 
                                 if (typeof evidenceItem === 'string') {
                                   // Legacy string format
@@ -1879,7 +1806,6 @@ const PlayerWindow = ({ playerId, isOpen, onClose, initialPosition }: PlayerWind
                                   // Support both old field name (fileUrl) and new field name (url)
                                   fileUrl = evidenceItem.url || evidenceItem.fileUrl || '';
                                   fileName = evidenceItem.fileName || '';
-                                  fileType = evidenceItem.fileType || '';
 
                                   // If no text but has url, use url as display text for URL type evidence
                                   if (!evidenceText && fileUrl && evidenceType === 'url') {
@@ -2043,7 +1969,7 @@ const PlayerWindow = ({ playerId, isOpen, onClose, initialPosition }: PlayerWind
                           </div>                        )}
 
                         {/* Linked Bans Display */}
-                        {warning.data?.altBlocking && (
+                        {warning.data?.altBlocking && warning.id && (
                           <LinkedBansDisplay punishmentId={warning.id} onPlayerClick={(uuid: string) => {
                             // Open a new PlayerWindow for the linked player
                             if (typeof window !== 'undefined') {
@@ -2335,7 +2261,7 @@ const PlayerWindow = ({ playerId, isOpen, onClose, initialPosition }: PlayerWind
                                       };
                                     } else {
                                       // Text evidence - check if it's a URL
-                                      const trimmedEvidence = playerInfo.newPunishmentEvidence.trim();
+                                      const trimmedEvidence = playerInfo.newPunishmentEvidence?.trim() ?? '';
                                       const isUrl = trimmedEvidence.match(/^https?:\/\//);
                                       evidenceData = {
                                         text: trimmedEvidence,
@@ -2805,7 +2731,7 @@ const PlayerWindow = ({ playerId, isOpen, onClose, initialPosition }: PlayerWind
                   (playerInfo.notes || []).map((note, idx) => (
                     <li key={idx} className="text-sm flex items-start">
                       <StickyNote className="h-3.5 w-3.5 mr-2 mt-0.5 text-muted-foreground" />
-                      <span>{typeof note === 'string' ? note : note.text}</span>
+                      <span>{note}</span>
                     </li>
                   ))
                 ) : (
@@ -3048,7 +2974,7 @@ const PlayerWindow = ({ playerId, isOpen, onClose, initialPosition }: PlayerWind
                   banLinkedAccounts: data.banLinkedAccounts || false
                 }));
               }}
-              onApply={async (data: PlayerPunishmentData) => {
+              onApply={async () => {
                 // Use the existing handleApplyPunishment logic
                 return handleApplyPunishment();
               }}

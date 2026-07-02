@@ -20,9 +20,11 @@ export function generateCreatorIdentifier(): string {
   return `creator_${hashStr}_${suffix}`;
 }
 
+const sessionFallbackIdentifiers = new Map<string, string>();
+
 export function getCreatorIdentifier(ticketId: string): string {
   const storageKey = `ticket_creator_${ticketId}`;
-  
+
   try {
     const existingId = localStorage.getItem(storageKey);
     if (existingId) {
@@ -31,15 +33,17 @@ export function getCreatorIdentifier(ticketId: string): string {
 
     const newId = generateCreatorIdentifier();
     localStorage.setItem(storageKey, newId);
-    
+
     return newId;
   } catch (error) {
     console.warn('Failed to access localStorage for creator verification:', error);
-    const sessionKey = `session_creator_${ticketId}`;
-    if (!(window as any)[sessionKey]) {
-      (window as any)[sessionKey] = generateCreatorIdentifier();
+    const existing = sessionFallbackIdentifiers.get(ticketId);
+    if (existing) {
+      return existing;
     }
-    return (window as any)[sessionKey];
+    const generated = generateCreatorIdentifier();
+    sessionFallbackIdentifiers.set(ticketId, generated);
+    return generated;
   }
 }
 
@@ -83,8 +87,7 @@ export function getCurrentCreatorIdentifier(ticketId: string): string | null {
     return localStorage.getItem(storageKey);
   } catch (error) {
     console.warn('Failed to access localStorage for creator verification:', error);
-    const sessionKey = `session_creator_${ticketId}`;
-    return (window as any)[sessionKey] || null;
+    return sessionFallbackIdentifiers.get(ticketId) ?? null;
   }
 }
 
@@ -96,9 +99,8 @@ export function clearCreatorIdentifier(ticketId: string): void {
   } catch (error) {
     console.warn('Failed to clear localStorage for creator verification:', error);
   }
-  
-  const sessionKey = `session_creator_${ticketId}`;
-  delete (window as any)[sessionKey];
+
+  sessionFallbackIdentifiers.delete(ticketId);
 }
 
 export function getUnverifiedExplanation(): string {

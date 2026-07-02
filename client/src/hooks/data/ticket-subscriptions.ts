@@ -34,7 +34,7 @@ export function useUnsubscribeFromTicket() {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: (ticketId: string): Promise<any> =>
+    mutationFn: (ticketId: string) =>
       protoFetch(
         DeleteTicketSubscriptionResponseSchema,
         `/v1/panel/ticket-subscriptions/${ticketId}`,
@@ -51,7 +51,7 @@ export function useMarkSubscriptionUpdateAsRead() {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: (updateId: string): Promise<any> =>
+    mutationFn: (updateId: string) =>
       protoFetch(
         MarkSubscriptionUpdateReadResponseSchema,
         `/v1/panel/ticket-subscriptions/updates/${encodeURIComponent(updateId)}/read`,
@@ -68,7 +68,7 @@ export function useMarkTicketAsRead() {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: (ticketId: string): Promise<any> =>
+    mutationFn: (ticketId: string) =>
       protoFetch(
         MarkTicketSubscriptionReadResponseSchema,
         `/v1/panel/ticket-subscriptions/tickets/${encodeURIComponent(ticketId)}/read`,

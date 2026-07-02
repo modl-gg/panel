@@ -565,12 +565,12 @@ const PlayerTicket = () => {
         
         if (section.showIfValue && triggerFieldValue === section.showIfValue) {
           visibleSections.add(section.id);
-        } else if (section.showIfValues && section.showIfValues.includes(triggerFieldValue)) {
+        } else if (triggerFieldValue !== undefined && section.showIfValues && section.showIfValues.includes(triggerFieldValue)) {
           visibleSections.add(section.id);
         }
       }
     });
-    
+
     // Also check field-level navigation (legacy support and optionSectionMapping)
     const allFields = formConfig.fields || [];
     allFields.forEach((field: FormField) => {
@@ -628,7 +628,8 @@ const PlayerTicket = () => {
         continue;
       }
       
-      if (field.required && (!formData[field.id] || formData[field.id].trim() === '')) {
+      const fieldValue = formData[field.id];
+      if (field.required && (!fieldValue || fieldValue.trim() === '')) {
         toast({
           title: t('submitTicket.requiredFieldMissing'),
           description: t('submitTicket.requiredFieldMissingDesc', { label: field.label }),
@@ -862,18 +863,16 @@ const PlayerTicket = () => {
     
     fields.forEach((field: FormField) => {
       if (field.sectionId) {
-        if (!fieldsBySection[field.sectionId]) {
-          fieldsBySection[field.sectionId] = [];
-        }
-        fieldsBySection[field.sectionId].push(field);
+        const sectionFields = fieldsBySection[field.sectionId] ?? (fieldsBySection[field.sectionId] = []);
+        sectionFields.push(field);
       } else {
         fieldsWithoutSection.push(field);
       }
     });
-    
+
     // Sort fields within each section by order
-    Object.keys(fieldsBySection).forEach(sectionId => {
-      fieldsBySection[sectionId].sort((a, b) => a.order - b.order);
+    Object.values(fieldsBySection).forEach(sectionFields => {
+      sectionFields.sort((a, b) => a.order - b.order);
     });
     
     // Sort fields without section by order
@@ -897,12 +896,12 @@ const PlayerTicket = () => {
           
           if (section.showIfValue && triggerFieldValue === section.showIfValue) {
             visibleSections.add(section.id);
-          } else if (section.showIfValues && section.showIfValues.includes(triggerFieldValue)) {
+          } else if (triggerFieldValue !== undefined && section.showIfValues && section.showIfValues.includes(triggerFieldValue)) {
             visibleSections.add(section.id);
           }
         }
       });
-      
+
       // Also check field-level navigation (legacy support and optionSectionMapping)
       fields.forEach((field: FormField) => {
         const fieldValue = formData[field.id];
@@ -945,8 +944,8 @@ const PlayerTicket = () => {
     const visibleSections = getVisibleSections();
 
     // Check if a field should be visible based on conditional logic
-    const shouldShowField = (field: FormField) => {
-      return true; // All fields are shown by default
+    const shouldShowField = (_field: FormField) => {
+      return true;
     };
 
     const renderField = (field: FormField) => {
@@ -1056,7 +1055,8 @@ const PlayerTicket = () => {
                   id={`${field.id}-${option}`}
                   checked={formData[field.id]?.includes(option) || false}
                   onCheckedChange={(checked: boolean) => {
-                    const currentValues = formData[field.id] ? formData[field.id].split(',') : [];
+                    const fieldValue = formData[field.id];
+                    const currentValues = fieldValue ? fieldValue.split(',') : [];
                     if (checked) {
                       const newValues = [...currentValues, option].filter(v => v.trim() !== '');
                       handleFormFieldChange(field.id, newValues.join(','));
@@ -1098,9 +1098,9 @@ const PlayerTicket = () => {
               variant="compact"
               maxFiles={1}
             />
-            {formPendingFiles[field.id]?.length ? (
+            {formPendingFiles[field.id]?.[0] ? (
               <div className="text-sm text-muted-foreground">
-                {t('playerTicket.selectedFile', { name: formPendingFiles[field.id][0].name })}
+                {t('playerTicket.selectedFile', { name: formPendingFiles[field.id]?.[0]?.name })}
               </div>
             ) : null}
           </div>
@@ -1191,7 +1191,7 @@ const PlayerTicket = () => {
             {isSubmitting ? (
               <>
                 <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                {t('playerTicket.submitting')}
+                {t('submitTicket.submitting')}
               </>
             ) : (
               <>

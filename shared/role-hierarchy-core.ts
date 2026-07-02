@@ -4,6 +4,12 @@ export interface RoleHierarchyInfo {
   permissions: string[];
 }
 
+export interface RoleDefinition {
+  name: string;
+  order?: number;
+  permissions?: string[];
+}
+
 /** Lower order number = higher authority */
 export function hasHigherOrEqualAuthority(
   user1Role: string,
@@ -67,7 +73,7 @@ export function canAssignMinecraftPlayer(
 
 export function canReorderRoles(
   userRole: string,
-  roleHierarchy: Map<string, RoleHierarchyInfo>
+  _roleHierarchy: Map<string, RoleHierarchyInfo>
 ): boolean {
   return isSuperAdminRole(userRole);
 }
@@ -95,7 +101,7 @@ export function getUserPermissions(
   return roleInfo ? roleInfo.permissions : [];
 }
 
-export function buildRoleHierarchy(roles: any[]): Map<string, RoleHierarchyInfo> {
+export function buildRoleHierarchy(roles: RoleDefinition[]): Map<string, RoleHierarchyInfo> {
   const roleMap = new Map<string, RoleHierarchyInfo>();
   
   for (const role of roles) {

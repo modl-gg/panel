@@ -137,7 +137,7 @@ export function TicketAttachments({
           const parsed = new URL(raw.startsWith('http') ? raw : `https://${raw}`);
           return parsed.hostname.toLowerCase();
         } catch {
-          return raw.replace(/^https?:\/\//i, '').split('/')[0].toLowerCase();
+          return (raw.replace(/^https?:\/\//i, '').split('/')[0] ?? '').toLowerCase();
         }
       })()
     : null;

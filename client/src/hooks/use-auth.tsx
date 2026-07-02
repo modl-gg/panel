@@ -1,9 +1,10 @@
-import { createContext, ReactNode, useCallback, useContext, useEffect, useMemo, useState } from "react";
+import { createContext, type ReactNode, useCallback, useContext, useEffect, useMemo, useState } from "react";
 import { useLocation } from "wouter";
 import { useToast } from "@modl-gg/shared-web/hooks/use-toast";
 import { getApiUrl, getCurrentDomain } from "@/lib/api";
 import { setDateLocale, setDateFormat } from "@/utils/date-utils";
-import { startAuthentication } from "@simplewebauthn/browser";
+import { startAuthentication, type PublicKeyCredentialRequestOptionsJSON } from "@simplewebauthn/browser";
+import { isWebAuthnCancellation, unwrapPublicKeyOptions, type MaybePublicKeyWrapped } from "@/utils/webauthn";
 import i18n from "@/lib/i18n";
 
 interface User {
@@ -16,10 +17,12 @@ interface User {
   dateFormat?: string;
 }
 
+type PasskeyRequestOptions = MaybePublicKeyWrapped<PublicKeyCredentialRequestOptionsJSON>;
+
 interface PasskeyLoginOptions {
   hasPasskeys: boolean;
   challengeId?: string;
-  options?: any;
+  options?: PasskeyRequestOptions;
 }
 
 type AuthContextType = {
@@ -30,7 +33,7 @@ type AuthContextType = {
   logout: () => void;
   requestEmailVerification: (email: string) => Promise<string | undefined>;
   checkPasskeyOptions: (email: string) => Promise<PasskeyLoginOptions>;
-  loginWithPasskey: (challengeId: string, optionsJson: any) => Promise<boolean>;
+  loginWithPasskey: (challengeId: string, optionsJson: PasskeyRequestOptions) => Promise<boolean>;
   loginWithDiscoverablePasskey: () => Promise<boolean>;
 };
 
@@ -48,7 +51,17 @@ async function authFetch(url: string, options: RequestInit = {}): Promise<Respon
   });
 }
 
-function mapUserFromMeResponse(userData: any): User {
+interface MeResponse {
+  id?: string;
+  email: string;
+  username: string;
+  role: User['role'];
+  minecraftUsername?: string;
+  language?: string;
+  dateFormat?: string;
+}
+
+function mapUserFromMeResponse(userData: MeResponse): User {
   return {
     id: userData.id || '',
     email: userData.email,
@@ -72,7 +85,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       return null;
     }
 
-    const userData = await response.json();
+    const userData: MeResponse = await response.json();
     return mapUserFromMeResponse(userData);
   }, []);
 
@@ -233,10 +246,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   }, []);
 
-  const loginWithPasskey = useCallback(async (challengeId: string, optionsJson: any): Promise<boolean> => {
+  const loginWithPasskey = useCallback(async (challengeId: string, optionsJson: PasskeyRequestOptions): Promise<boolean> => {
     setIsLoading(true);
     try {
-      const optionsJSON = optionsJson?.publicKey ?? optionsJson;
+      const optionsJSON = unwrapPublicKeyOptions(optionsJson);
       const assertionResponse = await startAuthentication({ optionsJSON });
 
       const response = await authFetch('/v1/panel/auth/webauthn/login/verify', {
@@ -277,9 +290,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       });
       setIsLoading(false);
       return true;
-    } catch (e: any) {
+    } catch (e) {
       // User cancelled the WebAuthn prompt
-      if (e.name === 'NotAllowedError') {
+      if (isWebAuthnCancellation(e)) {
         setIsLoading(false);
         return false;
       }
@@ -310,9 +323,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         setIsLoading(false);
         return false;
       }
-      const { challengeId, options } = await startRes.json();
+      const { challengeId, options }: { challengeId: string; options: PasskeyRequestOptions } = await startRes.json();
 
-      const optionsJSON = options?.publicKey ?? options;
+      const optionsJSON = unwrapPublicKeyOptions(options);
       const assertionResponse = await startAuthentication({ optionsJSON });
 
       const verifyRes = await authFetch('/v1/panel/auth/webauthn/login/verify', {
@@ -353,8 +366,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       });
       setIsLoading(false);
       return true;
-    } catch (e: any) {
-      if (e.name === 'NotAllowedError') {
+    } catch (e) {
+      if (isWebAuthnCancellation(e)) {
         setIsLoading(false);
         return false;
       }

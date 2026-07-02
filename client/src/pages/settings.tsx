@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Scale, Shield, Globe, Tag, Plus, X, Check, Trash2, MessageCircle, Save, CheckCircle, User as UserIcon, CreditCard, BookOpen, Settings as SettingsIcon, Upload, Key, ChevronDown, ChevronRight, Layers, GripVertical, Edit3, Users, Bot, FileText, Home, Bell, Crown, Database } from 'lucide-react';
+import { Scale, Shield, Globe, Tag, Plus, X, Trash2, MessageCircle, Save, CheckCircle, User as UserIcon, CreditCard, BookOpen, Settings as SettingsIcon, ChevronDown, ChevronRight, Layers, GripVertical, Edit3, Users, Bot, FileText, Home, Bell, Crown, Database } from 'lucide-react';
 import { getApiUrl, getCurrentDomain, apiFetch, apiUpload } from '@/lib/api';
 import { setDateLocale, setDateFormat as setDateFormatUtil } from '@/utils/date-utils';
 import i18n from '@/lib/i18n';
@@ -16,29 +16,24 @@ import { Badge } from '@modl-gg/shared-web/components/ui/badge';
 import { Checkbox } from '@modl-gg/shared-web/components/ui/checkbox';
 import { useToast } from '@modl-gg/shared-web/hooks/use-toast';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@modl-gg/shared-web/components/ui/select';
-import { useSettings, useBillingStatus, useUsageData, usePunishmentTypes, useTicketFormSettings, useQuickResponses, useStatusThresholds, useTicketLabelSettings } from '@/hooks/use-data';
+import { useSettings, useBillingStatus, usePunishmentTypes, useTicketFormSettings, useQuickResponses, useStatusThresholds, useTicketLabelSettings } from '@/hooks/use-data';
 import PageContainer from '@/components/layout/PageContainer'
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@modl-gg/shared-web/components/ui/dialog";
 import { queryClient } from '@/lib/queryClient';
-import { useLocation } from "wouter";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@modl-gg/shared-web/components/ui/tooltip";
 import { useAuth } from '@/hooks/use-auth';
-import { useIsMobile } from '@modl-gg/shared-web/hooks/use-mobile';
 import { PERMISSIONS, usePermissions } from '@/hooks/use-permissions';
 import StaffManagementPanel from '@/components/settings/StaffManagementPanel';
 import StaffRolesCard from '@/components/settings/StaffRolesCard';
-import BillingSettings from '@/components/settings/BillingSettings';
-import DomainSettings from '@/components/settings/DomainSettings';
 import KnowledgebaseSettings from '@/components/settings/KnowledgebaseSettings';
 import HomepageCardSettings from '@/components/settings/HomepageCardSettings';
 import AccountSettings from '@/components/settings/AccountSettings';
 import GeneralSettings from '@/components/settings/GeneralSettings';
 import PunishmentSettings from '@/components/settings/PunishmentSettings';
 import TicketSettings from '@/components/settings/TicketSettings';
-import WebhookSettings from '@/components/settings/WebhookSettings';
 import { DndProvider, useDrag, useDrop } from 'react-dnd';
 import { HTML5Backend } from 'react-dnd-html5-backend';
-import { QuickResponsesConfiguration, defaultQuickResponsesConfig } from '@/types/quickResponses';
+import { type QuickResponsesConfiguration, type QuickResponseCategory, type QuickResponseAction, defaultQuickResponsesConfig } from '@/types/quickResponses';
 import {
   formatSubscriptionStatusLabel,
   hasPremiumAccess,
@@ -49,7 +44,7 @@ import {
   hasPremiumSettingsAccess,
   isSettingsBillingPending,
 } from '@/lib/settings-access';
-import {
+import type {
   AppealFormField,
   AppealFormSection,
   AppealFormSettings,
@@ -145,281 +140,6 @@ interface AvailablePunishmentType {
   category: string;
   ordinal: number;
 }
-
-// FieldDropZone Component for cross-section field drops
-interface FieldDropZoneProps {
-  sectionId: string;
-  moveFieldBetweenSections: (fieldId: string, fromSectionId: string, toSectionId: string, targetIndex?: number) => void;
-}
-
-const FieldDropZone = ({ sectionId, moveFieldBetweenSections }: FieldDropZoneProps) => {
-  const [{ isOver, canDrop }, drop] = useDrop({
-    accept: 'field',
-    drop: (item: { index: number; sectionId: string; fieldId: string }) => {
-      // Only handle cross-section drops
-      if (item.sectionId !== sectionId) {
-        moveFieldBetweenSections(item.fieldId, item.sectionId, sectionId);
-      }
-    },
-    canDrop: (item: { index: number; sectionId: string; fieldId: string }) => {
-      // Only allow drops from other sections
-      return item.sectionId !== sectionId;
-    },
-    collect: (monitor) => ({
-      isOver: monitor.isOver(),
-      canDrop: monitor.canDrop(),
-    }),
-  });
-
-  return (
-    <div
-      ref={drop}
-      className={`border-2 border-dashed rounded-lg p-2 text-center text-sm transition-colors ${
-        isOver && canDrop
-          ? 'border-primary bg-primary/10 text-primary'
-          : canDrop
-          ? 'border-muted-foreground/50 text-muted-foreground'
-          : 'border-transparent'
-      }`}
-    >
-      {isOver && canDrop ? (
-        <span>Drop field here</span>
-      ) : canDrop ? (
-        <span className="opacity-50">Drop fields from other sections here</span>
-      ) : (
-        <span className="opacity-0">Drop zone</span>
-      )}
-    </div>
-  );
-};
-
-// DraggableSectionCard Component
-interface DraggableSectionCardProps {
-  section: TicketFormSection;
-  index: number;
-  moveSection: (dragIndex: number, hoverIndex: number) => void;
-  selectedTicketFormType: string;
-  ticketForms: TicketFormsConfiguration;
-  onEditSection: (section: TicketFormSection) => void;
-  onDeleteSection: (sectionId: string) => void;
-  onEditField: (field: TicketFormField) => void;
-  onDeleteField: (fieldId: string) => void;
-  onAddField: (sectionId: string) => void;
-  moveField: (dragIndex: number, hoverIndex: number, sectionId: string) => void;
-  moveFieldBetweenSections: (fieldId: string, fromSectionId: string, toSectionId: string, targetIndex?: number) => void;
-}
-
-const DraggableSectionCard = ({ 
-  section, 
-  index, 
-  moveSection, 
-  selectedTicketFormType,
-  ticketForms,
-  onEditSection,
-  onDeleteSection,
-  onEditField,
-  onDeleteField,
-  onAddField,
-  moveField,
-  moveFieldBetweenSections
-}: DraggableSectionCardProps) => {
-  const [{ isDragging }, drag] = useDrag({
-    type: 'section',
-    item: { index },
-    collect: (monitor) => ({
-      isDragging: monitor.isDragging(),
-    }),
-  });
-
-  const [, drop] = useDrop({
-    accept: 'section',
-    hover: (item: { index: number }) => {
-      if (item.index !== index) {
-        moveSection(item.index, index);
-        item.index = index;
-      }
-    },
-  });
-
-  // Get fields for this section
-  const sectionFields = ticketForms[selectedTicketFormType]?.fields
-    ?.filter(field => field.sectionId === section.id)
-    ?.sort((a, b) => a.order - b.order) || [];
-
-  return (
-    <div
-      ref={(node) => drag(drop(node))}
-      className={`border rounded-lg p-4 bg-card space-y-3 ${
-        isDragging ? 'opacity-50' : ''
-      }`}
-    >
-      <div className="flex items-center justify-between">
-        <div className="flex items-center gap-2">
-          <GripVertical className="h-4 w-4 text-muted-foreground cursor-move" />
-          <div>
-            <h6 className="font-medium">{section.title}</h6>
-            {section.description && (
-              <p className="text-sm text-muted-foreground">{section.description}</p>
-            )}
-          </div>
-        </div>
-        <div className="flex items-center gap-2">
-          <Button
-            size="sm"
-            variant="outline"
-            onClick={() => onEditSection(section)}
-          >
-            Edit
-          </Button>
-          <Button
-            size="sm"
-            variant="outline"
-            onClick={() => onDeleteSection(section.id)}
-          >
-            <Trash2 className="h-4 w-4" />
-          </Button>
-        </div>
-      </div>
-
-      {/* Fields in this section */}
-      <div className="space-y-2">
-        {sectionFields.map((field, fieldIndex) => (
-          <DraggableFieldCard
-            key={field.id}
-            field={field}
-            index={fieldIndex}
-            sectionId={section.id}
-            moveField={moveField}
-            moveFieldBetweenSections={moveFieldBetweenSections}
-            onEditField={onEditField}
-            onDeleteField={onDeleteField}
-          />
-        ))}
-        
-        {/* Drop zone for adding fields from other sections */}
-        <FieldDropZone
-          sectionId={section.id}
-          moveFieldBetweenSections={moveFieldBetweenSections}
-        />
-        
-        <Button
-          size="sm"
-          variant="outline"
-          onClick={() => onAddField(section.id)}
-          className="w-full"
-        >
-          <Plus className="h-4 w-4 mr-2" />
-          Add Field
-        </Button>
-      </div>
-    </div>
-  );
-};
-
-// DraggableFieldCard Component
-interface DraggableFieldCardProps {
-  field: TicketFormField;
-  index: number;
-  sectionId: string;
-  moveField: (dragIndex: number, hoverIndex: number, sectionId: string) => void;
-  moveFieldBetweenSections: (fieldId: string, fromSectionId: string, toSectionId: string, targetIndex?: number) => void;
-  onEditField: (field: TicketFormField) => void;
-  onDeleteField: (fieldId: string) => void;
-}
-
-const DraggableFieldCard = ({ 
-  field, 
-  index, 
-  sectionId, 
-  moveField, 
-  moveFieldBetweenSections,
-  onEditField, 
-  onDeleteField 
-}: DraggableFieldCardProps) => {
-  const [{ isDragging }, drag] = useDrag({
-    type: 'field',
-    item: { index, sectionId, fieldId: field.id },
-    collect: (monitor) => ({
-      isDragging: monitor.isDragging(),
-    }),
-  });
-
-  const [, drop] = useDrop({
-    accept: 'field',
-    hover: (item: { index: number; sectionId: string; fieldId: string }) => {
-      // Allow movement within the same section
-      if (item.sectionId === sectionId && item.index !== index) {
-        moveField(item.index, index, sectionId);
-        item.index = index;
-      }
-    },
-    drop: (item: { index: number; sectionId: string; fieldId: string }) => {
-      // Handle cross-section movement
-      if (item.sectionId !== sectionId) {
-        moveFieldBetweenSections(item.fieldId, item.sectionId, sectionId, index);
-      }
-    },
-  });
-
-  const getFieldTypeLabel = (type: string) => {
-    switch (type) {
-      case 'text': return 'Text';
-      case 'textarea': return 'Textarea';
-      case 'dropdown': return 'Dropdown';
-      case 'multiple_choice': return 'Multiple Choice';
-      case 'checkbox': return 'Checkbox';
-      case 'file_upload': return 'File Upload';
-      case 'checkboxes': return 'Checkboxes';
-      default: return type;
-    }
-  };
-
-  return (
-    <div
-      ref={(node) => drag(drop(node))}
-      className={`border rounded p-3 bg-muted/50 ${
-        isDragging ? 'opacity-50' : ''
-      }`}
-    >
-      <div className="flex items-center justify-between">
-        <div className="flex items-center gap-2">
-          <GripVertical className="h-3 w-3 text-muted-foreground cursor-move" />
-          <div>
-            <p className="text-sm font-medium">{field.label}</p>
-            <div className="flex items-center gap-2 text-xs text-muted-foreground">
-              <Badge variant="outline" className="text-xs">
-                {getFieldTypeLabel(field.type)}
-              </Badge>
-              {field.required && (
-                <Badge variant="destructive" className="text-xs">
-                  Required
-                </Badge>
-              )}
-            </div>
-          </div>
-        </div>
-        <div className="flex items-center gap-1">
-          <Button
-            size="sm"
-            variant="ghost"
-            onClick={() => onEditField(field)}
-            className="h-6 w-6 p-0"
-          >
-            <Edit3 className="h-3 w-3" />
-          </Button>
-          <Button
-            size="sm"
-            variant="ghost"
-            onClick={() => onDeleteField(field.id)}
-            className="h-6 w-6 p-0"
-          >
-            <Trash2 className="h-3 w-3" />
-          </Button>
-        </div>
-      </div>
-    </div>
-  );
-};
 
 // Draggable Appeal Form Section Card Component
 interface DraggableAppealFormSectionCardProps {
@@ -699,15 +419,12 @@ const AppealFormFieldDropZone = ({ sectionId, moveFieldBetweenSections }: Appeal
 const Settings = () => {
   const { t } = useTranslation();
   useSidebar();
-  const [location, navigateWouter] = useLocation();
-  const { user, logout } = useAuth();
+  const { user } = useAuth();
   const { canAccessSettingsTab, hasPermission } = usePermissions();
   const canViewAdminSettings = hasPermission(PERMISSIONS.ADMIN_SETTINGS_VIEW);
   const canViewAllTickets = hasPermission(PERMISSIONS.TICKET_VIEW_ALL);
   const canManageTicketTags = hasPermission(PERMISSIONS.TICKET_MANAGE_TAGS);
   const canAccessGeneralSettings = canAccessSettingsTab('general');
-  const isMobile = useIsMobile();
-  const mainContentClass = "ml-[32px] pl-8";
   const [expandedCategory, setExpandedCategory] = useState<string | null>(null);
   const [expandedSubCategory, setExpandedSubCategory] = useState<string | null>(null);
   const {
@@ -773,7 +490,7 @@ const Settings = () => {
       if (canAccessSettingsTab(accessPermissionKey as any)) {
         setExpandedCategory(mappedCategory);
         if (urlSubCategory) {
-          const subCat = urlSubCategory.split(',')[0];
+          const subCat = urlSubCategory.split(',')[0] ?? urlSubCategory;
           const canAccessTicketSubCategory = mappedCategory !== 'tickets'
             || (
               (['label-management', 'quick-responses', 'ticket-forms', 'ai-moderation'].includes(subCat) && canViewAdminSettings)
@@ -807,8 +524,8 @@ const Settings = () => {
   // Auto-save state
   const [lastSaved, setLastSaved] = useState<Date | null>(null);
   const [isSaving, setIsSaving] = useState(false);
-  const saveTimeoutRef = useRef<NodeJS.Timeout | null>(null);
-  const profileSaveTimeoutRef = useRef<NodeJS.Timeout | null>(null); // Separate timeout for profile
+  const saveTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const profileSaveTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null); // Separate timeout for profile
   const initialSettingsRef = useRef<any | null>(null);
   const justLoadedFromServerRef = useRef(true);
   const pendingChangesRef = useRef(false);
@@ -864,9 +581,9 @@ const Settings = () => {
   const dateFormatRef = useRef('MM/DD/YYYY');
 
   // Database connection state
-  const [dbConnectionStatus, setDbConnectionStatus] = useState(false);
+  const [, setDbConnectionStatus] = useState(false);
   const [mongodbUri, setMongodbUri] = useState('');
-  const [isTestingConnection, setIsTestingConnection] = useState(false);
+  const [, setIsTestingConnection] = useState(false);
   // Punishment types state
   // State for all settings fields
   const [punishmentTypesState, setPunishmentTypesState] = useState<PunishmentType[]>([
@@ -897,9 +614,6 @@ const Settings = () => {
   // Selected punishment for editing
   const [selectedPunishmentState, setSelectedPunishmentState] = useState<PunishmentType | null>(null);
 
-  // State to control visibility of core punishment types
-  const [showCorePunishmentsState, setShowCorePunishmentsState] = useState(false);
-
   // Appeal form state variables
   const [selectedAppealField, setSelectedAppealField] = useState<AppealFormField | null>(null);
   const [selectedAppealSection, setSelectedAppealSection] = useState<AppealFormSection | null>(null);
@@ -917,18 +631,6 @@ const Settings = () => {
   const [newAppealSectionDescription, setNewAppealSectionDescription] = useState('');
   const [newAppealSectionHideByDefault, setNewAppealSectionHideByDefault] = useState(false);
   const [newOption, setNewOption] = useState('');
-
-  // Collapsible section states (all collapsed by default)
-  const [isBillingExpanded, setIsBillingExpanded] = useState(false);
-  const [isServerConfigExpanded, setIsServerConfigExpanded] = useState(false);
-  const [isServerIconsExpanded, setIsServerIconsExpanded] = useState(false);
-  const [isApiKeyExpanded, setIsApiKeyExpanded] = useState(false);
-  const [isDomainExpanded, setIsDomainExpanded] = useState(false);
-  // Individual section expanded states for tickets
-  const [isQuickResponsesExpanded, setIsQuickResponsesExpanded] = useState(false);
-  const [isTagManagementExpanded, setIsTagManagementExpanded] = useState(false);
-  const [isTicketFormsExpanded, setIsTicketFormsExpanded] = useState(false);
-  const [isAIModerationExpanded, setIsAIModerationExpanded] = useState(false);
 
   // Quick responses state for each ticket category
   const [quickResponsesState, setQuickResponsesState] = useState<QuickResponsesConfiguration>(defaultQuickResponsesConfig);
@@ -977,7 +679,7 @@ const Settings = () => {
   const [newTicketFormFieldRequired, setNewTicketFormFieldRequired] = useState(false);
   const [newTicketFormFieldOptions, setNewTicketFormFieldOptions] = useState<string[]>([]);
   const [newTicketFormFieldSectionId, setNewTicketFormFieldSectionId] = useState('');
-  const [newTicketFormFieldGoToSection, setNewTicketFormFieldGoToSection] = useState('');
+  const [, setNewTicketFormFieldGoToSection] = useState('');
   const [newTicketFormFieldOptionSectionMapping, setNewTicketFormFieldOptionSectionMapping] = useState<Record<string, string>>({});
   const [newTicketFormOption, setNewTicketFormOption] = useState('');
   const [isOptionNavigationExpanded, setIsOptionNavigationExpanded] = useState(false);
@@ -985,12 +687,8 @@ const Settings = () => {
   // Section builder states
   const [newTicketFormSectionTitle, setNewTicketFormSectionTitle] = useState('');
   const [newTicketFormSectionDescription, setNewTicketFormSectionDescription] = useState('');
-  const [newTicketFormSectionShowIfFieldId, setNewTicketFormSectionShowIfFieldId] = useState('__none__');
-  const [newTicketFormSectionShowIfValue, setNewTicketFormSectionShowIfValue] = useState('');
-  const [newTicketFormSectionShowIfValues, setNewTicketFormSectionShowIfValues] = useState<string[]>([]);
-  
+
   // Updated AI Punishment Types management state
-  const [aiPunishmentTypes, setAiPunishmentTypes] = useState<AIServicePunishmentType[]>([]);
   const [availablePunishmentTypes, setAvailablePunishmentTypes] = useState<AvailablePunishmentType[]>([]);
   const [selectedPunishmentTypeId, setSelectedPunishmentTypeId] = useState<number | null>(null);
   const [selectedAIPunishmentType, setSelectedAIPunishmentType] = useState<AIServicePunishmentType | null>(null);
@@ -998,16 +696,14 @@ const Settings = () => {
   const [newAIPunishmentDescription, setNewAIPunishmentDescription] = useState('');
 
   // Security tab states
-  const [has2FAState, setHas2FAState] = useState(false);
-  const [hasPasskeyState, setHasPasskeyState] = useState(false);  const [showSetup2FAState, setShowSetup2FAState] = useState(false);
-  const [showSetupPasskeyState, setShowSetupPasskeyState] = useState(false);
-  const [recoveryCodesCopiedState, setRecoveryCodesCopiedState] = useState(false);
+  const [, setHas2FAState] = useState(false);
+  const [, setHasPasskeyState] = useState(false);
 
   // General tab states
   const [serverDisplayName, setServerDisplayName] = useState('');
   const [discordWebhookUrl, setDiscordWebhookUrl] = useState('');
-  const [homepageIcon, setHomepageIcon] = useState<File | null>(null);
-  const [panelIcon, setPanelIcon] = useState<File | null>(null);
+  const [, setHomepageIcon] = useState<File | null>(null);
+  const [, setPanelIcon] = useState<File | null>(null);
   const [homepageIconUrl, setHomepageIconUrl] = useState('');
   const [panelIconUrl, setPanelIconUrl] = useState('');
   const [uploadingHomepageIcon, setUploadingHomepageIcon] = useState(false);
@@ -1031,7 +727,7 @@ const Settings = () => {
     aiPunishmentConfigs: {}
   });
   const [isLoadingAiSettings, setIsLoadingAiSettings] = useState(false);
-  const [isSavingAiSettings, setIsSavingAiSettings] = useState(false);
+  const [, setIsSavingAiSettings] = useState(false);
   
   const { toast } = useToast();
   const { data: settingsData, isLoading: isLoadingSettings, isFetching: isFetchingSettings } = useSettings();
@@ -1040,7 +736,6 @@ const Settings = () => {
   const { data: quickResponsesData, isLoading: isLoadingQuickResponses } = useQuickResponses();
   const { data: statusThresholdsData, isLoading: isLoadingStatusThresholds } = useStatusThresholds();
   const { data: ticketLabelSettingsData, isLoading: isLoadingTicketLabels } = useTicketLabelSettings();
-  const { data: usageData } = useUsageData();
   const [currentEmail, setCurrentEmail] = useState('');
 
   // Helper functions for enhanced summaries
@@ -1060,20 +755,6 @@ const Settings = () => {
     const statusBadge = formatSubscriptionStatusLabel(status);
 
     return nextBilling ? `${plan} Plan - ${statusBadge} - Next: ${nextBilling}` : `${plan} Plan - ${statusBadge}`;
-  };
-
-  const getUsageSummary = () => {
-    if (!usageData) return null;
-    
-    const highUsageItems = [];
-    if (usageData.cdn && usageData.cdn.percentage > 80) {
-      highUsageItems.push(`CDN: ${usageData.cdn.percentage}%`);
-    }
-    if (usageData.ai && usageData.ai.percentage > 80) {
-      highUsageItems.push(`AI: ${usageData.ai.percentage}%`);
-    }
-    
-    return highUsageItems.length > 0 ? ` • ${highUsageItems.join(", ")}` : "";
   };
 
   const getServerConfigSummary = () => {
@@ -1144,7 +825,6 @@ const Settings = () => {
   const newPunishmentCategory = newPunishmentCategoryState;
   const statusThresholds = statusThresholdsState;
   const selectedPunishment = selectedPunishmentState;
-  const showCorePunishments = showCorePunishmentsState;
   const labels = labelsState;
   const bugReportTags = bugReportTagsState;
   const playerReportTags = playerReportTagsState;
@@ -1153,10 +833,6 @@ const Settings = () => {
   const newPlayerTag = newPlayerTagState;
   const newAppealTag = newAppealTagState;
   const ticketForms = ticketFormsState;
-  const has2FA = has2FAState;
-  const hasPasskey = hasPasskeyState;
-  const showSetup2FA = showSetup2FAState;
-  const showSetupPasskey = showSetupPasskeyState;  const recoveryCodesCopied = recoveryCodesCopiedState;  
   
   // Profile settings aliases
   const profileUsername = profileUsernameState;
@@ -1430,14 +1106,14 @@ const Settings = () => {
       };
       
       const csrfFetch = apiFetch;
-      const response = await csrfFetch('/v1/panel/settings/ai-moderation', {
+      await csrfFetch('/v1/panel/settings/ai-moderation', {
         method: 'PATCH',
         headers: {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify(payload),
       });
-      
+
     } catch (error) {
       console.error('Error saving AI moderation settings:', error);
       toast({
@@ -1448,36 +1124,6 @@ const Settings = () => {
       
     } finally {
       setIsSavingAiSettings(false);
-    }
-  };
-
-  // Load AI punishment types (enabled ones)
-  const loadAiPunishmentTypes = async () => {
-    try {
-      const response = await fetch(getApiUrl('/v1/panel/settings/ai-punishment-types'), {
-        credentials: 'include',
-        headers: { 'X-Server-Domain': getCurrentDomain() }
-      });
-      
-      if (response.ok) {
-        const data = await response.json();
-        setAiModerationSettings(prev => ({
-          ...prev,
-          aiPunishmentConfigs: data.data
-        }));
-      } else {
-        console.error('Failed to load AI punishment types:', response.status);
-        setAiModerationSettings(prev => ({
-          ...prev,
-          aiPunishmentConfigs: {}
-        }));
-      }
-    } catch (error) {
-      console.error('Error loading AI punishment types:', error);
-      setAiModerationSettings(prev => ({
-        ...prev,
-        aiPunishmentConfigs: {}
-      }));
     }
   };
 
@@ -1568,33 +1214,6 @@ const Settings = () => {
     }
   };
 
-  // Remove AI punishment type configuration
-  const removeAiPunishmentType = async (id: number) => {
-    try {
-      const csrfFetch = apiFetch;
-      const response = await csrfFetch(`/v1/panel/settings/ai-punishment-types/${id}`, {
-        method: 'DELETE',
-      });
-      
-      if (response.ok) {
-        loadAvailablePunishmentTypes();
-        toast({
-          title: t('settings.page.aiTypeRemoved'),
-          description: t('settings.page.aiTypeRemovedDesc'),
-        });
-      } else {
-        throw new Error('Failed to remove AI punishment type');
-      }
-    } catch (error) {
-      console.error('Error removing AI punishment type:', error);
-      toast({
-        title: t('toast.error'),
-        description: "Failed to remove AI punishment type. Please try again.",
-        variant: "destructive",
-      });
-    }
-  };
-
   // Load AI moderation settings on component mount (only for users with appropriate permissions)
   useEffect(() => {
     if (user && canViewAdminSettings) {
@@ -1611,6 +1230,7 @@ const Settings = () => {
       }, 1000);
       return () => clearTimeout(saveTimeout);
     }
+    return undefined;
   }, [aiModerationSettings, isLoadingAiSettings, canViewAdminSettings]);
 
   // Auto-save AI punishment configs when they change
@@ -1621,6 +1241,7 @@ const Settings = () => {
       }, 1000);
       return () => clearTimeout(saveTimeout);
     }
+    return undefined;
   }, [aiModerationSettings?.aiPunishmentConfigs, aiModerationSettings, isLoadingAiSettings, canViewAdminSettings]);
 
   // Define captureInitialSettings first, before it's used anywhere else
@@ -1715,10 +1336,15 @@ const Settings = () => {
       // Check if it's the old format (Record<string, Record<string, string>>) and migrate to new format
       if (parsedQr && !parsedQr.categories && typeof parsedQr === 'object') {
         // Convert old format to new format
-        const categories = Object.entries(parsedQr).map(([categoryName, responses], index) => ({
+        const resolveAppealAction = (actionName: string): QuickResponseAction['appealAction'] =>
+          actionName.toLowerCase().includes('pardon') ? 'pardon' :
+          actionName.toLowerCase().includes('reduce') ? 'reduce' :
+          actionName.toLowerCase().includes('reject') ? 'reject' : 'none';
+
+        const categories: QuickResponseCategory[] = Object.entries(parsedQr).map(([categoryName, responses], index) => ({
           id: categoryName.toLowerCase().replace(/\s+/g, '_'),
           name: categoryName,
-          ticketTypes: categoryName.toLowerCase().includes('report') ? 
+          ticketTypes: categoryName.toLowerCase().includes('report') ?
             (categoryName.toLowerCase().includes('chat') ? ['chat_report'] : ['player_report']) :
             categoryName.toLowerCase().includes('appeal') ? ['appeal'] :
             categoryName.toLowerCase().includes('bug') ? ['bug_report'] : ['other'],
@@ -1730,14 +1356,12 @@ const Settings = () => {
             order: actionIndex + 1,
             // Add default properties based on category
             ...(categoryName.toLowerCase().includes('report') && actionName.toLowerCase().includes('accept') ? { issuePunishment: false } : {}),
-            ...(categoryName.toLowerCase().includes('appeal') ? { 
-              appealAction: actionName.toLowerCase().includes('pardon') ? 'pardon' : 
-                           actionName.toLowerCase().includes('reduce') ? 'reduce' : 
-                           actionName.toLowerCase().includes('reject') ? 'reject' : 'none'
+            ...(categoryName.toLowerCase().includes('appeal') ? {
+              appealAction: resolveAppealAction(actionName)
             } : {})
           }))
         }));
-        
+
         setQuickResponsesState({ categories });
       } else {
         // It's already in the new format or use default
@@ -2322,18 +1946,6 @@ const Settings = () => {
   const setSelectedPunishment = (value: React.SetStateAction<PunishmentType | null>) => {
     setSelectedPunishmentState(value);
   };
-  const setShowCorePunishments = (value: React.SetStateAction<boolean>) => {
-    setShowCorePunishmentsState(value);
-  };
-  const setBugReportTags = (value: React.SetStateAction<string[]>) => {
-    setBugReportTagsState(value);
-  };
-  const setPlayerReportTags = (value: React.SetStateAction<string[]>) => {
-    setPlayerReportTagsState(value);
-  };
-  const setAppealTags = (value: React.SetStateAction<string[]>) => {
-    setAppealTagsState(value);
-  };
   const setNewBugTag = (value: React.SetStateAction<string>) => {
     setNewBugTagState(value);
   };
@@ -2343,22 +1955,7 @@ const Settings = () => {
   const setNewAppealTag = (value: React.SetStateAction<string>) => {
     setNewAppealTagState(value);
   };
-  
-  const setHas2FA = (value: React.SetStateAction<boolean>) => {
-    setHas2FAState(value);
-  };
-  const setHasPasskey = (value: React.SetStateAction<boolean>) => {
-    setHasPasskeyState(value);
-  };
-  const setShowSetup2FA = (value: React.SetStateAction<boolean>) => {
-    setShowSetup2FAState(value);
-  };  const setShowSetupPasskey = (value: React.SetStateAction<boolean>) => {
-    setShowSetupPasskeyState(value);
-  };
-  const setRecoveryCodesCopied = (value: React.SetStateAction<boolean>) => {
-    setRecoveryCodesCopiedState(value);
-  };
-  
+
   // Profile settings auto-save wrapper functions
   const setProfileUsername = (value: React.SetStateAction<string>) => {
     const newValue = typeof value === 'function' ? value(profileUsernameState) : value;
@@ -2394,61 +1991,6 @@ const Settings = () => {
       triggerProfileAutoSave();
     }
   };
-  
-  // Save profile settings function
-  const saveProfileSettings = useCallback(async () => {
-    try {
-      const csrfFetch = apiFetch;
-      const response = await csrfFetch('/v1/panel/auth/profile', {
-        method: 'PATCH',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        credentials: 'include',
-        body: JSON.stringify({
-          username: profileUsernameState,
-          language: languageState,
-          dateFormat: dateFormatState
-        })
-      });
-
-      if (response.ok) {
-        const data = await response.json();
-        setLastSaved(new Date());
-        if (user && data.username) {
-          user.username = data.username;
-        }
-        
-        // Don't show a toast on every auto-save to avoid spam
-      } else {
-        const errorData = await response.json().catch(() => ({ message: 'Unknown error' }));
-        console.error('Profile auto-save failed:', errorData.message);
-        
-        // Show specific error toast based on status code
-        if (response.status === 403) {
-          toast({
-            title: t('toast.permissionDenied'),
-            description: errorData.error || errorData.message || 'You do not have permission to modify your profile.',
-            variant: "destructive",
-          });
-        } else {
-          toast({
-            title: t('toast.saveFailed'),
-            description: `Failed to save profile: ${errorData.error || errorData.message || 'Unknown error'}`,
-            variant: "destructive",
-          });
-        }
-      }
-    } catch (error) {
-      console.error('Profile auto-save error:', error);
-      
-      // Show error toast
-      toast({
-        title: t('toast.saveFailed'),
-        description: "Failed to save profile. Please try again.",        variant: "destructive",
-      });
-    }
-  }, [profileUsernameState, languageState, dateFormatState, user, toast, setLastSaved]);
   
   // Auto-save function for profile settings
   const triggerProfileAutoSave = useCallback(() => {
@@ -2651,13 +2193,6 @@ const Settings = () => {
     }
   };
 
-  // Update punishment type
-  const updatePunishmentType = (id: number, updates: Partial<PunishmentType>) => {
-    setPunishmentTypes(prevTypes =>
-      prevTypes.map(pt => (pt.id === id ? { ...pt, ...updates } : pt))
-    );
-  };
-
   // Appeal form helper functions
   const addAppealFormField = () => {
     if (!selectedPunishment || !newAppealFieldLabel.trim()) return;
@@ -2721,7 +2256,8 @@ const Settings = () => {
       ...prev,
       appealForm: {
         ...prev.appealForm,
-        fields: updatedFields
+        fields: updatedFields,
+        sections: prev.appealForm?.sections ?? []
       }
     } : null);
   }, [selectedPunishment, setSelectedPunishment]);
@@ -2787,32 +2323,6 @@ const Settings = () => {
     } : null);
   }, [selectedPunishment, setSelectedPunishment]);
 
-  const updateAppealFormField = (fieldId: string, updates: Partial<AppealFormField>) => {
-    if (!selectedPunishment?.appealForm?.fields) return;
-
-    const updatedFields = selectedPunishment.appealForm.fields.map(field =>
-      field.id === fieldId ? { ...field, ...updates } : field
-    );
-
-    setSelectedPunishment(prev => prev ? {
-      ...prev,
-      appealForm: {
-        fields: updatedFields
-      }
-    } : null);
-  };
-
-  const addNewAppealFieldOption = () => {
-    if (newOption.trim()) {
-      setNewAppealFieldOptions(prev => [...prev, newOption.trim()]);
-      setNewOption('');
-    }
-  };
-
-  const removeAppealFieldOption = (index: number) => {
-    setNewAppealFieldOptions(prev => prev.filter((_, i) => i !== index));
-  };
-
   // Ticket Form Management Functions
   const addTicketFormField = () => {
     if (!newTicketFormFieldLabel.trim()) return;
@@ -2867,18 +2377,6 @@ const Settings = () => {
     setIsAddTicketFormFieldDialogOpen(false);
   };
 
-  const removeTicketFormField = (fieldId: string) => {
-    setTicketFormsState(prev => ({
-      ...prev,
-      [selectedTicketFormType]: {
-        ...prev[selectedTicketFormType],
-        fields: (prev[selectedTicketFormType]?.fields || [])
-          .filter(f => f.id !== fieldId)
-          .map((field, index) => ({ ...field, order: index }))
-      }
-    }));
-  };
-
   const addNewTicketFormFieldOption = () => {
     if (newTicketFormOption.trim()) {
       setNewTicketFormFieldOptions(prev => [...prev, newTicketFormOption.trim()]);
@@ -2930,21 +2428,6 @@ const Settings = () => {
     setIsAddTicketFormSectionDialogOpen(false);
   };
 
-  const removeTicketFormSection = (sectionId: string) => {
-    setTicketFormsState(prev => ({
-      ...prev,
-      [selectedTicketFormType]: {
-        ...prev[selectedTicketFormType],
-        sections: (prev[selectedTicketFormType]?.sections || [])
-          .filter(s => s.id !== sectionId)
-          .map((section, index) => ({ ...section, order: index })),
-        // Also remove fields that belong to this section
-        fields: (prev[selectedTicketFormType]?.fields || [])
-          .filter(f => f.sectionId !== sectionId)
-      }
-    }));
-  };
-
   // Format the last saved time
   const formatLastSaved = () => {
     if (!lastSaved) return "Not saved yet";
@@ -2962,83 +2445,25 @@ const Settings = () => {
     }
   };
 
-  // Drag and drop handlers for sections
-  const moveSectionInForm = useCallback((dragIndex: number, hoverIndex: number) => {
-    setTicketFormsState(prev => {
-      const sections = [...(prev[selectedTicketFormType]?.sections || [])];
-      const dragSection = sections[dragIndex];
-      sections.splice(dragIndex, 1);
-      sections.splice(hoverIndex, 0, dragSection);
-      
-      // Update order values
-      const updatedSections = sections.map((section, index) => ({
-        ...section,
-        order: index
-      }));
-
-      return {
-        ...prev,
-        [selectedTicketFormType]: {
-          ...prev[selectedTicketFormType],
-          sections: updatedSections
-        }
-      };
-    });
-  }, [selectedTicketFormType]);
-
-  // Drag and drop handlers for fields within sections
-  const moveFieldInForm = useCallback((dragIndex: number, hoverIndex: number, sectionId: string) => {
-    setTicketFormsState(prev => {
-      const allFields = [...(prev[selectedTicketFormType]?.fields || [])];
-      
-      // Get fields for the specific section
-      const sectionFields = allFields.filter(f => f.sectionId === sectionId);
-      
-      // Get the actual field objects using the indices
-      const dragField = sectionFields[dragIndex];
-      const hoverField = sectionFields[hoverIndex];
-      
-      if (!dragField || !hoverField) return prev;
-      
-      // Update the order values for the two fields being swapped
-      const updatedFields = allFields.map(field => {
-        if (field.id === dragField.id) {
-          return { ...field, order: hoverField.order };
-        } else if (field.id === hoverField.id) {
-          return { ...field, order: dragField.order };
-        }
-        return field;
-      });
-
-      return {
-        ...prev,
-        [selectedTicketFormType]: {
-          ...prev[selectedTicketFormType],
-          fields: updatedFields
-        }
-      };
-    });
-  }, [selectedTicketFormType]);
-
   // Function to move fields between sections
-  const moveFieldBetweenSections = useCallback((fieldId: string, fromSectionId: string, toSectionId: string, targetIndex?: number) => {
+  const moveFieldBetweenSections = useCallback((fieldId: string, _fromSectionId: string, toSectionId: string, targetIndex?: number) => {
     setTicketFormsState(prev => {
       const allFields = [...(prev[selectedTicketFormType]?.fields || [])];
-      
+
       // Find the field to move
       const fieldToMove = allFields.find(f => f.id === fieldId);
       if (!fieldToMove) return prev;
-      
+
       // Get fields in the target section
       const targetSectionFields = allFields.filter(f => f.sectionId === toSectionId);
-      
+
       // Calculate the new order for the moved field
       let newOrder: number;
-      if (targetIndex !== undefined && targetIndex < targetSectionFields.length) {
+      const targetField = targetIndex !== undefined ? targetSectionFields[targetIndex] : undefined;
+      if (targetField) {
         // Insert at specific position
-        const targetField = targetSectionFields[targetIndex];
         newOrder = targetField.order;
-        
+
         // Update orders of fields in target section that come after the insertion point
         const updatedFields = allFields.map(field => {
           if (field.id === fieldId) {
@@ -3078,43 +2503,17 @@ const Settings = () => {
     });
   }, [selectedTicketFormType]);
 
-  // Missing function implementations for ticket form management
-  const onEditSection = useCallback((section: TicketFormSection) => {
-    // Placeholder implementation - could open a dialog to edit section
-  }, []);
-
-  const onDeleteSection = useCallback((sectionId: string) => {
-    // Placeholder implementation - remove section from form
-  }, []);
-
-  const onEditField = useCallback((field: TicketFormField) => {
-    // Placeholder implementation - could open a dialog to edit field
-  }, []);
-
-  const onDeleteField = useCallback((fieldId: string) => {
-    // Placeholder implementation - remove field from form
-  }, []);
-
-  const onAddField = useCallback((sectionId: string) => {
-    setNewTicketFormFieldSectionId(sectionId);
-    setIsAddTicketFormFieldDialogOpen(true);
-  }, []);
-
-  const moveField = useCallback((dragIndex: number, hoverIndex: number, sectionId: string) => {
-    // Use the existing moveFieldInForm function
-    moveFieldInForm(dragIndex, hoverIndex, sectionId);
-  }, [moveFieldInForm]);
-
   // Drag and drop handlers for appeal form sections
   const moveAppealFormSection = useCallback((dragIndex: number, hoverIndex: number) => {
     if (!selectedPunishment?.appealForm?.sections) return;
     
     const sections = [...selectedPunishment.appealForm.sections];
     const dragSection = sections[dragIndex];
-    
+    if (!dragSection) return;
+
     sections.splice(dragIndex, 1);
     sections.splice(hoverIndex, 0, dragSection);
-    
+
     // Update order values
     const updatedSections = sections.map((section, index) => ({
       ...section,
@@ -3165,7 +2564,7 @@ const Settings = () => {
   }, [selectedPunishment]);
 
   // Function to move appeal form fields between sections
-  const moveAppealFormFieldBetweenSections = useCallback((fieldId: string, fromSectionId: string, toSectionId: string, targetIndex?: number) => {
+  const moveAppealFormFieldBetweenSections = useCallback((fieldId: string, _fromSectionId: string, toSectionId: string, targetIndex?: number) => {
     if (!selectedPunishment?.appealForm?.fields) return;
     
     const allFields = [...selectedPunishment.appealForm.fields];
@@ -3461,8 +2860,6 @@ const Settings = () => {
                 <GeneralSettings
                 serverDisplayName={serverDisplayName}
                 setServerDisplayName={setServerDisplayName}
-                discordWebhookUrl={discordWebhookUrl}
-                setDiscordWebhookUrl={setDiscordWebhookUrl}
                 homepageIconUrl={homepageIconUrl}
                 panelIconUrl={panelIconUrl}
                 uploadingHomepageIcon={uploadingHomepageIcon}
@@ -3482,9 +2879,7 @@ const Settings = () => {
                 revealApiKey={revealApiKey}
                 copyApiKey={copyApiKey}
                 maskApiKey={maskApiKey}
-                usageData={usageData}
                 getBillingSummary={getBillingSummary}
-                getUsageSummary={getUsageSummary}
                 getServerConfigSummary={getServerConfigSummary}
                 getDomainSummary={getDomainSummary}
                 webhookSettings={settingsData?.settings?.webhookSettings}
@@ -3513,7 +2908,10 @@ const Settings = () => {
                 setNewPunishmentCategory={setNewPunishmentCategory}
                 addPunishmentType={addPunishmentType}
                 removePunishmentType={removePunishmentType}
-                setSelectedPunishment={setSelectedPunishment}
+                setSelectedPunishment={(punishment: { id: number }) => {
+                  const match = punishmentTypesState.find(pt => pt.id === punishment.id);
+                  if (match) setSelectedPunishment(match);
+                }}
                 visibleSection={expandedSubCategory}
               />
               </div>
@@ -3552,12 +2950,6 @@ const Settings = () => {
                         aiModerationSettings={aiModerationSettings}
                         setAiModerationSettings={setAiModerationSettings}
                         punishmentTypesState={punishmentTypes}
-                        onEditSection={onEditSection}
-                        onDeleteSection={onDeleteSection}
-                        onEditField={onEditField}
-                        onDeleteField={onDeleteField}
-                        onAddField={onAddField}
-                        moveField={moveField}
                         moveFieldBetweenSections={moveFieldBetweenSections}
                         visibleSection="quick-responses"
                       />
@@ -3593,12 +2985,6 @@ const Settings = () => {
                         aiModerationSettings={aiModerationSettings}
                         setAiModerationSettings={setAiModerationSettings}
                         punishmentTypesState={punishmentTypes}
-                        onEditSection={onEditSection}
-                        onDeleteSection={onDeleteSection}
-                        onEditField={onEditField}
-                        onDeleteField={onDeleteField}
-                        onAddField={onAddField}
-                        moveField={moveField}
                         moveFieldBetweenSections={moveFieldBetweenSections}
                         visibleSection="label-management"
                       />
@@ -3634,12 +3020,6 @@ const Settings = () => {
                         aiModerationSettings={aiModerationSettings}
                         setAiModerationSettings={setAiModerationSettings}
                         punishmentTypesState={punishmentTypes}
-                        onEditSection={onEditSection}
-                        onDeleteSection={onDeleteSection}
-                        onEditField={onEditField}
-                        onDeleteField={onDeleteField}
-                        onAddField={onAddField}
-                        moveField={moveField}
                         moveFieldBetweenSections={moveFieldBetweenSections}
                         visibleSection="ticket-forms"
                       />
@@ -3675,12 +3055,6 @@ const Settings = () => {
                         aiModerationSettings={aiModerationSettings}
                         setAiModerationSettings={setAiModerationSettings}
                         punishmentTypesState={punishmentTypes}
-                        onEditSection={onEditSection}
-                        onDeleteSection={onDeleteSection}
-                        onEditField={onEditField}
-                        onDeleteField={onDeleteField}
-                        onAddField={onAddField}
-                        moveField={moveField}
                         moveFieldBetweenSections={moveFieldBetweenSections}
                         visibleSection="ai-moderation"
                       />

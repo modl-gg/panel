@@ -94,8 +94,8 @@ const Home = () => {
     }
   };
 
-  const handleDismissTicket = async (ticketId: string) => {
-    return markTicketAsReadMutation.mutateAsync(ticketId);
+  const handleDismissTicket = async (ticketId: string): Promise<void> => {
+    await markTicketAsReadMutation.mutateAsync(ticketId);
   };
 
   return (

@@ -290,21 +290,26 @@ const AccountSettings = ({
                 )}
               </div>
               {emailChangeStep === 'code-sent' && (
-                <div className="flex items-center gap-3 mt-2">
-                  <Input
-                    type="text"
-                    value={emailCode}
-                    onChange={(e) => setEmailCode(e.target.value)}
-                    placeholder="Enter code"
-                    className="max-w-[160px]"
-                    onKeyDown={(e) => { if (e.key === 'Enter') handleConfirmEmailChange(); }}
-                  />
-                  <Button size="sm" onClick={handleConfirmEmailChange} disabled={isUpdatingEmail || !emailCode}>
-                    {isUpdatingEmail ? t('common.saving') : 'Verify'}
-                  </Button>
-                  <Button variant="ghost" size="sm" onClick={() => { setEmailChangeStep('idle'); setEmailCode(''); }}>
-                    {t('common.cancel')}
-                  </Button>
+                <div className="mt-2 space-y-2">
+                  <div className="flex items-center gap-3">
+                    <Input
+                      type="text"
+                      value={emailCode}
+                      onChange={(e) => setEmailCode(e.target.value)}
+                      placeholder="Enter code"
+                      className="max-w-[160px]"
+                      onKeyDown={(e) => { if (e.key === 'Enter') handleConfirmEmailChange(); }}
+                    />
+                    <Button size="sm" onClick={handleConfirmEmailChange} disabled={isUpdatingEmail || !emailCode}>
+                      {isUpdatingEmail ? t('common.saving') : 'Verify'}
+                    </Button>
+                    <Button variant="ghost" size="sm" onClick={() => { setEmailChangeStep('idle'); setEmailCode(''); }}>
+                      {t('common.cancel')}
+                    </Button>
+                  </div>
+                  <p className="text-xs text-amber-600 dark:text-amber-500 max-w-md">
+                    {t('settings.emailChangeWarning')}
+                  </p>
                 </div>
               )}
               <p className="text-xs text-muted-foreground mt-1.5">

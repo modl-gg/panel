@@ -30,7 +30,7 @@ export function getApiBaseUrl(): string {
   return API_BASE_URL;
 }
 
-export function getAvatarUrl(uuid: string, size: number = 32, overlay: boolean = true): string {
+export function getAvatarUrl(uuid: string, size: number = 32, _overlay: boolean = true): string {
   return `https://mc-heads.net/avatar/${uuid}/${size}`;
 }
 
@@ -68,8 +68,8 @@ function createHeaders(options?: RequestOptions): Headers {
 
 async function handleRateLimitIfNeeded(response: Response): Promise<void> {
   if (response.status === 429) {
-    const { handleRateLimitResponse, getCurrentPath } = await import('../utils/rate-limit-handler');
-    await handleRateLimitResponse(response, getCurrentPath());
+    const { handleRateLimitResponse } = await import('../utils/rate-limit-handler');
+    await handleRateLimitResponse(response);
     throw new Error('Rate limit exceeded');
   }
 }

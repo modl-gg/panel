@@ -7,6 +7,8 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import { KeyRound, Loader2, Mail, Fingerprint } from 'lucide-react';
 import { useAuth } from '@/hooks/use-auth';
 import { usePublicSettings } from '@/hooks/use-public-settings';
+import { type PublicKeyCredentialRequestOptionsJSON } from '@simplewebauthn/browser';
+import { type MaybePublicKeyWrapped } from '@/utils/webauthn';
 
 import { Button } from "@modl-gg/shared-web/components/ui/button";
 import { Input } from "@modl-gg/shared-web/components/ui/input";
@@ -33,6 +35,11 @@ const loginSchema = z.object({
 
 type LoginFormValues = z.infer<typeof loginSchema>;
 
+type PasskeyChallenge = {
+  challengeId: string;
+  options: MaybePublicKeyWrapped<PublicKeyCredentialRequestOptionsJSON>;
+};
+
 const AuthPage = () => {
   const [, setLocation] = useLocation();
   const { toast } = useToast();
@@ -41,7 +48,7 @@ const AuthPage = () => {
   const [loginStep, setLoginStep] = useState<'email' | 'verification'>('email');
   const [verifyMethod, setVerifyMethod] = useState<'code' | 'passkey'>('code');
   const [passkeyAvailable, setPasskeyAvailable] = useState(false);
-  const [passkeyChallenge, setPasskeyChallenge] = useState<{ challengeId: string; options: any } | null>(null);
+  const [passkeyChallenge, setPasskeyChallenge] = useState<PasskeyChallenge | null>(null);
   const [passkeyLoading, setPasskeyLoading] = useState(false);
   const serverDisplayName = publicSettings?.serverDisplayName || 'modl';
 

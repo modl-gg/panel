@@ -178,14 +178,14 @@ const DraggableRoleCard: React.FC<DraggableRoleCardProps> = ({
   // User can drag roles that have higher order number (lower authority) and not super admin
   const canDragRole = role.name !== 'Super Admin' && currentUserOrder < roleOrder;
 
-  const [{ isDragging }, drag, preview] = useDrag(() => ({
+  const [{ isDragging }, drag] = useDrag(() => ({
     type: 'role',
     item: () => {
       onDragStart();
       return { index, role, originalIndex: index };
     },
     canDrag: canDragRole,
-    end: (item, monitor) => {
+    end: (_item, monitor) => {
       const didDrop = monitor.didDrop();
       onDragEnd(didDrop);
     },
@@ -336,7 +336,7 @@ export default function StaffRolesCard() {
   const [originalRoles, setOriginalRoles] = useState<StaffRole[]>([]);
   const [pendingReorder, setPendingReorder] = useState<StaffRole[] | null>(null);
   const [showReorderConfirm, setShowReorderConfirm] = useState(false);
-  const [isDragInProgress, setIsDragInProgress] = useState(false);
+  const [, setIsDragInProgress] = useState(false);
   const { toast } = useToast();
   
   // API hooks
@@ -408,7 +408,8 @@ export default function StaffRolesCard() {
   const moveRole = (dragIndex: number, hoverIndex: number) => {
     const newRoles = [...localRoles];
     const draggedRole = newRoles[dragIndex];
-    
+    if (!draggedRole) return;
+
     // Remove the dragged role and insert at new position
     newRoles.splice(dragIndex, 1);
     newRoles.splice(hoverIndex, 0, draggedRole);
@@ -418,7 +419,7 @@ export default function StaffRolesCard() {
   };
 
   // Handle role reordering when drag ends (actual commit)
-  const commitRoleReorder = (originalIndex: number, targetIndex: number) => {
+  const commitRoleReorder = (_originalIndex: number, _targetIndex: number) => {
     // The localRoles state already reflects the current visual state from hover operations
     // We just need to set pending reorder and show confirmation
     setPendingReorder([...localRoles]);

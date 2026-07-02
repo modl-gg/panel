@@ -45,7 +45,7 @@ interface Player {
   lastOnline?: string;
   isOnline?: boolean;
   online?: boolean;
-  data?: any;
+  data?: { isOnline?: boolean };
 }
 
 const HOME_ICON = <Home className="h-5 w-5" />;
@@ -56,7 +56,7 @@ const SETTINGS_ICON = <Settings className="h-5 w-5" />;
 
 const Sidebar = () => {
   const { t } = useTranslation();
-  const { isSearchActive, setIsSearchActive } = useSidebar();
+  const { setIsSearchActive } = useSidebar();
   const { openLookupWindow: openDashboardLookupWindow } = useDashboard();
   const { openPlayerWindow: openPlayerWindowFromContext } = usePlayerWindow();
   const [location, navigate] = useLocation();
@@ -69,7 +69,7 @@ const Sidebar = () => {
   const [isLookupOpen, setIsLookupOpen] = useState(false);
   const [isLookupClosing, setIsLookupClosing] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
-  const [isFocused, setIsFocused] = useState(false);
+  const [, setIsFocused] = useState(false);
   const [isHoveringSearch, setIsHoveringSearch] = useState(false);
   const [recentSearches, setRecentSearches] = useState<Array<{player: Player, timestamp: number}>>([]);
   
@@ -291,7 +291,7 @@ const Sidebar = () => {
               PanelPunishmentTypesResponseSchema,
               '/v1/panel/settings/punishment-types',
             );
-            return response.punishmentTypes as any[];
+            return response.punishmentTypes;
           },
           staleTime: 5 * 60 * 1000,
         });

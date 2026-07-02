@@ -114,7 +114,7 @@ const WebhookSettings: React.FC<WebhookSettingsProps> = ({
   });
 
   const [showWebhookUrl, setShowWebhookUrl] = useState(false);
-  const [isSaving, setIsSaving] = useState(false);
+  const [, setIsSaving] = useState(false);
   const [isTesting, setIsTesting] = useState(false);
   // The debounce timer id lives in a ref (not state) so rapid successive edits
   // synchronously see and clear the previously scheduled save, preventing

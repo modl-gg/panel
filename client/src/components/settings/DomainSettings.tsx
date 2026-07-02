@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Globe, CheckCircle, Copy, ExternalLink, RefreshCw, Check, Crown } from 'lucide-react';
+import { CheckCircle, Copy, ExternalLink, RefreshCw, Check, Crown } from 'lucide-react';
 import { Button } from '@modl-gg/shared-web/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@modl-gg/shared-web/components/ui/card';
 import { Input } from '@modl-gg/shared-web/components/ui/input';
@@ -42,8 +42,9 @@ const DomainSettings: React.FC = () => {
   useEffect(() => {
     const hostname = getCurrentDomain();
     const parts = hostname.split('.');
-    if (parts.length > 2) {
-      setCurrentDomain(parts[0]);
+    const [subdomain] = parts;
+    if (parts.length > 2 && subdomain !== undefined) {
+      setCurrentDomain(subdomain);
     }
   }, []);
 

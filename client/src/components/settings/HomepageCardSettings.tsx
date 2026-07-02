@@ -31,7 +31,8 @@ import {
 } from 'lucide-react';
 import { Switch } from '@modl-gg/shared-web/components/ui/switch';
 import { Label } from '@modl-gg/shared-web/components/ui/label';
-import { DndProvider, useDrag, useDrop, DropTargetMonitor } from 'react-dnd';
+import { DndProvider, useDrag, useDrop, type DropTargetMonitor } from 'react-dnd';
+import type { Identifier } from 'dnd-core';
 import { HTML5Backend } from 'react-dnd-html5-backend';
 
 // Allowlist of icons selectable for homepage cards; keep in sync with HomePage.tsx ICONS map.
@@ -135,7 +136,7 @@ const DraggableCardItem: React.FC<DraggableCardItemProps> = ({
   const { t } = useTranslation();
   const ref = useRef<HTMLDivElement>(null);
 
-  const [{ handlerId }, drop] = useDrop<CardDragItem, void, { handlerId: any }>({
+  const [{ handlerId }, drop] = useDrop<CardDragItem, void, { handlerId: Identifier | null }>({
     accept: ITEM_TYPE_HOMEPAGE_CARD,
     collect(monitor) {
       return { handlerId: monitor.getHandlerId() };
@@ -341,7 +342,9 @@ const HomepageCardSettings: React.FC = () => {
     setDisplayedCards((prev) => {
       const updated = [...prev];
       const [dragged] = updated.splice(dragIndex, 1);
-      updated.splice(hoverIndex, 0, dragged);
+      if (dragged) {
+        updated.splice(hoverIndex, 0, dragged);
+      }
       return updated;
     });
   }, []);

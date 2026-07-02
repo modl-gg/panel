@@ -6,7 +6,6 @@ import { Input } from '@modl-gg/shared-web/components/ui/input';
 import { Label } from '@modl-gg/shared-web/components/ui/label';
 import { Textarea } from '@modl-gg/shared-web/components/ui/textarea';
 import { Switch } from '@modl-gg/shared-web/components/ui/switch';
-import { Separator } from '@modl-gg/shared-web/components/ui/separator';
 import { Card, CardContent, CardHeader, CardTitle } from '@modl-gg/shared-web/components/ui/card';
 import { Badge } from '@modl-gg/shared-web/components/ui/badge';
 import { Popover, PopoverContent, PopoverTrigger } from '@modl-gg/shared-web/components/ui/popover';
@@ -97,11 +96,18 @@ const EmbedTemplateEditor: React.FC<EmbedTemplateEditorProps> = ({
 
   const hexToRgb = (hex: string) => {
     const result = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex);
-    return result ? {
-      r: parseInt(result[1], 16),
-      g: parseInt(result[2], 16),
-      b: parseInt(result[3], 16)
-    } : null;
+    if (!result) {
+      return null;
+    }
+    const [, red, green, blue] = result;
+    if (red === undefined || green === undefined || blue === undefined) {
+      return null;
+    }
+    return {
+      r: parseInt(red, 16),
+      g: parseInt(green, 16),
+      b: parseInt(blue, 16)
+    };
   };
 
   const updateTemplate = (updates: Partial<EmbedTemplate>) => {
@@ -114,8 +120,12 @@ const EmbedTemplateEditor: React.FC<EmbedTemplateEditorProps> = ({
   };
 
   const updateField = (index: number, updates: Partial<EmbedField>) => {
+    const existingField = template.fields[index];
+    if (!existingField) {
+      return;
+    }
     const newFields = [...template.fields];
-    newFields[index] = { ...newFields[index], ...updates };
+    newFields[index] = { ...existingField, ...updates };
     updateTemplate({ fields: newFields });
   };
 
@@ -236,12 +246,17 @@ const EmbedTemplateEditor: React.FC<EmbedTemplateEditorProps> = ({
                 const fields = template.fields;
                 const result = [];
                 let i = 0;
-                
+
                 while (i < fields.length) {
                   const currentField = fields[i];
-                  
-                  if (currentField.inline && i < fields.length - 2 && fields[i + 1].inline && fields[i + 2].inline) {
-                    // Three inline fields in a row (test most-specific case first)
+                  if (!currentField) {
+                    i += 1;
+                    continue;
+                  }
+                  const nextField = fields[i + 1];
+                  const secondNextField = fields[i + 2];
+
+                  if (currentField.inline && nextField?.inline && secondNextField?.inline) {
                     result.push(
                       <div key={`inline-row-${i}`} className="flex gap-2">
                         <div className="flex-1">
@@ -254,25 +269,24 @@ const EmbedTemplateEditor: React.FC<EmbedTemplateEditorProps> = ({
                         </div>
                         <div className="flex-1">
                           <div className="text-white font-medium text-xs mb-1">
-                            {replaceVariablesForPreview(fields[i + 1].name)}
+                            {replaceVariablesForPreview(nextField.name)}
                           </div>
                           <div className="text-[#dcddde] text-xs">
-                            {replaceVariablesForPreview(fields[i + 1].value)}
+                            {replaceVariablesForPreview(nextField.value)}
                           </div>
                         </div>
                         <div className="flex-1">
                           <div className="text-white font-medium text-xs mb-1">
-                            {replaceVariablesForPreview(fields[i + 2].name)}
+                            {replaceVariablesForPreview(secondNextField.name)}
                           </div>
                           <div className="text-[#dcddde] text-xs">
-                            {replaceVariablesForPreview(fields[i + 2].value)}
+                            {replaceVariablesForPreview(secondNextField.value)}
                           </div>
                         </div>
                       </div>
                     );
-                    i += 3; // Skip next two fields
-                  } else if (currentField.inline && i < fields.length - 1 && fields[i + 1].inline) {
-                    // Two inline fields side by side
+                    i += 3;
+                  } else if (currentField.inline && nextField?.inline) {
                     result.push(
                       <div key={`inline-row-${i}`} className="flex gap-4">
                         <div className="flex-1">
@@ -285,17 +299,16 @@ const EmbedTemplateEditor: React.FC<EmbedTemplateEditorProps> = ({
                         </div>
                         <div className="flex-1">
                           <div className="text-white font-medium text-xs mb-1">
-                            {replaceVariablesForPreview(fields[i + 1].name)}
+                            {replaceVariablesForPreview(nextField.name)}
                           </div>
                           <div className="text-[#dcddde] text-xs">
-                            {replaceVariablesForPreview(fields[i + 1].value)}
+                            {replaceVariablesForPreview(nextField.value)}
                           </div>
                         </div>
                       </div>
                     );
-                    i += 2; // Skip next field as we've already processed it
+                    i += 2;
                   } else {
-                    // Single field (either non-inline or single inline)
                     result.push(
                       <div key={`field-${i}`} className={currentField.inline ? "flex-1" : "block"}>
                         <div className="text-white font-medium text-xs mb-1">
@@ -309,7 +322,7 @@ const EmbedTemplateEditor: React.FC<EmbedTemplateEditorProps> = ({
                     i += 1;
                   }
                 }
-                
+
                 return result;
               })()}
             </div>

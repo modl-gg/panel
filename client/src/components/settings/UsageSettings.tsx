@@ -15,6 +15,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@modl-gg/shared-web/components/ui/alert-dialog';
 import { useToast } from '@modl-gg/shared-web/hooks/use-toast';
 import { formatFileSize } from '@/utils/file-utils';
+import { errorMessageOr } from '@/utils/errors';
 import { useReplayRetentionSettings, useUpdateReplayRetentionSettings } from '@/hooks/use-data';
 import { Notice } from '@/components/ui/notice';
 
@@ -27,6 +28,13 @@ interface StorageFile {
   createdAt: string;
   lastModified: string;
   url: string;
+}
+
+interface StorageFileListing {
+  key?: string;
+  size?: number;
+  lastModified?: string;
+  url?: string;
 }
 
 interface StorageUsage {
@@ -294,16 +302,16 @@ const fetchStorageData = async () => {
       if (!filesResponse.ok) {
         throw new Error(`Failed to fetch files: ${filesResponse.status}`);
       }
-      const filesData = await filesResponse.json();
-      
+      const filesData: { files?: StorageFileListing[] } = await filesResponse.json();
+
       // Transform the file data to match the expected structure
-      const transformedFiles = (filesData.files || []).map((file: any) => {
+      const transformedFiles = (filesData.files || []).map((file) => {
         // Extract filename from the key (last part after /)
         const parts = file.key?.split('/') || [];
         const filename = parts[parts.length - 1] || 'Unknown';
-        
+
         // Determine file type based on the folder in the path
-        let fileType = 'other';
+        let fileType: StorageFile['type'] = 'other';
         if (file.key?.includes('/evidence/')) fileType = 'evidence';
         else if (file.key?.includes('/tickets/') || file.key?.includes('/ticket/')) fileType = 'ticket';
         else if (file.key?.includes('/logs/')) fileType = 'logs';
@@ -406,10 +414,10 @@ const fetchStorageData = async () => {
           description: t('settings.usage.replayRetentionSaved'),
         });
       },
-      onError: (error: any) => {
+      onError: (error) => {
         toast({
           title: t('toast.error'),
-          description: error?.message || t('settings.usage.replayRetentionSaveFailed'),
+          description: errorMessageOr(error, t('settings.usage.replayRetentionSaveFailed')),
           variant: "destructive",
         });
       },
@@ -614,10 +622,10 @@ const fetchStorageData = async () => {
       )}
       
       {/* Free User Limit Warning */}
-      {!storageUsage?.quota?.isPaid && storageUsage?.quota?.baseUsagePercentage >= 80 && (
+      {!storageUsage?.quota?.isPaid && (storageUsage?.quota?.baseUsagePercentage ?? 0) >= 80 && (
         <Notice variant="info" title={t('settings.usage.storageLimitWarning')}>
           <p>
-            {t('settings.usage.storageLimitWarningDesc', { percentage: storageUsage.quota.baseUsagePercentage, limit: storageUsage.quota.baseLimitFormatted })}
+            {t('settings.usage.storageLimitWarningDesc', { percentage: storageUsage?.quota?.baseUsagePercentage, limit: storageUsage?.quota?.baseLimitFormatted })}
           </p>
           <p className="text-xs mt-2 opacity-80">
             {t('settings.usage.upgradePremiumStorage')}
@@ -940,7 +948,7 @@ const fetchStorageData = async () => {
 
             <div>
               <Label htmlFor="sort-by">{t('settings.usage.sortBy')}</Label>
-              <Select value={sortBy} onValueChange={(value: any) => setSortBy(value)}>
+              <Select value={sortBy} onValueChange={(value) => { if (value === 'name' || value === 'size' || value === 'date') setSortBy(value); }}>
                 <SelectTrigger>
                   <SelectValue />
                 </SelectTrigger>
@@ -954,7 +962,7 @@ const fetchStorageData = async () => {
 
             <div>
               <Label htmlFor="sort-order">{t('settings.usage.order')}</Label>
-              <Select value={sortOrder} onValueChange={(value: any) => setSortOrder(value)}>
+              <Select value={sortOrder} onValueChange={(value) => { if (value === 'asc' || value === 'desc') setSortOrder(value); }}>
                 <SelectTrigger>
                   <SelectValue />
                 </SelectTrigger>

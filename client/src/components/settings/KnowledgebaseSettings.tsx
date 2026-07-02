@@ -7,20 +7,34 @@ import { useToast } from '@modl-gg/shared-web/hooks/use-toast';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@modl-gg/shared-web/components/ui/alert-dialog';
 import { queryClient } from '@/lib/queryClient';
 import { apiFetch } from '@/lib/api';
-import { useQuery, useMutation } from '@tanstack/react-query';
+import { useQuery, useMutation, type UseMutationResult } from '@tanstack/react-query';
 import { Plus, Edit, Trash2, GripVertical } from 'lucide-react';
-import { DndProvider, useDrag, useDrop, DropTargetMonitor } from 'react-dnd';
+import { DndProvider, useDrag, useDrop, type DropTargetMonitor } from 'react-dnd';
+import type { Identifier } from 'dnd-core';
 import { HTML5Backend } from 'react-dnd-html5-backend';
 import ArticleListItem from './ArticleListItem';
 import MarkdownEditor from '@modl-gg/shared-web/components/ui/MarkdownEditor';
-import { KnowledgebaseCategory, KnowledgebaseArticle } from '@modl-gg/shared-web/types';
+import { type KnowledgebaseCategory, type KnowledgebaseArticle, type KnowledgebaseArticleStub } from '@modl-gg/shared-web/types';
 
-const normalizeArticle = (article: any): KnowledgebaseArticle => ({
+interface ArticleVisibilityInput {
+  isVisible?: boolean;
+  visible?: boolean;
+}
+
+type RawKnowledgebaseArticle = Omit<KnowledgebaseArticle, 'isVisible'> & ArticleVisibilityInput;
+
+type RawKnowledgebaseArticleStub = Omit<KnowledgebaseArticleStub, 'isVisible'> & ArticleVisibilityInput;
+
+type RawKnowledgebaseCategory = Omit<KnowledgebaseCategory, 'articles'> & {
+  articles?: RawKnowledgebaseArticleStub[];
+};
+
+const normalizeArticle = <T extends ArticleVisibilityInput>(article: T): T & { isVisible: boolean } => ({
   ...article,
   isVisible: article?.isVisible ?? article?.visible ?? true,
 });
 
-const normalizeCategory = (category: any): KnowledgebaseCategory => ({
+const normalizeCategory = (category: RawKnowledgebaseCategory): KnowledgebaseCategory => ({
   ...category,
   articles: Array.isArray(category?.articles)
     ? category.articles.map(normalizeArticle)
@@ -44,6 +58,12 @@ const ItemTypes = {
   ARTICLE: 'article',
 };
 
+interface CategoryDragItem {
+  id: string;
+  originalIndex: number;
+  type: typeof ItemTypes.CATEGORY;
+}
+
 interface CategoryItemProps {
   category: KnowledgebaseCategory;
   index: number;
@@ -54,16 +74,11 @@ interface CategoryItemProps {
   editingCategory: KnowledgebaseCategory | null;
   handleUpdateCategory: () => void;
   setEditingCategory: React.Dispatch<React.SetStateAction<KnowledgebaseCategory | null>>;
-  updateCategoryMutation: any;
-  deleteCategoryMutation: any;
-  editingArticle: KnowledgebaseArticle | null;
-  setEditingArticle: React.Dispatch<React.SetStateAction<KnowledgebaseArticle | null>>;
-  handleUpdateArticle: () => void;
+  updateCategoryMutation: UseMutationResult<KnowledgebaseCategory, Error, { id: string; name: string; description?: string }>;
+  deleteCategoryMutation: UseMutationResult<void, Error, string>;
   handleDeleteArticle: (categoryId: string, articleId: string, title: string) => void;
-  updateArticleMutation: any; // This should be specific to article update
-  deleteArticleMutation: any;
   handleDropCategory: () => void;
-  reorderArticlesMutation: any; // Add mutation for reordering articles
+  reorderArticlesMutation: UseMutationResult<void, Error, { categoryId: string; orderedArticleIds: string[] }>;
   fetchArticleForEditing: (categoryId: string, articleId: string) => Promise<void>;
 }
 
@@ -79,19 +94,14 @@ const CategoryItem: React.FC<CategoryItemProps> = ({
   setEditingCategory,
   updateCategoryMutation,
   deleteCategoryMutation,
-  editingArticle,
-  setEditingArticle,
-  handleUpdateArticle, // This is the global one for opening edit modal
   handleDeleteArticle, // This is the global one
-  updateArticleMutation: uam, // This is the global update mutation
-  deleteArticleMutation: dam, // This is the global delete mutation
   handleDropCategory,
   reorderArticlesMutation,
   fetchArticleForEditing
 }) => {
   const { t } = useTranslation();
   const ref = React.useRef<HTMLDivElement>(null);
-  const [displayedCategoryArticles, setDisplayedCategoryArticles] = useState<KnowledgebaseArticle[]>([]);
+  const [displayedCategoryArticles, setDisplayedCategoryArticles] = useState<KnowledgebaseArticleStub[]>([]);
 
   useEffect(() => {
     if (category.articles) {
@@ -106,7 +116,9 @@ const CategoryItem: React.FC<CategoryItemProps> = ({
     setDisplayedCategoryArticles((prevArticles) => {
       const updatedArticles = [...prevArticles];
       const [draggedItem] = updatedArticles.splice(dragIndex, 1);
-      updatedArticles.splice(hoverIndex, 0, draggedItem);
+      if (draggedItem) {
+        updatedArticles.splice(hoverIndex, 0, draggedItem);
+      }
       return updatedArticles;
     });
   }, [category.id]);
@@ -117,14 +129,14 @@ const CategoryItem: React.FC<CategoryItemProps> = ({
     reorderArticlesMutation.mutate({ categoryId: category.id, orderedArticleIds });
   }, [category.id, displayedCategoryArticles, reorderArticlesMutation]);
 
-  const [{ handlerId }, drop] = useDrop<CategoryDragItem, void, { handlerId: any }>({
+  const [{ handlerId }, drop] = useDrop<CategoryDragItem, void, { handlerId: Identifier | null }>({
     accept: ItemTypes.CATEGORY,
     collect(monitor) {
       return {
         handlerId: monitor.getHandlerId(),
       };
     },
-    hover(item: CategoryDragItem, monitor: DropTargetMonitor) {
+    hover(item: CategoryDragItem, _monitor: DropTargetMonitor) {
       if (!ref.current) return;
       const dragIndex = item.originalIndex;
       const hoverIndex = index;
@@ -138,7 +150,7 @@ const CategoryItem: React.FC<CategoryItemProps> = ({
     type: ItemTypes.CATEGORY,
     item: () => ({ id: category.id, originalIndex: index, type: ItemTypes.CATEGORY }),
     collect: (monitor) => ({ isDragging: monitor.isDragging() }),
-    end: (item, monitor) => {
+    end: (_item, monitor) => {
       // If the item was dropped on a compatible target (which it will be, even if it's its own spot after moving)
       // and the drop was not cancelled, then we persist the order.
       if (monitor.didDrop()) {
@@ -382,7 +394,9 @@ const KnowledgebaseSettings: React.FC = () => {
     setDisplayedCategories((prevCategories) => {
       const updatedCategories = [...prevCategories];
       const [draggedItem] = updatedCategories.splice(dragIndex, 1);
-      updatedCategories.splice(hoverIndex, 0, draggedItem);
+      if (draggedItem) {
+        updatedCategories.splice(hoverIndex, 0, draggedItem);
+      }
       return updatedCategories;
     });
   }, []);
@@ -518,7 +532,7 @@ const KnowledgebaseSettings: React.FC = () => {
       if (!response.ok) {
         throw new Error('Failed to fetch article details');
       }
-      const articleData = await response.json();
+      const articleData: RawKnowledgebaseArticle = await response.json();
       setEditingArticle(normalizeArticle(articleData));
 
       // Scroll to the article editing section with smooth animation
@@ -614,12 +628,7 @@ const KnowledgebaseSettings: React.FC = () => {
                   updateCategoryMutation={updateCategoryMutation}
                   deleteCategoryMutation={deleteCategoryMutation}
                   // Pass article related props
-                  editingArticle={editingArticle}
-                  setEditingArticle={setEditingArticle}
-                  handleUpdateArticle={handleUpdateArticle}
                   handleDeleteArticle={handleDeleteArticleClick} // Global delete
-                  updateArticleMutation={updateArticleMutation} // Global update for articles (modal)
-                  deleteArticleMutation={deleteArticleMutation} // Global delete for articles
                   handleDropCategory={handleDropCategory}
                   reorderArticlesMutation={reorderArticlesMutation} // Pass down the reorder mutation
                   fetchArticleForEditing={fetchArticleForEditing}

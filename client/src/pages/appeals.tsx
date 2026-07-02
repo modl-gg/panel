@@ -1,6 +1,5 @@
 import { useState, useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
-import { useLocation } from 'wouter';
 import { z } from 'zod';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -118,7 +117,6 @@ interface AppealInfo {
 }
 
 const AppealsPage = () => {
-  const [, setLocation] = useLocation();
   const { t } = useTranslation();
   const { toast } = useToast();
   const [banInfo, setBanInfo] = useState<BanInfo | null>(null);
@@ -127,9 +125,9 @@ const AppealsPage = () => {
   const [isLoadingPunishment, setIsLoadingPunishment] = useState(false);
   const [punishmentError, setPunishmentError] = useState<string | null>(null);
   const [newReply, setNewReply] = useState("");
-  const [attachments, setAttachments] = useState<Array<{id: string, url: string, key: string, fileName: string, fileType: string, fileSize: number, uploadedAt: string, uploadedBy: string}>>([]);
+  const [, setAttachments] = useState<Array<{id: string, url: string, key: string, fileName: string, fileType: string, fileSize: number, uploadedAt: string, uploadedBy: string}>>([]);
   const [replyAttachments, setReplyAttachments] = useState<Array<{id: string, url: string, key: string, fileName: string, fileType: string, fileSize: number, uploadedAt: string, uploadedBy: string}>>([]);
-  const [forceRerender, setForceRerender] = useState(0); // Force re-render for section visibility
+  const [, setForceRerender] = useState(0); // Force re-render for section visibility
 
   // Appeal form configuration will come from the punishment-specific data
   const [appealFormSettings, setAppealFormSettings] = useState<AppealFormSettings | undefined>(undefined);
@@ -162,8 +160,8 @@ const AppealsPage = () => {
         email: appealForm.getValues('email') || "",
         // Add default values for dynamic fields
         ...Object.fromEntries(
-          (Array.isArray(appealFormSettings?.fields) ? appealFormSettings.fields : []).map(field => {
-            let defaultValue;
+          (Array.isArray(appealFormSettings?.fields) ? appealFormSettings.fields : []).map((field): [string, boolean | string[] | string] => {
+            let defaultValue: boolean | string[] | string;
             switch (field.type) {
               case 'checkbox':
                 defaultValue = false;
@@ -407,9 +405,7 @@ const AppealsPage = () => {
           setShowAppealForm(false);
           setAppealInfo(null);
         } else {
-          // Show appeal form if no existing appeal and punishment is active and appealable
-          const canAppeal = banInfo.status === 'Active' && banInfo.isAppealable !== false;
-          setShowAppealForm(canAppeal);
+          setShowAppealForm(true);
           setAppealInfo(null);
         }
       }
@@ -519,23 +515,25 @@ const AppealsPage = () => {
         }
       });
 
+      const fieldValues: Record<string, unknown> = values;
+
       // Extract main reason field (look for common reason field names)
       const reasonFieldNames = ['reason', 'appeal_reason', 'why_appeal', 'explanation'];
-      const reasonField = appealFormSettings?.fields?.find(field => 
-        reasonFieldNames.includes(field.id.toLowerCase()) || 
+      const reasonField = appealFormSettings?.fields?.find(field =>
+        reasonFieldNames.includes(field.id.toLowerCase()) ||
         field.label.toLowerCase().includes('reason') ||
         field.label.toLowerCase().includes('why')
       );
-      const mainReason = reasonField ? values[reasonField.id] : '';
-      
+      const mainReason = reasonField ? fieldValues[reasonField.id] : '';
+
       // Extract evidence field
       const evidenceFieldNames = ['evidence', 'proof', 'screenshots', 'links'];
-      const evidenceField = appealFormSettings?.fields?.find(field => 
+      const evidenceField = appealFormSettings?.fields?.find(field =>
         evidenceFieldNames.includes(field.id.toLowerCase()) ||
         field.label.toLowerCase().includes('evidence') ||
         field.label.toLowerCase().includes('proof')
       );
-      const evidence = evidenceField ? values[evidenceField.id] : '';
+      const evidence = evidenceField ? fieldValues[evidenceField.id] : '';
       
       // All other form data goes to additionalData
       const additionalData = Object.fromEntries(
@@ -973,7 +971,7 @@ const AppealsPage = () => {
   };
 
   // Avatar component for messages (copied from player-ticket)
-  const MessageAvatar = ({ message, creatorUuid }: { message: AppealMessage, creatorUuid?: string }) => {
+  const MessageAvatar = ({ message }: { message: AppealMessage }) => {
     const [avatarError, setAvatarError] = useState(false);
     const [avatarLoading, setAvatarLoading] = useState(true);
 

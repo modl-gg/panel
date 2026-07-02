@@ -4,6 +4,7 @@ import SearchBar from '@/components/knowledgebase/SearchBar';
 import CategoryDisplay from '@/components/knowledgebase/CategoryDisplay';
 import PageContainer from '@/components/layout/PageContainer';
 import { useTranslation } from 'react-i18next';
+import { errorMessageOr } from '@/utils/errors';
 
 interface ArticleStub {
   id: string;
@@ -44,8 +45,8 @@ const KnowledgebasePage: React.FC = () => {
         const data = await response.json();
         setCategories(Array.isArray(data.categories) ? data.categories : []);
         setError(null);
-      } catch (e: any) {
-        setError(e.message || 'Failed to load categories.');
+      } catch (e) {
+        setError(errorMessageOr(e, 'Failed to load categories.'));
         console.error(e);
       } finally {
         setIsLoading(false);
@@ -73,7 +74,7 @@ const KnowledgebasePage: React.FC = () => {
         }
         const data = await response.json();
         setSearchResults(Array.isArray(data.articles) ? data.articles : []);
-      } catch (e: any) {
+      } catch (e) {
         console.error('Search failed:', e);
         setSearchResults([]); // Clear results on error
       }

@@ -44,7 +44,8 @@ export function setCookie(name: string, value: string, days: number) {
 
 function getCookie(name: string): string | null {
   const match = document.cookie.match(new RegExp('(^| )' + name + '=([^;]+)'));
-  return match ? decodeURIComponent(match[2]) : null;
+  const value = match?.[2];
+  return value !== undefined ? decodeURIComponent(value) : null;
 }
 
 // The legacy panel JSON serialized java.util.Date as epoch millis; consumers feed those
@@ -299,7 +300,7 @@ export function useAddTicketReply() {
 
       return protoSend('POST', url, AddReplyRequestSchema, request, AddTicketReplyResponseSchema);
     },
-    onSuccess: (data, variables) => {
+    onSuccess: (_data, variables) => {
       queryClient.invalidateQueries({ queryKey: ['/v1/public/tickets', variables.id] });
     }
   });
@@ -329,7 +330,7 @@ export function useSubmitTicketForm() {
 
       return fromJson(SubmitPublicTicketResponseSchema, await res.json(), READ_OPTS);
     },
-    onSuccess: (data, variables) => {
+    onSuccess: (_data, variables) => {
       queryClient.invalidateQueries({ queryKey: ['/v1/public/tickets', variables.id] });
     }
   });

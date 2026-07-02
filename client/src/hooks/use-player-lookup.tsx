@@ -32,7 +32,7 @@ function selectBestPlayerMatch(players: PlayerLookupResultItem[], identifier: st
     (player.username || '').trim().toLowerCase() === normalizedIdentifier
   );
 
-  return exactMatch || players[0];
+  return exactMatch || players[0] || null;
 }
 
 export function usePlayerLookup(identifier: string) {

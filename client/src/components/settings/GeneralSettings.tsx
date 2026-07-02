@@ -21,8 +21,6 @@ interface GeneralSettingsProps {
   // Server Configuration
   serverDisplayName: string;
   setServerDisplayName: (value: string) => void;
-  discordWebhookUrl: string;
-  setDiscordWebhookUrl: (value: string) => void;
 
   // Server Icons
   homepageIconUrl: string;
@@ -48,9 +46,7 @@ interface GeneralSettingsProps {
   maskApiKey: (key: string) => string;
 
   // Billing and Usage Data
-  usageData?: any;
   getBillingSummary: () => string;
-  getUsageSummary: () => string;
   getServerConfigSummary: () => string;
   getDomainSummary: () => string;
 
@@ -68,8 +64,6 @@ interface GeneralSettingsProps {
 const GeneralSettings = ({
   serverDisplayName,
   setServerDisplayName,
-  discordWebhookUrl,
-  setDiscordWebhookUrl,
   homepageIconUrl,
   panelIconUrl,
   uploadingHomepageIcon,
@@ -89,9 +83,7 @@ const GeneralSettings = ({
   revealApiKey,
   copyApiKey,
   maskApiKey,
-  usageData,
   getBillingSummary,
-  getUsageSummary,
   getServerConfigSummary,
   getDomainSummary,
   webhookSettings,

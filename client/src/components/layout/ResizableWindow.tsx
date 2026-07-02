@@ -1,7 +1,7 @@
-import { useRef, useEffect, useState, ReactNode } from 'react';
+import { useRef, useEffect, useState, type ReactNode } from 'react';
 import { X, ChevronUp, ChevronDown, User, RefreshCcw } from 'lucide-react';
 import { cn } from '@/lib/utils';
-import { WindowPosition } from '@modl-gg/shared-web/types';
+import { type WindowPosition } from '@modl-gg/shared-web/types';
 import { Button } from '@modl-gg/shared-web/components/ui/button';
 
 const lastPlayerWindowConfig: {
@@ -47,7 +47,6 @@ const ResizableWindow = ({
   const [isMaximized, setIsMaximized] = useState(false);
   const [isMinimized, setIsMinimized] = useState(false);
   const [dragStart, setDragStart] = useState({ x: 0, y: 0 });
-  const [windowOffset, setWindowOffset] = useState({ x: 0, y: 0 });
   const [windowBeforeMinimize, setWindowBeforeMinimize] = useState<{
     position: WindowPosition;
     size: { width: number; height: number };
@@ -185,29 +184,6 @@ const ResizableWindow = ({
     });
   };
 
-  const handleMaximize = () => {
-    if (isMinimized) {
-      // If minimized, restore to normal first
-      handleMinimize();
-    }
-    
-    if (isMaximized) {
-      // Restore
-      setIsMaximized(false);
-      setPosition({ x: windowOffset.x, y: windowOffset.y });
-      setSize(initialSize);
-    } else {
-      // Maximize
-      setIsMaximized(true);
-      setWindowOffset({ 
-        x: typeof position.x === 'number' ? position.x : 0, 
-        y: typeof position.y === 'number' ? position.y : 0 
-      });
-      setPosition({ x: 0, y: 0 });
-      setSize({ width: window.innerWidth, height: window.innerHeight });
-    }
-  };
-  
   const handleMinimize = () => {
     if (isMinimized) {
       // Restore from minimized state

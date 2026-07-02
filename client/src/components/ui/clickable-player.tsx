@@ -31,7 +31,7 @@ export function ClickablePlayer({
   
   const { data: playerData, error, refetch } = usePlayerLookup(identifier);
 
-  const handleClick = async (e: React.MouseEvent) => {
+  const handleClick = async (e: React.SyntheticEvent) => {
     e.preventDefault();
     e.stopPropagation();
     
@@ -111,7 +111,7 @@ export function ClickablePlayer({
       onKeyDown={(e) => {
         if (identifier && (e.key === 'Enter' || e.key === ' ')) {
           e.preventDefault();
-          handleClick(e as any);
+          handleClick(e);
         }
       }}
     >

@@ -1,12 +1,14 @@
 import React, { useState, useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
+import type { TFunction } from 'i18next';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@modl-gg/shared-web/components/ui/card';
 import { Button } from '@modl-gg/shared-web/components/ui/button';
 import { Badge } from '@modl-gg/shared-web/components/ui/badge';
 import { useToast } from '@modl-gg/shared-web/hooks/use-toast';
 import { loadStripe } from '@stripe/stripe-js';
 import { apiFetch } from '@/lib/api';
-import { useBillingStatus, useCancelSubscription, useResubscribe } from '@/hooks/use-data';
+import { errorMessageOr } from '@/utils/errors';
+import { useBillingStatus, useCancelSubscription, useResubscribe, type BillingStatus } from '@/hooks/use-data';
 import {
   formatSubscriptionStatusLabel,
   hasPremiumAccess,
@@ -110,8 +112,8 @@ const plans: Plan[] = [
 // state mid-edit and dropping input focus.
 
 interface PremiumBillingViewProps {
-  billingStatus: any;
-  t: (key: string, options?: any) => string;
+  billingStatus: BillingStatus | undefined;
+  t: TFunction;
   toast: ReturnType<typeof useToast>['toast'];
   queryClient: ReturnType<typeof useQueryClient>;
   isLoading: boolean;
@@ -136,11 +138,9 @@ const PremiumBillingView: React.FC<PremiumBillingViewProps> = ({
   resubscribeMutation,
   getSubscriptionStatusBadge,
 }) => {
-  const {
-    currentPeriodEnd,
-    maxStorageLimitBytes,
-    maxAiOverageRequests,
-  } = billingStatus || {};
+  const currentPeriodEnd = billingStatus?.currentPeriodEnd;
+  const maxStorageLimitBytes = billingStatus?.maxStorageLimitBytes;
+  const maxAiOverageRequests = billingStatus?.maxAiOverageRequests;
   const normalizedStatus: SubscriptionStatus = normalizeSubscriptionStatus(billingStatus?.subscriptionStatus);
   const [storageOverageGB, setStorageOverageGB] = useState<number>(
     maxStorageLimitBytes ? Math.max(0, Math.round(maxStorageLimitBytes / (1024 * 1024 * 1024)) - 200) : 0
@@ -177,10 +177,10 @@ const PremiumBillingView: React.FC<PremiumBillingViewProps> = ({
       });
       queryClient.invalidateQueries({ queryKey: ['/v1/panel/billing/status'] });
       queryClient.invalidateQueries({ queryKey: ['/v1/panel/billing/usage'] });
-    } catch (error: any) {
+    } catch (error) {
       toast({
         title: t('toast.error'),
-        description: error.message || t('settings.billing.overageLimitsFailed'),
+        description: errorMessageOr(error, t('settings.billing.overageLimitsFailed')),
         variant: 'destructive',
       });
     } finally {
@@ -357,7 +357,7 @@ const PremiumBillingView: React.FC<PremiumBillingViewProps> = ({
             </div>
             <Slider
               value={[storageOverageGB]}
-              onValueChange={([v]) => setStorageOverageGB(v)}
+              onValueChange={([v]) => { if (v !== undefined) setStorageOverageGB(v); }}
               min={0}
               max={2000}
               step={10}
@@ -382,7 +382,7 @@ const PremiumBillingView: React.FC<PremiumBillingViewProps> = ({
             </div>
             <Slider
               value={[aiOverageRequests]}
-              onValueChange={([v]) => setAiOverageRequests(v)}
+              onValueChange={([v]) => { if (v !== undefined) setAiOverageRequests(v); }}
               min={0}
               max={5000}
               step={100}
@@ -414,7 +414,7 @@ const PremiumBillingView: React.FC<PremiumBillingViewProps> = ({
 };
 
 interface FreePlanViewProps {
-  t: (key: string, options?: any) => string;
+  t: TFunction;
   isLoading: boolean;
   handleCreateCheckoutSession: () => void;
 }
@@ -493,7 +493,6 @@ const BillingSettings = () => {
   const { toast } = useToast();
   const { t } = useTranslation();
   const [isLoading, setIsLoading] = useState(false);
-  const [isSpinning, setIsSpinning] = useState(false);
   const queryClient = useQueryClient();
 
   const handleCreateCheckoutSession = async () => {
@@ -578,26 +577,6 @@ const BillingSettings = () => {
     }
   };
 
-  const handleRefreshBillingStatus = async () => {
-    setIsSpinning(true);
-    try {
-      await queryClient.invalidateQueries({ queryKey: ['/v1/panel/billing/status'] });
-
-      toast({
-        title: t('settings.billing.refreshed'),
-        description: t('settings.billing.refreshedDesc'),
-      });
-    } catch (error) {
-      toast({
-        variant: 'destructive',
-        title: t('toast.error'),
-        description: t('settings.billing.refreshFailed'),
-      });
-    } finally {
-      setIsSpinning(false);
-    }
-  };
-
   const handleCancelSubscription = async () => {
     try {
       const response = await cancelSubscriptionMutation.mutateAsync();
@@ -607,10 +586,10 @@ const BillingSettings = () => {
         description: response.message || t('settings.billing.subscriptionCancelledDesc'),
         variant: 'default',
       });
-    } catch (error: any) {
+    } catch (error) {
       toast({
         title: t('toast.error'),
-        description: error.message || t('settings.billing.cancelFailed'),
+        description: errorMessageOr(error, t('settings.billing.cancelFailed')),
         variant: 'destructive',
       });
     }
@@ -625,10 +604,10 @@ const BillingSettings = () => {
         description: response.message || t('settings.billing.subscriptionReactivatedDesc'),
         variant: 'default',
       });
-    } catch (error: any) {
+    } catch (error) {
       toast({
         title: t('toast.error'),
-        description: error.message || t('settings.billing.reactivateFailed'),
+        description: errorMessageOr(error, t('settings.billing.reactivateFailed')),
         variant: 'destructive',
       });
     }
@@ -653,12 +632,6 @@ const BillingSettings = () => {
     if (!billingStatus) return false;
     const normalizedStatus = normalizeSubscriptionStatus(billingStatus.subscriptionStatus);
     return ['ACTIVE', 'TRIALING', 'PAST_DUE', 'UNPAID', 'CANCELED'].includes(normalizedStatus);
-  };
-
-  const needsPaymentAttention = () => {
-    if (!billingStatus) return false;
-    const normalizedStatus = normalizeSubscriptionStatus(billingStatus.subscriptionStatus);
-    return normalizedStatus === 'PAST_DUE' || normalizedStatus === 'UNPAID';
   };
 
   const getSubscriptionAlert = () => {

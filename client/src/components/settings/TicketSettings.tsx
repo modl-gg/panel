@@ -7,7 +7,6 @@ import { Textarea } from '@modl-gg/shared-web/components/ui/textarea';
 import { Label } from '@modl-gg/shared-web/components/ui/label';
 import { Badge } from '@modl-gg/shared-web/components/ui/badge';
 import { Switch } from '@modl-gg/shared-web/components/ui/switch';
-import { Slider } from '@modl-gg/shared-web/components/ui/slider';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@modl-gg/shared-web/components/ui/select';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@modl-gg/shared-web/components/ui/collapsible';
 import { DndProvider, useDrag, useDrop } from 'react-dnd';
@@ -16,8 +15,8 @@ import { Card, CardContent, CardHeader, CardTitle } from '@modl-gg/shared-web/co
 import { Separator } from '@modl-gg/shared-web/components/ui/separator';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@modl-gg/shared-web/components/ui/dialog';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@modl-gg/shared-web/components/ui/alert-dialog';
-import { QuickResponseAction, QuickResponseCategory, QuickResponsesConfiguration, defaultQuickResponsesConfig } from '@/types/quickResponses';
-import { TicketFormField, TicketFormSection, TicketFormSettings, TicketFormsConfiguration } from '@/types/forms';
+import { type QuickResponseAction, type QuickResponseCategory, type QuickResponsesConfiguration, defaultQuickResponsesConfig } from '@/types/quickResponses';
+import { type TicketFormField, type TicketFormSection, type TicketFormsConfiguration } from '@/types/forms';
 import { useBillingStatus } from '@/hooks/use-data';
 import { useAuth } from '@/hooks/use-auth';
 import { hasPremiumAccess } from '@/lib/backend-enums';
@@ -34,7 +33,7 @@ interface Label {
 interface TicketSettingsProps {
   // Quick Responses State
   quickResponsesState: QuickResponsesConfiguration;
-  setQuickResponsesState: (value: QuickResponsesConfiguration) => void;
+  setQuickResponsesState: (value: QuickResponsesConfiguration | ((prev: QuickResponsesConfiguration) => QuickResponsesConfiguration)) => void;
 
   // Label Management State (new unified system)
   labels: Label[];
@@ -65,13 +64,6 @@ interface TicketSettingsProps {
   setAiModerationSettings: (value: any) => void;
   punishmentTypesState: any[];
 
-  // Optional callbacks that may be passed from parent
-  onEditSection?: (section: TicketFormSection) => void;
-  onDeleteSection?: (sectionId: string) => void;
-  onEditField?: (field: TicketFormField) => void;
-  onDeleteField?: (fieldId: string) => void;
-  onAddField?: () => void;
-  moveField?: (dragIndex: number, hoverIndex: number, sectionId: string) => void;
   moveFieldBetweenSections?: (fieldId: string, fromSectionId: string, toSectionId: string, targetIndex?: number) => void;
 
   // Optional prop to show only a specific section
@@ -354,12 +346,6 @@ const TicketSettings = ({
   setPlayerReportTags,
   appealTags,
   setAppealTags,
-  newBugTag,
-  setNewBugTag,
-  newPlayerTag,
-  setNewPlayerTag,
-  newAppealTag,
-  setNewAppealTag,
   ticketForms,
   setTicketForms,
   selectedTicketFormType,
@@ -367,13 +353,6 @@ const TicketSettings = ({
   aiModerationSettings,
   setAiModerationSettings,
   punishmentTypesState,
-  // Optional props with defaults
-  onEditSection,
-  onDeleteSection,
-  onEditField,
-  onDeleteField,
-  onAddField,
-  moveField,
   moveFieldBetweenSections,
   visibleSection
 }: TicketSettingsProps) => {
@@ -416,7 +395,7 @@ const TicketSettings = ({
   const [newTicketFormFieldRequired, setNewTicketFormFieldRequired] = useState(false);
   const [newTicketFormFieldOptions, setNewTicketFormFieldOptions] = useState<string[]>([]);
   const [newTicketFormFieldSectionId, setNewTicketFormFieldSectionId] = useState('');
-  const [newTicketFormFieldGoToSection, setNewTicketFormFieldGoToSection] = useState('');
+  const [, setNewTicketFormFieldGoToSection] = useState('');
   const [newTicketFormFieldOptionSectionMapping, setNewTicketFormFieldOptionSectionMapping] = useState<Record<string, string>>({});
   const [newTicketFormOption, setNewTicketFormOption] = useState('');
   const [isOptionNavigationExpanded, setIsOptionNavigationExpanded] = useState(false);
@@ -445,11 +424,6 @@ const TicketSettings = ({
   // Tag deletion confirmation states
   const [tagDeleteDialogOpen, setTagDeleteDialogOpen] = useState(false);
   const [tagToDelete, setTagToDelete] = useState<{type: 'bug' | 'player' | 'appeal'; index: number; name: string} | null>(null);
-
-  const handleTagDeleteClick = (type: 'bug' | 'player' | 'appeal', index: number, name: string) => {
-    setTagToDelete({ type, index, name });
-    setTagDeleteDialogOpen(true);
-  };
 
   const confirmTagDelete = () => {
     if (tagToDelete) {
@@ -575,17 +549,6 @@ const TicketSettings = ({
     }));
   };
 
-  const addNewTicketFormFieldOption = () => {
-    if (newTicketFormOption.trim()) {
-      setNewTicketFormFieldOptions(prev => [...prev, newTicketFormOption.trim()]);
-      setNewTicketFormOption('');
-    }
-  };
-
-  const removeTicketFormFieldOption = (index: number) => {
-    setNewTicketFormFieldOptions(prev => prev.filter((_, i) => i !== index));
-  };
-
   // Section Management Functions
   const addTicketFormSection = () => {
     if (!newTicketFormSectionTitle.trim()) return;
@@ -649,9 +612,12 @@ const TicketSettings = ({
     setTicketForms(prev => {
       const sections = [...(prev[selectedTicketFormType]?.sections || [])];
       const dragSection = sections[dragIndex];
+      if (!dragSection) {
+        return prev;
+      }
       sections.splice(dragIndex, 1);
       sections.splice(hoverIndex, 0, dragSection);
-      
+
       // Update order values
       const updatedSections = sections.map((section, index) => ({
         ...section,
@@ -679,9 +645,12 @@ const TicketSettings = ({
       
       // Reorder within section
       const dragField = sectionFields[dragIndex];
+      if (!dragField) {
+        return prev;
+      }
       sectionFields.splice(dragIndex, 1);
       sectionFields.splice(hoverIndex, 0, dragField);
-      
+
       // Update order values for fields in this section
       const updatedSectionFields = sectionFields.map((field, index) => ({
         ...field,
@@ -703,7 +672,7 @@ const TicketSettings = ({
   }, [selectedTicketFormType, setTicketForms]);
 
   // Create default implementations for optional callbacks
-  const defaultMoveFieldBetweenSections = React.useCallback((fieldId: string, fromSectionId: string, toSectionId: string, targetIndex?: number) => {
+  const defaultMoveFieldBetweenSections = React.useCallback((fieldId: string, _fromSectionId: string, toSectionId: string, targetIndex?: number) => {
     setTicketForms(prev => {
       const allFields = [...(prev[selectedTicketFormType]?.fields || [])];
       
@@ -755,9 +724,12 @@ const TicketSettings = ({
               actions: (() => {
                 const actions = [...category.actions];
                 const draggedAction = actions[dragIndex];
+                if (!draggedAction) {
+                  return category.actions;
+                }
                 actions.splice(dragIndex, 1);
                 actions.splice(hoverIndex, 0, draggedAction);
-                
+
                 // Update order values
                 return actions.map((action, index) => ({
                   ...action,
@@ -776,11 +748,6 @@ const TicketSettings = ({
       setQuickResponsesState(defaultQuickResponsesConfig);
     }
   }, [quickResponsesState, setQuickResponsesState]);
-
-  // AI Moderation computed values
-  const availablePunishmentTypes = punishmentTypesState?.filter(pt =>
-    pt.isCustomizable && pt.ordinal != null && (!aiModerationSettings.aiPunishmentConfigs?.[pt.ordinal] || !aiModerationSettings.aiPunishmentConfigs[pt.ordinal].enabled)
-  ) || [];
 
   // Clear form when dialog opens for new field (not editing)
   useEffect(() => {
@@ -1655,7 +1622,7 @@ const TicketSettings = ({
                           setIsAddTicketFormFieldDialogOpen(true);
                         }}
                         moveField={moveFieldInForm}
-                        moveFieldBetweenSections={moveFieldBetweenSections}
+                        moveFieldBetweenSections={moveFieldBetweenSections ?? defaultMoveFieldBetweenSections}
                       />
                     ))}
 
@@ -2156,7 +2123,7 @@ const TicketSettings = ({
                                 setIsAddTicketFormFieldDialogOpen(true);
                               }}
                               moveField={moveFieldInForm}
-                              moveFieldBetweenSections={moveFieldBetweenSections}
+                              moveFieldBetweenSections={moveFieldBetweenSections ?? defaultMoveFieldBetweenSections}
                             />
                           ))}
 
@@ -2388,14 +2355,13 @@ const TicketSettings = ({
 };
 
 // Quick Response Action Form Component
-const QuickResponseActionForm = ({ 
-  action, 
-  categoryId, 
-  quickResponsesState, 
-  setQuickResponsesState, 
-  punishmentTypes, 
-  onSave, 
-  onCancel 
+const QuickResponseActionForm = ({
+  action,
+  categoryId,
+  quickResponsesState,
+  setQuickResponsesState,
+  onSave,
+  onCancel
 }: {
   action: QuickResponseAction | null;
   categoryId: string | null;

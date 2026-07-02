@@ -1,5 +1,5 @@
-import { createContext, useContext, useReducer, useMemo, ReactNode, useCallback } from 'react';
-import { WindowPosition, WindowState } from '@modl-gg/shared-web/types';
+import { createContext, useContext, useReducer, useMemo, type ReactNode, useCallback } from 'react';
+import type { WindowPosition, WindowState } from '@modl-gg/shared-web/types';
 import { windowActions, initialWindowState } from '@/lib/window-manager';
 
 interface DashboardContextType {

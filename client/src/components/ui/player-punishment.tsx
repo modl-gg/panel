@@ -14,7 +14,7 @@ export interface PlayerPunishmentData {
   selectedOffenseLevel?: 'first' | 'medium' | 'habitual';
   duration?: {
     value: number;
-    unit: 'minutes' | 'hours' | 'days' | 'weeks' | 'months';
+    unit: 'seconds' | 'minutes' | 'hours' | 'days' | 'weeks' | 'months';
   };
   isPermanent?: boolean;
   reason?: string;
@@ -277,7 +277,7 @@ const PlayerPunishment: React.FC<PlayerPunishmentProps> = ({
       return;
     }
 
-    const newData = {
+    const newData: PlayerPunishmentData = {
       ...data,
       selectedPunishmentCategory: type.name,
       selectedSeverity: undefined,
