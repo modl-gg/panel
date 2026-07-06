@@ -8,7 +8,7 @@ const lastPlayerWindowConfig: {
   size: { width: number, height: number },
   position: { x: number, y: number }
 } = {
-  size: { width: 650, height: 550 },
+  size: { width: 780, height: 550 },
   position: { x: 100, y: 100 }
 };
 
@@ -18,6 +18,7 @@ interface ResizableWindowProps {
   isOpen: boolean;
   initialPosition?: WindowPosition;
   initialSize?: { width: number; height: number };
+  minSize?: { width: number; height: number };
   onClose: () => void;
   onRefresh?: () => void;
   isRefreshing?: boolean;
@@ -30,6 +31,7 @@ const ResizableWindow = ({
   isOpen,
   initialPosition = { x: '50%', y: '50%' },
   initialSize = { width: 600, height: 500 },
+  minSize = { width: 300, height: 200 },
   onClose,
   onRefresh,
   isRefreshing,
@@ -249,14 +251,14 @@ const ResizableWindow = ({
     const handleMouseMove = (moveEvent: MouseEvent) => {
       // Handle right side resizing
       if (direction.includes('right')) {
-        const newWidth = Math.max(300, startWidth + (moveEvent.clientX - startX));
+        const newWidth = Math.max(minSize.width, startWidth + (moveEvent.clientX - startX));
         setSize(prev => ({ ...prev, width: newWidth }));
       }
-      
+
       // Handle left side resizing
       if (direction.includes('left')) {
         const deltaX = startX - moveEvent.clientX;
-        if (startWidth + deltaX >= 300) {
+        if (startWidth + deltaX >= minSize.width) {
           setSize(prev => ({ ...prev, width: startWidth + deltaX }));
           setPosition(prev => ({ 
             ...prev, 
@@ -267,14 +269,14 @@ const ResizableWindow = ({
       
       // Handle bottom side resizing
       if (direction.includes('bottom')) {
-        const newHeight = Math.max(200, startHeight + (moveEvent.clientY - startY));
+        const newHeight = Math.max(minSize.height, startHeight + (moveEvent.clientY - startY));
         setSize(prev => ({ ...prev, height: newHeight }));
       }
-      
+
       // Handle top side resizing
       if (direction.includes('top')) {
         const deltaY = startY - moveEvent.clientY;
-        if (startHeight + deltaY >= 200) {
+        if (startHeight + deltaY >= minSize.height) {
           setSize(prev => ({ ...prev, height: startHeight + deltaY }));
           setPosition(prev => ({ 
             ...prev, 

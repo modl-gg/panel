@@ -1327,7 +1327,8 @@ const PlayerWindow = ({ playerId, isOpen, onClose, initialPosition }: PlayerWind
       }}
       isRefreshing={isFetching || isLoadingLinkedAccounts}
       initialPosition={initialPosition}
-      initialSize={{ width: 650, height: 550 }}
+      initialSize={{ width: 780, height: 550 }}
+      minSize={{ width: 760, height: 200 }}
     >
       <div className="space-y-4">
         <div className="pt-2">
