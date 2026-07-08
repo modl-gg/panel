@@ -21,6 +21,8 @@ import {
   UpdateTicketRequestSchema,
   AddReplyRequestSchema,
   AddNoteRequestSchema,
+  AddTagRequestSchema,
+  TicketTagsResponseSchema,
   AddTicketReplyResponseSchema,
   SubmitTicketFormRequestSchema,
   SubmitPublicTicketResponseSchema,
@@ -289,6 +291,41 @@ export function useUpdateTicket() {
       queryClient.invalidateQueries({ queryKey: ['/v1/panel/tickets'] });
       queryClient.invalidateQueries({ queryKey: ['/v1/panel/tickets/counts'] });
     }
+  });
+}
+
+function invalidateTicketTags(id: string) {
+  queryClient.invalidateQueries({ queryKey: ['/v1/panel/tickets', id] });
+  queryClient.invalidateQueries({ queryKey: ['/v1/panel/tickets'] });
+}
+
+export function useAddTicketTag() {
+  return useMutation({
+    mutationFn: async ({ id, tag }: { id: string, tag: string }) => {
+      const response = await protoSend(
+        'POST',
+        `/v1/panel/tickets/${id}/tags`,
+        AddTagRequestSchema,
+        create(AddTagRequestSchema, { tag }),
+        TicketTagsResponseSchema,
+      );
+      return response.tags;
+    },
+    onSuccess: (_tags, { id }) => invalidateTicketTags(id),
+  });
+}
+
+export function useRemoveTicketTag() {
+  return useMutation({
+    mutationFn: async ({ id, tag }: { id: string, tag: string }) => {
+      const response = await protoFetch(
+        TicketTagsResponseSchema,
+        `/v1/panel/tickets/${id}/tags/${encodeURIComponent(tag)}`,
+        { method: 'DELETE' },
+      );
+      return response.tags;
+    },
+    onSuccess: (_tags, { id }) => invalidateTicketTags(id),
   });
 }
 

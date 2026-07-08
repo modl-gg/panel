@@ -20,7 +20,7 @@ import { Checkbox } from '@modl-gg/shared-web/components/ui/checkbox';
 import { Skeleton } from '@modl-gg/shared-web/components/ui/skeleton';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@modl-gg/shared-web/components/ui/table';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@modl-gg/shared-web/components/ui/select';
-import { useTickets, useTicketStatusCounts, useBulkUpdateTickets, useLabels, useStaff, useUpdateTicket } from '@/hooks/use-data';
+import { useTickets, useTicketStatusCounts, useBulkUpdateTickets, useLabels, useStaff, useAddTicketTag, useRemoveTicketTag } from '@/hooks/use-data';
 import { useIsMobile } from '@modl-gg/shared-web/hooks/use-mobile';
 import PageContainer from '@/components/layout/PageContainer';
 import { FilterDropdown } from '@/components/tickets/FilterDropdown';
@@ -403,7 +403,8 @@ const Tickets = () => {
   const { data: labelsData } = useLabels();
   const { data: staffData } = useStaff();
   const bulkUpdateMutation = useBulkUpdateTickets();
-  const updateTicketMutation = useUpdateTicket();
+  const addTagMutation = useAddTicketTag();
+  const removeTagMutation = useRemoveTicketTag();
 
   const tickets: Ticket[] = (ticketsResponse?.tickets || []) as unknown as Ticket[];
   const pagination = ticketsResponse?.pagination || {
@@ -532,38 +533,20 @@ const Tickets = () => {
 
   // Inline label handlers
   const handleAddLabel = useCallback(async (ticketId: string, labelName: string) => {
-    const ticket = tickets.find(t => t.id === ticketId);
-    if (!ticket) return;
-
-    const currentTags = ticket.tags || [];
-    if (currentTags.includes(labelName)) return;
-
     try {
-      await updateTicketMutation.mutateAsync({
-        id: ticketId,
-        data: { tags: [...currentTags, labelName] }
-      });
-      refetch();
+      await addTagMutation.mutateAsync({ id: ticketId, tag: labelName });
     } catch (error) {
       toast({ title: t('toast.error'), description: t('tickets.addLabelFailed'), variant: 'destructive' });
     }
-  }, [tickets, updateTicketMutation, refetch, toast, t]);
+  }, [addTagMutation, toast, t]);
 
   const handleRemoveLabel = useCallback(async (ticketId: string, labelName: string) => {
-    const ticket = tickets.find(t => t.id === ticketId);
-    if (!ticket) return;
-
-    const currentTags = ticket.tags || [];
     try {
-      await updateTicketMutation.mutateAsync({
-        id: ticketId,
-        data: { tags: currentTags.filter(t => t !== labelName) }
-      });
-      refetch();
+      await removeTagMutation.mutateAsync({ id: ticketId, tag: labelName });
     } catch (error) {
       toast({ title: t('toast.error'), description: t('tickets.removeLabelFailed'), variant: 'destructive' });
     }
-  }, [tickets, updateTicketMutation, refetch, toast, t]);
+  }, [removeTagMutation, toast, t]);
 
   // Toggle type filter
   const toggleTypeFilter = (typeValue: string) => {
