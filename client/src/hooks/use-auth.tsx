@@ -31,6 +31,7 @@ type AuthContextType = {
   refreshUser: () => Promise<void>;
   login: (email: string, code: string) => Promise<boolean>;
   logout: () => void;
+  signOutAllSessions: () => void;
   requestEmailVerification: (email: string) => Promise<boolean>;
   checkPasskeyOptions: (email: string) => Promise<PasskeyLoginOptions>;
   loginWithPasskey: (challengeId: string, optionsJson: PasskeyRequestOptions) => Promise<boolean>;
@@ -68,7 +69,7 @@ function mapUserFromMeResponse(userData: MeResponse): User {
     username: userData.username,
     role: userData.role,
     minecraftUsername: userData.minecraftUsername,
-    language: userData.language || 'en',
+    language: userData.language || undefined,
     dateFormat: userData.dateFormat || 'MM/DD/YYYY',
   };
 }
@@ -116,9 +117,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     const dateFormat = user?.dateFormat || 'MM/DD/YYYY';
     setDateLocale(lang);
     setDateFormat(dateFormat);
-    if (lang !== i18n.language) {
-      i18n.changeLanguage(lang);
-    }
   }, [user?.language, user?.dateFormat]);
 
   const requestEmailVerification = useCallback(async (email: string): Promise<boolean> => {
@@ -361,11 +359,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   }, [fetchAuthenticatedUser, toast]);
 
-  const logout = useCallback(async () => {
+  const finalizeSignOut = useCallback(async (invalidate: () => Promise<Response>) => {
     let shouldRedirectToAuth = false;
 
     try {
-      const response = await authFetch('/v1/panel/auth/logout', { method: 'POST' });
+      const response = await invalidate();
       if (!response.ok) {
         const errorData = await response.json().catch(() => ({ message: "Failed to logout on server." }));
         toast({
@@ -419,12 +417,23 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   }, [fetchAuthenticatedUser, navigate, toast]);
 
+  const logout = useCallback(
+    () => finalizeSignOut(() => authFetch('/v1/panel/auth/logout', { method: 'POST' })),
+    [finalizeSignOut]
+  );
+
+  const signOutAllSessions = useCallback(
+    () => finalizeSignOut(() => authFetch('/v1/panel/auth/sessions', { method: 'DELETE' })),
+    [finalizeSignOut]
+  );
+
   const contextValue = useMemo<AuthContextType>(() => ({
     user,
     isLoading,
     refreshUser,
     login,
     logout,
+    signOutAllSessions,
     requestEmailVerification,
     checkPasskeyOptions,
     loginWithPasskey,
@@ -435,6 +444,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     refreshUser,
     login,
     logout,
+    signOutAllSessions,
     requestEmailVerification,
     checkPasskeyOptions,
     loginWithPasskey,

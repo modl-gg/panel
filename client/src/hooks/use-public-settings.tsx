@@ -9,6 +9,7 @@ export interface PublicSettingsData {
   ticketForms?: Record<string, unknown>;
   maintenanceMode?: boolean;
   maintenanceMessage?: string;
+  defaultLanguage?: string;
 }
 
 export function usePublicSettings() {

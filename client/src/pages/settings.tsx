@@ -22,6 +22,8 @@ import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, D
 import { queryClient } from '@/lib/queryClient';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@modl-gg/shared-web/components/ui/tooltip";
 import { useAuth } from '@/hooks/use-auth';
+import { usePublicSettings } from '@/hooks/use-public-settings';
+import { resolveLanguage } from '@/hooks/use-language-preference';
 import { PERMISSIONS, usePermissions, type SettingsTab } from '@/hooks/use-permissions';
 import StaffManagementPanel from '@/components/settings/StaffManagementPanel';
 import StaffRolesCard from '@/components/settings/StaffRolesCard';
@@ -139,6 +141,7 @@ type GeneralSettingsData = {
   discordWebhookUrl?: string;
   homepageIconUrl?: string;
   panelIconUrl?: string;
+  defaultLanguage?: string;
 };
 
 interface LegacyPunishmentFields {
@@ -503,6 +506,7 @@ const Settings = () => {
   const { t } = useTranslation();
   useSidebar();
   const { user } = useAuth();
+  const { data: publicSettings } = usePublicSettings();
   const { canAccessSettingsTab, hasPermission } = usePermissions();
   const canViewAdminSettings = hasPermission(PERMISSIONS.ADMIN_SETTINGS_VIEW);
   const canAccessGeneralSettings = canAccessSettingsTab('general');
@@ -619,6 +623,7 @@ const Settings = () => {
     discordWebhookUrl: '',
     homepageIconUrl: '',
     panelIconUrl: '',
+    defaultLanguage: 'en',
   });
   const quickResponsesSnapshotRef = useRef<QuickResponsesConfiguration>(defaultQuickResponsesConfig);
   const ticketFormsSnapshotRef = useRef<TicketFormsConfiguration>({
@@ -655,6 +660,9 @@ const Settings = () => {
   const profileUsernameRef = useRef('');
   const languageRef = useRef('en');
   const dateFormatRef = useRef('MM/DD/YYYY');
+  const usernameDirtyRef = useRef(false);
+  const languageDirtyRef = useRef(false);
+  const dateFormatDirtyRef = useRef(false);
 
   // Database connection state
   const [, setDbConnectionStatus] = useState(false);
@@ -777,6 +785,7 @@ const Settings = () => {
 
   // General tab states
   const [serverDisplayName, setServerDisplayName] = useState('');
+  const [defaultLanguage, setDefaultLanguage] = useState('en');
   const [discordWebhookUrl, setDiscordWebhookUrl] = useState('');
   const [, setHomepageIcon] = useState<File | null>(null);
   const [, setPanelIcon] = useState<File | null>(null);
@@ -923,14 +932,16 @@ const Settings = () => {
     if (user) {
       justLoadedFromServerRef.current = true; // Prevent auto-save during initial load
       setProfileUsernameState(user.username || '');
-      setLanguageState(user.language || 'en');
       setDateFormatState(user.dateFormat || 'MM/DD/YYYY');
 
       // Initialize the refs with the current values
       profileUsernameRef.current = user.username || '';
-      languageRef.current = user.language || 'en';
       dateFormatRef.current = user.dateFormat || 'MM/DD/YYYY';
-      
+
+      usernameDirtyRef.current = false;
+      languageDirtyRef.current = false;
+      dateFormatDirtyRef.current = false;
+
       // Mark profile data as loaded after a short delay
       setTimeout(() => {
         justLoadedFromServerRef.current = false;
@@ -940,6 +951,15 @@ const Settings = () => {
       }, 500);
     }
   }, [user]);
+
+  useEffect(() => {
+    if (!user || languageDirtyRef.current) {
+      return;
+    }
+    const resolved = resolveLanguage(user.language, publicSettings?.defaultLanguage);
+    setLanguageState(resolved);
+    languageRef.current = resolved;
+  }, [user, publicSettings?.defaultLanguage]);
 
   // Load API key on component mount (only for users with appropriate permissions)
   useEffect(() => {
@@ -1320,6 +1340,7 @@ const Settings = () => {
       ticketForms: JSON.parse(JSON.stringify(ticketForms)),
       quickResponses: JSON.parse(JSON.stringify(quickResponsesState)),
       serverDisplayName,
+      defaultLanguage,
       discordWebhookUrl,
       homepageIconUrl,
       panelIconUrl,
@@ -1331,6 +1352,7 @@ const Settings = () => {
       discordWebhookUrl,
       homepageIconUrl,
       panelIconUrl,
+      defaultLanguage,
     };
     quickResponsesSnapshotRef.current = JSON.parse(JSON.stringify(quickResponsesState));
     ticketFormsSnapshotRef.current = JSON.parse(JSON.stringify(ticketForms));
@@ -1343,6 +1365,7 @@ const Settings = () => {
     ticketForms,
     quickResponsesState,
     serverDisplayName,
+    defaultLanguage,
     discordWebhookUrl,
     homepageIconUrl,
     panelIconUrl
@@ -1442,12 +1465,14 @@ const Settings = () => {
     // Handle general settings (both direct properties and nested object)
     if (settingsObject.general) {
       if (settingsObject.general.serverDisplayName !== undefined) setServerDisplayName(settingsObject.general.serverDisplayName);
+      if (settingsObject.general.defaultLanguage !== undefined) setDefaultLanguage(settingsObject.general.defaultLanguage);
       if (settingsObject.general.discordWebhookUrl !== undefined) setDiscordWebhookUrl(settingsObject.general.discordWebhookUrl);
       if (settingsObject.general.homepageIconUrl !== undefined) setHomepageIconUrl(settingsObject.general.homepageIconUrl);
       if (settingsObject.general.panelIconUrl !== undefined) setPanelIconUrl(settingsObject.general.panelIconUrl);
     } else {
       // Fallback for direct properties (backward compatibility)
       if (settingsObject.serverDisplayName !== undefined) setServerDisplayName(settingsObject.serverDisplayName);
+      if (settingsObject.defaultLanguage !== undefined) setDefaultLanguage(settingsObject.defaultLanguage);
       if (settingsObject.discordWebhookUrl !== undefined) setDiscordWebhookUrl(settingsObject.discordWebhookUrl);
       if (settingsObject.homepageIconUrl !== undefined) setHomepageIconUrl(settingsObject.homepageIconUrl);
       if (settingsObject.panelIconUrl !== undefined) setPanelIconUrl(settingsObject.panelIconUrl);
@@ -1497,6 +1522,7 @@ const Settings = () => {
             discordWebhookUrl: latestEnvelope?.data?.discordWebhookUrl ?? '',
             homepageIconUrl: latestEnvelope?.data?.homepageIconUrl ?? '',
             panelIconUrl: latestEnvelope?.data?.panelIconUrl ?? '',
+            defaultLanguage: latestEnvelope?.data?.defaultLanguage || 'en',
           };
 
           const latestVersion = Number(latestEnvelope?._meta?.version ?? 0);
@@ -1506,6 +1532,7 @@ const Settings = () => {
             setDiscordWebhookUrl(latestGeneral.discordWebhookUrl);
             setHomepageIconUrl(latestGeneral.homepageIconUrl);
             setPanelIconUrl(latestGeneral.panelIconUrl);
+            setDefaultLanguage(latestGeneral.defaultLanguage);
           });
           generalSnapshotRef.current = latestGeneral;
         } catch (reloadError) {
@@ -1562,6 +1589,7 @@ const Settings = () => {
         const snapshot = generalSnapshotRef.current;
         const patch: { expectedVersion: number } & GeneralSettingsData = { expectedVersion: generalVersion };
         if (serverDisplayName !== snapshot.serverDisplayName) patch.serverDisplayName = serverDisplayName;
+        if (defaultLanguage !== snapshot.defaultLanguage) patch.defaultLanguage = defaultLanguage;
         if (discordWebhookUrl !== snapshot.discordWebhookUrl) patch.discordWebhookUrl = discordWebhookUrl;
         if (homepageIconUrl !== snapshot.homepageIconUrl) patch.homepageIconUrl = homepageIconUrl;
         if (panelIconUrl !== snapshot.panelIconUrl) patch.panelIconUrl = panelIconUrl;
@@ -1588,6 +1616,7 @@ const Settings = () => {
               discordWebhookUrl: canonicalGeneral.discordWebhookUrl ?? '',
               homepageIconUrl: canonicalGeneral.homepageIconUrl ?? '',
               panelIconUrl: canonicalGeneral.panelIconUrl ?? '',
+              defaultLanguage: canonicalGeneral.defaultLanguage || 'en',
             };
 
             applyServerSyncedState(() => {
@@ -1595,6 +1624,7 @@ const Settings = () => {
               setDiscordWebhookUrl(nextGeneralSnapshot.discordWebhookUrl);
               setHomepageIconUrl(nextGeneralSnapshot.homepageIconUrl);
               setPanelIconUrl(nextGeneralSnapshot.panelIconUrl);
+              setDefaultLanguage(nextGeneralSnapshot.defaultLanguage);
             });
 
             generalSnapshotRef.current = nextGeneralSnapshot;
@@ -1748,7 +1778,7 @@ const Settings = () => {
       setIsSaving(false);
     }
   }, [
-    serverDisplayName, discordWebhookUrl, homepageIconUrl, panelIconUrl,
+    serverDisplayName, defaultLanguage, discordWebhookUrl, homepageIconUrl, panelIconUrl,
     labels, ticketForms, quickResponsesState, statusThresholds,
     generalVersion, quickResponsesVersion, ticketFormsVersion, statusThresholdsVersion, ticketLabelsVersion, toast,
     applyServerSyncedState, toSettingsEnvelope
@@ -1894,7 +1924,7 @@ const Settings = () => {
     if (!justLoadedFromServerRef.current && initialLoadCompletedRef.current) {
       dirtyCategoriesRef.current.add('general');
     }
-  }, [serverDisplayName, discordWebhookUrl, homepageIconUrl, panelIconUrl]);
+  }, [serverDisplayName, defaultLanguage, discordWebhookUrl, homepageIconUrl, panelIconUrl]);
 
   useEffect(() => {
     if (!justLoadedFromServerRef.current && initialLoadCompletedRef.current) {
@@ -1947,7 +1977,7 @@ const Settings = () => {
         clearTimeout(saveTimeoutRef.current);
       }
     };  }, [
-    serverDisplayName, discordWebhookUrl, homepageIconUrl, panelIconUrl,
+    serverDisplayName, defaultLanguage, discordWebhookUrl, homepageIconUrl, panelIconUrl,
     labels, ticketForms, quickResponsesState, statusThresholds,
     // punishmentTypes, mongodbUri, has2FA, hasPasskey removed - they have their own save mechanisms
     isLoadingSettings, isFetchingSettings, saveSettings
@@ -2029,6 +2059,7 @@ const Settings = () => {
     profileUsernameRef.current = newValue;
 
     if (!justLoadedFromServerRef.current && initialLoadCompletedRef.current) {
+      usernameDirtyRef.current = true;
       triggerProfileAutoSave();
     }
   };
@@ -2042,6 +2073,7 @@ const Settings = () => {
       user.language = value;
     }
     if (!justLoadedFromServerRef.current && initialLoadCompletedRef.current) {
+      languageDirtyRef.current = true;
       triggerProfileAutoSave();
     }
   };
@@ -2054,6 +2086,7 @@ const Settings = () => {
       user.dateFormat = value;
     }
     if (!justLoadedFromServerRef.current && initialLoadCompletedRef.current) {
+      dateFormatDirtyRef.current = true;
       triggerProfileAutoSave();
     }
   };
@@ -2070,8 +2103,22 @@ const Settings = () => {
       const currentLanguage = languageRef.current;
       const currentDateFormat = dateFormatRef.current;
 
-      // Skip save if username is empty
-      if (!currentUsername.trim()) {
+      if (usernameDirtyRef.current && !currentUsername.trim()) {
+        return;
+      }
+
+      const body: { username?: string; language?: string; dateFormat?: string } = {};
+      if (usernameDirtyRef.current) {
+        body.username = currentUsername;
+      }
+      if (languageDirtyRef.current) {
+        body.language = currentLanguage;
+      }
+      if (dateFormatDirtyRef.current) {
+        body.dateFormat = currentDateFormat;
+      }
+
+      if (Object.keys(body).length === 0) {
         return;
       }
 
@@ -2082,16 +2129,15 @@ const Settings = () => {
           headers: {
             'Content-Type': 'application/json',
           },
-          body: JSON.stringify({
-            username: currentUsername,
-            language: currentLanguage,
-            dateFormat: currentDateFormat
-          })
+          body: JSON.stringify(body)
         });
 
         if (response.ok) {
           const data = await response.json();
           setLastSaved(new Date());
+          usernameDirtyRef.current = false;
+          languageDirtyRef.current = false;
+          dateFormatDirtyRef.current = false;
 
           if (user && data.username) {
             user.username = data.username;
@@ -2904,6 +2950,8 @@ const Settings = () => {
                 <GeneralSettings
                 serverDisplayName={serverDisplayName}
                 setServerDisplayName={setServerDisplayName}
+                defaultLanguage={defaultLanguage}
+                setDefaultLanguage={setDefaultLanguage}
                 homepageIconUrl={homepageIconUrl}
                 panelIconUrl={panelIconUrl}
                 uploadingHomepageIcon={uploadingHomepageIcon}

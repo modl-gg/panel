@@ -645,15 +645,16 @@ const StaffDetailModal = ({ staff, isOpen, onClose, initialPeriod = '30d' }: {
         body: JSON.stringify({ reason: reason.trim() })
       });
 
-      const responseData = await response.json();
-
       if (!response.ok) {
-        throw new Error(responseData.error || `HTTP ${response.status}: ${response.statusText}`);
+        const errorData = await response.json().catch(() => null);
+        throw new Error(errorData?.error || `HTTP ${response.status}: ${response.statusText}`);
       }
+
+      const responseData = await response.json().catch(() => null);
 
       toast({
         title: t('audit.punishmentRolledBack'),
-        description: t('audit.punishmentRolledBackSuccess', { message: responseData.message })
+        description: t('audit.punishmentRolledBackSuccess', { message: responseData?.message })
       });
       setRollbackDialog({ open: false, punishmentId: null, summary: '', reason: '', submitting: false });
       refetch();
@@ -966,8 +967,8 @@ const StaffDetailModal = ({ staff, isOpen, onClose, initialPeriod = '30d' }: {
                                 {statusInfo.isActive && (
                                   <Button
                                     variant="outline"
-                                    size="sm"
-                                    className="text-xs h-5 px-1"
+                                    size="icon"
+                                    className="h-7 w-7"
                                     onClick={() => openRollbackDialog(
                                       punishment.id,
                                       `${punishment.type || t('audit.unknown')} — ${punishment.playerName || t('audit.unknown')}`
@@ -1072,17 +1073,17 @@ const StaffDetailModal = ({ staff, isOpen, onClose, initialPeriod = '30d' }: {
             <AlertDialogDescription>{rollbackDialog.summary}</AlertDialogDescription>
           </AlertDialogHeader>
           <div className="space-y-2">
-            <label className="text-sm font-medium">{t('audit.reason') || 'Reason'}</label>
+            <label className="text-sm font-medium">{t('common.reason')}</label>
             <Textarea
               value={rollbackDialog.reason}
               onChange={(e) => setRollbackDialog(prev => ({ ...prev, reason: e.target.value }))}
-              placeholder={t('audit.reason') || 'Reason'}
+              placeholder={t('common.reason')}
               className="min-h-[80px]"
               maxLength={500}
             />
           </div>
           <AlertDialogFooter>
-            <AlertDialogCancel disabled={rollbackDialog.submitting}>{t('audit.cancel') || 'Cancel'}</AlertDialogCancel>
+            <AlertDialogCancel disabled={rollbackDialog.submitting}>{t('common.cancel')}</AlertDialogCancel>
             <AlertDialogAction
               onClick={(e) => {
                 e.preventDefault();
@@ -1091,7 +1092,7 @@ const StaffDetailModal = ({ staff, isOpen, onClose, initialPeriod = '30d' }: {
               disabled={!rollbackDialog.reason.trim() || rollbackDialog.submitting}
               className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
             >
-              {rollbackDialog.submitting ? <RefreshCw className="h-4 w-4 animate-spin" /> : t('audit.confirm') || 'Confirm'}
+              {rollbackDialog.submitting ? <RefreshCw className="h-4 w-4 animate-spin" /> : t('common.confirm')}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

@@ -123,6 +123,8 @@ export interface TicketDetails {
   status: 'Open' | 'Closed'; // Simplified to just Open/Closed
   reportedBy: string;
   reportedById?: string;
+  creatorEmail?: string;
+  isWebUser?: boolean;
   date: string;
   category: TicketCategory;
   relatedPlayer?: string;
@@ -1084,6 +1086,8 @@ const TicketDetail = () => {
         status: (ticketData.locked === true || isClosedTicketStatus(ticketData.status)) ? 'Closed' : 'Open',
         reportedBy: ticketData.reportedBy || 'Unknown',
         reportedById: ticketData.creatorUuid || undefined,
+        creatorEmail: ticketData.creatorEmail,
+        isWebUser: !ticketData.creatorUuid || Boolean(ticketData.creatorEmail),
         date: validDate,
         category,
         relatedPlayer: ticketData.reportedPlayer,
@@ -1706,16 +1710,14 @@ const TicketDetail = () => {
                   <div className="flex items-center">
                     <span className="text-muted-foreground">Opened by:</span>
                     <span className="ml-1 inline-flex items-center gap-1.5">
-                      {ticketData?.creatorUuid && (
+                      {ticketDetails.reportedById && (
                         <img
-                          src={getAvatarUrl(ticketData.creatorUuid, 16, true)}
+                          src={getAvatarUrl(ticketDetails.reportedById, 16, true)}
                           alt=""
                           className="h-4 w-4 rounded-sm"
                         />
                       )}
-                      {ticketDetails.reportedBy?.includes('(Web User)') ? (
-                        <span className="text-sm">{ticketDetails.reportedBy}</span>
-                      ) : (
+                      {ticketDetails.reportedById ? (
                         <ClickablePlayer
                           playerText={ticketDetails.reportedBy}
                           uuid={ticketDetails.reportedById}
@@ -1724,9 +1726,20 @@ const TicketDetail = () => {
                         >
                           {ticketDetails.reportedBy}
                         </ClickablePlayer>
+                      ) : (
+                        <span className="text-sm">{ticketDetails.reportedBy}</span>
+                      )}
+                      {ticketDetails.isWebUser && (
+                        <span className="text-xs text-muted-foreground">web user</span>
                       )}
                     </span>
                   </div>
+                  {!ticketDetails.reportedById && ticketDetails.creatorEmail && (
+                    <div className="flex items-center">
+                      <span className="text-muted-foreground">Email:</span>
+                      <span className="ml-1 text-sm">{ticketDetails.creatorEmail}</span>
+                    </div>
+                  )}
                   <div>
                     <span className="text-muted-foreground">Date:</span>
                     <span className="ml-1">{formatDate(ticketDetails.date)}</span>

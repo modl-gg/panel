@@ -137,9 +137,6 @@ const InviteStaffModal: React.FC<InviteStaffModalProps> = ({ isOpen, onClose, on
                     <Input placeholder="name@example.com" {...field} />
                   </FormControl>
                   <FormMessage />
-                  <p className="text-xs text-muted-foreground">
-                    {t('settings.staff.iCloudNotice')}
-                  </p>
                 </FormItem>
               )}
             />

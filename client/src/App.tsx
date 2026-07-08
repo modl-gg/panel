@@ -12,6 +12,7 @@ import { useIsMobile } from '@modl-gg/shared-web/hooks/use-mobile';
 import { useDocumentTitle } from "@/hooks/use-document-title";
 import { useProvisioningStatusCheck } from "@/hooks/use-provisioning-status";
 import { usePublicSettings } from "@/hooks/use-public-settings";
+import { useLanguagePreference } from "@/hooks/use-language-preference";
 import { RealtimeProvider } from "@/hooks/use-realtime";
 import { PlayerWindowProvider } from "@/contexts/PlayerWindowContext";
 import { WelcomeModal } from "@/components/layout/WelcomeModal";
@@ -211,6 +212,7 @@ function AppContent() {
 
   useDocumentTitle();
   useProvisioningStatusCheck();
+  useLanguagePreference();
 
   useEffect(() => {
     const hasSeenModal = localStorage.getItem("hasSeenWelcomeModal");

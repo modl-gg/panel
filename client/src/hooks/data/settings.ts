@@ -78,7 +78,8 @@ export function useSettings() {
             general: {
               serverDisplayName: publicData.serverDisplayName,
               panelIconUrl: publicData.panelIconUrl,
-              homepageIconUrl: publicData.homepageIconUrl
+              homepageIconUrl: publicData.homepageIconUrl,
+              defaultLanguage: publicData.defaultLanguage
             },
             ticketForms: publicData.ticketForms || {}
           }

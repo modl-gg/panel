@@ -2271,7 +2271,7 @@ const PlayerDetailPage = () => {
           </TabsContent>
 
           <TabsContent value="names" className="space-y-2 mx-1 mt-3">
-            <h4 className="font-medium">Previous Names</h4>
+            <h4 className="font-medium">{t('player.previousNames')}</h4>
             <div className="bg-muted/30 p-3 rounded-lg">
               <ul className="space-y-2">
                 {playerInfo.previousNames && playerInfo.previousNames.length > 0 ? (
@@ -2282,7 +2282,7 @@ const PlayerDetailPage = () => {
                     </li>
                   ))
                 ) : (
-                  <li className="text-sm text-muted-foreground">No previous names found.</li>
+                  <li className="text-sm text-muted-foreground">{t('player.noPreviousNames')}</li>
                 )}
               </ul>
             </div>

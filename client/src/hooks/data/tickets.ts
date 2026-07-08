@@ -64,11 +64,17 @@ function mapChatMessage(message: TicketChatMessage) {
   return { content: message.content, sender: message.sender, timestamp: millisToNumber(message.timestamp) };
 }
 
+function readCreatorEmail(data: JsonObject | undefined): string | undefined {
+  const raw = data?.creatorEmail ?? data?.contactEmail;
+  return typeof raw === 'string' && raw.trim().length > 0 ? raw.trim() : undefined;
+}
+
 function mapTicketResponse(ticket: TicketResponse) {
   return {
     ...ticket,
     _id: ticket.id,
     date: millisToNumber(ticket.date),
+    creatorEmail: readCreatorEmail(ticket.data),
     messages: ticket.messages.map(mapReply),
     notes: ticket.notes.map(mapNote),
     chatMessages: ticket.chatMessages.map(mapChatMessage),

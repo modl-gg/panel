@@ -1,10 +1,13 @@
 import React, { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { CreditCard, SettingsIcon, Globe, Key, Upload, Eye, EyeOff, Check, Copy, RefreshCw, Trash2, Plus, ChevronDown, ChevronRight, HardDrive, MessageCircle, Database } from 'lucide-react';
+import { CreditCard, SettingsIcon, Globe, Key, Upload, Eye, EyeOff, Check, Copy, RefreshCw, Trash2, Plus, ChevronDown, ChevronRight, HardDrive, MessageCircle, Database, Info } from 'lucide-react';
 import { Button } from '@modl-gg/shared-web/components/ui/button';
 import { Input } from '@modl-gg/shared-web/components/ui/input';
 import { Label } from '@modl-gg/shared-web/components/ui/label';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@modl-gg/shared-web/components/ui/select';
+import { Tooltip, TooltipContent, TooltipTrigger } from '@modl-gg/shared-web/components/ui/tooltip';
 import { Separator } from '@modl-gg/shared-web/components/ui/separator';
+import { SUPPORTED_LANGUAGES } from '@/lib/languages';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@modl-gg/shared-web/components/ui/collapsible';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@modl-gg/shared-web/components/ui/alert-dialog';
 import { useAuth } from '@/hooks/use-auth';
@@ -22,6 +25,8 @@ interface GeneralSettingsProps {
   // Server Configuration
   serverDisplayName: string;
   setServerDisplayName: (value: string) => void;
+  defaultLanguage: string;
+  setDefaultLanguage: (value: string) => void;
 
   // Server Icons
   homepageIconUrl: string;
@@ -65,6 +70,8 @@ interface GeneralSettingsProps {
 const GeneralSettings = ({
   serverDisplayName,
   setServerDisplayName,
+  defaultLanguage,
+  setDefaultLanguage,
   homepageIconUrl,
   panelIconUrl,
   uploadingHomepageIcon,
@@ -140,6 +147,34 @@ const GeneralSettings = ({
           value={serverDisplayName}
           onChange={(e) => setServerDisplayName(e.target.value)}
         />
+      </div>
+
+      <Separator />
+
+      <div className="space-y-2">
+        <div className="flex items-center gap-1.5">
+          <Label htmlFor="default-language">{t('settings.general.defaultLanguage')}</Label>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <button type="button" className="text-muted-foreground hover:text-foreground" aria-label={t('settings.general.defaultLanguage')}>
+                <Info className="h-3.5 w-3.5" />
+              </button>
+            </TooltipTrigger>
+            <TooltipContent className="max-w-xs">
+              {t('settings.general.defaultLanguageTooltip')}
+            </TooltipContent>
+          </Tooltip>
+        </div>
+        <Select value={defaultLanguage} onValueChange={setDefaultLanguage}>
+          <SelectTrigger id="default-language" className="max-w-xs">
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            {SUPPORTED_LANGUAGES.map((language) => (
+              <SelectItem key={language.code} value={language.code}>{language.nativeName}</SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
       </div>
 
       <Separator />
