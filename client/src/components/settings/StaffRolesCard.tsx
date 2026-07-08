@@ -358,6 +358,7 @@ export default function StaffRolesCard() {
 
   const roles = rolesData?.roles || [];
   const permissions = permissionsData?.permissions || [];
+  const permissionCatalog = permissions.length > 0 ? permissions : DEFAULT_PERMISSIONS;
   
   // If no roles are loaded from the database, use default roles as fallback
   const effectiveRoles = roles.length > 0 ? roles : DEFAULT_ROLES;
@@ -656,9 +657,8 @@ export default function StaffRolesCard() {
 
   const togglePermission = (permissionId: string) => {
     if (!canGrantPermission(permissionId)) return;
-    const allPerms = permissions.length > 0 ? permissions : DEFAULT_PERMISSIONS;
     const isCurrentlyEnabled = roleFormData.permissions.includes(permissionId);
-    const childPermissions = allPerms.filter((p: Permission) => p.parentId === permissionId).map((p: Permission) => p.id);
+    const childPermissions = permissionCatalog.filter((p: Permission) => p.parentId === permissionId).map((p: Permission) => p.id);
 
     if (isCurrentlyEnabled) {
       // Toggling OFF: remove only the parent, children become individually manageable
@@ -676,7 +676,7 @@ export default function StaffRolesCard() {
   };
 
   const getPermissionsByCategory = (category: string) => {
-    return permissions.filter((p: Permission) => p.category === category);
+    return permissionCatalog.filter((p: Permission) => p.category === category);
   };
 
   const hasPermission = (role: StaffRole, permissionId: string) => {

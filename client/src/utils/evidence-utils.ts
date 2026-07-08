@@ -78,3 +78,51 @@ export function getEvidenceShortName(evidenceItem: EvidenceLike, maxLength: numb
   return fileName.substring(0, maxLength) + '...';
 }
 
+export type EvidenceMediaType = 'image' | 'video' | 'link' | 'text';
+
+const IMAGE_EXTENSIONS = ['.jpg', '.jpeg', '.png', '.gif', '.webp'];
+const VIDEO_EXTENSIONS = ['.mp4', '.webm', '.ogg', '.mov'];
+
+export function getEvidenceMediaType(value: string): EvidenceMediaType {
+  const [path = ''] = value.toLowerCase().split(/[?#]/);
+
+  if (IMAGE_EXTENSIONS.some((ext) => path.endsWith(ext))) return 'image';
+  if (VIDEO_EXTENSIONS.some((ext) => path.endsWith(ext))) return 'video';
+  if (/^https?:\/\//i.test(value) || value.startsWith('/')) return 'link';
+
+  return 'text';
+}
+
+export function normalizeCdnHost(rawDomain: string | null | undefined): string | null {
+  const raw = rawDomain?.trim();
+  if (!raw) return null;
+
+  try {
+    return new URL(raw.startsWith('http') ? raw : `https://${raw}`).hostname.toLowerCase();
+  } catch {
+    const host = (raw.replace(/^https?:\/\//i, '').split('/')[0] ?? '').toLowerCase();
+    return host || null;
+  }
+}
+
+export function isTrustedCdnUrl(url: string | null | undefined, cdnHost: string | null): boolean {
+  if (!url || !cdnHost) return false;
+
+  try {
+    return new URL(url).hostname.toLowerCase() === cdnHost;
+  } catch {
+    return false;
+  }
+}
+
+export function getTrustedEvidenceMediaType(value: string, cdnHost: string | null): EvidenceMediaType {
+  const mediaType = getEvidenceMediaType(value);
+  if (mediaType !== 'image' && mediaType !== 'video') {
+    return mediaType;
+  }
+  if (isTrustedCdnUrl(value, cdnHost)) {
+    return mediaType;
+  }
+  return /^https?:\/\//i.test(value) || value.startsWith('/') ? 'link' : 'text';
+}
+

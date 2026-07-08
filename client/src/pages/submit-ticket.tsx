@@ -64,6 +64,14 @@ interface FormSection {
   hideByDefault?: boolean;
 }
 
+interface TicketFormConfig {
+  fields?: FormField[];
+  sections?: FormSection[];
+  requireEmail?: boolean;
+  allowEmailNotifications?: boolean;
+  requireEmailAuth?: boolean;
+}
+
 const SubmitTicketPage = () => {
   const [, setLocation] = useLocation();
   const { type: urlType } = useParams<{ type?: string }>();
@@ -121,10 +129,10 @@ const SubmitTicketPage = () => {
     }
 
     // Get form configuration from settings
-    let formConfig = null;
+    let formConfig: TicketFormConfig | null = null;
     try {
       if (settingsData?.settings) {
-        const ticketForms = settingsData.settings.ticketForms;
+        const ticketForms = settingsData.settings.ticketForms as Record<string, TicketFormConfig> | undefined;
         const ticketTypeLower = effectiveType.toLowerCase();
 
         if (ticketForms && ticketForms[ticketTypeLower]) {
@@ -368,10 +376,10 @@ const SubmitTicketPage = () => {
 
       // Redirect to the ticket page
       setLocation(`/ticket/${data.ticketId}`);
-    } catch (error: any) {
+    } catch (error) {
       toast({
         title: 'Error',
-        description: error.message || 'Failed to create ticket',
+        description: error instanceof Error && error.message ? error.message : 'Failed to create ticket',
         variant: 'destructive',
       });
     } finally {
@@ -393,10 +401,10 @@ const SubmitTicketPage = () => {
     if (!effectiveType) return null;
 
     // Get form configuration from settings
-    let formConfig = null;
+    let formConfig: TicketFormConfig | null = null;
     try {
       if (settingsData?.settings) {
-        const ticketForms = settingsData.settings.ticketForms;
+        const ticketForms = settingsData.settings.ticketForms as Record<string, TicketFormConfig> | undefined;
         const ticketTypeLower = effectiveType.toLowerCase();
 
         if (ticketForms && ticketForms[ticketTypeLower]) {

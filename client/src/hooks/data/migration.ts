@@ -9,13 +9,7 @@ import {
 import { protoFetch, protoSend, ProtoHttpError } from '@/lib/proto-fetch';
 import { tsToMillis, toNum } from '@/lib/proto-ui';
 
-// The migration status endpoint historically returned plain JSON consumed loosely by
-// MigrationTool.tsx (epoch-millis timestamps, numeric cooldown). Decode the proto message
-// for wire correctness, then remap back to that legacy shape so the component needs no edits:
-// int64 cooldown.remainingTime -> number, Timestamp startedAt/completedAt -> epoch millis.
-// Return type stays `any` to match the previous res.json() contract MigrationTool.tsx relies on
-// (it reads loose/optional fields the backend has never sent, e.g. history/lastMigrationTimestamp).
-function remapMigrationStatus(res: MigrationStatusResponse): any {
+function remapMigrationStatus(res: MigrationStatusResponse) {
   const current = res.currentMigration;
   const cooldown = res.cooldown;
   return {

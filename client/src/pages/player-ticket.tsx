@@ -22,7 +22,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Popover, PopoverContent, PopoverTrigger } from '@modl-gg/shared-web/components/ui/popover';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@modl-gg/shared-web/components/ui/tooltip';
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '@modl-gg/shared-web/components/ui/card';
-import { useTicket, useAddTicketReply, useSubmitTicketForm, useSettings, useRequestTicketVerification, useVerifyTicketCode, setCookie } from '@/hooks/use-data';
+import { useTicket, useAddTicketReply, useSubmitTicketForm, useSettings, useRequestTicketVerification, useVerifyTicketCode, setCookie, publicAuthTokenKey } from '@/hooks/use-data';
 import TicketAttachments from '@/components/TicketAttachments';
 import MediaUpload from '@/components/MediaUpload';
 import { getAvatarUrl } from '@/lib/api';
@@ -37,6 +37,11 @@ import { useMediaUpload } from '@/hooks/use-media-upload';
 import { isValidEmail, normalizeEmail } from '@/utils/email-validation';
 import { normalizeTicketStatus } from '@/lib/ticket-enums';
 
+interface MessageAttachment {
+  url?: string;
+  fileName?: string;
+}
+
 export interface TicketMessage {
   id: string;
   sender: string;
@@ -44,7 +49,7 @@ export interface TicketMessage {
   content: string;
   timestamp: string;
   staff?: boolean;
-  attachments?: string[];
+  attachments?: Array<string | MessageAttachment>;
   closedAs?: string;
   avatar?: string; // Staff avatar URL from backend
   creatorIdentifier?: string; // Browser identifier for creator verification
@@ -95,6 +100,14 @@ interface TicketAttachment {
   fileSize: number;
   uploadedAt: string;
   uploadedBy: string;
+}
+
+interface TicketFormConfig {
+  fields?: FormField[];
+  sections?: FormSection[];
+  requireEmail?: boolean;
+  allowEmailNotifications?: boolean;
+  requireEmailAuth?: boolean;
 }
 
 // Format date to MM/dd/yy HH:mm in browser's timezone
@@ -229,7 +242,7 @@ const PlayerTicket = () => {
 
   // Update ticket details when data is fetched
   useEffect(() => {
-    if (ticketData) {
+    if (ticketData && !('requiresVerification' in ticketData)) {
       // Ticket data received
       // Map API data to our TicketDetails interface
       const normalizedStatus = normalizeTicketStatus(ticketData.status);
@@ -253,15 +266,15 @@ const PlayerTicket = () => {
       }
 
       // Process messages and ensure valid timestamps
-      const processedMessages = (ticketData.replies || ticketData.messages || []).map((message: any) => {
-        const processed = {
-          id: message.id || message._id || `msg-${Date.now()}-${Math.random().toString(36).substring(2, 7)}`,
-          sender: message.sender || message.name || 'Unknown',
-          senderType: message.senderType || (message.type === 'staff' ? 'staff' : message.type === 'system' ? 'system' : 'user'),
+      const processedMessages = (ticketData.replies || ticketData.messages || []).map((message) => {
+        const processed: TicketMessage = {
+          id: message.id || `msg-${Date.now()}-${Math.random().toString(36).substring(2, 7)}`,
+          sender: message.name || 'Unknown',
+          senderType: message.type === 'staff' ? 'staff' : message.type === 'system' ? 'system' : 'user',
           content: message.content || '',
-          timestamp: message.timestamp || message.created || new Date().toISOString(),
+          timestamp: message.created || new Date().toISOString(),
           staff: message.staff,
-          attachments: message.attachments,
+          attachments: message.attachments as unknown as MessageAttachment[],
           closedAs: (message.action === "Comment" || message.action === "Reopen") ? undefined : message.action,
           creatorIdentifier: message.creatorIdentifier, // Include creator identifier for verification
           avatar: message.avatar, // Preserve staff avatar URL
@@ -277,7 +290,7 @@ const PlayerTicket = () => {
         reportedBy: ticketData.creatorName || ticketData.reportedBy || 'Unknown',
         date: validDate,
         category: ticketData.category || 'Support',
-        type: (ticketData.type || 'bug').toLowerCase(),
+        type: (ticketData.type || 'bug').toLowerCase() as TicketDetails['type'],
         messages: processedMessages,
         locked: ticketData.locked === true
       });
@@ -396,7 +409,7 @@ const PlayerTicket = () => {
   }
 
   // Email verification gate
-  if (ticketData?.requiresVerification) {
+  if ('requiresVerification' in ticketData) {
     const handleRequestCode = async () => {
       try {
         const result = await requestVerificationMutation.mutateAsync(id || '');
@@ -406,10 +419,10 @@ const PlayerTicket = () => {
           title: t('playerTicket.codeSent'),
           description: t('playerTicket.codeSentDesc'),
         });
-      } catch (error: any) {
+      } catch (error) {
         toast({
           title: t('playerTicket.codeFailed'),
-          description: error.message || t('playerTicket.tryAgain'),
+          description: (error instanceof Error ? error.message : undefined) || t('playerTicket.tryAgain'),
           variant: "destructive"
         });
       }
@@ -424,7 +437,7 @@ const PlayerTicket = () => {
           code: verificationCode.trim()
         });
         if (result.token) {
-          setCookie(`ticket_auth_${id}`, result.token, 7);
+          setCookie(publicAuthTokenKey('ticket', id || ''), result.token, 7);
           // Refetch the ticket with the new token
           queryClient.invalidateQueries({ queryKey: ['/v1/public/tickets', id] });
           toast({
@@ -432,10 +445,10 @@ const PlayerTicket = () => {
             description: t('playerTicket.verifiedDesc'),
           });
         }
-      } catch (error: any) {
+      } catch (error) {
         toast({
           title: t('playerTicket.verificationFailed'),
-          description: error.message || t('playerTicket.invalidCode'),
+          description: (error instanceof Error ? error.message : undefined) || t('playerTicket.invalidCode'),
           variant: "destructive"
         });
       } finally {
@@ -451,7 +464,7 @@ const PlayerTicket = () => {
             <CardDescription>
               {t('playerTicket.verificationRequiredDesc')}
               {ticketData.emailHint && (
-                <> {t('playerTicket.codeSentTo')} <strong>{ticketData.emailHint}</strong>.</>
+                <> {t('playerTicket.codeSentTo', { email: ticketData.emailHint })}</>
               )}
             </CardDescription>
           </CardHeader>
@@ -516,22 +529,17 @@ const PlayerTicket = () => {
     }
     
     // Get form configuration from settings - REQUIRED
-    let formConfig = null;
+    let formConfig: TicketFormConfig | null = null;
 
     try {
       if (settingsData?.settings) {
-        const ticketForms = settingsData.settings.ticketForms;
+        const ticketForms = settingsData.settings.ticketForms as Record<string, TicketFormConfig>;
         const ticketTypeLower = ticketDetails.type.toLowerCase();
 
-        // Try the ticket type first (case-insensitive), then try 'application' for 'staff' tickets (legacy support)
-        if (ticketForms && ticketForms[ticketTypeLower]) {
-          formConfig = ticketForms[ticketTypeLower];
-        } else if (ticketForms && ticketForms[ticketDetails.type]) {
-          // Fallback to exact match for backwards compatibility
-          formConfig = ticketForms[ticketDetails.type];
-        } else if ((ticketTypeLower === 'staff' || ticketTypeLower === 'application') && ticketForms && ticketForms['application']) {
-          formConfig = ticketForms['application'];
-        }
+        const legacyApplicationForm = (ticketTypeLower === 'staff' || ticketTypeLower === 'application')
+          ? ticketForms['application']
+          : undefined;
+        formConfig = ticketForms[ticketTypeLower] || ticketForms[ticketDetails.type] || legacyApplicationForm || null;
       }
     } catch (error) {
       console.error('Error processing form templates:', error);
@@ -731,7 +739,7 @@ const PlayerTicket = () => {
         id: ticketDetails.id,
         formData: {
           subject: finalSubject,
-          creatorEmail,
+          creatorEmail: creatorEmail ?? undefined,
           formData: cleanFormData,
           fieldLabels: fieldLabelsMapping,
           attachments,
@@ -749,11 +757,11 @@ const PlayerTicket = () => {
       });
 
       window.location.reload();
-    } catch (error: any) {
+    } catch (error) {
       console.error('Error submitting ticket form:', error);
       toast({
         title: t('playerTicket.submissionFailed'),
-        description: error?.message || t('playerTicket.submissionFailedDesc'),
+        description: (error instanceof Error ? error.message : undefined) || t('playerTicket.submissionFailedDesc'),
         variant: "destructive"
       });
     } finally {
@@ -788,22 +796,17 @@ const PlayerTicket = () => {
     }
     
     // Get form configuration from settings - REQUIRED
-    let formConfig = null;
+    let formConfig: TicketFormConfig | null = null;
 
     try {
       if (settingsData?.settings) {
-        const ticketForms = settingsData.settings.ticketForms;
+        const ticketForms = settingsData.settings.ticketForms as Record<string, TicketFormConfig>;
         const ticketTypeLower = ticketDetails.type.toLowerCase();
 
-        // Try the ticket type first (case-insensitive), then try 'application' for 'staff' tickets (legacy support)
-        if (ticketForms && ticketForms[ticketTypeLower]) {
-          formConfig = ticketForms[ticketTypeLower];
-        } else if (ticketForms && ticketForms[ticketDetails.type]) {
-          // Fallback to exact match for backwards compatibility
-          formConfig = ticketForms[ticketDetails.type];
-        } else if ((ticketTypeLower === 'staff' || ticketTypeLower === 'application') && ticketForms && ticketForms['application']) {
-          formConfig = ticketForms['application'];
-        }
+        const legacyApplicationForm = (ticketTypeLower === 'staff' || ticketTypeLower === 'application')
+          ? ticketForms['application']
+          : undefined;
+        formConfig = ticketForms[ticketTypeLower] || ticketForms[ticketDetails.type] || legacyApplicationForm || null;
       }
     } catch (error) {
       console.error('Error processing form templates:', error);
@@ -1373,15 +1376,15 @@ const PlayerTicket = () => {
                         </div>
                         {message.attachments && message.attachments.length > 0 && (
                           <div className="mt-2 space-y-1">
-                            {message.attachments.map((attachment: string | any, i: number) => {
+                            {message.attachments.map((attachment, i) => {
                               // Extract filename from URL or use a fallback
-                              const fileName = typeof attachment === 'string' 
+                              const fileName = typeof attachment === 'string'
                                 ? attachment.split('/').pop() || `attachment-${i + 1}`
                                 : attachment.fileName || `attachment-${i + 1}`;
-                              
-                              const attachmentUrl = typeof attachment === 'string' 
-                                ? attachment 
-                                : attachment.url || attachment;
+
+                              const attachmentUrl = typeof attachment === 'string'
+                                ? attachment
+                                : attachment.url;
                               
                               return (
                                 <div key={i} className="flex items-center gap-2 text-sm">

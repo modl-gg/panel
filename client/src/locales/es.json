@@ -44,6 +44,9 @@
     "showing": "Mostrando",
     "of": "de",
     "replies": "Respuestas",
+    "replyCount_one": "{{count}} respuesta",
+    "replyCount_other": "{{count}} respuestas",
+    "attachmentPreviewDesc": "Vista previa del archivo adjunto.",
     "noResults": "No se encontraron resultados.",
     "noPermission": "No tienes permiso para ver este contenido.",
     "remove": "Eliminar",
@@ -103,6 +106,8 @@
     "verificationCodePlaceholder": "000000",
     "verificationCodeDesc": "Introduce el código de 6 dígitos enviado a tu correo electrónico.",
     "verifying": "Verificando...",
+    "invalidCode": "Código inválido o caducado",
+    "resendCode": "Reenviar código",
     "verifyLogin": "Verificar e iniciar sesión",
     "authenticating": "Autenticando...",
     "signInPasskey": "Iniciar sesión con Passkey",
@@ -337,6 +342,7 @@
       "cardsReordered": "Tarjetas de la página principal reordenadas correctamente.",
       "titleDescRequired": "El título y la descripción son requeridos.",
       "urlRequired": "La URL es requerida para tarjetas de enlace.",
+      "urlInvalid": "Introduce una URL http(s) válida o una ruta interna que empiece por /.",
       "categoryRequired": "Por favor selecciona una categoría."
     },
     "knowledgebase": {
@@ -426,6 +432,7 @@
       "nameYourPasskeyDesc": "Dale un nombre a tu passkey para identificarlo más tarde.",
       "passkeyNamePlaceholder": "ej. MacBook Touch ID",
       "renamePasskey": "Renombrar passkey",
+      "renamePasskeyDesc": "Introduce un nuevo nombre para este passkey.",
       "rename": "Renombrar",
       "removePasskey": "Eliminar passkey",
       "removePasskeyConfirm": "¿Estás seguro de que quieres eliminar '{{name}}'? No podrás usar este passkey para iniciar sesión."
@@ -711,12 +718,15 @@
       "noQuickResponsesConfigured": "No hay respuestas rápidas configuradas.",
       "addFirstResponse": "Añadir primera respuesta",
       "loadingQuickResponses": "Cargando respuestas rápidas...",
-      "actionsCount": "{{count}} acción(es)",
+      "actionsCount_one": "{{count}} acción",
+      "actionsCount_other": "{{count}} acciones",
       "deleteFormFieldConfirm": "¿Estás seguro de que quieres eliminar el campo \"{{label}}\"? Esta acción no se puede deshacer.",
       "deleteSectionConfirm": "¿Estás seguro de que quieres eliminar la sección \"{{title}}\"? Esta acción no se puede deshacer.",
       "deleteQuickResponseConfirm": "¿Estás seguro de que quieres eliminar la respuesta rápida \"{{name}}\"? Esta acción no se puede deshacer.",
       "removeAIPunishmentConfirm": "¿Estás seguro de que quieres eliminar \"{{name}}\" de los tipos de sanción de IA?",
-      "updateAIDescFor": "Actualizar descripción de IA para {{name}}"
+      "updateAIDescFor": "Actualizar descripción de IA para {{name}}",
+      "quickResponseDialogDesc": "Configura el título y la plantilla del mensaje de la respuesta.",
+      "quickResponseCategoryDialogDesc": "Define el nombre de la categoría y los tipos de ticket a los que aplica."
     },
     "usage": {
       "fetchFailed": "No se pudo cargar la información de almacenamiento.",
@@ -1716,7 +1726,8 @@
     "appealReason": "Razón de la apelación",
     "appealReasonPlaceholder": "Explica por qué crees que esta sanción debería ser revisada...",
     "appealReasonDesc": "Sé honesto y proporciona tantos detalles como sea posible",
-    "selectAnOption": "Selecciona una opción"
+    "selectAnOption": "Selecciona una opción",
+    "verificationRequiredDesc": "Esta apelación requiere verificación por correo electrónico para ver la conversación."
   },
   "submitTicket": {
     "supportRequest": "Solicitud de soporte",

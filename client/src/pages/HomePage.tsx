@@ -26,6 +26,7 @@ import serverLogo from '@/assets/server-logo.png';
 import { usePublicSettings } from '@/hooks/use-public-settings';
 import { useAuth } from '@/hooks/use-auth';
 import { apiFetch } from '@/lib/api';
+import { openExternalUrl, safeExternalHref } from '@/lib/utils';
 
 // Allowlist of icons usable by homepage cards; mirrors HomepageCardSettings curated list.
 const ICONS: Record<string, React.ComponentType<{ className?: string; style?: React.CSSProperties }>> = {
@@ -220,7 +221,8 @@ const HomePage: React.FC = () => {
     } else {
       // URL action type
       const buttonText = card.actionButtonText || 'Learn More';
-      const url = card.actionUrl || '#';
+      const safeUrl = safeExternalHref(card.actionUrl);
+      const isInternal = !!safeUrl && safeUrl.startsWith('/');
       
       return (
         <Card key={card.id} className="group shadow-card hover:shadow-card-hover transition-all duration-300 hover:-translate-y-1 h-64 sm:h-72">
@@ -232,18 +234,18 @@ const HomePage: React.FC = () => {
               <h3 className="font-medium text-lg mb-3">{card.title}</h3>
               <p className="text-sm text-muted-foreground mb-4">{card.description}</p>
             </div>
-            {url.startsWith('/') ? (
-              <Link href={url}>
+            {isInternal ? (
+              <Link href={safeUrl || '#'}>
                 <Button variant="outline" size="sm" className="w-full">
                   {buttonText}
                 </Button>
               </Link>
             ) : (
-              <Button 
-                variant="outline" 
-                size="sm" 
+              <Button
+                variant="outline"
+                size="sm"
                 className="w-full"
-                onClick={() => window.open(url, '_blank')}
+                onClick={() => openExternalUrl(card.actionUrl)}
               >
                 {buttonText}
               </Button>

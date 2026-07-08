@@ -8,7 +8,15 @@ import { useToast } from '@modl-gg/shared-web/hooks/use-toast';
 import { loadStripe } from '@stripe/stripe-js';
 import { apiFetch } from '@/lib/api';
 import { errorMessageOr } from '@/utils/errors';
-import { useBillingStatus, useCancelSubscription, useResubscribe, type BillingStatus } from '@/hooks/use-data';
+import { protoErrorMessage } from '@/lib/proto-fetch';
+import {
+  useBillingStatus,
+  useCancelSubscription,
+  useCreateCheckoutSession,
+  useCreatePortalSession,
+  useResubscribe,
+  type BillingStatus,
+} from '@/hooks/use-data';
 import {
   formatSubscriptionStatusLabel,
   hasPremiumAccess,
@@ -490,37 +498,27 @@ const BillingSettings = () => {
   const { data: billingStatus, isLoading: isBillingLoading } = useBillingStatus();
   const cancelSubscriptionMutation = useCancelSubscription();
   const resubscribeMutation = useResubscribe();
+  const checkoutSessionMutation = useCreateCheckoutSession();
+  const portalSessionMutation = useCreatePortalSession();
   const { toast } = useToast();
   const { t } = useTranslation();
-  const [isLoading, setIsLoading] = useState(false);
   const queryClient = useQueryClient();
+  const [isRedirectingToStripe, setIsRedirectingToStripe] = useState(false);
 
   const handleCreateCheckoutSession = async () => {
-    setIsLoading(true);
+    setIsRedirectingToStripe(true);
     try {
-      const response = await apiFetch('/v1/panel/billing/checkout-session', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        }
-      });
+      const session = await checkoutSessionMutation.mutateAsync();
 
-      if (!response.ok) {
-        throw new Error('Failed to create checkout session');
-      }
-
-      const data = await response.json();
-
-      // Prefer using the URL directly (modern approach)
-      if (data.url) {
-        window.location.href = data.url;
+      if (session.url) {
+        window.location.href = session.url;
         return;
       }
 
-      // Fallback to redirectToCheckout if no URL provided
-      if (data.sessionId) {
+      if (session.sessionId) {
         const stripe = await getStripe();
         if (!stripe) {
+          setIsRedirectingToStripe(false);
           toast({
             title: t('settings.billing.configurationError'),
             description: t('settings.billing.stripeNotConfigured'),
@@ -528,52 +526,55 @@ const BillingSettings = () => {
           });
           return;
         }
-        const { error } = await stripe.redirectToCheckout({ sessionId: data.sessionId });
+        const { error } = await stripe.redirectToCheckout({ sessionId: session.sessionId });
         if (error) {
+          setIsRedirectingToStripe(false);
           toast({
             title: t('toast.error'),
             description: error.message || t('settings.billing.stripeRedirectFailed'),
             variant: 'destructive',
           });
         }
-      } else {
-        throw new Error('No checkout URL or session ID returned from server');
+        return;
       }
-    } catch (error) {
+
+      setIsRedirectingToStripe(false);
       toast({
         title: t('toast.error'),
         description: t('settings.billing.checkoutSessionFailed'),
         variant: 'destructive',
       });
-    } finally {
-      setIsLoading(false);
+    } catch (error) {
+      setIsRedirectingToStripe(false);
+      toast({
+        title: t('toast.error'),
+        description: protoErrorMessage(error, t('settings.billing.checkoutSessionFailed')),
+        variant: 'destructive',
+      });
     }
   };
 
   const handleCreatePortalSession = async () => {
-    setIsLoading(true);
+    setIsRedirectingToStripe(true);
     try {
-      const response = await apiFetch('/v1/panel/billing/portal-session', {
-        method: 'POST',
-      });
-
-      if (!response.ok) {
-        throw new Error('Failed to create portal session');
+      const session = await portalSessionMutation.mutateAsync();
+      if (!session.url) {
+        setIsRedirectingToStripe(false);
+        toast({
+          title: t('toast.error'),
+          description: t('settings.billing.portalFailed'),
+          variant: 'destructive',
+        });
+        return;
       }
-
-      const data = await response.json();
-      if (!data.url) {
-        throw new Error('No portal URL returned from server');
-      }
-      window.location.href = data.url;
+      window.location.href = session.url;
     } catch (error) {
+      setIsRedirectingToStripe(false);
       toast({
         title: t('toast.error'),
-        description: t('settings.billing.portalFailed'),
+        description: protoErrorMessage(error, t('settings.billing.portalFailed')),
         variant: 'destructive',
       });
-    } finally {
-      setIsLoading(false);
     }
   };
 
@@ -729,7 +730,7 @@ const BillingSettings = () => {
           t={t}
           toast={toast}
           queryClient={queryClient}
-          isLoading={isLoading}
+          isLoading={portalSessionMutation.isPending || isRedirectingToStripe}
           handleCreatePortalSession={handleCreatePortalSession}
           handleCancelSubscription={handleCancelSubscription}
           handleResubscribe={handleResubscribe}
@@ -743,7 +744,7 @@ const BillingSettings = () => {
     return (
       <FreePlanView
         t={t}
-        isLoading={isLoading}
+        isLoading={checkoutSessionMutation.isPending || isRedirectingToStripe}
         handleCreateCheckoutSession={handleCreateCheckoutSession}
       />
     );

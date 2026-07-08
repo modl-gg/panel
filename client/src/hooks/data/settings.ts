@@ -10,6 +10,8 @@ import {
   WebhookSettingsSchema,
   PublicSettingsResponseSchema,
   type SettingsMeta,
+  type GeneralSettings,
+  type WebhookSettings,
 } from '@modl-gg/proto/modl/v1/settings_pb.ts';
 import { apiFetch } from '@/lib/api';
 import { protoFetch, ProtoHttpError } from '@/lib/proto-fetch';
@@ -35,10 +37,13 @@ function metaToShape(meta?: SettingsMeta): SettingsEnvelope<unknown>['_meta'] {
   };
 }
 
+type EnvelopePayload<Desc extends DescMessage> =
+  MessageShape<Desc> extends { data?: infer D } ? NonNullable<D> : never;
+
 async function fetchSettingsEnvelope<Desc extends DescMessage>(
   schema: Desc,
   path: string,
-): Promise<SettingsEnvelope<unknown> | null> {
+): Promise<SettingsEnvelope<EnvelopePayload<Desc> | null> | null> {
   let decoded: MessageShape<Desc>;
   try {
     decoded = await protoFetch(schema, path);
@@ -48,7 +53,7 @@ async function fetchSettingsEnvelope<Desc extends DescMessage>(
     }
     throw error;
   }
-  const message = decoded as unknown as { data?: unknown; meta?: SettingsMeta };
+  const message = decoded as unknown as { data?: EnvelopePayload<Desc>; meta?: SettingsMeta };
   return {
     data: message.data ?? null,
     _meta: metaToShape(message.meta),
@@ -85,7 +90,7 @@ export function useSettings() {
           return await fetchPublic();
         }
 
-        let generalEnvelope: SettingsEnvelope<any> | null = null;
+        let generalEnvelope: SettingsEnvelope<Partial<GeneralSettings>> | null = null;
         try {
           const decoded = await protoFetch(GeneralSettingsEnvelopeSchema, '/v1/panel/settings/general');
           generalEnvelope = {
@@ -99,7 +104,7 @@ export function useSettings() {
           throw error;
         }
 
-        let webhookSettings: any = null;
+        let webhookSettings: WebhookSettings | null = null;
         try {
           webhookSettings = await protoFetch(WebhookSettingsSchema, '/v1/panel/settings/webhooks');
         } catch {
@@ -152,7 +157,7 @@ export function useSettings() {
 }
 
 export function useTicketFormSettings() {
-  return useQuery<SettingsEnvelope<any> | null>({
+  return useQuery({
     queryKey: ['/v1/panel/settings/ticket-forms'],
     queryFn: () => fetchSettingsEnvelope(TicketFormSettingsEnvelopeSchema, '/v1/panel/settings/ticket-forms'),
     staleTime: 1000 * 60 * 5,
@@ -161,7 +166,7 @@ export function useTicketFormSettings() {
 }
 
 export function useQuickResponses() {
-  return useQuery<SettingsEnvelope<any> | null>({
+  return useQuery({
     queryKey: ['/v1/panel/settings/quick-responses'],
     queryFn: () => fetchSettingsEnvelope(QuickResponseSettingsEnvelopeSchema, '/v1/panel/settings/quick-responses'),
     staleTime: 1000 * 60 * 5,
@@ -170,7 +175,7 @@ export function useQuickResponses() {
 }
 
 export function useStatusThresholds() {
-  return useQuery<SettingsEnvelope<any> | null>({
+  return useQuery({
     queryKey: ['/v1/panel/settings/status-thresholds'],
     queryFn: () => fetchSettingsEnvelope(OffenderThresholdSettingsEnvelopeSchema, '/v1/panel/settings/status-thresholds'),
     staleTime: 1000 * 60 * 5,
@@ -179,7 +184,7 @@ export function useStatusThresholds() {
 }
 
 export function useTicketLabelSettings() {
-  return useQuery<SettingsEnvelope<any> | null>({
+  return useQuery({
     queryKey: ['/v1/panel/settings/ticket-labels'],
     queryFn: () => fetchSettingsEnvelope(TicketLabelSettingsEnvelopeSchema, '/v1/panel/settings/ticket-labels'),
     staleTime: 1000 * 60 * 5,
@@ -231,7 +236,7 @@ export function useLabels() {
     queryKey: ['/v1/panel/settings/ticket-labels', 'labels'],
     queryFn: async () => {
       const envelope = await fetchSettingsEnvelope(TicketLabelSettingsEnvelopeSchema, '/v1/panel/settings/ticket-labels');
-      return (envelope?.data as any)?.labels || [];
+      return envelope?.data?.labels || [];
     },
     staleTime: 1000 * 60 * 5,
     refetchOnWindowFocus: false

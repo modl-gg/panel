@@ -17,12 +17,6 @@ interface StaffMember {
   assignedMinecraftUsername?: string;
 }
 
-interface SearchedPlayer {
-  uuid?: string;
-  minecraftUuid?: string;
-  username?: string;
-}
-
 interface AssignMinecraftPlayerModalProps {
   isOpen: boolean;
   onClose: () => void;
@@ -54,10 +48,7 @@ const AssignMinecraftPlayerModal: React.FC<AssignMinecraftPlayerModalProps> = ({
   // Filter out already assigned players from search results
   const availablePlayers = useMemo(() => {
     if (!searchResults) return [];
-    return searchResults.filter((player: SearchedPlayer) => {
-      const playerUuid = player.uuid || player.minecraftUuid;
-      return !assignedUuids.includes(playerUuid);
-    });
+    return searchResults.filter((player) => !assignedUuids.includes(player.uuid));
   }, [searchResults, assignedUuids]);
 
   const handleAssign = async () => {
@@ -72,16 +63,13 @@ const AssignMinecraftPlayerModal: React.FC<AssignMinecraftPlayerModalProps> = ({
       return;
     }
 
-    const selectedPlayer = availablePlayers.find((p) => {
-      const playerUuid = p.uuid || p.minecraftUuid;
-      return playerUuid === selectedPlayerUuid;
-    });
+    const selectedPlayer = availablePlayers.find((p) => p.uuid === selectedPlayerUuid);
     if (!selectedPlayer) return;
 
     try {
       await assignPlayerMutation.mutateAsync({
-        username: staffMember.username,
-        minecraftUuid: selectedPlayer.uuid || selectedPlayer.minecraftUuid,
+        email: staffMember.email,
+        minecraftUuid: selectedPlayer.uuid,
         minecraftUsername: selectedPlayer.username
       });
 
@@ -106,7 +94,7 @@ const AssignMinecraftPlayerModal: React.FC<AssignMinecraftPlayerModalProps> = ({
 
     try {
       await assignPlayerMutation.mutateAsync({
-        username: staffMember.username,
+        email: staffMember.email,
         minecraftUuid: undefined,
         minecraftUsername: undefined
       });
@@ -214,7 +202,7 @@ const AssignMinecraftPlayerModal: React.FC<AssignMinecraftPlayerModalProps> = ({
                     {t('settings.staff.foundAvailablePlayers', { count: availablePlayers.length })}
                   </div>
                   {availablePlayers.map((player) => {
-                    const playerUuid = player.uuid || player.minecraftUuid;
+                    const playerUuid = player.uuid;
                     return (
                       <Button
                         key={playerUuid}

@@ -107,8 +107,8 @@ export function RecentPunishmentsSection({ punishments, loading }: RecentPunishm
                               </Badge>
                             )}
                             {!punishment.active && (
-                              <Badge variant="outline" className="text-xs">
-                                EXPIRED
+                              <Badge variant="outline" className="text-xs uppercase">
+                                {t('status.inactive')}
                               </Badge>
                             )}
                           </div>

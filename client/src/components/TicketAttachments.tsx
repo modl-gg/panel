@@ -3,13 +3,14 @@ import { Paperclip, Download, Eye, Trash2, FileText, Image, Video, File, Loader2
 import { useTranslation } from 'react-i18next';
 import { Button } from '@modl-gg/shared-web/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@modl-gg/shared-web/components/ui/card';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@modl-gg/shared-web/components/ui/dialog';
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from '@modl-gg/shared-web/components/ui/dialog';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@modl-gg/shared-web/components/ui/alert-dialog';
 import { Badge } from '@modl-gg/shared-web/components/ui/badge';
 import { useToast } from '@modl-gg/shared-web/hooks/use-toast';
 import MediaUpload from './MediaUpload';
 import { useMediaUpload } from '@/hooks/use-media-upload';
 import { formatFileSize } from '@/utils/file-utils';
+import { normalizeCdnHost, isTrustedCdnUrl as isUrlOnTrustedCdn } from '@/utils/evidence-utils';
 
 interface TicketAttachment {
   id: string;
@@ -130,26 +131,9 @@ export function TicketAttachments({
   const isVideo = (type: string) => type.startsWith('video/');
   const isPdf = (type: string) => type === 'application/pdf';
 
-  const normalizedCdnHost = config?.cdnDomain
-    ? (() => {
-        const raw = config.cdnDomain.trim();
-        try {
-          const parsed = new URL(raw.startsWith('http') ? raw : `https://${raw}`);
-          return parsed.hostname.toLowerCase();
-        } catch {
-          return (raw.replace(/^https?:\/\//i, '').split('/')[0] ?? '').toLowerCase();
-        }
-      })()
-    : null;
+  const normalizedCdnHost = normalizeCdnHost(config?.cdnDomain);
 
-  const isTrustedCdnUrl = (url: string) => {
-    if (!normalizedCdnHost) return false;
-    try {
-      return new URL(url).hostname.toLowerCase() === normalizedCdnHost;
-    } catch {
-      return false;
-    }
-  };
+  const isTrustedCdnUrl = (url: string) => isUrlOnTrustedCdn(url, normalizedCdnHost);
 
   if (!config?.backblazeConfigured) {
     return (
@@ -274,6 +258,9 @@ export function TicketAttachments({
                   <DialogContent className="max-w-4xl">
                     <DialogHeader>
                       <DialogTitle>{attachment.fileName}</DialogTitle>
+                      <DialogDescription className="sr-only">
+                        {t('common.attachmentPreviewDesc')}
+                      </DialogDescription>
                     </DialogHeader>
                     <div className="mt-4">
                       {isImage(attachment.fileType) && isTrustedCdnUrl(attachment.url) ? (

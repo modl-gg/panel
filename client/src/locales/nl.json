@@ -44,6 +44,9 @@
     "showing": "Tonen",
     "of": "van",
     "replies": "Antwoorden",
+    "replyCount_one": "{{count}} antwoord",
+    "replyCount_other": "{{count}} antwoorden",
+    "attachmentPreviewDesc": "Voorbeeld van het bijgevoegde bestand.",
     "noResults": "Geen resultaten gevonden.",
     "noPermission": "Je hebt geen toestemming om deze inhoud te bekijken.",
     "remove": "Verwijderen",
@@ -103,6 +106,8 @@
     "verificationCodePlaceholder": "000000",
     "verificationCodeDesc": "Voer de 6-cijferige code in die naar je e-mail is gestuurd.",
     "verifying": "Verifiëren...",
+    "invalidCode": "Ongeldige of verlopen code",
+    "resendCode": "Code opnieuw versturen",
     "verifyLogin": "Verifiëren & inloggen",
     "authenticating": "Authenticeren...",
     "signInPasskey": "Inloggen met passkey",
@@ -337,6 +342,7 @@
       "cardsReordered": "Homepagina-kaarten succesvol opnieuw gerangschikt.",
       "titleDescRequired": "Titel en beschrijving zijn vereist.",
       "urlRequired": "URL is vereist voor linkkaarten.",
+      "urlInvalid": "Voer een geldige http(s)-URL in of een intern pad dat begint met /.",
       "categoryRequired": "Selecteer een categorie."
     },
     "knowledgebase": {
@@ -426,6 +432,7 @@
       "nameYourPasskeyDesc": "Geef je passkey een naam om hem later te herkennen.",
       "passkeyNamePlaceholder": "bijv. MacBook Touch ID",
       "renamePasskey": "Passkey hernoemen",
+      "renamePasskeyDesc": "Voer een nieuwe naam in voor deze passkey.",
       "rename": "Hernoemen",
       "removePasskey": "Passkey verwijderen",
       "removePasskeyConfirm": "Weet je zeker dat je '{{name}}' wilt verwijderen? Je kunt deze passkey niet meer gebruiken om in te loggen."
@@ -711,12 +718,15 @@
       "noQuickResponsesConfigured": "Geen snelle antwoorden geconfigureerd.",
       "addFirstResponse": "Eerste antwoord toevoegen",
       "loadingQuickResponses": "Snelle antwoorden laden...",
-      "actionsCount": "{{count}} actie(s)",
+      "actionsCount_one": "{{count}} actie",
+      "actionsCount_other": "{{count}} acties",
       "deleteFormFieldConfirm": "Weet je zeker dat je het formulierveld \"{{label}}\" wilt verwijderen? Deze actie kan niet ongedaan worden gemaakt.",
       "deleteSectionConfirm": "Weet je zeker dat je de sectie \"{{title}}\" wilt verwijderen? Deze actie kan niet ongedaan worden gemaakt.",
       "deleteQuickResponseConfirm": "Weet je zeker dat je het snelle antwoord \"{{name}}\" wilt verwijderen? Deze actie kan niet ongedaan worden gemaakt.",
       "removeAIPunishmentConfirm": "Weet je zeker dat je \"{{name}}\" wilt verwijderen uit de AI-straftypen?",
-      "updateAIDescFor": "AI-beschrijving bijwerken voor {{name}}"
+      "updateAIDescFor": "AI-beschrijving bijwerken voor {{name}}",
+      "quickResponseDialogDesc": "Configureer de titel en het berichtsjabloon van de reactie.",
+      "quickResponseCategoryDialogDesc": "Stel de categorienaam en de bijbehorende tickettypen in."
     },
     "usage": {
       "fetchFailed": "Opslaginformatie laden mislukt.",
@@ -1716,7 +1726,8 @@
     "appealReason": "Reden voor beroep",
     "appealReasonPlaceholder": "Leg uit waarom je denkt dat deze straf moet worden beoordeeld...",
     "appealReasonDesc": "Wees eerlijk en geef zo veel mogelijk details",
-    "selectAnOption": "Selecteer een optie"
+    "selectAnOption": "Selecteer een optie",
+    "verificationRequiredDesc": "Dit beroep vereist e-mailverificatie om het gesprek te bekijken."
   },
   "submitTicket": {
     "supportRequest": "Ondersteuningsverzoek",

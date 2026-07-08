@@ -1,6 +1,6 @@
-import React, { useState, useEffect, useCallback, useRef } from 'react';
+import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Scale, Shield, Globe, Tag, Plus, X, Trash2, MessageCircle, Save, CheckCircle, User as UserIcon, CreditCard, BookOpen, Settings as SettingsIcon, ChevronDown, ChevronRight, Layers, GripVertical, Edit3, Users, Bot, FileText, Home, Bell, Crown, Database } from 'lucide-react';
+import { Scale, Shield, Globe, Tag, Plus, X, Trash2, MessageCircle, Save, CheckCircle, User as UserIcon, CreditCard, BookOpen, Settings as SettingsIcon, ChevronDown, ChevronRight, Layers, GripVertical, Edit3, Users, Bot, FileText, Home, Bell, Crown, Database, type LucideIcon } from 'lucide-react';
 import { getApiUrl, getCurrentDomain, apiFetch, apiUpload } from '@/lib/api';
 import { setDateLocale, setDateFormat as setDateFormatUtil } from '@/utils/date-utils';
 import i18n from '@/lib/i18n';
@@ -22,7 +22,7 @@ import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, D
 import { queryClient } from '@/lib/queryClient';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@modl-gg/shared-web/components/ui/tooltip";
 import { useAuth } from '@/hooks/use-auth';
-import { PERMISSIONS, usePermissions } from '@/hooks/use-permissions';
+import { PERMISSIONS, usePermissions, type SettingsTab } from '@/hooks/use-permissions';
 import StaffManagementPanel from '@/components/settings/StaffManagementPanel';
 import StaffRolesCard from '@/components/settings/StaffRolesCard';
 import KnowledgebaseSettings from '@/components/settings/KnowledgebaseSettings';
@@ -31,6 +31,8 @@ import AccountSettings from '@/components/settings/AccountSettings';
 import GeneralSettings from '@/components/settings/GeneralSettings';
 import PunishmentSettings from '@/components/settings/PunishmentSettings';
 import TicketSettings from '@/components/settings/TicketSettings';
+import type { AIModerationSettings, AIPunishmentConfig } from '@/components/settings/TicketSettings';
+import type { PunishmentType as ProtoPunishmentType } from '@modl-gg/proto/modl/v1/settings_pb.ts';
 import { DndProvider, useDrag, useDrop } from 'react-dnd';
 import { HTML5Backend } from 'react-dnd-html5-backend';
 import { type QuickResponsesConfiguration, type QuickResponseCategory, type QuickResponseAction, defaultQuickResponsesConfig } from '@/types/quickResponses';
@@ -52,6 +54,7 @@ import type {
   TicketFormSection,
   TicketFormsConfiguration,
 } from '@/types/forms';
+import type { WebhookSettings as WebhookSettingsData } from '@/components/settings/WebhookSettings';
 
 // Type definitions for punishment types
 interface PunishmentType {
@@ -123,22 +126,43 @@ interface AIServicePunishmentType {
   ordinal: number;
 }
 
-interface IAIPunishmentConfig {
-  enabled: boolean;
-  aiDescription: string;
-}
-
-interface IAIModerationSettings {
-  enableAIReview: boolean;
-  enableAutomatedActions: boolean;
-  aiPunishmentConfigs: Record<string, IAIPunishmentConfig>;
-}
 
 interface AvailablePunishmentType {
   id: number;
   name: string;
   category: string;
   ordinal: number;
+}
+
+type GeneralSettingsData = {
+  serverDisplayName?: string;
+  discordWebhookUrl?: string;
+  homepageIconUrl?: string;
+  panelIconUrl?: string;
+};
+
+interface LegacyPunishmentFields {
+  customizable?: boolean;
+  appealable?: boolean;
+  administrative?: boolean;
+  social?: boolean;
+  gameplay?: boolean;
+}
+
+interface ApplySettingsInput extends GeneralSettingsData {
+  punishmentTypes?: unknown;
+  statusThresholds?: unknown;
+  labels?: unknown;
+  bugReportTags?: unknown;
+  playerReportTags?: unknown;
+  appealTags?: unknown;
+  ticketForms?: unknown;
+  quickResponses?: unknown;
+  mongodbUri?: string;
+  has2FA?: boolean;
+  hasPasskey?: boolean;
+  general?: GeneralSettingsData;
+  aiModerationSettings?: unknown;
 }
 
 // Draggable Appeal Form Section Card Component
@@ -416,15 +440,77 @@ const AppealFormFieldDropZone = ({ sectionId, moveFieldBetweenSections }: Appeal
   );
 };
 
+interface SettingsSubCategoryAccess {
+  isSuperAdmin: boolean;
+  canViewAdminSettings: boolean;
+}
+
+interface SettingsSubCategoryDefinition {
+  id: string;
+  titleKey: string;
+  icon: LucideIcon;
+  canAccess?: (access: SettingsSubCategoryAccess) => boolean;
+}
+
+const superAdminOnly = (access: SettingsSubCategoryAccess) => access.isSuperAdmin;
+const adminSettingsOnly = (access: SettingsSubCategoryAccess) => access.canViewAdminSettings;
+
+const SETTINGS_SUB_CATEGORIES: Record<string, SettingsSubCategoryDefinition[]> = {
+  general: [
+    { id: 'billing', titleKey: 'settings.page.billing', icon: CreditCard, canAccess: superAdminOnly },
+    { id: 'usage', titleKey: 'settings.page.usage', icon: Globe },
+    { id: 'server-config', titleKey: 'settings.page.serverConfig', icon: SettingsIcon, canAccess: superAdminOnly },
+    { id: 'domain', titleKey: 'settings.page.domain', icon: Globe },
+    { id: 'webhooks', titleKey: 'settings.page.webhooks', icon: MessageCircle },
+    { id: 'migration', titleKey: 'settings.page.migrationTool', icon: Database, canAccess: superAdminOnly },
+  ],
+  punishment: [
+    { id: 'thresholds', titleKey: 'settings.page.thresholds', icon: Layers },
+    { id: 'types', titleKey: 'settings.page.types', icon: Scale },
+  ],
+  tickets: [
+    { id: 'quick-responses', titleKey: 'settings.page.quickResponses', icon: MessageCircle, canAccess: adminSettingsOnly },
+    { id: 'label-management', titleKey: 'settings.page.labelManagement', icon: Tag, canAccess: adminSettingsOnly },
+    { id: 'ticket-forms', titleKey: 'settings.page.ticketForms', icon: Layers, canAccess: adminSettingsOnly },
+    { id: 'ai-moderation', titleKey: 'settings.page.aiModeration', icon: Bot, canAccess: adminSettingsOnly },
+  ],
+  staff: [
+    { id: 'staff-management', titleKey: 'settings.page.staffManagement', icon: UserIcon },
+    { id: 'roles-permissions', titleKey: 'settings.page.rolesPermissions', icon: Shield },
+  ],
+  knowledgebase: [
+    { id: 'knowledgebase-articles', titleKey: 'settings.page.knowledgebase', icon: BookOpen },
+    { id: 'homepage-cards', titleKey: 'settings.page.homepageCards', icon: Home },
+  ],
+};
+
+const accessibleSubCategories = (categoryId: string, access: SettingsSubCategoryAccess): SettingsSubCategoryDefinition[] =>
+  (SETTINGS_SUB_CATEGORIES[categoryId] ?? []).filter((sub) => !sub.canAccess || sub.canAccess(access));
+
+const resolveSubCategoryId = (
+  categoryId: string,
+  requested: string | null,
+  access: SettingsSubCategoryAccess
+): string | null => {
+  const subs = accessibleSubCategories(categoryId, access);
+  if (requested && subs.some((sub) => sub.id === requested)) {
+    return requested;
+  }
+  return subs[0]?.id ?? null;
+};
+
 const Settings = () => {
   const { t } = useTranslation();
   useSidebar();
   const { user } = useAuth();
   const { canAccessSettingsTab, hasPermission } = usePermissions();
   const canViewAdminSettings = hasPermission(PERMISSIONS.ADMIN_SETTINGS_VIEW);
-  const canViewAllTickets = hasPermission(PERMISSIONS.TICKET_VIEW_ALL);
-  const canManageTicketTags = hasPermission(PERMISSIONS.TICKET_MANAGE_TAGS);
   const canAccessGeneralSettings = canAccessSettingsTab('general');
+  const isSuperAdmin = user?.role === 'Super Admin';
+  const subCategoryAccess = useMemo<SettingsSubCategoryAccess>(
+    () => ({ isSuperAdmin, canViewAdminSettings }),
+    [isSuperAdmin, canViewAdminSettings]
+  );
   const [expandedCategory, setExpandedCategory] = useState<string | null>(null);
   const [expandedSubCategory, setExpandedSubCategory] = useState<string | null>(null);
   const {
@@ -487,25 +573,15 @@ const Settings = () => {
       const accessPermissionKey = categoryPermissionKey[mappedCategory] || mappedCategory;
 
       // Check if user can access the requested category
-      if (canAccessSettingsTab(accessPermissionKey as any)) {
+      if (canAccessSettingsTab(accessPermissionKey as SettingsTab)) {
         setExpandedCategory(mappedCategory);
         if (urlSubCategory) {
-          const subCat = urlSubCategory.split(',')[0] ?? urlSubCategory;
-          const canAccessTicketSubCategory = mappedCategory !== 'tickets'
-            || (
-              (['label-management', 'quick-responses', 'ticket-forms', 'ai-moderation'].includes(subCat) && canViewAdminSettings)
-            );
-          if ((subCat === 'billing' || subCat === 'server-config') && user?.role !== 'Super Admin') {
-            // Non-super-admins cannot access billing or server config
-          } else if (!canAccessTicketSubCategory) {
-            // No permission for this tickets sub-section
-          } else {
-            setExpandedSubCategory(subCat);
-          }
+          const requestedSubCategory = urlSubCategory.split(',')[0] ?? urlSubCategory;
+          setExpandedSubCategory(resolveSubCategoryId(mappedCategory, requestedSubCategory, subCategoryAccess));
         }
       }
     }
-  }, [user, canAccessSettingsTab, canManageTicketTags, canViewAllTickets, canViewAdminSettings]);
+  }, [user, canAccessSettingsTab, subCategoryAccess]);
 
   // Handle sub-category selection - only one can be selected at a time
   const handleSubCategorySelect = (category: string, subCategory: string) => {
@@ -526,7 +602,7 @@ const Settings = () => {
   const [isSaving, setIsSaving] = useState(false);
   const saveTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const profileSaveTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null); // Separate timeout for profile
-  const initialSettingsRef = useRef<any | null>(null);
+  const initialSettingsRef = useRef<unknown>(null);
   const justLoadedFromServerRef = useRef(true);
   const pendingChangesRef = useRef(false);
   const initialLoadCompletedRef = useRef(false);
@@ -554,15 +630,15 @@ const Settings = () => {
     gameplay: { medium: 5, habitual: 10, pointExpiryMonths: 24 },
     social: { medium: 4, habitual: 8, pointExpiryMonths: 24 }
   });
-  const ticketLabelsSnapshotRef = useRef<any[]>([]);
+  const ticketLabelsSnapshotRef = useRef<Label[]>([]);
 
-  const hasDeepChanges = (current: any, snapshot: any): boolean => {
+  const hasDeepChanges = (current: unknown, snapshot: unknown): boolean => {
     return JSON.stringify(current) !== JSON.stringify(snapshot);
   };
 
-  const toSettingsEnvelope = <T,>(value: any): { data: T; _meta?: { version?: number; updatedAt?: string | null } } => {
+  const toSettingsEnvelope = <T,>(value: unknown): { data: T; _meta?: { version?: number; updatedAt?: string | null } } => {
     if (value && typeof value === 'object' && 'data' in value) {
-      return value;
+      return value as { data: T; _meta?: { version?: number; updatedAt?: string | null } };
     }
     return { data: value as T, _meta: { version: 0, updatedAt: null } };
   };
@@ -721,7 +797,7 @@ const Settings = () => {
   const [dateFormatState, setDateFormatState] = useState('MM/DD/YYYY');
   
   // AI Moderation settings state
-  const [aiModerationSettings, setAiModerationSettings] = useState<IAIModerationSettings>({
+  const [aiModerationSettings, setAiModerationSettings] = useState<AIModerationSettings>({
     enableAIReview: false,
     enableAutomatedActions: false,
     aiPunishmentConfigs: {}
@@ -778,7 +854,8 @@ const Settings = () => {
   };
 
   const getWebhookSummary = () => {
-    const webhookSettings = settingsData?.settings?.webhookSettings;
+    const settings = settingsData?.settings;
+    const webhookSettings = settings && 'webhookSettings' in settings ? settings.webhookSettings : undefined;
     if (!webhookSettings) return "Loading webhook settings...";
     
     if (!webhookSettings.enabled) {
@@ -795,7 +872,7 @@ const Settings = () => {
 
   const [savingWebhookSettings, setSavingWebhookSettings] = useState(false);
 
-  const handleWebhookSave = async (webhookSettings: any) => {
+  const handleWebhookSave = async (webhookSettings: WebhookSettingsData) => {
     setSavingWebhookSettings(true);
     try {
       const csrfFetch = apiFetch;
@@ -821,6 +898,7 @@ const Settings = () => {
 
   // Create aliases for the state variables to maintain backward compatibility
   const punishmentTypes = punishmentTypesState;
+  const ticketSettingsPunishmentTypes = punishmentTypes as unknown as ProtoPunishmentType[];
   const newPunishmentName = newPunishmentNameState;
   const newPunishmentCategory = newPunishmentCategoryState;
   const statusThresholds = statusThresholdsState;
@@ -1097,7 +1175,7 @@ const Settings = () => {
     }
   };
 
-  const saveAiModerationSettings = async (settings: IAIModerationSettings, configs?: any) => {
+  const saveAiModerationSettings = async (settings: AIModerationSettings, configs?: Record<string, AIPunishmentConfig>) => {
     setIsSavingAiSettings(true);
     try {
       const payload = {
@@ -1233,17 +1311,6 @@ const Settings = () => {
     return undefined;
   }, [aiModerationSettings, isLoadingAiSettings, canViewAdminSettings]);
 
-  // Auto-save AI punishment configs when they change
-  useEffect(() => {
-    if (!isLoadingAiSettings && initialLoadCompletedRef.current && canViewAdminSettings && aiModerationSettings?.aiPunishmentConfigs) {
-      const saveTimeout = setTimeout(() => {
-        saveAiModerationSettings(aiModerationSettings);
-      }, 1000);
-      return () => clearTimeout(saveTimeout);
-    }
-    return undefined;
-  }, [aiModerationSettings?.aiPunishmentConfigs, aiModerationSettings, isLoadingAiSettings, canViewAdminSettings]);
-
   // Define captureInitialSettings first, before it's used anywhere else
   const captureInitialSettings = useCallback(() => {
     const currentSettingsSnapshot = {
@@ -1282,7 +1349,7 @@ const Settings = () => {
   ]);
 
   // Helper to apply a settings object to all state variables without triggering auto-save
-  const applySettingsObjectToState = useCallback((settingsObject: any) => {
+  const applySettingsObjectToState = useCallback((settingsObject: ApplySettingsInput) => {
     if (!settingsObject) return;
 
     justLoadedFromServerRef.current = true;
@@ -1313,12 +1380,12 @@ const Settings = () => {
     }
     if (settingsObject.ticketForms) {
       const tf = settingsObject.ticketForms;
-      const parsedTf = typeof tf === 'string' ? JSON.parse(tf) : JSON.parse(JSON.stringify(tf));
+      const parsedTf: TicketFormsConfiguration = typeof tf === 'string' ? JSON.parse(tf) : JSON.parse(JSON.stringify(tf));
       
       // Only update if the parsed ticket forms has meaningful data
       // Check if it has at least one form type with fields or sections
-      const hasData = parsedTf && typeof parsedTf === 'object' && 
-        Object.values(parsedTf).some((form: any) => 
+      const hasData = parsedTf && typeof parsedTf === 'object' &&
+        Object.values(parsedTf).some((form) =>
           form && (
             (Array.isArray(form.fields) && form.fields.length > 0) ||
             (Array.isArray(form.sections) && form.sections.length > 0)
@@ -1424,7 +1491,7 @@ const Settings = () => {
             return;
           }
 
-          const latestEnvelope = toSettingsEnvelope<any>(await latestGeneralResponse.json());
+          const latestEnvelope = toSettingsEnvelope<GeneralSettingsData>(await latestGeneralResponse.json());
           const latestGeneral = {
             serverDisplayName: latestEnvelope?.data?.serverDisplayName ?? '',
             discordWebhookUrl: latestEnvelope?.data?.discordWebhookUrl ?? '',
@@ -1493,7 +1560,7 @@ const Settings = () => {
 
       if (dirty.has('general')) {
         const snapshot = generalSnapshotRef.current;
-        const patch: any = { expectedVersion: generalVersion };
+        const patch: { expectedVersion: number } & GeneralSettingsData = { expectedVersion: generalVersion };
         if (serverDisplayName !== snapshot.serverDisplayName) patch.serverDisplayName = serverDisplayName;
         if (discordWebhookUrl !== snapshot.discordWebhookUrl) patch.discordWebhookUrl = discordWebhookUrl;
         if (homepageIconUrl !== snapshot.homepageIconUrl) patch.homepageIconUrl = homepageIconUrl;
@@ -1511,7 +1578,7 @@ const Settings = () => {
           if (!response.ok) {
             await handleFailedSave(response, 'general settings', ['/v1/settings'], 'general');
           } else {
-            const envelope = toSettingsEnvelope<any>(await response.json());
+            const envelope = toSettingsEnvelope<GeneralSettingsData>(await response.json());
             const canonicalGeneral = envelope?.data || {};
             const nextVersion = Number(envelope?._meta?.version ?? generalVersion + 1);
             setGeneralVersion(Number.isFinite(nextVersion) ? nextVersion : generalVersion + 1);
@@ -1552,7 +1619,7 @@ const Settings = () => {
           if (!response.ok) {
             await handleFailedSave(response, 'quick responses', ['/v1/panel/settings/quick-responses'], 'quick-responses');
           } else {
-            const envelope = toSettingsEnvelope<any>(await response.json());
+            const envelope = toSettingsEnvelope<Partial<QuickResponsesConfiguration>>(await response.json());
             const canonicalQuickResponses = envelope?.data?.categories
               ? envelope.data
               : defaultQuickResponsesConfig;
@@ -1584,7 +1651,7 @@ const Settings = () => {
           if (!response.ok) {
             await handleFailedSave(response, 'ticket forms', ['/v1/panel/settings/ticket-forms'], 'ticket-forms');
           } else {
-            const envelope = toSettingsEnvelope<any>(await response.json());
+            const envelope = toSettingsEnvelope<TicketFormsConfiguration>(await response.json());
             const canonicalTicketForms = envelope?.data || ticketForms;
             const nextVersion = Number(envelope?._meta?.version ?? ticketFormsVersion + 1);
             setTicketFormsVersion(Number.isFinite(nextVersion) ? nextVersion : ticketFormsVersion + 1);
@@ -1614,7 +1681,7 @@ const Settings = () => {
           if (!response.ok) {
             await handleFailedSave(response, 'status thresholds', ['/v1/panel/settings/status-thresholds'], 'status-thresholds');
           } else {
-            const envelope = toSettingsEnvelope<any>(await response.json());
+            const envelope = toSettingsEnvelope<StatusThresholds>(await response.json());
             const canonicalStatusThresholds = envelope?.data?.social && envelope?.data?.gameplay
               ? envelope.data
               : statusThresholds;
@@ -1646,7 +1713,7 @@ const Settings = () => {
           if (!response.ok) {
             await handleFailedSave(response, 'ticket labels', ['/v1/panel/settings/ticket-labels'], 'ticket-labels');
           } else {
-            const envelope = toSettingsEnvelope<any>(await response.json());
+            const envelope = toSettingsEnvelope<{ labels?: Label[] }>(await response.json());
             const canonicalLabels = Array.isArray(envelope?.data?.labels) ? envelope.data.labels : [];
             const nextVersion = Number(envelope?._meta?.version ?? ticketLabelsVersion + 1);
             setTicketLabelsVersion(Number.isFinite(nextVersion) ? nextVersion : ticketLabelsVersion + 1);
@@ -1694,7 +1761,7 @@ const Settings = () => {
     }
 
     if (settingsData?.settings && Object.keys(settingsData.settings).length > 0 && !initialLoadCompletedRef.current) {
-      applySettingsObjectToState(settingsData.settings);      const loadedGeneralVersion = Number(settingsData.settings?.generalMeta?.version ?? 0);
+      applySettingsObjectToState(settingsData.settings as unknown as ApplySettingsInput);      const loadedGeneralVersion = Number(('generalMeta' in settingsData.settings ? settingsData.settings.generalMeta?.version : undefined) ?? 0);
       setGeneralVersion(Number.isFinite(loadedGeneralVersion) ? loadedGeneralVersion : 0);
 
       // Capture settings for future reference and mark initial load as complete
@@ -1707,7 +1774,6 @@ const Settings = () => {
       // This case handles if the API returns no settings (e.g. empty object) on the first load
       initialLoadCompletedRef.current = true;
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [settingsData, isLoadingSettings, isFetchingSettings]);
 
   // Effect: Load punishment types from the dedicated endpoint
@@ -1717,9 +1783,9 @@ const Settings = () => {
     }
 
     // Normalize API data: map backend field names to frontend field names
-    const normalizedTypes = (punishmentTypesData as any[])
-      .filter((pt: any) => pt.ordinal != null)
-      .map((pt: any) => ({
+    const normalizedTypes = (punishmentTypesData as unknown as (PunishmentType & LegacyPunishmentFields)[])
+      .filter((pt) => pt.ordinal != null)
+      .map((pt) => ({
         ...pt,
         id: pt.id ?? pt.ordinal,
         isCustomizable: pt.isCustomizable ?? pt.customizable ?? false,
@@ -1736,14 +1802,14 @@ const Settings = () => {
       return;
     }
 
-    const ticketFormEnvelope = toSettingsEnvelope<any>(ticketFormSettingsData);
+    const ticketFormEnvelope = toSettingsEnvelope<TicketFormsConfiguration>(ticketFormSettingsData);
     const ticketFormPayload = ticketFormEnvelope.data;
     const loadedVersion = Number(ticketFormEnvelope?._meta?.version ?? 0);
     setTicketFormsVersion(Number.isFinite(loadedVersion) ? loadedVersion : 0);
 
     // Check if the ticket forms data has meaningful content
     const hasData = ticketFormPayload && typeof ticketFormPayload === 'object' &&
-      Object.values(ticketFormPayload).some((form: any) =>
+      Object.values(ticketFormPayload).some((form) =>
         form && (
           (Array.isArray(form.fields) && form.fields.length > 0) ||
           (Array.isArray(form.sections) && form.sections.length > 0)
@@ -1766,7 +1832,7 @@ const Settings = () => {
       return;
     }
 
-    const quickResponsesEnvelope = toSettingsEnvelope<any>(quickResponsesData);
+    const quickResponsesEnvelope = toSettingsEnvelope<Partial<QuickResponsesConfiguration>>(quickResponsesData);
     const quickResponsesPayload = quickResponsesEnvelope.data;
     const loadedVersion = Number(quickResponsesEnvelope?._meta?.version ?? 0);
     setQuickResponsesVersion(Number.isFinite(loadedVersion) ? loadedVersion : 0);
@@ -1788,7 +1854,7 @@ const Settings = () => {
       return;
     }
 
-    const statusThresholdEnvelope = toSettingsEnvelope<any>(statusThresholdsData);
+    const statusThresholdEnvelope = toSettingsEnvelope<StatusThresholds>(statusThresholdsData);
     const statusThresholdPayload = statusThresholdEnvelope.data;
     const loadedVersion = Number(statusThresholdEnvelope?._meta?.version ?? 0);
     setStatusThresholdsVersion(Number.isFinite(loadedVersion) ? loadedVersion : 0);
@@ -1808,7 +1874,7 @@ const Settings = () => {
       return;
     }
 
-    const ticketLabelEnvelope = toSettingsEnvelope<any>(ticketLabelSettingsData);
+    const ticketLabelEnvelope = toSettingsEnvelope<{ labels?: Label[] }>(ticketLabelSettingsData);
     const labelPayload = Array.isArray(ticketLabelEnvelope?.data?.labels)
       ? ticketLabelEnvelope.data.labels
       : [];
@@ -2625,6 +2691,13 @@ const Settings = () => {
   }, []);
 
   // Settings categories configuration
+  const toSubCategories = (categoryId: string) =>
+    accessibleSubCategories(categoryId, subCategoryAccess).map(({ id, titleKey, icon }) => ({
+      id,
+      title: t(titleKey),
+      icon,
+    }));
+
   const settingsCategories = [
     {
       id: 'general',
@@ -2632,14 +2705,7 @@ const Settings = () => {
       description: t('settings.page.serverBillingDesc'),
       icon: SettingsIcon,
       permission: 'general',
-      subCategories: [
-        ...(user?.role === 'Super Admin' ? [{ id: 'billing', title: t('settings.page.billing'), icon: CreditCard }] : []),
-        { id: 'usage', title: t('settings.page.usage'), icon: Globe },
-        ...(user?.role === 'Super Admin' ? [{ id: 'server-config', title: t('settings.page.serverConfig'), icon: SettingsIcon }] : []),
-        { id: 'domain', title: t('settings.page.domain'), icon: Globe },
-        { id: 'webhooks', title: t('settings.page.webhooks'), icon: MessageCircle },
-        ...(user?.role === 'Super Admin' ? [{ id: 'migration', title: t('settings.page.migrationTool'), icon: Database }] : []),
-      ],
+      subCategories: toSubCategories('general'),
     },
     {
       id: 'punishment',
@@ -2647,10 +2713,7 @@ const Settings = () => {
       description: t('settings.page.punishmentsDesc'),
       icon: Scale,
       permission: 'punishment',
-      subCategories: [
-        { id: 'thresholds', title: t('settings.page.thresholds'), icon: Layers },
-        { id: 'types', title: t('settings.page.types'), icon: Scale },
-      ],
+      subCategories: toSubCategories('punishment'),
     },
     {
       id: 'tickets',
@@ -2658,20 +2721,7 @@ const Settings = () => {
       description: t('settings.page.ticketsDesc'),
       icon: FileText,
       permission: 'tags',
-      subCategories: [
-        ...(canViewAdminSettings
-          ? [{ id: 'quick-responses', title: t('settings.page.quickResponses'), icon: MessageCircle }]
-          : []),
-        ...(canViewAdminSettings
-          ? [{ id: 'label-management', title: t('settings.page.labelManagement'), icon: Tag }]
-          : []),
-        ...(canViewAdminSettings
-          ? [{ id: 'ticket-forms', title: t('settings.page.ticketForms'), icon: Layers }]
-          : []),
-        ...(canViewAdminSettings
-          ? [{ id: 'ai-moderation', title: t('settings.page.aiModeration'), icon: Bot }]
-          : []),
-      ],
+      subCategories: toSubCategories('tickets'),
     },
     {
       id: 'staff',
@@ -2679,10 +2729,7 @@ const Settings = () => {
       description: t('settings.page.staffRolesDesc'),
       icon: Users,
       permission: 'staff',
-      subCategories: [
-        { id: 'staff-management', title: t('settings.page.staffManagement'), icon: UserIcon },
-        { id: 'roles-permissions', title: t('settings.page.rolesPermissions'), icon: Shield },
-      ],
+      subCategories: toSubCategories('staff'),
     },
     {
       id: 'knowledgebase',
@@ -2690,10 +2737,7 @@ const Settings = () => {
       description: t('settings.page.knowledgebaseHomepageDesc'),
       icon: BookOpen,
       permission: 'knowledgebase',
-      subCategories: [
-        { id: 'knowledgebase-articles', title: t('settings.page.knowledgebase'), icon: BookOpen },
-        { id: 'homepage-cards', title: t('settings.page.homepageCards'), icon: Home },
-      ],
+      subCategories: toSubCategories('knowledgebase'),
     },
   ];
 
@@ -2757,7 +2801,7 @@ const Settings = () => {
         <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-5">
           {settingsCategories.map((category) => {
             // Check permission
-            if (category.permission && !canAccessSettingsTab(category.permission as any)) {
+            if (category.permission && !canAccessSettingsTab(category.permission as SettingsTab)) {
               return null;
             }
             if (category.subCategories && category.subCategories.length === 0) {
@@ -2882,7 +2926,7 @@ const Settings = () => {
                 getBillingSummary={getBillingSummary}
                 getServerConfigSummary={getServerConfigSummary}
                 getDomainSummary={getDomainSummary}
-                webhookSettings={settingsData?.settings?.webhookSettings}
+                webhookSettings={settingsData?.settings && 'webhookSettings' in settingsData.settings ? (settingsData.settings.webhookSettings ?? undefined) as unknown as WebhookSettingsData | undefined : undefined}
                 getWebhookSummary={getWebhookSummary}
                 handleWebhookSave={handleWebhookSave}
                 savingWebhookSettings={savingWebhookSettings}
@@ -2949,7 +2993,7 @@ const Settings = () => {
                         setSelectedTicketFormType={setSelectedTicketFormType}
                         aiModerationSettings={aiModerationSettings}
                         setAiModerationSettings={setAiModerationSettings}
-                        punishmentTypesState={punishmentTypes}
+                        punishmentTypesState={ticketSettingsPunishmentTypes}
                         moveFieldBetweenSections={moveFieldBetweenSections}
                         visibleSection="quick-responses"
                       />
@@ -2984,7 +3028,7 @@ const Settings = () => {
                         setSelectedTicketFormType={setSelectedTicketFormType}
                         aiModerationSettings={aiModerationSettings}
                         setAiModerationSettings={setAiModerationSettings}
-                        punishmentTypesState={punishmentTypes}
+                        punishmentTypesState={ticketSettingsPunishmentTypes}
                         moveFieldBetweenSections={moveFieldBetweenSections}
                         visibleSection="label-management"
                       />
@@ -3019,7 +3063,7 @@ const Settings = () => {
                         setSelectedTicketFormType={setSelectedTicketFormType}
                         aiModerationSettings={aiModerationSettings}
                         setAiModerationSettings={setAiModerationSettings}
-                        punishmentTypesState={punishmentTypes}
+                        punishmentTypesState={ticketSettingsPunishmentTypes}
                         moveFieldBetweenSections={moveFieldBetweenSections}
                         visibleSection="ticket-forms"
                       />
@@ -3054,7 +3098,7 @@ const Settings = () => {
                         setSelectedTicketFormType={setSelectedTicketFormType}
                         aiModerationSettings={aiModerationSettings}
                         setAiModerationSettings={setAiModerationSettings}
-                        punishmentTypesState={punishmentTypes}
+                        punishmentTypesState={ticketSettingsPunishmentTypes}
                         moveFieldBetweenSections={moveFieldBetweenSections}
                         visibleSection="ai-moderation"
                       />
@@ -3926,7 +3970,7 @@ const Settings = () => {
                     if (selectedPunishment) {
                       try {
                         // Map frontend field names to backend field names for the request
-                        const { isCustomizable, isAppealable, ...rest } = selectedPunishment as any;
+                        const { isCustomizable, isAppealable, ...rest } = selectedPunishment;
                         const requestBody = {
                           ...rest,
                           appealable: isAppealable,

@@ -164,17 +164,17 @@ export function useAssignMinecraftPlayer() {
 
   return useMutation({
     mutationFn: ({
-      username,
+      email,
       minecraftUuid,
       minecraftUsername
     }: {
-      username: string;
+      email: string;
       minecraftUuid?: string;
       minecraftUsername?: string;
     }) =>
       protoSend(
         'PATCH',
-        `/v1/panel/staff/${username}/minecraft-player`,
+        `/v1/panel/staff/${encodeURIComponent(email)}/minecraft-player`,
         AssignMinecraftPlayerRequestSchema,
         create(AssignMinecraftPlayerRequestSchema, { minecraftUuid, minecraftUsername }),
         StaffMutationResponseSchema,

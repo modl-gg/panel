@@ -3,6 +3,7 @@ import ReactMarkdown from 'react-markdown';
 import { cn } from '@modl-gg/shared-web/lib/utils';
 import { ClickablePlayer } from './clickable-player';
 import { useMediaUploadConfig } from '@/hooks/use-media-upload';
+import { getTrustedEvidenceMediaType, normalizeCdnHost } from '@/utils/evidence-utils';
 
 interface MarkdownRendererProps {
   content: string;
@@ -88,17 +89,7 @@ const MarkdownRenderer = ({ content, className, allowHtml = false, disableClicka
     [content, disableClickablePlayers]
   );
 
-  const normalizedCdnHost = useMemo(() => {
-    const rawDomain = mediaConfig?.cdnDomain?.trim();
-    if (!rawDomain) return null;
-
-    try {
-      const parsed = new URL(rawDomain.startsWith('http') ? rawDomain : `https://${rawDomain}`);
-      return parsed.hostname.toLowerCase();
-    } catch {
-      return (rawDomain.replace(/^https?:\/\//i, '').split('/')[0] ?? '').toLowerCase();
-    }
-  }, [mediaConfig?.cdnDomain]);
+  const normalizedCdnHost = useMemo(() => normalizeCdnHost(mediaConfig?.cdnDomain), [mediaConfig?.cdnDomain]);
 
   if (content === undefined || content === null) {
     return null;
@@ -109,24 +100,9 @@ const MarkdownRenderer = ({ content, className, allowHtml = false, disableClicka
   }
 
   const getTrustedMediaKind = (href?: string): 'image' | 'video' | null => {
-    if (!href || !normalizedCdnHost) return null;
-
-    const imageMatch = href.match(/\.(jpg|jpeg|png|gif|webp)(\?.*)?$/i);
-    const videoMatch = href.match(/\.(mp4|webm|mov)(\?.*)?$/i);
-    if (!imageMatch && !videoMatch) return null;
-
-    try {
-      const parsed = new URL(href);
-      if (parsed.hostname.toLowerCase() !== normalizedCdnHost) {
-        return null;
-      }
-    } catch {
-      return null;
-    }
-
-    if (imageMatch) return 'image';
-    if (videoMatch) return 'video';
-    return null;
+    if (!href) return null;
+    const mediaType = getTrustedEvidenceMediaType(href, normalizedCdnHost);
+    return mediaType === 'image' || mediaType === 'video' ? mediaType : null;
   };
 
   // Check if content contains structured form data (bullet points, bold labels).

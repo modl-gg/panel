@@ -423,6 +423,7 @@ const Sidebar = () => {
                             <Button
                               variant={isActive ? "secondary" : "ghost"}
                               size="icon"
+                              aria-label={item.name}
                               className={cn(
                                 "w-full h-10",
                                 isActive &&
@@ -469,6 +470,7 @@ const Sidebar = () => {
                           <Button
                             variant={isActive ? "secondary" : "ghost"}
                             size="icon"
+                            aria-label={item.name}
                             className={cn(
                               "w-full h-10",
                               isActive &&

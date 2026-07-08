@@ -24,9 +24,6 @@ import {
   AddTicketReplyResponseSchema,
   SubmitTicketFormRequestSchema,
   SubmitPublicTicketResponseSchema,
-  PublicTicketVerificationRequestResponseSchema,
-  VerifyTicketCodeRequestSchema,
-  PublicTicketVerificationResponseSchema,
   BulkTicketUpdateRequestSchema,
   BulkTicketUpdateResponseSchema,
   PublicTicketResponseSchema,
@@ -35,18 +32,11 @@ import {
   type PublicTicketNote,
 } from '@modl-gg/proto/modl/v1/ticket_pb.ts';
 
+import { requestPublicVerification, verifyPublicCode, withPublicAuthToken } from './public-verification';
+
 const READ_OPTS = { ignoreUnknownFields: true } as const;
 
-export function setCookie(name: string, value: string, days: number) {
-  const expires = new Date(Date.now() + days * 864e5).toUTCString();
-  document.cookie = `${name}=${encodeURIComponent(value)}; expires=${expires}; path=/; SameSite=Lax`;
-}
-
-function getCookie(name: string): string | null {
-  const match = document.cookie.match(new RegExp('(^| )' + name + '=([^;]+)'));
-  const value = match?.[2];
-  return value !== undefined ? decodeURIComponent(value) : null;
-}
+export { setCookie, getCookie, publicAuthTokenKey } from './public-verification';
 
 // The legacy panel JSON serialized java.util.Date as epoch millis; consumers feed those
 // values straight into `new Date(...)`. Proto int64 date fields decode to bigint millis,
@@ -72,10 +62,7 @@ function mapChatMessage(message: TicketChatMessage) {
   return { content: message.content, sender: message.sender, timestamp: millisToNumber(message.timestamp) };
 }
 
-// Returns `any` on purpose: the legacy hook returned res.json() (untyped), and consumers
-// (including the frozen ticket-detail.tsx) read fields the proto message does not model.
-// Keeping the loose contract leaves those consumers untouched.
-function mapTicketResponse(ticket: TicketResponse): any {
+function mapTicketResponse(ticket: TicketResponse) {
   return {
     ...ticket,
     _id: ticket.id,
@@ -94,9 +81,7 @@ function mapListItem(item: TicketListItemResponse) {
   };
 }
 
-// Returns `any` to preserve the legacy untyped contract; the tickets page maps the items
-// onto its own local Ticket interface (string date fields) without further hook edits.
-function mapPaginatedTickets(response: PaginatedTicketsResponse): any {
+function mapPaginatedTickets(response: PaginatedTicketsResponse) {
   return {
     tickets: response.tickets.map(mapListItem),
     pagination: response.pagination
@@ -114,9 +99,7 @@ function mapPublicNote(note: PublicTicketNote) {
   return { ...note, date: timestampToIso(note.date) };
 }
 
-// Returns `any` to keep the legacy untyped contract; the public ticket page reads several
-// fields the proto message does not model and feeds dates straight into `new Date(...)`.
-function mapPublicTicketResponse(ticket: PublicTicketResponse): any {
+function mapPublicTicketResponse(ticket: PublicTicketResponse) {
   return {
     ...ticket,
     _id: ticket.id,
@@ -184,14 +167,7 @@ export function useTicket(id: string) {
   return useQuery({
     queryKey: ['/v1/public/tickets', id],
     queryFn: async () => {
-      const tokenKey = `ticket_auth_${id}`;
-      const token = getCookie(tokenKey);
-
-      const url = token
-        ? `/v1/public/tickets/${id}?token=${encodeURIComponent(token)}`
-        : `/v1/public/tickets/${id}`;
-
-      const res = await apiFetch(url);
+      const res = await apiFetch(withPublicAuthToken(`/v1/public/tickets/${id}`, 'ticket', id));
       if (!res.ok) {
         if (res.status === 404) {
           return null;
@@ -230,9 +206,48 @@ export function useCreateTicket() {
   });
 }
 
+interface TicketReplyInput {
+  name?: string;
+  content?: string;
+  type?: string;
+  staff?: boolean;
+  avatar?: string;
+  attachments?: unknown;
+  action?: string;
+  creatorIdentifier?: string;
+}
+
+interface TicketNoteInput {
+  text?: string;
+  issuerName?: string;
+  issuerAvatar?: string;
+}
+
+interface UpdateTicketInput {
+  status?: string;
+  locked?: boolean;
+  hidden?: boolean;
+  tags?: string[];
+  assignedTo?: string[];
+  data?: JsonObject;
+  newReply?: TicketReplyInput;
+  newNote?: TicketNoteInput;
+}
+
+interface SubmitTicketFormInput {
+  subject?: string;
+  creatorEmail?: string;
+  formData?: JsonObject;
+  attachments?: unknown;
+  creatorIdentifier?: string;
+  fieldLabels?: { [key: string]: string };
+}
+
+type PlayerTicketRecord = { created?: string | number | Date | null } & Record<string, unknown>;
+
 export function useUpdateTicket() {
   return useMutation({
-    mutationFn: async ({ id, data }: { id: string, data: any }) => {
+    mutationFn: async ({ id, data }: { id: string, data: UpdateTicketInput }) => {
       const request = create(UpdateTicketRequestSchema, {
         status: data.status,
         locked: data.locked,
@@ -279,13 +294,8 @@ export function useUpdateTicket() {
 
 export function useAddTicketReply() {
   return useMutation({
-    mutationFn: ({ id, reply }: { id: string, reply: any }) => {
-      const tokenKey = `ticket_auth_${id}`;
-      const token = getCookie(tokenKey);
-
-      const url = token
-        ? `/v1/public/tickets/${id}/replies?token=${encodeURIComponent(token)}`
-        : `/v1/public/tickets/${id}/replies`;
+    mutationFn: ({ id, reply }: { id: string, reply: TicketReplyInput }) => {
+      const url = withPublicAuthToken(`/v1/public/tickets/${id}/replies`, 'ticket', id);
 
       const request = create(AddReplyRequestSchema, {
         name: reply.name,
@@ -308,7 +318,7 @@ export function useAddTicketReply() {
 
 export function useSubmitTicketForm() {
   return useMutation({
-    mutationFn: async ({ id, formData }: { id: string, formData: any }) => {
+    mutationFn: async ({ id, formData }: { id: string, formData: SubmitTicketFormInput }) => {
       const request = create(SubmitTicketFormRequestSchema, {
         subject: formData.subject,
         creatorEmail: formData.creatorEmail,
@@ -338,38 +348,14 @@ export function useSubmitTicketForm() {
 
 export function useRequestTicketVerification() {
   return useMutation({
-    mutationFn: async (ticketId: string) => {
-      const res = await apiFetch(`/v1/public/tickets/${ticketId}/request-verification`, {
-        method: 'POST',
-      });
-
-      if (!res.ok) {
-        const error = await res.json().catch(() => ({}));
-        throw new Error(error.message || 'Failed to request verification');
-      }
-
-      return fromJson(PublicTicketVerificationRequestResponseSchema, await res.json(), READ_OPTS);
-    }
+    mutationFn: (ticketId: string) => requestPublicVerification(`/v1/public/tickets/${ticketId}`)
   });
 }
 
 export function useVerifyTicketCode() {
   return useMutation({
-    mutationFn: async ({ ticketId, code }: { ticketId: string, code: string }) => {
-      const request = create(VerifyTicketCodeRequestSchema, { code });
-
-      const res = await apiFetch(`/v1/public/tickets/${ticketId}/verify`, {
-        method: 'POST',
-        body: toJson(VerifyTicketCodeRequestSchema, request),
-      });
-
-      if (!res.ok) {
-        const error = await res.json().catch(() => ({}));
-        throw new Error(error.message || 'Invalid or expired code');
-      }
-
-      return fromJson(PublicTicketVerificationResponseSchema, await res.json(), READ_OPTS);
-    }
+    mutationFn: ({ ticketId, code }: { ticketId: string, code: string }) =>
+      verifyPublicCode(`/v1/public/tickets/${ticketId}`, code)
   });
 }
 
@@ -400,7 +386,7 @@ export function usePlayerAllTickets(uuid: string) {
       }
       const data = await res.json();
       const items = Array.isArray(data) ? data : [];
-      return items.map((ticket: any) => {
+      return items.map((ticket: PlayerTicketRecord) => {
         const createdDate = ticket.created ? new Date(ticket.created) : null;
         const created = createdDate && !isNaN(createdDate.getTime()) ? createdDate.toISOString() : null;
         return { ...ticket, created };

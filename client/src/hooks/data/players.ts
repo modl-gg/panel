@@ -26,12 +26,7 @@ export interface PlayerReplaySummary {
   matchSource: string;
 }
 
-// Remap PlayerDetailResponse to the legacy player object the player pages consume. `latestIpData`
-// is renamed to `latestIPData` (the casing every consumer reads), and `data` stays a plain object
-// so the existing `player.data[key]` lookups keep working. The return is intentionally `any`: the
-// pages read this object loosely (the legacy `res.json()` contract), so a precise type would only
-// surface pre-existing loose-access patterns as new errors.
-const mapPlayerDetail = (player: PlayerDetailResponse): any => ({
+const mapPlayerDetail = (player: PlayerDetailResponse) => ({
   ...player,
   latestIPData: player.latestIpData,
   punishments: player.punishments.map(mapPunishment),
@@ -70,9 +65,7 @@ export function useLinkedAccounts(uuid: string) {
         PanelLinkedAccountsResponseSchema,
         `/v1/panel/players/${uuid}/linked`,
       );
-      // Loose return: the page also reads legacy bookkeeping fields (searchStatus, etc.) that the
-      // proto response no longer carries, so a precise type would only add new errors.
-      return { linkedAccounts: response?.linkedAccounts ?? [] } as any;
+      return { linkedAccounts: response?.linkedAccounts ?? [] };
     },
     enabled: !!uuid,
     staleTime: 30_000,
@@ -129,9 +122,7 @@ export function usePlayerSearch(searchQuery: string, debounceMs: number = 300) {
         PlayerSearchResultsResponseSchema,
         `/v1/panel/players?search=${encodeURIComponent(debouncedQuery.trim())}`,
       );
-      // Loose array: some consumers read `player.minecraftUuid`/`player.data`, which the search
-      // result message does not expose, so keep the legacy untyped contract.
-      return response.items as any[];
+      return response.items;
     },
     enabled: debouncedQuery.trim().length >= 2,
     staleTime: 1000 * 60,

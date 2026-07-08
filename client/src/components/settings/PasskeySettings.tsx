@@ -292,6 +292,9 @@ const PasskeySettings = () => {
         <DialogContent>
           <DialogHeader>
             <DialogTitle>{t('settings.passkey.renamePasskey')}</DialogTitle>
+            <DialogDescription>
+              {t('settings.passkey.renamePasskeyDesc')}
+            </DialogDescription>
           </DialogHeader>
           <Input
             value={renameName}

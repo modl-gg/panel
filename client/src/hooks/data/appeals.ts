@@ -8,6 +8,15 @@ import {
   CreatePublicAppealResponseSchema,
 } from '@modl-gg/proto/modl/v1/appeal_pb.ts';
 import type { TicketResponse } from '@modl-gg/proto/modl/v1/ticket_pb.ts';
+import { publicAuthTokenKey, requestPublicVerification, verifyPublicCode, withPublicAuthToken } from './public-verification';
+
+export function appealAuthTokenKey(appealId: string): string {
+  return publicAuthTokenKey('appeal', appealId);
+}
+
+export function withAppealAuthToken(path: string, appealId: string): string {
+  return withPublicAuthToken(path, 'appeal', appealId);
+}
 
 // Appeals reuse the ticket TicketResponse message; its int64 date fields decode to
 // bigint epoch millis, while the legacy JSON delivered them as numbers that consumers
@@ -46,11 +55,20 @@ export function useAppealsByPunishment(punishmentId: string) {
   });
 }
 
+interface CreateAppealInput {
+  punishmentId: JsonValue;
+  playerUuid: JsonValue;
+  email: JsonValue;
+  attachments?: JsonValue;
+  reason?: JsonValue;
+  evidence?: JsonValue;
+  additionalData?: JsonValue;
+  fieldLabels?: JsonValue;
+}
+
 export function useCreateAppeal() {
   return useMutation({
-    // appealData keeps the legacy `any` contract so the appeals page passes its loosely
-    // typed payload unchanged.
-    mutationFn: (appealData: any) => {
+    mutationFn: (appealData: CreateAppealInput) => {
       // CreateAppealRequest carries google.protobuf.Value/Struct fields that create()
       // cannot build from free-form JSON; fromJson coerces them natively from proto-JSON.
       // fromJson rejects undefined values, so only include keys that are present.
@@ -76,5 +94,18 @@ export function useCreateAppeal() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['/v1/panel/appeals'] });
     }
+  });
+}
+
+export function useRequestAppealVerification() {
+  return useMutation({
+    mutationFn: (appealId: string) => requestPublicVerification(`/v1/public/appeals/${appealId}`)
+  });
+}
+
+export function useVerifyAppealCode() {
+  return useMutation({
+    mutationFn: ({ appealId, code }: { appealId: string, code: string }) =>
+      verifyPublicCode(`/v1/public/appeals/${appealId}`, code)
   });
 }

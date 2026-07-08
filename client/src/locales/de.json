@@ -44,6 +44,9 @@
     "showing": "Zeige",
     "of": "von",
     "replies": "Antworten",
+    "replyCount_one": "{{count}} Antwort",
+    "replyCount_other": "{{count}} Antworten",
+    "attachmentPreviewDesc": "Vorschau der angehängten Datei.",
     "noResults": "Keine Ergebnisse gefunden.",
     "noPermission": "Du hast keine Berechtigung, diesen Inhalt anzuzeigen.",
     "remove": "Entfernen",
@@ -103,6 +106,8 @@
     "verificationCodePlaceholder": "000000",
     "verificationCodeDesc": "Gib den 6-stelligen Code ein, der an deine E-Mail-Adresse gesendet wurde.",
     "verifying": "Wird überprüft...",
+    "invalidCode": "Ungültiger oder abgelaufener Code",
+    "resendCode": "Code erneut senden",
     "verifyLogin": "Bestätigen & Anmelden",
     "authenticating": "Authentifizierung...",
     "signInPasskey": "Mit Passkey anmelden",
@@ -337,6 +342,7 @@
       "cardsReordered": "Homepage-Karten erfolgreich neu sortiert.",
       "titleDescRequired": "Titel und Beschreibung sind erforderlich.",
       "urlRequired": "URL ist für Link-Karten erforderlich.",
+      "urlInvalid": "Geben Sie eine gültige http(s)-URL oder einen internen Pfad ein, der mit / beginnt.",
       "categoryRequired": "Bitte wähle eine Kategorie aus."
     },
     "knowledgebase": {
@@ -426,6 +432,7 @@
       "nameYourPasskeyDesc": "Gib deinem Passkey einen Namen, um ihn später zu identifizieren.",
       "passkeyNamePlaceholder": "z. B. MacBook Touch ID",
       "renamePasskey": "Passkey umbenennen",
+      "renamePasskeyDesc": "Gib einen neuen Namen für diesen Passkey ein.",
       "rename": "Umbenennen",
       "removePasskey": "Passkey entfernen",
       "removePasskeyConfirm": "Bist du sicher, dass du '{{name}}' entfernen möchtest? Du kannst diesen Passkey nicht mehr zur Anmeldung verwenden."
@@ -711,12 +718,15 @@
       "noQuickResponsesConfigured": "Keine Schnellantworten konfiguriert.",
       "addFirstResponse": "Erste Antwort hinzufügen",
       "loadingQuickResponses": "Schnellantworten werden geladen...",
-      "actionsCount": "{{count}} Aktion(en)",
+      "actionsCount_one": "{{count}} Aktion",
+      "actionsCount_other": "{{count}} Aktionen",
       "deleteFormFieldConfirm": "Bist du sicher, dass du das Formularfeld \"{{label}}\" löschen möchtest? Diese Aktion kann nicht rückgängig gemacht werden.",
       "deleteSectionConfirm": "Bist du sicher, dass du den Abschnitt \"{{title}}\" löschen möchtest? Diese Aktion kann nicht rückgängig gemacht werden.",
       "deleteQuickResponseConfirm": "Bist du sicher, dass du die Schnellantwort \"{{name}}\" löschen möchtest? Diese Aktion kann nicht rückgängig gemacht werden.",
       "removeAIPunishmentConfirm": "Bist du sicher, dass du \"{{name}}\" aus den KI-Straftypen entfernen möchtest?",
-      "updateAIDescFor": "KI-Beschreibung für {{name}} aktualisieren"
+      "updateAIDescFor": "KI-Beschreibung für {{name}} aktualisieren",
+      "quickResponseDialogDesc": "Konfiguriere den Titel und die Nachrichtenvorlage der Antwort.",
+      "quickResponseCategoryDialogDesc": "Lege den Kategorienamen und die zugehörigen Ticket-Typen fest."
     },
     "usage": {
       "fetchFailed": "Speicherinformationen konnten nicht geladen werden.",
@@ -1716,7 +1726,8 @@
     "appealReason": "Berufungsgrund",
     "appealReasonPlaceholder": "Erkläre, warum du glaubst, dass diese Strafe überprüft werden sollte...",
     "appealReasonDesc": "Sei ehrlich und gib so viele Details wie möglich an",
-    "selectAnOption": "Option auswählen"
+    "selectAnOption": "Option auswählen",
+    "verificationRequiredDesc": "Diese Beschwerde erfordert eine E-Mail-Verifizierung, um die Konversation anzuzeigen."
   },
   "submitTicket": {
     "supportRequest": "Support-Anfrage",

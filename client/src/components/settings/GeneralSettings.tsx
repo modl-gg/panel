@@ -13,6 +13,7 @@ import BillingSettings from './BillingSettings';
 import DomainSettings from './DomainSettings';
 import UsageSettings from './UsageSettings';
 import WebhookSettings from './WebhookSettings';
+import type { WebhookSettings as WebhookSettingsData } from './WebhookSettings';
 import MigrationTool from './MigrationTool';
 import { queryClient } from '@/lib/queryClient';
 import { toast } from '@modl-gg/shared-web/hooks/use-toast';
@@ -51,9 +52,9 @@ interface GeneralSettingsProps {
   getDomainSummary: () => string;
 
   // Webhook Settings
-  webhookSettings?: any;
+  webhookSettings?: WebhookSettingsData;
   getWebhookSummary: () => string;
-  handleWebhookSave: (settings: any) => Promise<void>;
+  handleWebhookSave: (settings: WebhookSettingsData) => Promise<void>;
   savingWebhookSettings?: boolean;
 
   // Optional prop to show only a specific section

@@ -44,6 +44,9 @@
     "showing": "Showing",
     "of": "of",
     "replies": "Replies",
+    "replyCount_one": "{{count}} reply",
+    "replyCount_other": "{{count}} replies",
+    "attachmentPreviewDesc": "Preview of the attached file.",
     "noResults": "No results found.",
     "noPermission": "You don't have permission to view this content.",
     "remove": "Remove",
@@ -103,6 +106,8 @@
     "verificationCodePlaceholder": "000000",
     "verificationCodeDesc": "Enter the 6-digit code sent to your email.",
     "verifying": "Verifying...",
+    "invalidCode": "Invalid or expired code",
+    "resendCode": "Resend code",
     "verifyLogin": "Verify & Sign In",
     "authenticating": "Authenticating...",
     "signInPasskey": "Sign in with Passkey",
@@ -337,6 +342,7 @@
       "cardsReordered": "Homepage cards reordered successfully.",
       "titleDescRequired": "Title and description are required.",
       "urlRequired": "URL is required for link cards.",
+      "urlInvalid": "Enter a valid http(s) URL or an internal path starting with /.",
       "categoryRequired": "Please select a category."
     },
     "knowledgebase": {
@@ -426,6 +432,7 @@
       "nameYourPasskeyDesc": "Give your passkey a name to identify it later.",
       "passkeyNamePlaceholder": "e.g. MacBook Touch ID",
       "renamePasskey": "Rename Passkey",
+      "renamePasskeyDesc": "Enter a new name for this passkey.",
       "rename": "Rename",
       "removePasskey": "Remove Passkey",
       "removePasskeyConfirm": "Are you sure you want to remove '{{name}}'? You will not be able to use this passkey to log in anymore."
@@ -719,12 +726,15 @@
       "noQuickResponsesConfigured": "No quick responses configured.",
       "addFirstResponse": "Add First Response",
       "loadingQuickResponses": "Loading quick responses...",
-      "actionsCount": "{{count}} action(s)",
+      "actionsCount_one": "{{count}} action",
+      "actionsCount_other": "{{count}} actions",
       "deleteFormFieldConfirm": "Are you sure you want to delete the form field \"{{label}}\"? This action cannot be undone.",
       "deleteSectionConfirm": "Are you sure you want to delete the section \"{{title}}\"? This action cannot be undone.",
       "deleteQuickResponseConfirm": "Are you sure you want to delete the quick response \"{{name}}\"? This action cannot be undone.",
       "removeAIPunishmentConfirm": "Are you sure you want to remove \"{{name}}\" from AI punishment types?",
-      "updateAIDescFor": "Update AI description for {{name}}"
+      "updateAIDescFor": "Update AI description for {{name}}",
+      "quickResponseDialogDesc": "Configure the response title and message template.",
+      "quickResponseCategoryDialogDesc": "Set the category name and the ticket types it applies to."
     },
     "usage": {
       "fetchFailed": "Failed to load storage information.",
@@ -1712,6 +1722,10 @@
     "appealRejectedDesc": "Your appeal has been reviewed and rejected. You may submit a new appeal after 30 days.",
     "appealApproved": "Appeal Approved",
     "appealApprovedDesc": "Your appeal has been approved! Your punishment has been lifted or reduced.",
+    "appealClosed": "Appeal Closed",
+    "appealClosedDesc": "This appeal has been closed by our staff.",
+    "repliesLocked": "Replies Locked",
+    "repliesLockedDesc": "This appeal has been locked by staff and no longer accepts new replies.",
     "appealConversation": "Appeal Conversation",
     "replyToAppeal": "Reply to Appeal",
     "replyToAppealDesc": "Add a reply to your appeal. This will be visible to staff reviewing your case.",
@@ -1724,7 +1738,8 @@
     "appealReason": "Appeal Reason",
     "appealReasonPlaceholder": "Explain why you believe this punishment should be reviewed...",
     "appealReasonDesc": "Be honest and provide as much detail as possible",
-    "selectAnOption": "Select an option"
+    "selectAnOption": "Select an option",
+    "verificationRequiredDesc": "This appeal requires email verification to view the conversation."
   },
   "submitTicket": {
     "supportRequest": "Support Request",

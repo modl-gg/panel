@@ -68,7 +68,7 @@ interface TicketRowProps {
   onRemoveLabel: (ticketId: string, labelName: string) => void;
   ticketMetaLabel: string;
   hiddenLabel: string;
-  repliesLabel: string;
+  repliesCountLabel: string;
 }
 
 const TicketRow = memo(({
@@ -82,7 +82,7 @@ const TicketRow = memo(({
   onRemoveLabel,
   ticketMetaLabel,
   hiddenLabel,
-  repliesLabel,
+  repliesCountLabel,
 }: TicketRowProps) => {
   const ticketLabels = ticket.tags || [];
   const availableLabelsForTicket = labels.filter((l) => !ticketLabels.includes(l.name));
@@ -175,7 +175,7 @@ const TicketRow = memo(({
         )}
       </TableCell>
       <TableCell className="text-right text-sm text-muted-foreground whitespace-nowrap">
-        {ticket.replyCount || 0} {repliesLabel}
+        {repliesCountLabel}
       </TableCell>
       <TableCell className="text-right text-sm text-muted-foreground whitespace-nowrap">
         {ticket.lastReply ? formatTimeAgo(ticket.lastReply.created) : '-'}
@@ -405,7 +405,7 @@ const Tickets = () => {
   const bulkUpdateMutation = useBulkUpdateTickets();
   const updateTicketMutation = useUpdateTicket();
 
-  const tickets: Ticket[] = ticketsResponse?.tickets || [];
+  const tickets: Ticket[] = (ticketsResponse?.tickets || []) as unknown as Ticket[];
   const pagination = ticketsResponse?.pagination || {
     current: 1,
     total: 1,
@@ -430,7 +430,7 @@ const Tickets = () => {
   );
 
   const staffMembers = useMemo(
-    () => (staffData || []).map((s: any) => ({
+    () => (staffData || []).map((s) => ({
       value: s.username || s.email?.split('@')[0] || '',
       label: s.username || s.email?.split('@')[0] || 'Unknown',
     })),
@@ -781,7 +781,7 @@ const Tickets = () => {
                       onRemoveLabel={handleRemoveLabel}
                       ticketMetaLabel={t('tickets.ticketMeta', { id: ticket.id, timeAgo: formatTimeAgo(ticket.date), by: ticket.reportedByName || ticket.reportedBy })}
                       hiddenLabel={t('tickets.hidden')}
-                      repliesLabel={t('common.replies').toLowerCase()}
+                      repliesCountLabel={t('common.replyCount', { count: ticket.replyCount || 0 })}
                     />
                   ))}
                 </TableBody>

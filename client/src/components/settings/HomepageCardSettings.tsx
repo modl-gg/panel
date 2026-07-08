@@ -9,6 +9,7 @@ import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, 
 import { useToast } from '@modl-gg/shared-web/hooks/use-toast';
 import { queryClient } from '@/lib/queryClient';
 import { apiFetch } from '@/lib/api';
+import { safeExternalHref } from '@/lib/utils';
 import { useQuery, useMutation } from '@tanstack/react-query';
 import {
   Plus, Edit, Trash2, GripVertical, Eye, EyeOff,
@@ -369,6 +370,14 @@ const HomepageCardSettings: React.FC = () => {
     });
   };
 
+  const rejectInvalidActionUrl = (): boolean => {
+    if (formData.actionType === 'url' && !safeExternalHref(formData.actionUrl)) {
+      toast({ title: t('toast.error'), description: t('settings.homepage.urlInvalid'), variant: 'destructive' });
+      return true;
+    }
+    return false;
+  };
+
   const handleCreateCard = () => {
     if (!formData.title.trim() || !formData.description.trim()) {
       toast({ title: t('toast.error'), description: t('settings.homepage.titleDescRequired'), variant: 'destructive' });
@@ -379,6 +388,8 @@ const HomepageCardSettings: React.FC = () => {
       toast({ title: t('toast.error'), description: t('settings.homepage.urlRequired'), variant: 'destructive' });
       return;
     }
+
+    if (rejectInvalidActionUrl()) return;
 
     if (formData.actionType === 'category_dropdown' && !formData.categoryId) {
       toast({ title: t('toast.error'), description: t('settings.homepage.categoryRequired'), variant: 'destructive' });
@@ -395,6 +406,8 @@ const HomepageCardSettings: React.FC = () => {
       toast({ title: t('toast.error'), description: t('settings.homepage.titleDescRequired'), variant: 'destructive' });
       return;
     }
+
+    if (rejectInvalidActionUrl()) return;
 
     updateCardMutation.mutate({ id: editingCard.id, ...formData });
   };

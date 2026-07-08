@@ -27,7 +27,7 @@ interface EmbedTemplate {
   fields: EmbedField[];
 }
 
-interface WebhookSettings {
+export interface WebhookSettings {
   discordWebhookUrl: string;
   discordAdminRoleId: string;
   botName: string;
@@ -224,12 +224,12 @@ const WebhookSettings: React.FC<WebhookSettingsProps> = ({
     }, 1000);
   };
 
-  const handleInputChange = (field: keyof WebhookSettings, value: any) => {
+  const handleInputChange = <K extends keyof WebhookSettings>(field: K, value: WebhookSettings[K]) => {
     // Prevent clearing important fields unintentionally
     if (field === 'discordWebhookUrl' && value === undefined) {
       return;
     }
-    
+
     const newSettings = {
       ...settings,
       [field]: value

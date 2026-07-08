@@ -12,11 +12,13 @@ const MIGRATION_TYPES = [
   { value: 'LiteBans', label: 'LiteBans (Spigot/Velocity/BungeeCord)' }
 ];
 
+type MigrationRecord = NonNullable<NonNullable<ReturnType<typeof useMigrationStatus>['data']>['currentMigration']>;
+
 const MigrationTool: React.FC = () => {
   const { t } = useTranslation();
   const [selectedType, setSelectedType] = useState<string>('');
   const [showCompletedAlert, setShowCompletedAlert] = useState(false);
-  const [lastCompletedMigration, setLastCompletedMigration] = useState<any>(null);
+  const [lastCompletedMigration, setLastCompletedMigration] = useState<MigrationRecord | null>(null);
   
   const { data: migrationStatus, isLoading: statusLoading } = useMigrationStatus();
   const startMigration = useStartMigration();
@@ -109,7 +111,7 @@ const MigrationTool: React.FC = () => {
     }
   };
 
-  const getProgressPercentage = (status: string, progress?: any) => {
+  const getProgressPercentage = (status: string, progress?: MigrationRecord['progress']) => {
     // A completed migration is always 100%, regardless of how many records
     // were skipped vs processed.
     if (status === 'completed') {
@@ -214,7 +216,7 @@ const MigrationTool: React.FC = () => {
                       {t('settings.migration.processed', { count: currentMigration.progress.recordsProcessed })}
                       {currentMigration.progress.totalRecords && ` / ${currentMigration.progress.totalRecords}`}
                     </span>
-                    {currentMigration.progress.recordsSkipped > 0 && (
+                    {(currentMigration.progress.recordsSkipped ?? 0) > 0 && (
                       <span className="text-warning">
                         {t('settings.migration.skipped', { count: currentMigration.progress.recordsSkipped })}
                       </span>
@@ -254,7 +256,7 @@ const MigrationTool: React.FC = () => {
                 {lastCompletedMigration.progress && (
                   <span className="ml-1">
                     {t('settings.migration.processedRecords', { count: lastCompletedMigration.progress.recordsProcessed })}
-                    {lastCompletedMigration.progress.recordsSkipped > 0 &&
+                    {(lastCompletedMigration.progress.recordsSkipped ?? 0) > 0 &&
                       t('settings.migration.skippedSuffix', { count: lastCompletedMigration.progress.recordsSkipped })}.
                   </span>
                 )}

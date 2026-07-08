@@ -16,7 +16,7 @@ interface Player {
   lastSeen?: Date | string;
   lastDisconnect?: Date | string;
   status: string;
-  data?: any;
+  data?: { isOnline?: boolean };
   isOnline?: boolean;
 }
 
@@ -99,9 +99,10 @@ const LookupPage = () => {
           value={searchQuery}
           onChange={(e) => setSearchQuery(e.target.value)}
           onKeyDown={(e) => {
-            if (e.key === 'Enter' && filteredPlayers.length > 0) {
+            const firstPlayer = filteredPlayers[0];
+            if (e.key === 'Enter' && firstPlayer) {
               e.preventDefault();
-              handlePlayerSelect(filteredPlayers[0]);
+              handlePlayerSelect(firstPlayer);
             }
           }}
           autoFocus

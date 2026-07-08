@@ -65,11 +65,26 @@ const ALL_SETTINGS_TARGETS: InvalidationTarget[] = [
   ['/v1/panel/settings/replay-retention'],
 ];
 
+const DASHBOARD_METRICS_TARGET: InvalidationTarget = ['/v1/panel/dashboard/metrics'];
+const DASHBOARD_RECENT_TICKETS_TARGET: InvalidationTarget = ['/v1/panel/dashboard/recent-tickets'];
+const DASHBOARD_RECENT_PUNISHMENTS_TARGET: InvalidationTarget = ['/v1/panel/dashboard/recent-punishments'];
+const DASHBOARD_ALERTS_TARGET: InvalidationTarget = ['/v1/panel/dashboard/alerts'];
+
 const DASHBOARD_TARGETS: InvalidationTarget[] = [
-  ['/v1/panel/dashboard/metrics'],
-  ['/v1/panel/dashboard/recent-tickets'],
-  ['/v1/panel/dashboard/recent-punishments'],
-  ['/v1/panel/dashboard/alerts'],
+  DASHBOARD_METRICS_TARGET,
+  DASHBOARD_RECENT_TICKETS_TARGET,
+  DASHBOARD_RECENT_PUNISHMENTS_TARGET,
+  DASHBOARD_ALERTS_TARGET,
+];
+
+const TICKET_DASHBOARD_TARGETS: InvalidationTarget[] = [
+  DASHBOARD_METRICS_TARGET,
+  DASHBOARD_RECENT_TICKETS_TARGET,
+];
+
+const PUNISHMENT_DASHBOARD_TARGETS: InvalidationTarget[] = [
+  DASHBOARD_METRICS_TARGET,
+  DASHBOARD_RECENT_PUNISHMENTS_TARGET,
 ];
 
 const AUDIT_TARGETS: InvalidationTarget[] = [
@@ -155,6 +170,15 @@ export function getRequiredTopicForRealtimePayload(envelope: RealtimeEnvelope): 
   }
 }
 
+function getTicketInvalidationTargets(ticketId?: string): InvalidationTarget[] {
+  return [
+    ['/v1/panel/tickets'],
+    ['/v1/panel/tickets/counts'],
+    ...(ticketId ? [['/v1/panel/tickets', ticketId] as const] : []),
+    ...TICKET_DASHBOARD_TARGETS,
+  ];
+}
+
 function getPanelResourceInvalidationTargets(resource: PanelResource, resourceId?: string): InvalidationTarget[] {
   const id = resourceId?.trim();
   switch (resource) {
@@ -167,12 +191,12 @@ function getPanelResourceInvalidationTargets(resource: PanelResource, resourceId
           ]
         : [['/v1/panel/players']];
     case PanelResource.PUNISHMENTS:
-      return id
-        ? [
-            ['/v1/panel/players', id],
-            ['/v1/panel/players/punishments', id, 'linked-bans'],
-          ]
-        : [['/v1/panel/players']];
+      return [
+        ...(id
+          ? [['/v1/panel/players/punishments', id, 'linked-bans'] as const]
+          : [['/v1/panel/players'] as const]),
+        ...PUNISHMENT_DASHBOARD_TARGETS,
+      ];
     case PanelResource.STAFF:
     case PanelResource.ROLES:
       return STAFF_TARGETS;
@@ -191,11 +215,7 @@ function getPanelResourceInvalidationTargets(resource: PanelResource, resourceId
         ...(id ? [['/v1/panel/appeals/punishment', id] as const] : []),
       ];
     case PanelResource.TICKETS:
-      return [
-        ['/v1/panel/tickets'],
-        ['/v1/panel/tickets/counts'],
-        ...(id ? [['/v1/panel/tickets', id] as const] : []),
-      ];
+      return getTicketInvalidationTargets(id);
     case PanelResource.DASHBOARD:
       return DASHBOARD_TARGETS;
     case PanelResource.NOTIFICATIONS:
@@ -207,14 +227,8 @@ function getPanelResourceInvalidationTargets(resource: PanelResource, resourceId
 
 export function getRealtimeInvalidationTargets(envelope: RealtimeEnvelope): InvalidationTarget[] {
   switch (envelope.payload.case) {
-    case 'ticketChanged': {
-      const ticketId = envelope.payload.value.ticketId?.trim();
-      return [
-        ['/v1/panel/tickets'],
-        ['/v1/panel/tickets/counts'],
-        ...(ticketId ? [['/v1/panel/tickets', ticketId] as const] : []),
-      ];
-    }
+    case 'ticketChanged':
+      return getTicketInvalidationTargets(envelope.payload.value.ticketId?.trim() || undefined);
     case 'assignedTicketSubscriptionChanged':
       return [
         ['/v1/panel/ticket-subscriptions/updates'],
@@ -235,10 +249,7 @@ export function getRealtimeInvalidationTargets(envelope: RealtimeEnvelope): Inva
 function getTopicInvalidationTargets(topic: Topic): InvalidationTarget[] {
   switch (topic) {
     case Topic.PANEL_TICKETS:
-      return [
-        ['/v1/panel/tickets'],
-        ['/v1/panel/tickets/counts'],
-      ];
+      return getTicketInvalidationTargets();
     case Topic.PANEL_ASSIGNED_TICKETS:
       return [
         ['/v1/panel/ticket-subscriptions/updates'],
@@ -247,8 +258,9 @@ function getTopicInvalidationTargets(topic: Topic): InvalidationTarget[] {
     case Topic.PANEL_MIGRATIONS:
       return [['/v1/panel/migration/status']];
     case Topic.PANEL_PLAYERS:
-    case Topic.PANEL_PUNISHMENTS:
       return [['/v1/panel/players']];
+    case Topic.PANEL_PUNISHMENTS:
+      return [['/v1/panel/players'], ...PUNISHMENT_DASHBOARD_TARGETS];
     case Topic.PANEL_STAFF:
     case Topic.PANEL_ROLES:
       return STAFF_TARGETS;

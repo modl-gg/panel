@@ -7,6 +7,8 @@ import {
   ResubscribeResponseSchema,
   UsageBillingSettingsRequestSchema,
   UsageBillingSettingsResponseSchema,
+  CheckoutSessionResponseSchema,
+  PortalSessionResponseSchema,
   type UsageResponse_UsageMetric,
 } from '@modl-gg/proto/modl/v1/billing_pb.ts';
 import { protoFetch, protoSend } from '@/lib/proto-fetch';
@@ -117,6 +119,24 @@ export function useUpdateUsageBillingSettings() {
       queryClient.invalidateQueries({ queryKey: ['/v1/panel/billing/usage'] });
       queryClient.invalidateQueries({ queryKey: ['/v1/panel/billing/status'] });
     },
+  });
+}
+
+export function useCreateCheckoutSession() {
+  return useMutation({
+    mutationFn: () =>
+      protoFetch(CheckoutSessionResponseSchema, '/v1/panel/billing/checkout-session', {
+        method: 'POST',
+      }),
+  });
+}
+
+export function useCreatePortalSession() {
+  return useMutation({
+    mutationFn: () =>
+      protoFetch(PortalSessionResponseSchema, '/v1/panel/billing/portal-session', {
+        method: 'POST',
+      }),
   });
 }
 

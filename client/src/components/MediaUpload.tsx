@@ -19,7 +19,7 @@ interface MediaUploadProps {
   maxFiles?: number;
   acceptedTypes?: string[];
   maxSizeBytes?: number;
-  metadata?: Record<string, any>;
+  metadata?: Record<string, unknown>;
   disabled?: boolean;
   className?: string;
   variant?: 'default' | 'compact' | 'button-only';

@@ -48,6 +48,7 @@ import { Checkbox } from '@modl-gg/shared-web/components/ui/checkbox';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell, LineChart, Line, Area, AreaChart } from 'recharts';
 import type { PieLabelRenderProps } from 'recharts';
 import { getEvidenceDisplayText, getEvidenceClickUrl, getEvidenceShortName, isEvidenceClickable, type EvidenceLike } from '@/utils/evidence-utils';
+import { deriveEffectiveDurationMs, isPardonModification } from '@/utils/punishment-status';
 import { formatTicketStatusLabel, normalizeTicketStatus } from '@/lib/ticket-enums';
 import { protoFetch } from '@/lib/proto-fetch';
 import { toNum, tsToDate } from '@/lib/proto-ui';
@@ -189,10 +190,38 @@ const fetchTicketAnalytics = async (period = '30d'): Promise<TicketAnalytics> =>
   return response.json();
 };
 
+const canonicalIssuerName = (name: string | null | undefined): string => {
+  const trimmed = name?.trim() ?? '';
+  if (!trimmed || /^unknown( staff)?$/i.test(trimmed)) return 'Unknown';
+  if (/^console$/i.test(trimmed)) return 'Console';
+  return trimmed;
+};
+
+const mergeStaffPunishmentCounts = (
+  byStaff: Array<{ username: string; count: number }>,
+): Array<{ username: string; count: number }> => {
+  const merged = new Map<string, { username: string; count: number }>();
+  for (const entry of byStaff) {
+    const username = canonicalIssuerName(entry.username);
+    const key = username.toLowerCase();
+    const existing = merged.get(key);
+    if (existing) {
+      existing.count += entry.count;
+    } else {
+      merged.set(key, { username, count: entry.count });
+    }
+  }
+  return Array.from(merged.values()).sort((a, b) => b.count - a.count);
+};
+
 const fetchPunishmentAnalytics = async (period = '30d'): Promise<PunishmentAnalytics> => {
   const response = await apiFetch(`/v1/panel/analytics/punishments?period=${period}`);
   if (!response.ok) throw new Error('Failed to fetch punishment analytics');
-  return response.json();
+  const analytics: PunishmentAnalytics = await response.json();
+  return {
+    ...analytics,
+    byStaff: mergeStaffPunishmentCounts(analytics.byStaff ?? []),
+  };
 };
 
 const fetchPlayerActivity = async (period = '30d'): Promise<PlayerActivity> => {
@@ -655,8 +684,7 @@ const StaffDetailModal = ({ staff, isOpen, onClose, initialPeriod = '30d' }: {
 
   const getRecentPunishmentStatus = useCallback((punishment: StaffDetailPunishment) => {
     const hasPardon = punishment.modifications?.some((mod) =>
-      mod.type === 'MANUAL_PARDON' ||
-      mod.type === 'APPEAL_ACCEPT' ||
+      isPardonModification(mod) ||
       mod.type === 'Pardoned' ||
       mod.type === 'Appeal Accepted' ||
       mod.type === 'Appeal Approved'
@@ -1308,11 +1336,12 @@ const ActivePunishmentsCard = () => {
     queryKey: ['punishments-list', statusFilter],
     queryFn: () => fetchPunishmentsList(statusFilter),
     staleTime: 5 * 60 * 1000,
-    select: (rows: ActivePunishment[]): (ActivePunishment & { issuedMs: number; startedMs: number })[] =>
+    select: (rows: ActivePunishment[]): (ActivePunishment & { issuedMs: number; startedMs: number; effectiveDurationMs: number | null })[] =>
       rows.map(p => ({
         ...p,
         issuedMs: p.issued ? new Date(p.issued).getTime() : 0,
         startedMs: p.started ? new Date(p.started).getTime() : 0,
+        effectiveDurationMs: deriveEffectiveDurationMs(p),
       })),
   });
 
@@ -1356,8 +1385,8 @@ const ActivePunishmentsCard = () => {
           valB = b.startedMs;
           break;
         case 'duration':
-          valA = a.duration ?? -1;
-          valB = b.duration ?? -1;
+          valA = a.effectiveDurationMs ?? Number.MAX_SAFE_INTEGER;
+          valB = b.effectiveDurationMs ?? Number.MAX_SAFE_INTEGER;
           break;
         default:
           valA = a.issuedMs;
@@ -1559,10 +1588,12 @@ const ActivePunishmentsCard = () => {
                     <td className="p-2">
                       {punishment.started ? formatDateOnly(new Date(punishment.started)) : <span className="text-muted-foreground">--</span>}
                     </td>
-                    <td className="p-2">{formatDuration(punishment.duration)}</td>
+                    <td className="p-2">{formatDuration(punishment.effectiveDurationMs)}</td>
                     <td className="p-2">
                       {!punishment.active ? (
                         <span className="text-xs text-muted-foreground">n/a</span>
+                      ) : !punishment.started ? (
+                        <span className="text-xs text-muted-foreground">{t('player.unstarted')}</span>
                       ) : (
                         <span className={cn(
                           "text-xs font-medium",

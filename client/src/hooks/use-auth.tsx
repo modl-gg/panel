@@ -31,7 +31,7 @@ type AuthContextType = {
   refreshUser: () => Promise<void>;
   login: (email: string, code: string) => Promise<boolean>;
   logout: () => void;
-  requestEmailVerification: (email: string) => Promise<string | undefined>;
+  requestEmailVerification: (email: string) => Promise<boolean>;
   checkPasskeyOptions: (email: string) => Promise<PasskeyLoginOptions>;
   loginWithPasskey: (challengeId: string, optionsJson: PasskeyRequestOptions) => Promise<boolean>;
   loginWithDiscoverablePasskey: () => Promise<boolean>;
@@ -121,7 +121,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   }, [user?.language, user?.dateFormat]);
 
-  const requestEmailVerification = useCallback(async (email: string): Promise<string | undefined> => {
+  const requestEmailVerification = useCallback(async (email: string): Promise<boolean> => {
     try {
       const response = await authFetch('/v1/panel/auth/send-email-code', {
         method: 'POST',
@@ -144,13 +144,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           description: description,
           variant: "destructive",
         });
-        return undefined;
+        return false;
       }
       toast({
         title: i18n.t('toast.verificationSent'),
         description: i18n.t('toast.verificationSentDesc'),
       });
-      return "sent";
+      return true;
     } catch (error) {
       console.error("Error requesting email verification:", error);
       toast({
@@ -158,12 +158,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         description: i18n.t('toast.networkErrorDesc'),
         variant: "destructive",
       });
-      return undefined;
+      return false;
     }
   }, [toast]);
 
   const login = useCallback(async (email: string, code: string): Promise<boolean> => {
-    setIsLoading(true);
     try {
       const response = await authFetch('/v1/panel/auth/verify-email-code', {
         method: 'POST',
@@ -174,21 +173,17 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       const data = await response.json();
 
       if (!response.ok) {
-        const errorMessage = data.error || data.message || "An error occurred during login.";
-        let description = errorMessage;
-
         if (response.status === 429) {
+          let description = data.error || data.message || "Too many attempts.";
           if (data.retryAfterSeconds) {
             description += ` Please wait ${data.retryAfterSeconds} seconds before trying again.`;
           }
+          toast({
+            title: i18n.t('toast.rateLimitExceeded'),
+            description: description,
+            variant: "destructive",
+          });
         }
-
-        toast({
-          title: response.status === 429 ? i18n.t('toast.rateLimitExceeded') : i18n.t('toast.loginFailed'),
-          description: description,
-          variant: "destructive",
-        });
-        setIsLoading(false);
         return false;
       }
 
@@ -199,7 +194,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           description: i18n.t('toast.loginErrorDesc'),
           variant: "destructive",
         });
-        setIsLoading(false);
         return false;
       }
 
@@ -210,7 +204,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         description: i18n.t('toast.loginSuccessDesc'),
       });
 
-      setIsLoading(false);
       return true;
 
     } catch (error) {
@@ -220,7 +213,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         description: i18n.t('toast.loginErrorDesc'),
         variant: "destructive",
       });
-      setIsLoading(false);
       return false;
     }
   }, [fetchAuthenticatedUser, toast]);
@@ -247,7 +239,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const loginWithPasskey = useCallback(async (challengeId: string, optionsJson: PasskeyRequestOptions): Promise<boolean> => {
-    setIsLoading(true);
     try {
       const optionsJSON = unwrapPublicKeyOptions(optionsJson);
       const assertionResponse = await startAuthentication({ optionsJSON });
@@ -268,7 +259,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           description: data.error || 'Passkey authentication failed',
           variant: 'destructive',
         });
-        setIsLoading(false);
         return false;
       }
 
@@ -279,7 +269,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           description: i18n.t('toast.loginErrorDesc'),
           variant: 'destructive',
         });
-        setIsLoading(false);
         return false;
       }
 
@@ -288,12 +277,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         title: i18n.t('toast.loginSuccess'),
         description: i18n.t('toast.loginSuccessDesc'),
       });
-      setIsLoading(false);
       return true;
     } catch (e) {
       // User cancelled the WebAuthn prompt
       if (isWebAuthnCancellation(e)) {
-        setIsLoading(false);
         return false;
       }
       console.error('Passkey login error:', e);
@@ -302,13 +289,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         description: 'Passkey authentication failed',
         variant: 'destructive',
       });
-      setIsLoading(false);
       return false;
     }
   }, [fetchAuthenticatedUser, toast]);
 
   const loginWithDiscoverablePasskey = useCallback(async (): Promise<boolean> => {
-    setIsLoading(true);
     try {
       const startRes = await authFetch('/v1/panel/auth/webauthn/login/start', {
         method: 'POST',
@@ -320,7 +305,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           description: 'Failed to start passkey authentication',
           variant: 'destructive',
         });
-        setIsLoading(false);
         return false;
       }
       const { challengeId, options }: { challengeId: string; options: PasskeyRequestOptions } = await startRes.json();
@@ -344,7 +328,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           description: data.error || 'Passkey authentication failed',
           variant: 'destructive',
         });
-        setIsLoading(false);
         return false;
       }
 
@@ -355,7 +338,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           description: i18n.t('toast.loginErrorDesc'),
           variant: 'destructive',
         });
-        setIsLoading(false);
         return false;
       }
 
@@ -364,11 +346,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         title: i18n.t('toast.loginSuccess'),
         description: i18n.t('toast.loginSuccessDesc'),
       });
-      setIsLoading(false);
       return true;
     } catch (e) {
       if (isWebAuthnCancellation(e)) {
-        setIsLoading(false);
         return false;
       }
       console.error('Discoverable passkey login error:', e);
@@ -377,13 +357,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         description: 'Passkey authentication failed',
         variant: 'destructive',
       });
-      setIsLoading(false);
       return false;
     }
   }, [fetchAuthenticatedUser, toast]);
 
   const logout = useCallback(async () => {
-    setIsLoading(true);
     let shouldRedirectToAuth = false;
 
     try {
@@ -435,7 +413,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         variant: "destructive",
       });
     } finally {
-      setIsLoading(false);
       if (shouldRedirectToAuth) {
         navigate('/auth');
       }

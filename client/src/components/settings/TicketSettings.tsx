@@ -21,6 +21,7 @@ import { useBillingStatus } from '@/hooks/use-data';
 import { useAuth } from '@/hooks/use-auth';
 import { hasPremiumAccess } from '@/lib/backend-enums';
 import { StatusBadge } from '@/components/ui/status-badge';
+import type { PunishmentType } from '@modl-gg/proto/modl/v1/settings_pb.ts';
 
 // Label type definition
 interface Label {
@@ -28,6 +29,19 @@ interface Label {
   name: string;
   color: string;
   description?: string;
+}
+
+export interface AIPunishmentConfig {
+  id: string;
+  name: string;
+  aiDescription: string;
+  enabled: boolean;
+}
+
+export interface AIModerationSettings {
+  enableAIReview: boolean;
+  enableAutomatedActions: boolean;
+  aiPunishmentConfigs: Record<string, AIPunishmentConfig>;
 }
 
 interface TicketSettingsProps {
@@ -60,9 +74,9 @@ interface TicketSettingsProps {
   setSelectedTicketFormType: (value: 'bug' | 'support' | 'application') => void;
   
   // AI Moderation State
-  aiModerationSettings: any;
-  setAiModerationSettings: (value: any) => void;
-  punishmentTypesState: any[];
+  aiModerationSettings: AIModerationSettings;
+  setAiModerationSettings: (value: AIModerationSettings | ((prev: AIModerationSettings) => AIModerationSettings)) => void;
+  punishmentTypesState: PunishmentType[];
 
   moveFieldBetweenSections?: (fieldId: string, fromSectionId: string, toSectionId: string, targetIndex?: number) => void;
 
@@ -86,6 +100,26 @@ const DEFAULT_LABEL_COLORS = [
   '#6e7781', // Gray
   '#ffffff', // White
 ];
+
+const TICKET_TYPE_LABEL_KEYS: Record<string, string> = {
+  chat_report: 'tickets.chatReport',
+  player_report: 'tickets.playerReport',
+  bug: 'tickets.bugReport',
+  appeal: 'tickets.banAppeal',
+  support: 'tickets.support',
+  application: 'tickets.staffApplication',
+};
+
+function formatTicketTypeLabel(type: string, t: (key: string) => string): string {
+  const key = TICKET_TYPE_LABEL_KEYS[type];
+  if (key) {
+    return t(key);
+  }
+  return type
+    .split('_')
+    .map((word) => (word ? word.charAt(0).toUpperCase() + word.slice(1) : word))
+    .join(' ');
+}
 
 // Label Management Table Component
 interface LabelManagementTableProps {
@@ -409,9 +443,7 @@ const TicketSettings = ({
   
   // AI Punishment Types states
   const [isAddAIPunishmentDialogOpen, setIsAddAIPunishmentDialogOpen] = useState(false);
-  const [selectedAIPunishmentType, setSelectedAIPunishmentType] = useState<any | null>(null);
-  const [selectedPunishmentTypeId, setSelectedPunishmentTypeId] = useState<number | null>(null);
-  const [newAIPunishmentDescription, setNewAIPunishmentDescription] = useState('');
+  const [selectedAIPunishmentType, setSelectedAIPunishmentType] = useState<AIPunishmentConfig | null>(null);
 
   // Quick Response deletion confirmation state
   const [quickResponseDeleteDialogOpen, setQuickResponseDeleteDialogOpen] = useState(false);
@@ -785,7 +817,7 @@ const TicketSettings = ({
               <div>
                 <CardTitle className="text-base">{category.name}</CardTitle>
                 <p className="text-sm text-muted-foreground mt-1">
-                  {category.ticketTypes.join(', ')} - {t('settings.tickets.actionsCount', { count: category.actions.length })}
+                  {category.ticketTypes.map((type) => formatTicketTypeLabel(type, t)).join(', ')} - {t('settings.tickets.actionsCount', { count: category.actions.length })}
                 </p>
               </div>
               <div className="flex items-center space-x-2">
@@ -890,116 +922,29 @@ const TicketSettings = ({
     <>
       {/* Add AI Punishment Type Dialog */}
       {isAddAIPunishmentDialogOpen && (
-        <Dialog open={isAddAIPunishmentDialogOpen} onOpenChange={setIsAddAIPunishmentDialogOpen}>
-          <DialogContent className="max-w-lg">
-            <DialogHeader>
-              <DialogTitle>{t('settings.tickets.enableAIPunishmentType')}</DialogTitle>
-              <DialogDescription>
-                {selectedPunishmentTypeId ? (() => {
-                  const selectedType = punishmentTypesState.find(pt => pt.id === selectedPunishmentTypeId);
-                  return selectedType ? t('settings.tickets.configureAIDescFor', { name: selectedType.name }) : t('settings.tickets.configureAIDescSelected');
-                })() : t('settings.tickets.selectPunishmentTypeForAI')}
-              </DialogDescription>
-            </DialogHeader>
-
-            <div className="space-y-4">
-              {selectedPunishmentTypeId && (() => {
-                const selectedType = punishmentTypesState.find(t => t.id === selectedPunishmentTypeId);
-                return selectedType ? (
-                  <div className="bg-muted/30 p-3 rounded-lg">
-                    <div className="flex items-center justify-between">
-                      <div>
-                        <h5 className="font-medium">{selectedType.name}</h5>
-                        <div className="flex items-center gap-2 mt-1">
-                          <Badge variant="outline" className="text-xs">
-                            {selectedType.category}
-                          </Badge>
-                          <Badge variant="secondary" className="text-xs">
-                            {t('settings.tickets.ordinal')}: {selectedType.ordinal}
-                          </Badge>
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-                ) : null;
-              })()}
-
-              {!selectedPunishmentTypeId && (
-                <div className="space-y-2">
-                  <Label>{t('settings.tickets.selectPunishmentType')}</Label>
-                  <Select value={selectedPunishmentTypeId?.toString() || ''} onValueChange={(value) => setSelectedPunishmentTypeId(parseInt(value))}>
-                    <SelectTrigger>
-                      <SelectValue placeholder={t('settings.tickets.choosePunishmentType')} />
-                    </SelectTrigger>
-                    <SelectContent className="max-h-60 overflow-y-auto">
-                      {punishmentTypesState
-                        .filter(pt => !Object.values(aiModerationSettings?.aiPunishmentConfigs || {}).some((config: any) => config.name === pt.name))
-                        .map((punishmentType) => (
-                          <SelectItem key={punishmentType.id} value={String(punishmentType.id)}>
-                            {punishmentType.name} ({punishmentType.category})
-                          </SelectItem>
-                        ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-              )}
-
-              {selectedPunishmentTypeId && (
-                <div className="space-y-2">
-                  <Label htmlFor="ai-punishment-desc">{t('settings.tickets.aiDescription')}</Label>
-                  <Textarea
-                    id="ai-punishment-desc"
-                    className="min-h-[100px]"
-                    placeholder={t('settings.tickets.aiDescriptionPlaceholder')}
-                    value={newAIPunishmentDescription}
-                    onChange={(e) => setNewAIPunishmentDescription(e.target.value)}
-                  />
-                </div>
-              )}
-            </div>
-
-            <DialogFooter>
-              <Button
-                variant="outline"
-                onClick={() => {
-                  setIsAddAIPunishmentDialogOpen(false);
-                  setSelectedPunishmentTypeId(null);
-                  setNewAIPunishmentDescription('');
-                }}
-              >
-                {t('common.cancel')}
-              </Button>
-              <Button
-                onClick={() => {
-                  if (selectedPunishmentTypeId && newAIPunishmentDescription.trim()) {
-                    const selectedType = punishmentTypesState.find(t => t.id === selectedPunishmentTypeId);
-                    if (selectedType && selectedType.ordinal != null) {
-                      const configKey = String(selectedType.ordinal);
-                      setAiModerationSettings((prev: any) => ({
-                        ...prev,
-                        aiPunishmentConfigs: {
-                          ...prev.aiPunishmentConfigs,
-                          [configKey]: {
-                            id: configKey,
-                            name: selectedType.name,
-                            aiDescription: newAIPunishmentDescription.trim(),
-                            enabled: true
-                          }
-                        }
-                      }));
-                    }
-                    setIsAddAIPunishmentDialogOpen(false);
-                    setSelectedPunishmentTypeId(null);
-                    setNewAIPunishmentDescription('');
+        <AddAIPunishmentDialog
+          punishmentTypes={punishmentTypesState}
+          existingConfigs={aiModerationSettings?.aiPunishmentConfigs || {}}
+          onEnable={(selectedType, aiDescription) => {
+            if (selectedType.ordinal != null) {
+              const configKey = String(selectedType.ordinal);
+              setAiModerationSettings((prev) => ({
+                ...prev,
+                aiPunishmentConfigs: {
+                  ...prev.aiPunishmentConfigs,
+                  [configKey]: {
+                    id: configKey,
+                    name: selectedType.name,
+                    aiDescription,
+                    enabled: true
                   }
-                }}
-                disabled={!selectedPunishmentTypeId || !newAIPunishmentDescription.trim()}
-              >
-                {t('settings.tickets.enableForAI')}
-              </Button>
-            </DialogFooter>
-          </DialogContent>
-        </Dialog>
+                }
+              }));
+            }
+            setIsAddAIPunishmentDialogOpen(false);
+          }}
+          onClose={() => setIsAddAIPunishmentDialogOpen(false)}
+        />
       )}
 
       {/* Tag Deletion Dialog */}
@@ -1105,7 +1050,7 @@ const TicketSettings = ({
             <AlertDialogAction
               onClick={() => {
                 if (aiPunishmentToDelete) {
-                  setAiModerationSettings((prev: any) => {
+                  setAiModerationSettings((prev) => {
                     const newConfigs = { ...prev.aiPunishmentConfigs };
                     delete newConfigs[aiPunishmentToDelete.id];
                     return { ...prev, aiPunishmentConfigs: newConfigs };
@@ -1124,60 +1069,23 @@ const TicketSettings = ({
 
       {/* AI Punishment Edit Dialog */}
       {selectedAIPunishmentType && (
-        <Dialog open={Boolean(selectedAIPunishmentType)} onOpenChange={() => setSelectedAIPunishmentType(null)}>
-          <DialogContent className="max-w-lg">
-            <DialogHeader>
-              <DialogTitle>{t('settings.tickets.editAIPunishmentConfig')}</DialogTitle>
-              <DialogDescription>
-                {t('settings.tickets.updateAIDescFor', { name: selectedAIPunishmentType.name })}
-              </DialogDescription>
-            </DialogHeader>
-
-            <div className="space-y-4">
-              <div className="space-y-2">
-                <Label htmlFor="edit-ai-punishment-desc">{t('settings.tickets.aiDescription')}</Label>
-                <textarea
-                  id="edit-ai-punishment-desc"
-                  className="w-full rounded-md border border-border bg-background px-3 py-2 text-sm min-h-[100px]"
-                  value={newAIPunishmentDescription}
-                  onChange={(e) => setNewAIPunishmentDescription(e.target.value)}
-                />
-                <p className="text-xs text-muted-foreground">
-                  {t('settings.tickets.aiDescriptionHelp')}
-                </p>
-              </div>
-            </div>
-
-            <DialogFooter>
-              <Button
-                variant="outline"
-                onClick={() => setSelectedAIPunishmentType(null)}
-              >
-                {t('common.cancel')}
-              </Button>
-              <Button
-                onClick={() => {
-                  if (selectedAIPunishmentType && newAIPunishmentDescription.trim()) {
-                    setAiModerationSettings((prev: any) => ({
-                      ...prev,
-                      aiPunishmentConfigs: {
-                        ...prev.aiPunishmentConfigs,
-                        [selectedAIPunishmentType.id]: {
-                          ...prev.aiPunishmentConfigs[selectedAIPunishmentType.id],
-                          aiDescription: newAIPunishmentDescription.trim()
-                        }
-                      }
-                    }));
-                    setSelectedAIPunishmentType(null);
-                  }
-                }}
-                disabled={!newAIPunishmentDescription.trim()}
-              >
-                {t('common.saveChanges')}
-              </Button>
-            </DialogFooter>
-          </DialogContent>
-        </Dialog>
+        <EditAIPunishmentDialog
+          config={selectedAIPunishmentType}
+          onSave={(aiDescription) => {
+            setAiModerationSettings((prev) => ({
+              ...prev,
+              aiPunishmentConfigs: {
+                ...prev.aiPunishmentConfigs,
+                [selectedAIPunishmentType.id]: {
+                  ...(prev.aiPunishmentConfigs[selectedAIPunishmentType.id] ?? selectedAIPunishmentType),
+                  aiDescription
+                }
+              }
+            }));
+            setSelectedAIPunishmentType(null);
+          }}
+          onClose={() => setSelectedAIPunishmentType(null)}
+        />
       )}
 
       {/* Quick Response Action Dialog */}
@@ -1185,6 +1093,7 @@ const TicketSettings = ({
         <DialogContent className="max-w-2xl">
           <DialogHeader>
             <DialogTitle>{editingAction ? t('settings.tickets.editQuickResponse') : t('settings.tickets.addQuickResponse')}</DialogTitle>
+            <DialogDescription>{t('settings.tickets.quickResponseDialogDesc')}</DialogDescription>
           </DialogHeader>
           <QuickResponseActionForm
             action={editingAction}
@@ -1209,6 +1118,7 @@ const TicketSettings = ({
         <DialogContent>
           <DialogHeader>
             <DialogTitle>{editingCategory ? t('settings.tickets.editCategory') : t('settings.tickets.addCategory')}</DialogTitle>
+            <DialogDescription>{t('settings.tickets.quickResponseCategoryDialogDesc')}</DialogDescription>
           </DialogHeader>
           <QuickResponseCategoryForm
             category={editingCategory}
@@ -1243,7 +1153,7 @@ const TicketSettings = ({
             </div>
             <div className="space-y-2">
               <Label>{t('settings.tickets.fieldType')}</Label>
-              <Select value={newTicketFormFieldType} onValueChange={(v: any) => setNewTicketFormFieldType(v)}>
+              <Select value={newTicketFormFieldType} onValueChange={(v) => setNewTicketFormFieldType(v as typeof newTicketFormFieldType)}>
                 <SelectTrigger>
                   <SelectValue />
                 </SelectTrigger>
@@ -1658,7 +1568,7 @@ const TicketSettings = ({
                 <Switch
                   checked={aiModerationSettings.enableAIReview !== false}
                   onCheckedChange={(checked) =>
-                    setAiModerationSettings((prev: any) => ({ ...prev, enableAIReview: checked }))
+                    setAiModerationSettings((prev) => ({ ...prev, enableAIReview: checked }))
                   }
                 />
               </div>
@@ -1673,7 +1583,7 @@ const TicketSettings = ({
                     <Switch
                       checked={aiModerationSettings.enableAutomatedActions}
                       onCheckedChange={(checked) =>
-                        setAiModerationSettings((prev: any) => ({ ...prev, enableAutomatedActions: checked }))
+                        setAiModerationSettings((prev) => ({ ...prev, enableAutomatedActions: checked }))
                       }
                     />
                   </div>
@@ -1686,14 +1596,14 @@ const TicketSettings = ({
 
                     {aiModerationSettings.aiPunishmentConfigs && Object.keys(aiModerationSettings.aiPunishmentConfigs).length > 0 ? (
                       <div className="space-y-3">
-                        {Object.values(aiModerationSettings.aiPunishmentConfigs).map((config: any) => (
+                        {Object.values(aiModerationSettings.aiPunishmentConfigs).map((config: AIPunishmentConfig) => (
                           <div key={config.id} className="flex items-start justify-between p-4 border rounded-lg bg-card">
                             <div className="flex-1 space-y-2">
                               <div className="flex items-center gap-3">
                                 <Switch
                                   checked={config.enabled}
                                   onCheckedChange={(checked) => {
-                                    setAiModerationSettings((prev: any) => ({
+                                    setAiModerationSettings((prev) => ({
                                       ...prev,
                                       aiPunishmentConfigs: {
                                         ...prev.aiPunishmentConfigs,
@@ -1710,10 +1620,7 @@ const TicketSettings = ({
                               <Button
                                 variant="outline"
                                 size="sm"
-                                onClick={() => {
-                                  setSelectedAIPunishmentType(config);
-                                  setNewAIPunishmentDescription(config.aiDescription);
-                                }}
+                                onClick={() => setSelectedAIPunishmentType(config)}
                               >
                                 {t('common.edit')}
                               </Button>
@@ -1804,7 +1711,7 @@ const TicketSettings = ({
                           <div>
                             <CardTitle className="text-base">{category.name}</CardTitle>
                             <p className="text-sm text-muted-foreground mt-1">
-                              {category.ticketTypes.join(', ')} - {t('settings.tickets.actionsCount', { count: category.actions.length })}
+                              {category.ticketTypes.map((type) => formatTicketTypeLabel(type, t)).join(', ')} - {t('settings.tickets.actionsCount', { count: category.actions.length })}
                             </p>
                           </div>
                           <div className="flex items-center space-x-2">
@@ -2217,7 +2124,7 @@ const TicketSettings = ({
                           id="enable-ai-review"
                           checked={aiModerationSettings.enableAIReview !== false}
                           onCheckedChange={(checked) => {
-                            setAiModerationSettings((prev: any) => ({
+                            setAiModerationSettings((prev) => ({
                               ...prev,
                               enableAIReview: checked
                             }));
@@ -2241,7 +2148,7 @@ const TicketSettings = ({
                             id="enable-automated-actions"
                             checked={aiModerationSettings.enableAutomatedActions}
                             onCheckedChange={(checked) => {
-                              setAiModerationSettings((prev: any) => ({
+                              setAiModerationSettings((prev) => ({
                                 ...prev,
                                 enableAutomatedActions: checked
                               }));
@@ -2261,11 +2168,7 @@ const TicketSettings = ({
                             <Button
                               variant="outline"
                               size="sm"
-                              onClick={() => {
-                                setSelectedPunishmentTypeId(null);
-                                setNewAIPunishmentDescription('');
-                                setIsAddAIPunishmentDialogOpen(true);
-                              }}
+                              onClick={() => setIsAddAIPunishmentDialogOpen(true)}
                             >
                               <Plus className="mr-2 h-4 w-4" />
                               {t('settings.tickets.addType')}
@@ -2275,14 +2178,14 @@ const TicketSettings = ({
                           <div className="space-y-4">
                             {/* Current AI Punishment Types */}
                             <div className="space-y-3">
-                        {Object.values(aiModerationSettings.aiPunishmentConfigs || {}).map((punishmentType: any) => (
+                        {Object.values(aiModerationSettings.aiPunishmentConfigs || {}).map((punishmentType: AIPunishmentConfig) => (
                           <div key={punishmentType.id} className="flex items-start justify-between p-4 border rounded-lg bg-card">
                             <div className="flex-1 space-y-2">
                               <div className="flex items-center gap-3">
                                 <Switch
                                   checked={punishmentType.enabled}
                                   onCheckedChange={(checked) => {
-                                    setAiModerationSettings((prev: any) => ({
+                                    setAiModerationSettings((prev) => ({
                                       ...prev,
                                       aiPunishmentConfigs: {
                                         ...prev.aiPunishmentConfigs,
@@ -2306,10 +2209,7 @@ const TicketSettings = ({
                               <Button
                                 variant="outline"
                                 size="sm"
-                                onClick={() => {
-                                  setSelectedAIPunishmentType(punishmentType);
-                                  setNewAIPunishmentDescription(punishmentType.aiDescription);
-                                }}
+                                onClick={() => setSelectedAIPunishmentType(punishmentType)}
                               >
                                 {t('common.edit')}
                               </Button>
@@ -2355,6 +2255,159 @@ const TicketSettings = ({
 };
 
 // Quick Response Action Form Component
+interface AddAIPunishmentDialogProps {
+  punishmentTypes: PunishmentType[];
+  existingConfigs: Record<string, AIPunishmentConfig>;
+  onEnable: (punishmentType: PunishmentType, aiDescription: string) => void;
+  onClose: () => void;
+}
+
+const AddAIPunishmentDialog = ({ punishmentTypes, existingConfigs, onEnable, onClose }: AddAIPunishmentDialogProps) => {
+  const { t } = useTranslation();
+  const [selectedTypeId, setSelectedTypeId] = useState<number | null>(null);
+  const [description, setDescription] = useState('');
+  const selectedType = selectedTypeId != null ? punishmentTypes.find(pt => pt.id === selectedTypeId) : undefined;
+
+  return (
+    <Dialog open onOpenChange={(open) => { if (!open) onClose(); }}>
+      <DialogContent className="max-w-lg">
+        <DialogHeader>
+          <DialogTitle>{t('settings.tickets.enableAIPunishmentType')}</DialogTitle>
+          <DialogDescription>
+            {selectedTypeId != null
+              ? (selectedType ? t('settings.tickets.configureAIDescFor', { name: selectedType.name }) : t('settings.tickets.configureAIDescSelected'))
+              : t('settings.tickets.selectPunishmentTypeForAI')}
+          </DialogDescription>
+        </DialogHeader>
+
+        <div className="space-y-4">
+          {selectedType && (
+            <div className="bg-muted/30 p-3 rounded-lg">
+              <div className="flex items-center justify-between">
+                <div>
+                  <h5 className="font-medium">{selectedType.name}</h5>
+                  <div className="flex items-center gap-2 mt-1">
+                    <Badge variant="outline" className="text-xs">
+                      {selectedType.category}
+                    </Badge>
+                    <Badge variant="secondary" className="text-xs">
+                      {t('settings.tickets.ordinal')}: {selectedType.ordinal}
+                    </Badge>
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {selectedTypeId == null && (
+            <div className="space-y-2">
+              <Label>{t('settings.tickets.selectPunishmentType')}</Label>
+              <Select value="" onValueChange={(value) => setSelectedTypeId(parseInt(value))}>
+                <SelectTrigger>
+                  <SelectValue placeholder={t('settings.tickets.choosePunishmentType')} />
+                </SelectTrigger>
+                <SelectContent className="max-h-60 overflow-y-auto">
+                  {punishmentTypes
+                    .filter(pt => !Object.values(existingConfigs).some((config: AIPunishmentConfig) => config.name === pt.name))
+                    .map((punishmentType) => (
+                      <SelectItem key={punishmentType.id} value={String(punishmentType.id)}>
+                        {punishmentType.name} ({punishmentType.category})
+                      </SelectItem>
+                    ))}
+                </SelectContent>
+              </Select>
+            </div>
+          )}
+
+          {selectedTypeId != null && (
+            <div className="space-y-2">
+              <Label htmlFor="ai-punishment-desc">{t('settings.tickets.aiDescription')}</Label>
+              <Textarea
+                id="ai-punishment-desc"
+                className="min-h-[100px]"
+                placeholder={t('settings.tickets.aiDescriptionPlaceholder')}
+                value={description}
+                onChange={(e) => setDescription(e.target.value)}
+              />
+            </div>
+          )}
+        </div>
+
+        <DialogFooter>
+          <Button variant="outline" onClick={onClose}>
+            {t('common.cancel')}
+          </Button>
+          <Button
+            onClick={() => {
+              if (selectedType && description.trim()) {
+                onEnable(selectedType, description.trim());
+              }
+            }}
+            disabled={!selectedType || !description.trim()}
+          >
+            {t('settings.tickets.enableForAI')}
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  );
+};
+
+interface EditAIPunishmentDialogProps {
+  config: AIPunishmentConfig;
+  onSave: (aiDescription: string) => void;
+  onClose: () => void;
+}
+
+const EditAIPunishmentDialog = ({ config, onSave, onClose }: EditAIPunishmentDialogProps) => {
+  const { t } = useTranslation();
+  const [description, setDescription] = useState(config.aiDescription);
+
+  return (
+    <Dialog open onOpenChange={(open) => { if (!open) onClose(); }}>
+      <DialogContent className="max-w-lg">
+        <DialogHeader>
+          <DialogTitle>{t('settings.tickets.editAIPunishmentConfig')}</DialogTitle>
+          <DialogDescription>
+            {t('settings.tickets.updateAIDescFor', { name: config.name })}
+          </DialogDescription>
+        </DialogHeader>
+
+        <div className="space-y-4">
+          <div className="space-y-2">
+            <Label htmlFor="edit-ai-punishment-desc">{t('settings.tickets.aiDescription')}</Label>
+            <textarea
+              id="edit-ai-punishment-desc"
+              className="w-full rounded-md border border-border bg-background px-3 py-2 text-sm min-h-[100px]"
+              value={description}
+              onChange={(e) => setDescription(e.target.value)}
+            />
+            <p className="text-xs text-muted-foreground">
+              {t('settings.tickets.aiDescriptionHelp')}
+            </p>
+          </div>
+        </div>
+
+        <DialogFooter>
+          <Button variant="outline" onClick={onClose}>
+            {t('common.cancel')}
+          </Button>
+          <Button
+            onClick={() => {
+              if (description.trim()) {
+                onSave(description.trim());
+              }
+            }}
+            disabled={!description.trim()}
+          >
+            {t('common.saveChanges')}
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  );
+};
+
 const QuickResponseActionForm = ({
   action,
   categoryId,
@@ -2367,7 +2420,7 @@ const QuickResponseActionForm = ({
   categoryId: string | null;
   quickResponsesState: QuickResponsesConfiguration;
   setQuickResponsesState: (value: QuickResponsesConfiguration) => void;
-  punishmentTypes: any[];
+  punishmentTypes: PunishmentType[];
   onSave: () => void;
   onCancel: () => void;
 }) => {
@@ -2684,14 +2737,10 @@ const DraggableFieldCard = ({
   onDeleteField
 }: DraggableFieldCardProps) => {
   const { t } = useTranslation();
-  // Add null check for field
-  if (!field || !field.id) {
-    return null;
-  }
-  
+
   const [{ isDragging }, drag] = useDrag({
     type: 'field',
-    item: { index, sectionId, fieldId: field.id },
+    item: { index, sectionId, fieldId: field?.id ?? '' },
     collect: (monitor) => ({
       isDragging: monitor.isDragging(),
     }),
@@ -2713,6 +2762,10 @@ const DraggableFieldCard = ({
       }
     },
   });
+
+  if (!field || !field.id) {
+    return null;
+  }
 
   const getFieldTypeLabel = (type: string) => {
     switch (type) {

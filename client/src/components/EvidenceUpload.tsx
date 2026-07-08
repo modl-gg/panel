@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { Shield, FileText, Image, Video, Eye, Trash2, Loader2 } from 'lucide-react';
 import { Button } from '@modl-gg/shared-web/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@modl-gg/shared-web/components/ui/card';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@modl-gg/shared-web/components/ui/dialog';
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from '@modl-gg/shared-web/components/ui/dialog';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@modl-gg/shared-web/components/ui/alert-dialog';
 import { Badge } from '@modl-gg/shared-web/components/ui/badge';
 import { useToast } from '@modl-gg/shared-web/hooks/use-toast';
@@ -169,6 +169,9 @@ export function EvidenceUpload({
                     <DialogContent className="max-w-4xl">
                       <DialogHeader>
                         <DialogTitle>{item.fileName}</DialogTitle>
+                        <DialogDescription className="sr-only">
+                          {t('common.attachmentPreviewDesc')}
+                        </DialogDescription>
                       </DialogHeader>
                       <div className="mt-4">
                         {isImage(item.fileType) ? (

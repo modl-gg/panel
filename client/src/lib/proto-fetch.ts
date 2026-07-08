@@ -1,5 +1,6 @@
 import { fromJson, toJson, type DescMessage, type MessageShape } from '@bufbuild/protobuf';
 import { apiFetch } from '@/lib/api';
+import { errorMessageOr } from '@/utils/errors';
 
 type RequestMethod = 'GET' | 'POST' | 'PUT' | 'PATCH' | 'DELETE';
 type MutateMethod = 'POST' | 'PUT' | 'PATCH' | 'DELETE';
@@ -27,6 +28,18 @@ export class ProtoHttpError extends Error {
 
 async function readErrorBody(res: Response): Promise<string> {
   return res.text().catch(() => '');
+}
+
+export function protoErrorMessage(error: unknown, fallback: string): string {
+  if (error instanceof ProtoHttpError) {
+    try {
+      const parsed = JSON.parse(error.bodyText) as { error?: string; message?: string };
+      return parsed.error || parsed.message || fallback;
+    } catch {
+      return fallback;
+    }
+  }
+  return errorMessageOr(error, fallback);
 }
 
 /** GET (or any verb) → decode the proto-JSON body into a typed message. */
