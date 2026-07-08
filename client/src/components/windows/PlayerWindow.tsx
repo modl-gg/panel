@@ -2479,7 +2479,7 @@ const PlayerWindow = ({ playerId, isOpen, onClose, initialPosition }: PlayerWind
                           refetch(); // Refetch player data after adding note
                         } catch (error) {
                           toast({
-                            title: t('common.error'),
+                            title: t('toast.error'),
                             description: t('player.addNoteFailed'),
                             variant: "destructive",
                           });

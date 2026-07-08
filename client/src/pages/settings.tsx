@@ -1072,7 +1072,7 @@ const Settings = () => {
     } catch (error) {
       console.error('Error generating API key:', error);
       toast({
-        title: t('common.error'),
+        title: t('toast.error'),
         description: t('settings.page.generateApiKeyFailed'),
         variant: "destructive",
       });
@@ -1102,7 +1102,7 @@ const Settings = () => {
     } catch (error) {
       console.error('Error revoking API key:', error);
       toast({
-        title: t('common.error'),
+        title: t('toast.error'),
         description: t('settings.page.revokeApiKeyFailed'),
         variant: "destructive",
       });
@@ -1132,7 +1132,7 @@ const Settings = () => {
       } catch (error) {
         console.error('Error revealing API key:', error);
         toast({
-          title: t('common.error'),
+          title: t('toast.error'),
           description: t('settings.page.revealApiKeyFailed'),
           variant: "destructive",
         });
@@ -4048,7 +4048,7 @@ const Settings = () => {
                         } else {
                           const errorData = await response.json().catch(() => ({ error: 'Unknown error' }));
                           toast({
-                            title: t('common.error'),
+                            title: t('toast.error'),
                             description: errorData.error || t('settings.page.updatePunishmentTypeFailed'),
                             variant: "destructive"
                           });
@@ -4056,7 +4056,7 @@ const Settings = () => {
                       } catch (error) {
                         console.error('Failed to update punishment type:', error);
                         toast({
-                          title: t('common.error'),
+                          title: t('toast.error'),
                           description: t('settings.page.updatePunishmentTypeFailed'),
                           variant: "destructive"
                         });

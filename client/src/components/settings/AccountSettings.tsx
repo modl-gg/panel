@@ -250,7 +250,7 @@ const AccountSettings = ({
       });
     } catch (error) {
       toast({
-        title: t('common.error'),
+        title: t('toast.error'),
         description: error instanceof Error ? error.message : t('settings.emailUpdateFailed'),
         variant: 'destructive',
       });
@@ -279,7 +279,7 @@ const AccountSettings = ({
       setTimeout(() => window.location.reload(), 1000);
     } catch (error) {
       toast({
-        title: t('common.error'),
+        title: t('toast.error'),
         description: error instanceof Error ? error.message : t('settings.emailUpdateFailed'),
         variant: 'destructive',
       });

@@ -297,7 +297,7 @@ const PlayerPunishment: React.FC<PlayerPunishmentProps> = ({
       });
     } catch (error) {
       toast({
-        title: t('common.error'),
+        title: t('toast.error'),
         description: t('punishment.applyFailed'),
         variant: "destructive",
       });
