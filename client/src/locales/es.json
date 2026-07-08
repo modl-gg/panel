@@ -726,7 +726,15 @@
       "removeAIPunishmentConfirm": "¿Estás seguro de que quieres eliminar \"{{name}}\" de los tipos de sanción de IA?",
       "updateAIDescFor": "Actualizar descripción de IA para {{name}}",
       "quickResponseDialogDesc": "Configura el título y la plantilla del mensaje de la respuesta.",
-      "quickResponseCategoryDialogDesc": "Define el nombre de la categoría y los tipos de ticket a los que aplica."
+      "quickResponseCategoryDialogDesc": "Define el nombre de la categoría y los tipos de ticket a los que aplica.",
+      "deleteLabelConfirm": "¿Estás seguro de que quieres eliminar la etiqueta \"{{name}}\"? Esta acción no se puede deshacer.",
+      "requireEmailForCreation": "Requerir correo electrónico para la creación de tickets",
+      "requireEmailForCreationDesc": "Los usuarios deben proporcionar una dirección de correo electrónico al crear este tipo de ticket.",
+      "requireEmailAuthToAccess": "Requerir autenticación por correo para acceder al ticket",
+      "requireEmailAuthToAccessDesc": "Los usuarios deben verificar su correo electrónico para ver o responder a este tipo de ticket. Requiere que el correo electrónico esté habilitado.",
+      "allowEmailNotifications": "Permitir notificaciones por correo electrónico",
+      "allowEmailNotificationsDesc": "Mostrar un campo opcional de correo electrónico para que los usuarios puedan recibir notificaciones sobre su ticket.",
+      "generalSettings": "General"
     },
     "usage": {
       "fetchFailed": "No se pudo cargar la información de almacenamiento.",
@@ -876,7 +884,7 @@
       "billing": "Facturación",
       "usage": "Uso",
       "serverConfig": "Configuración del servidor",
-      "domain": "Costumbre Dominio",
+      "domain": "Dominio personalizado",
       "webhooks": "Webhooks",
       "migrationTool": "Herramienta de migración",
       "punishments": "Sanciones",
@@ -1487,6 +1495,7 @@
     "replayId": "ID de repetición",
     "unknownPlayer": "Jugador desconocido",
     "previousNames": "Nombres anteriores",
+    "noPreviousNames": "No se encontraron nombres anteriores",
     "missingInfo": "Información faltante",
     "selectPunishmentType": "Por favor selecciona un tipo de sanción antes de aplicar.",
     "punishmentApplied": "Sanción aplicada",
@@ -1727,7 +1736,11 @@
     "appealReasonPlaceholder": "Explica por qué crees que esta sanción debería ser revisada...",
     "appealReasonDesc": "Sé honesto y proporciona tantos detalles como sea posible",
     "selectAnOption": "Selecciona una opción",
-    "verificationRequiredDesc": "Esta apelación requiere verificación por correo electrónico para ver la conversación."
+    "verificationRequiredDesc": "Esta apelación requiere verificación por correo electrónico para ver la conversación.",
+    "appealClosed": "Apelación cerrada",
+    "appealClosedDesc": "Esta apelación ha sido cerrada por nuestro staff.",
+    "repliesLocked": "Respuestas bloqueadas",
+    "repliesLockedDesc": "Esta apelación ha sido bloqueada por el staff y ya no acepta nuevas respuestas."
   },
   "submitTicket": {
     "supportRequest": "Solicitud de soporte",
@@ -1776,6 +1789,8 @@
     "submitATicket": "Enviar un ticket",
     "selectType": "Seleccionar tipo de ticket",
     "emailAddress": "Dirección de correo electrónico",
-    "emailAddressDesc": "Tu dirección de correo para notificaciones de respuesta"
+    "emailAddressDesc": "Tu dirección de correo para notificaciones de respuesta",
+    "emailAuthRequiresEmail": "Correo electrónico requerido",
+    "emailAuthRequiresEmailDesc": "Debes proporcionar una dirección de correo electrónico para habilitar la autenticación por correo electrónico."
   }
 }

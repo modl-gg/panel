@@ -127,7 +127,7 @@
     "emailDescription": "Wird für die Anmeldung und den Empfang von Ticket-Benachrichtigungen verwendet.",
     "emailChangeWarning": "Aus Sicherheitsgründen werden durch das Bestätigen einer neuen E-Mail-Adresse deine anderen Sitzungen abgemeldet und vorhandene Passkeys entfernt — du musst sie nach dem erneuten Anmelden neu einrichten.",
     "emailUpdated": "E-Mail aktualisiert",
-    "emailUpdatedDesc": "Ihre E-Mail-Adresse wurde erfolgreich aktualisiert.",
+    "emailUpdatedDesc": "Deine E-Mail-Adresse wurde erfolgreich aktualisiert.",
     "emailUpdateFailed": "E-Mail konnte nicht aktualisiert werden.",
     "minecraftChangeAdmin": "Dies kann in den Personalverwaltungseinstellungen geändert werden.",
     "minecraftChangeContact": "Kontaktiere einen Administrator, um dies zu ändern.",
@@ -342,7 +342,7 @@
       "cardsReordered": "Homepage-Karten erfolgreich neu sortiert.",
       "titleDescRequired": "Titel und Beschreibung sind erforderlich.",
       "urlRequired": "URL ist für Link-Karten erforderlich.",
-      "urlInvalid": "Geben Sie eine gültige http(s)-URL oder einen internen Pfad ein, der mit / beginnt.",
+      "urlInvalid": "Gib eine gültige http(s)-URL oder einen internen Pfad ein, der mit / beginnt.",
       "categoryRequired": "Bitte wähle eine Kategorie aus."
     },
     "knowledgebase": {
@@ -726,7 +726,15 @@
       "removeAIPunishmentConfirm": "Bist du sicher, dass du \"{{name}}\" aus den KI-Straftypen entfernen möchtest?",
       "updateAIDescFor": "KI-Beschreibung für {{name}} aktualisieren",
       "quickResponseDialogDesc": "Konfiguriere den Titel und die Nachrichtenvorlage der Antwort.",
-      "quickResponseCategoryDialogDesc": "Lege den Kategorienamen und die zugehörigen Ticket-Typen fest."
+      "quickResponseCategoryDialogDesc": "Lege den Kategorienamen und die zugehörigen Ticket-Typen fest.",
+      "deleteLabelConfirm": "Bist du sicher, dass du das Label \"{{name}}\" löschen möchtest? Diese Aktion kann nicht rückgängig gemacht werden.",
+      "requireEmailForCreation": "E-Mail-Adresse für Ticket-Erstellung erforderlich",
+      "requireEmailForCreationDesc": "Benutzer müssen beim Erstellen dieses Ticket-Typs eine E-Mail-Adresse angeben.",
+      "requireEmailAuthToAccess": "E-Mail-Authentifizierung für Ticket-Zugriff erforderlich",
+      "requireEmailAuthToAccessDesc": "Benutzer müssen ihre E-Mail-Adresse verifizieren, um diesen Ticket-Typ anzuzeigen oder darauf zu antworten. Erfordert, dass E-Mail aktiviert ist.",
+      "allowEmailNotifications": "E-Mail-Benachrichtigungen erlauben",
+      "allowEmailNotificationsDesc": "Zeigt ein optionales E-Mail-Feld an, damit Benutzer Benachrichtigungen zu ihrem Ticket erhalten können.",
+      "generalSettings": "Allgemein"
     },
     "usage": {
       "fetchFailed": "Speicherinformationen konnten nicht geladen werden.",
@@ -811,7 +819,7 @@
       "pageOf": "Seite {{page}} von {{total}}",
       "percentUsed": "{{percent}}% verwendet",
       "overageCost": "Überschreitungskosten",
-      "storageOverageDesc": "Sie verwenden {{overageUsed}} über Ihr {{baseLimit}}-Basislimit hinaus. Geschätzte Zusatzkosten: ${{cost}}."
+      "storageOverageDesc": "Du verwendest {{overageUsed}} über dein {{baseLimit}}-Basislimit hinaus. Geschätzte Zusatzkosten: ${{cost}}."
     },
     "webhook": {
       "autoSaveFailed": "Auto-Speichern fehlgeschlagen",
@@ -876,7 +884,7 @@
       "billing": "Abrechnung",
       "usage": "Nutzung",
       "serverConfig": "Serverkonfiguration",
-      "domain": "Brauch Domain",
+      "domain": "Benutzerdefinierte Domain",
       "webhooks": "Webhooks",
       "migrationTool": "Migrationstool",
       "punishments": "Strafen",
@@ -1487,6 +1495,7 @@
     "replayId": "Replay-ID",
     "unknownPlayer": "Unbekannter Spieler",
     "previousNames": "Frühere Namen",
+    "noPreviousNames": "Keine früheren Namen gefunden",
     "missingInfo": "Fehlende Informationen",
     "selectPunishmentType": "Bitte wähle einen Straftyp aus, bevor du ihn anwendest.",
     "punishmentApplied": "Strafe angewendet",
@@ -1727,7 +1736,11 @@
     "appealReasonPlaceholder": "Erkläre, warum du glaubst, dass diese Strafe überprüft werden sollte...",
     "appealReasonDesc": "Sei ehrlich und gib so viele Details wie möglich an",
     "selectAnOption": "Option auswählen",
-    "verificationRequiredDesc": "Diese Beschwerde erfordert eine E-Mail-Verifizierung, um die Konversation anzuzeigen."
+    "verificationRequiredDesc": "Diese Beschwerde erfordert eine E-Mail-Verifizierung, um die Konversation anzuzeigen.",
+    "appealClosed": "Berufung geschlossen",
+    "appealClosedDesc": "Diese Berufung wurde von unserem Personal geschlossen.",
+    "repliesLocked": "Antworten gesperrt",
+    "repliesLockedDesc": "Diese Berufung wurde vom Personal gesperrt und es werden keine neuen Antworten mehr akzeptiert."
   },
   "submitTicket": {
     "supportRequest": "Support-Anfrage",
@@ -1776,6 +1789,8 @@
     "submitATicket": "Ticket einreichen",
     "selectType": "Ticket-Typ auswählen",
     "emailAddress": "E-Mail-Adresse",
-    "emailAddressDesc": "Deine E-Mail-Adresse für Antwortbenachrichtigungen"
+    "emailAddressDesc": "Deine E-Mail-Adresse für Antwortbenachrichtigungen",
+    "emailAuthRequiresEmail": "E-Mail-Adresse erforderlich",
+    "emailAuthRequiresEmailDesc": "Du musst eine E-Mail-Adresse angeben, um die E-Mail-Authentifizierung zu aktivieren."
   }
 }
