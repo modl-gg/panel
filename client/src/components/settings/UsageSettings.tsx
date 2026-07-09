@@ -19,6 +19,8 @@ import { errorMessageOr } from '@/utils/errors';
 import { useReplayRetentionSettings, useUpdateReplayRetentionSettings } from '@/hooks/use-data';
 import { Notice } from '@/components/ui/notice';
 
+const DEFAULT_REPLAY_RETENTION_DAYS = 10;
+
 interface StorageFile {
   id: string;
   name: string;
@@ -131,7 +133,7 @@ const UsageSettings = () => {
   const [currentPage, setCurrentPage] = useState(1);
   const [itemsPerPage, setItemsPerPage] = useState(25);
   const [replayRetentionEnabled, setReplayRetentionEnabled] = useState(true);
-  const [replayRetentionDays, setReplayRetentionDays] = useState(7);
+  const [replayRetentionDays, setReplayRetentionDays] = useState(DEFAULT_REPLAY_RETENTION_DAYS);
   const { data: replayRetentionSettings, isLoading: isLoadingReplayRetention, error: replayRetentionError } = useReplayRetentionSettings();
   const updateReplayRetentionSettings = useUpdateReplayRetentionSettings();
   const DEFAULT_AI_LIMIT = 1000;
@@ -147,7 +149,7 @@ const UsageSettings = () => {
     }
 
     setReplayRetentionEnabled(Boolean(replayRetentionSettings.data.enabled));
-    setReplayRetentionDays(Number(replayRetentionSettings.data.days || 7));
+    setReplayRetentionDays(Number(replayRetentionSettings.data.days || DEFAULT_REPLAY_RETENTION_DAYS));
   }, [replayRetentionSettings]);
 
 const fetchStorageData = async () => {
