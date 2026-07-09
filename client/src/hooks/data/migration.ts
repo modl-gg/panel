@@ -47,11 +47,6 @@ export function useMigrationStatus() {
       const res = await protoFetch(MigrationStatusResponseSchema, '/v1/panel/migration/status');
       return remapMigrationStatus(res);
     },
-    // Always keep a polling safety-net: realtime invalidation (migrationStatusChanged) refreshes
-    // promptly when the socket is healthy, but the WS can be permanently stopped for an auth
-    // session (close 1008/1013 -> stopForAuthSession) while the env flag still reads "enabled".
-    // Gating polling purely on that static flag would freeze an in-progress migration's progress.
-    // Poll fast (5s) while a migration is active, slow (30s) otherwise as a background fallback.
     refetchInterval: (query) => {
       const data = query.state.data;
       const currentMigration = data?.currentMigration;

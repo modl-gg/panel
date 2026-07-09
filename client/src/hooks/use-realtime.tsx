@@ -25,6 +25,7 @@ const MAX_RECONNECT_DELAY_MS = 30_000;
 const MAX_ADVISED_RECONNECT_DELAY_MS = 60_000;
 const RECENT_EVENT_ID_LIMIT = 256;
 const REALTIME_PATH = '/api/v1/realtime/ws';
+const POLICY_VIOLATION_CLOSE_CODE = 1008;
 
 const PANEL_TOPICS = [
   Topic.PANEL_TICKETS,
@@ -523,7 +524,7 @@ export function useRealtimeInvalidation(): void {
           window.clearInterval(heartbeatTimer);
           heartbeatTimer = undefined;
         }
-        if (event.code === 1008 || event.code === 1013) {
+        if (event.code === POLICY_VIOLATION_CLOSE_CODE) {
           stopForAuthSession();
           return;
         }
