@@ -35,7 +35,6 @@ export interface UsageMetric {
 
 export interface UsageData {
   period: { start: number | null; end: number | null };
-  cdn?: UsageMetric;
   ai?: UsageMetric;
   totalOverageCost: number;
   usageBillingEnabled: boolean;
@@ -93,7 +92,6 @@ export function useUsageData() {
           start: tsToMillis(res.period?.start),
           end: tsToMillis(res.period?.end),
         },
-        cdn: res.cdn ? toUsageMetric(res.cdn) : undefined,
         ai: res.ai ? toUsageMetric(res.ai) : undefined,
         totalOverageCost: res.totalOverageCost,
         usageBillingEnabled: res.usageBillingEnabled,
