@@ -31,7 +31,10 @@ export function getApiErrorMessage(payload: unknown, fallback: string): string {
   };
 
   if (Array.isArray(errorPayload.errors) && errorPayload.errors.length > 0) {
-    return errorPayload.errors[0];
+    const firstError = errorPayload.errors[0];
+    if (typeof firstError === 'string') {
+      return firstError;
+    }
   }
 
   if (typeof errorPayload.message === 'string' && errorPayload.message.trim().length > 0) {

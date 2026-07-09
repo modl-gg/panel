@@ -9,11 +9,17 @@ import { Progress } from '@modl-gg/shared-web/components/ui/progress';
 import { Card, CardContent, CardHeader, CardTitle } from '@modl-gg/shared-web/components/ui/card';
 import { Badge } from '@modl-gg/shared-web/components/ui/badge';
 import { Checkbox } from '@modl-gg/shared-web/components/ui/checkbox';
+import { Switch } from '@modl-gg/shared-web/components/ui/switch';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@modl-gg/shared-web/components/ui/select';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@modl-gg/shared-web/components/ui/table';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@modl-gg/shared-web/components/ui/alert-dialog';
 import { useToast } from '@modl-gg/shared-web/hooks/use-toast';
 import { formatFileSize } from '@/utils/file-utils';
+import { errorMessageOr } from '@/utils/errors';
+import { useReplayRetentionSettings, useUpdateReplayRetentionSettings } from '@/hooks/use-data';
+import { Notice } from '@/components/ui/notice';
+
+const DEFAULT_REPLAY_RETENTION_DAYS = 10;
 
 interface StorageFile {
   id: string;
@@ -24,6 +30,13 @@ interface StorageFile {
   createdAt: string;
   lastModified: string;
   url: string;
+}
+
+interface StorageFileListing {
+  key?: string;
+  size?: number;
+  lastModified?: string;
+  url?: string;
 }
 
 interface StorageUsage {
@@ -94,6 +107,11 @@ interface StorageSettings {
   };
 }
 
+// Clamp a usage percentage to [0, 100] (and guard NaN/Infinity) so over-quota
+// tenants don't render a broken Progress bar or a misleading ">100%" label.
+const clampPercent = (n: number) =>
+  Math.max(0, Math.min(100, Math.round((Number.isFinite(n) ? n : 0) * 100) / 100));
+
 const UsageSettings = () => {
   const { toast } = useToast();
   const { t } = useTranslation();
@@ -114,12 +132,25 @@ const UsageSettings = () => {
   const [newOverageLimit, setNewOverageLimit] = useState<number>(0);
   const [currentPage, setCurrentPage] = useState(1);
   const [itemsPerPage, setItemsPerPage] = useState(25);
+  const [replayRetentionEnabled, setReplayRetentionEnabled] = useState(true);
+  const [replayRetentionDays, setReplayRetentionDays] = useState(DEFAULT_REPLAY_RETENTION_DAYS);
+  const { data: replayRetentionSettings, isLoading: isLoadingReplayRetention, error: replayRetentionError } = useReplayRetentionSettings();
+  const updateReplayRetentionSettings = useUpdateReplayRetentionSettings();
   const DEFAULT_AI_LIMIT = 1000;
 
   useEffect(() => {
     fetchStorageData();
     fetchStorageSettings();
   }, []);
+
+  useEffect(() => {
+    if (!replayRetentionSettings?.data) {
+      return;
+    }
+
+    setReplayRetentionEnabled(Boolean(replayRetentionSettings.data.enabled));
+    setReplayRetentionDays(Number(replayRetentionSettings.data.days || DEFAULT_REPLAY_RETENTION_DAYS));
+  }, [replayRetentionSettings]);
 
 const fetchStorageData = async () => {
     try {
@@ -160,20 +191,20 @@ const fetchStorageData = async () => {
         cdnPercentage = usageData.cdn?.percentage ?? (cdnLimit > 0 ? (cdnUsed / cdnLimit) * 100 : 0);
       } else {
         // Old format: values are already in bytes
-        cdnUsedBytes = usageData.usedBytes ?? 0;
-        cdnLimitBytes = usageData.maxBytes ?? 0;
+        cdnUsedBytes = Number(usageData.usedBytes ?? 0);
+        cdnLimitBytes = Number(usageData.maxBytes ?? 0);
         cdnPercentage = usageData.usedPercentage ?? (cdnLimitBytes > 0 ? (cdnUsedBytes / cdnLimitBytes) * 100 : 0);
       }
       
       // Transform the data to match expected format
       // Use byType from backend if available, otherwise fallback to putting all in "other"
       const byType = usageData.byType ? {
-        ticket: usageData.byType.ticket ?? 0,
-        evidence: usageData.byType.evidence ?? 0,
-        logs: usageData.byType.logs ?? 0,
-        backup: usageData.byType.backup ?? 0,
-        replay: usageData.byType.replay ?? 0,
-        other: usageData.byType.other ?? 0
+        ticket: Number(usageData.byType.ticket ?? 0),
+        evidence: Number(usageData.byType.evidence ?? 0),
+        logs: Number(usageData.byType.logs ?? 0),
+        backup: Number(usageData.byType.backup ?? 0),
+        replay: Number(usageData.byType.replay ?? 0),
+        other: Number(usageData.byType.other ?? 0)
       } : {
         ticket: 0,
         evidence: 0,
@@ -204,8 +235,8 @@ const fetchStorageData = async () => {
           overageCost: usageData.cdn?.overageCost ?? 0,
           isPaid: billingUsageData?.usageBillingEnabled ?? usageData.usageBillingEnabled ?? false,
           canUpload: cdnPercentage < 100,
-          usagePercentage: Math.round(cdnPercentage * 100) / 100,
-          baseUsagePercentage: Math.round(cdnPercentage * 100) / 100
+          usagePercentage: clampPercent(cdnPercentage),
+          baseUsagePercentage: clampPercent(cdnPercentage)
         },
         aiQuota: isPremium && billingUsageData?.ai ? {
           totalUsed: Number(billingUsageData.ai.used ?? 0),
@@ -213,7 +244,7 @@ const fetchStorageData = async () => {
           overageUsed: Number(billingUsageData.ai.overage ?? 0),
           overageCost: Number(billingUsageData.ai.overageCost ?? 0),
           canUseAI: Number(billingUsageData.ai.used ?? 0) < Number(billingUsageData.ai.limit ?? DEFAULT_AI_LIMIT),
-          usagePercentage: Math.max(0, Math.min(100, Math.round(Number(billingUsageData.ai.percentage ?? 0) * 100) / 100)),
+          usagePercentage: clampPercent(Number(billingUsageData.ai.percentage ?? 0)),
           byService: {
             moderation: 0,
             ticket_analysis: 0,
@@ -226,7 +257,7 @@ const fetchStorageData = async () => {
           overageUsed: usageData.aiQuota.overageUsed ?? 0,
           overageCost: usageData.aiQuota.overageCost ?? 0,
           canUseAI: usageData.aiQuota.canUseAI ?? false,
-          usagePercentage: Math.round((usageData.aiQuota.usagePercentage ?? 0) * 100) / 100,
+          usagePercentage: clampPercent(usageData.aiQuota.usagePercentage ?? 0),
           byService: usageData.aiQuota.byService ? {
             moderation: usageData.aiQuota.byService.moderation ?? 0,
             ticket_analysis: usageData.aiQuota.byService.ticket_analysis ?? 0,
@@ -244,7 +275,7 @@ const fetchStorageData = async () => {
           overageUsed: usageData.ai.overage ?? 0,
           overageCost: usageData.ai.overageCost ?? 0,
           canUseAI: (usageData.ai.percentage ?? 0) < 100,
-          usagePercentage: Math.round((usageData.ai.percentage ?? 0) * 100) / 100,
+          usagePercentage: clampPercent(usageData.ai.percentage ?? 0),
           byService: {
             moderation: 0,
             ticket_analysis: 0,
@@ -273,16 +304,16 @@ const fetchStorageData = async () => {
       if (!filesResponse.ok) {
         throw new Error(`Failed to fetch files: ${filesResponse.status}`);
       }
-      const filesData = await filesResponse.json();
-      
+      const filesData: { files?: StorageFileListing[] } = await filesResponse.json();
+
       // Transform the file data to match the expected structure
-      const transformedFiles = (filesData.files || []).map((file: any) => {
+      const transformedFiles = (filesData.files || []).map((file) => {
         // Extract filename from the key (last part after /)
         const parts = file.key?.split('/') || [];
         const filename = parts[parts.length - 1] || 'Unknown';
-        
+
         // Determine file type based on the folder in the path
-        let fileType = 'other';
+        let fileType: StorageFile['type'] = 'other';
         if (file.key?.includes('/evidence/')) fileType = 'evidence';
         else if (file.key?.includes('/tickets/') || file.key?.includes('/ticket/')) fileType = 'ticket';
         else if (file.key?.includes('/logs/')) fileType = 'logs';
@@ -365,14 +396,44 @@ const fetchStorageData = async () => {
     }
   };
 
+  const handleSaveReplayRetention = () => {
+    const days = Math.min(365, Math.max(1, Math.floor(Number(replayRetentionDays) || 1)));
+    const expectedVersion = Number(replayRetentionSettings?._meta?.version ?? 0);
+
+    updateReplayRetentionSettings.mutate({
+      expectedVersion,
+      enabled: replayRetentionEnabled,
+      days,
+    }, {
+      onSuccess: (envelope) => {
+        if (envelope?.data) {
+          setReplayRetentionEnabled(Boolean(envelope.data.enabled));
+          setReplayRetentionDays(Number(envelope.data.days || days));
+        }
+
+        toast({
+          title: t('toast.success'),
+          description: t('settings.usage.replayRetentionSaved'),
+        });
+      },
+      onError: (error) => {
+        toast({
+          title: t('toast.error'),
+          description: errorMessageOr(error, t('settings.usage.replayRetentionSaveFailed')),
+          variant: "destructive",
+        });
+      },
+    });
+  };
+
   const getTypeColor = (type: string): string => {
     switch (type) {
-      case 'ticket': return 'bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-300';
-      case 'evidence': return 'bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-300';
-      case 'logs': return 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-300';
-      case 'backup': return 'bg-purple-100 text-purple-800 dark:bg-purple-900/30 dark:text-purple-300';
-      case 'replay': return 'bg-orange-100 text-orange-800 dark:bg-orange-900/30 dark:text-orange-300';
-      default: return 'bg-gray-100 text-gray-800 dark:bg-gray-800 dark:text-gray-300';
+      case 'ticket': return 'bg-info/20 text-info border-info/30';
+      case 'evidence': return 'bg-destructive/20 text-destructive border-destructive/30';
+      case 'logs': return 'bg-success/20 text-success border-success/30';
+      case 'backup': return 'bg-accent/20 text-accent border-accent/30';
+      case 'replay': return 'bg-warning/20 text-warning border-warning/30';
+      default: return 'bg-muted text-muted-foreground border-border';
     }
   };
 
@@ -563,21 +624,15 @@ const fetchStorageData = async () => {
       )}
       
       {/* Free User Limit Warning */}
-      {!storageUsage?.quota?.isPaid && storageUsage?.quota?.baseUsagePercentage >= 80 && (
-        <div className="bg-blue-50 dark:bg-blue-900/10 border border-blue-200 dark:border-blue-800 rounded-lg p-4">
-          <div className="flex items-start gap-3">
-            <AlertCircle className="h-5 w-5 text-blue-600 dark:text-blue-400 mt-0.5 flex-shrink-0" />
-            <div>
-              <h3 className="font-medium text-blue-800 dark:text-blue-200">{t('settings.usage.storageLimitWarning')}</h3>
-              <p className="text-sm text-blue-700 dark:text-blue-300 mt-1">
-                {t('settings.usage.storageLimitWarningDesc', { percentage: storageUsage.quota.baseUsagePercentage, limit: storageUsage.quota.baseLimitFormatted })}
-              </p>
-              <p className="text-xs text-blue-600 dark:text-blue-400 mt-2">
-                {t('settings.usage.upgradePremiumStorage')}
-              </p>
-            </div>
-          </div>
-        </div>
+      {!storageUsage?.quota?.isPaid && (storageUsage?.quota?.baseUsagePercentage ?? 0) >= 80 && (
+        <Notice variant="info" title={t('settings.usage.storageLimitWarning')}>
+          <p>
+            {t('settings.usage.storageLimitWarningDesc', { percentage: storageUsage?.quota?.baseUsagePercentage, limit: storageUsage?.quota?.baseLimitFormatted })}
+          </p>
+          <p className="text-xs mt-2 opacity-80">
+            {t('settings.usage.upgradePremiumStorage')}
+          </p>
+        </Notice>
       )}
 
       {/* Storage Overview */}
@@ -786,33 +841,67 @@ const fetchStorageData = async () => {
 
           <Card className="rounded-card shadow-card-inner bg-surface-2">
             <CardHeader>
-              <CardTitle>{t('settings.usage.systemStatus')}</CardTitle>
+              <CardTitle className="flex items-center">
+                <Play className="h-5 w-5 mr-2" />
+                {t('settings.usage.replayRetention')}
+              </CardTitle>
             </CardHeader>
             <CardContent>
-              <div className="space-y-2">
-                <div className="flex justify-between text-sm">
-                  <span>{t('settings.usage.totalFiles')}:</span>
-                  <span>{files.length}</span>
+              <div className="space-y-4">
+                {replayRetentionError && (
+                  <div className="bg-destructive/10 border border-destructive/20 text-destructive rounded-lg p-3 text-sm">
+                    {t('settings.usage.replayRetentionLoadFailed')}
+                  </div>
+                )}
+
+                <div className="flex items-center justify-between gap-3">
+                  <div>
+                    <Label htmlFor="replay-retention-enabled" className="text-sm font-medium">
+                      {t('settings.usage.replayRetentionEnabled')}
+                    </Label>
+                    <p className="text-xs text-muted-foreground mt-1">
+                      {t('settings.usage.replayRetentionEnabledDesc')}
+                    </p>
+                  </div>
+                  <Switch
+                    id="replay-retention-enabled"
+                    checked={replayRetentionEnabled}
+                    onCheckedChange={setReplayRetentionEnabled}
+                    disabled={isLoadingReplayRetention || updateReplayRetentionSettings.isPending}
+                  />
                 </div>
-                <div className="flex justify-between text-sm">
-                  <span>{t('settings.usage.selected')}:</span>
-                  <span>{selectedFiles.size}</span>
+
+                <div className="space-y-2">
+                  <Label htmlFor="replay-retention-days">{t('settings.usage.replayRetentionDays')}</Label>
+                  <Input
+                    id="replay-retention-days"
+                    type="number"
+                    min="1"
+                    max="365"
+                    value={replayRetentionDays}
+                    onChange={(event) => setReplayRetentionDays(Number(event.target.value))}
+                    disabled={!replayRetentionEnabled || isLoadingReplayRetention || updateReplayRetentionSettings.isPending}
+                  />
+                  <p className="text-xs text-muted-foreground">
+                    {replayRetentionEnabled
+                      ? t('settings.usage.replayRetentionDaysDesc')
+                      : t('settings.usage.replayRetentionDisabledDesc')}
+                  </p>
                 </div>
-                <div className="flex justify-between text-sm">
-                  <span>{t('settings.usage.filtered')}:</span>
-                  <span>{filteredAndSortedFiles.length}</span>
-                </div>
-                <div className="flex justify-between text-sm">
-                  <span>{t('settings.usage.canUpload')}:</span>
-                  <span className={storageUsage.quota?.canUpload ? 'text-green-600' : 'text-red-600'}>
-                    {storageUsage.quota?.canUpload ? t('common.yes') : t('common.no')}
-                  </span>
-                </div>
-                <div className="flex justify-between text-sm">
-                  <span>{t('settings.usage.aiAvailable')}:</span>
-                  <span className={storageUsage.isPremium && storageUsage.aiQuota ? 'text-green-600' : 'text-red-600'}>
-                    {storageUsage.isPremium && storageUsage.aiQuota ? t('common.yes') : t('common.no')}
-                  </span>
+
+                <div className="flex items-center justify-between gap-3">
+                  <Badge variant="outline">
+                    {replayRetentionEnabled
+                      ? t('settings.usage.replayRetentionActive', { days: Math.max(1, Math.floor(Number(replayRetentionDays) || 1)) })
+                      : t('settings.usage.replayRetentionOff')}
+                  </Badge>
+                  <Button
+                    size="sm"
+                    onClick={handleSaveReplayRetention}
+                    disabled={isLoadingReplayRetention || updateReplayRetentionSettings.isPending || Boolean(replayRetentionError) || !replayRetentionSettings?.data}
+                  >
+                    {updateReplayRetentionSettings.isPending ? t('common.saving') : t('settings.usage.saveSettings')}
+                  </Button>
                 </div>
               </div>
             </CardContent>
@@ -861,7 +950,7 @@ const fetchStorageData = async () => {
 
             <div>
               <Label htmlFor="sort-by">{t('settings.usage.sortBy')}</Label>
-              <Select value={sortBy} onValueChange={(value: any) => setSortBy(value)}>
+              <Select value={sortBy} onValueChange={(value) => { if (value === 'name' || value === 'size' || value === 'date') setSortBy(value); }}>
                 <SelectTrigger>
                   <SelectValue />
                 </SelectTrigger>
@@ -875,7 +964,7 @@ const fetchStorageData = async () => {
 
             <div>
               <Label htmlFor="sort-order">{t('settings.usage.order')}</Label>
-              <Select value={sortOrder} onValueChange={(value: any) => setSortOrder(value)}>
+              <Select value={sortOrder} onValueChange={(value) => { if (value === 'asc' || value === 'desc') setSortOrder(value); }}>
                 <SelectTrigger>
                   <SelectValue />
                 </SelectTrigger>
@@ -976,6 +1065,7 @@ const fetchStorageData = async () => {
                           variant="ghost"
                           size="sm"
                           onClick={() => window.open(file.url, '_blank')}
+                          aria-label={t('common.download')}
                         >
                           <Download className="h-4 w-4" />
                         </Button>
@@ -983,8 +1073,9 @@ const fetchStorageData = async () => {
                           variant="ghost"
                           size="sm"
                           onClick={() => handleDeleteFile(file.id)}
+                          aria-label={t('common.delete')}
                         >
-                          <Trash2 className="h-4 w-4" />
+                          <Trash2 className="h-4 w-4 text-destructive" />
                         </Button>
                       </div>
                     </TableCell>
@@ -1064,7 +1155,7 @@ const fetchStorageData = async () => {
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel>{t('common.cancel')}</AlertDialogCancel>
-            <AlertDialogAction onClick={confirmDelete} className="bg-destructive text-destructive-foreground">
+            <AlertDialogAction onClick={confirmDelete} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
               {t('common.delete')}
             </AlertDialogAction>
           </AlertDialogFooter>
@@ -1119,8 +1210,8 @@ const fetchStorageData = async () => {
               </div>
             )}
 
-            <div className="bg-amber-50 dark:bg-amber-900/10 p-3 rounded-lg">
-              <p className="text-sm text-amber-800 dark:text-amber-200">
+            <div className="bg-warning/10 p-3 rounded-lg">
+              <p className="text-sm text-warning">
                 <strong>{t('common.important')}:</strong> {t('settings.usage.overageLimitWarning')}
               </p>
             </div>

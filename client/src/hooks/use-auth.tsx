@@ -1,9 +1,10 @@
-import { createContext, ReactNode, useContext, useState, useEffect } from "react";
+import { createContext, type ReactNode, useCallback, useContext, useEffect, useMemo, useState } from "react";
 import { useLocation } from "wouter";
 import { useToast } from "@modl-gg/shared-web/hooks/use-toast";
 import { getApiUrl, getCurrentDomain } from "@/lib/api";
 import { setDateLocale, setDateFormat } from "@/utils/date-utils";
-import { startAuthentication } from "@simplewebauthn/browser";
+import { startAuthentication, type PublicKeyCredentialRequestOptionsJSON } from "@simplewebauthn/browser";
+import { isWebAuthnCancellation, unwrapPublicKeyOptions, type MaybePublicKeyWrapped } from "@/utils/webauthn";
 import i18n from "@/lib/i18n";
 
 interface User {
@@ -16,10 +17,12 @@ interface User {
   dateFormat?: string;
 }
 
+type PasskeyRequestOptions = MaybePublicKeyWrapped<PublicKeyCredentialRequestOptionsJSON>;
+
 interface PasskeyLoginOptions {
   hasPasskeys: boolean;
   challengeId?: string;
-  options?: any;
+  options?: PasskeyRequestOptions;
 }
 
 type AuthContextType = {
@@ -28,9 +31,10 @@ type AuthContextType = {
   refreshUser: () => Promise<void>;
   login: (email: string, code: string) => Promise<boolean>;
   logout: () => void;
-  requestEmailVerification: (email: string) => Promise<string | undefined>;
+  signOutAllSessions: () => void;
+  requestEmailVerification: (email: string) => Promise<boolean>;
   checkPasskeyOptions: (email: string) => Promise<PasskeyLoginOptions>;
-  loginWithPasskey: (challengeId: string, optionsJson: any) => Promise<boolean>;
+  loginWithPasskey: (challengeId: string, optionsJson: PasskeyRequestOptions) => Promise<boolean>;
   loginWithDiscoverablePasskey: () => Promise<boolean>;
 };
 
@@ -48,14 +52,24 @@ async function authFetch(url: string, options: RequestInit = {}): Promise<Respon
   });
 }
 
-function mapUserFromMeResponse(userData: any): User {
+interface MeResponse {
+  id?: string;
+  email: string;
+  username: string;
+  role: User['role'];
+  minecraftUsername?: string;
+  language?: string;
+  dateFormat?: string;
+}
+
+function mapUserFromMeResponse(userData: MeResponse): User {
   return {
     id: userData.id || '',
     email: userData.email,
     username: userData.username,
     role: userData.role,
     minecraftUsername: userData.minecraftUsername,
-    language: userData.language || 'en',
+    language: userData.language || undefined,
     dateFormat: userData.dateFormat || 'MM/DD/YYYY',
   };
 }
@@ -66,20 +80,20 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [isLoading, setIsLoading] = useState(true);
 
-  const fetchAuthenticatedUser = async (): Promise<User | null> => {
+  const fetchAuthenticatedUser = useCallback(async (): Promise<User | null> => {
     const response = await authFetch('/v1/panel/auth/me');
     if (!response.ok) {
       return null;
     }
 
-    const userData = await response.json();
+    const userData: MeResponse = await response.json();
     return mapUserFromMeResponse(userData);
-  };
+  }, []);
 
-  const refreshUser = async () => {
+  const refreshUser = useCallback(async () => {
     const authenticatedUser = await fetchAuthenticatedUser();
     setUser(authenticatedUser);
-  };
+  }, [fetchAuthenticatedUser]);
 
   useEffect(() => {
     const checkSession = async () => {
@@ -96,16 +110,16 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     };
 
     checkSession();
-  }, []);
+  }, [fetchAuthenticatedUser]);
 
   useEffect(() => {
     const lang = user?.language || 'en';
+    const dateFormat = user?.dateFormat || 'MM/DD/YYYY';
     setDateLocale(lang);
-    setDateFormat(user?.dateFormat || 'MM/DD/YYYY');
-    i18n.changeLanguage(lang);
+    setDateFormat(dateFormat);
   }, [user?.language, user?.dateFormat]);
 
-  const requestEmailVerification = async (email: string): Promise<string | undefined> => {
+  const requestEmailVerification = useCallback(async (email: string): Promise<boolean> => {
     try {
       const response = await authFetch('/v1/panel/auth/send-email-code', {
         method: 'POST',
@@ -128,13 +142,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           description: description,
           variant: "destructive",
         });
-        return undefined;
+        return false;
       }
       toast({
         title: i18n.t('toast.verificationSent'),
         description: i18n.t('toast.verificationSentDesc'),
       });
-      return "sent";
+      return true;
     } catch (error) {
       console.error("Error requesting email verification:", error);
       toast({
@@ -142,12 +156,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         description: i18n.t('toast.networkErrorDesc'),
         variant: "destructive",
       });
-      return undefined;
+      return false;
     }
-  };
+  }, [toast]);
 
-  const login = async (email: string, code: string): Promise<boolean> => {
-    setIsLoading(true);
+  const login = useCallback(async (email: string, code: string): Promise<boolean> => {
     try {
       const response = await authFetch('/v1/panel/auth/verify-email-code', {
         method: 'POST',
@@ -158,21 +171,17 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       const data = await response.json();
 
       if (!response.ok) {
-        const errorMessage = data.error || data.message || "An error occurred during login.";
-        let description = errorMessage;
-
         if (response.status === 429) {
+          let description = data.error || data.message || "Too many attempts.";
           if (data.retryAfterSeconds) {
             description += ` Please wait ${data.retryAfterSeconds} seconds before trying again.`;
           }
+          toast({
+            title: i18n.t('toast.rateLimitExceeded'),
+            description: description,
+            variant: "destructive",
+          });
         }
-
-        toast({
-          title: response.status === 429 ? i18n.t('toast.rateLimitExceeded') : i18n.t('toast.loginFailed'),
-          description: description,
-          variant: "destructive",
-        });
-        setIsLoading(false);
         return false;
       }
 
@@ -183,7 +192,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           description: i18n.t('toast.loginErrorDesc'),
           variant: "destructive",
         });
-        setIsLoading(false);
         return false;
       }
 
@@ -194,7 +202,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         description: i18n.t('toast.loginSuccessDesc'),
       });
 
-      setIsLoading(false);
       return true;
 
     } catch (error) {
@@ -204,12 +211,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         description: i18n.t('toast.loginErrorDesc'),
         variant: "destructive",
       });
-      setIsLoading(false);
       return false;
     }
-  };
+  }, [fetchAuthenticatedUser, toast]);
 
-  const checkPasskeyOptions = async (email: string): Promise<PasskeyLoginOptions> => {
+  const checkPasskeyOptions = useCallback(async (email: string): Promise<PasskeyLoginOptions> => {
     try {
       const response = await authFetch('/v1/panel/auth/webauthn/login/options', {
         method: 'POST',
@@ -228,12 +234,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     } catch {
       return { hasPasskeys: false };
     }
-  };
+  }, []);
 
-  const loginWithPasskey = async (challengeId: string, optionsJson: any): Promise<boolean> => {
-    setIsLoading(true);
+  const loginWithPasskey = useCallback(async (challengeId: string, optionsJson: PasskeyRequestOptions): Promise<boolean> => {
     try {
-      const optionsJSON = optionsJson?.publicKey ?? optionsJson;
+      const optionsJSON = unwrapPublicKeyOptions(optionsJson);
       const assertionResponse = await startAuthentication({ optionsJSON });
 
       const response = await authFetch('/v1/panel/auth/webauthn/login/verify', {
@@ -252,7 +257,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           description: data.error || 'Passkey authentication failed',
           variant: 'destructive',
         });
-        setIsLoading(false);
         return false;
       }
 
@@ -263,7 +267,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           description: i18n.t('toast.loginErrorDesc'),
           variant: 'destructive',
         });
-        setIsLoading(false);
         return false;
       }
 
@@ -272,12 +275,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         title: i18n.t('toast.loginSuccess'),
         description: i18n.t('toast.loginSuccessDesc'),
       });
-      setIsLoading(false);
       return true;
-    } catch (e: any) {
+    } catch (e) {
       // User cancelled the WebAuthn prompt
-      if (e.name === 'NotAllowedError') {
-        setIsLoading(false);
+      if (isWebAuthnCancellation(e)) {
         return false;
       }
       console.error('Passkey login error:', e);
@@ -286,13 +287,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         description: 'Passkey authentication failed',
         variant: 'destructive',
       });
-      setIsLoading(false);
       return false;
     }
-  };
+  }, [fetchAuthenticatedUser, toast]);
 
-  const loginWithDiscoverablePasskey = async (): Promise<boolean> => {
-    setIsLoading(true);
+  const loginWithDiscoverablePasskey = useCallback(async (): Promise<boolean> => {
     try {
       const startRes = await authFetch('/v1/panel/auth/webauthn/login/start', {
         method: 'POST',
@@ -304,12 +303,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           description: 'Failed to start passkey authentication',
           variant: 'destructive',
         });
-        setIsLoading(false);
         return false;
       }
-      const { challengeId, options } = await startRes.json();
+      const { challengeId, options }: { challengeId: string; options: PasskeyRequestOptions } = await startRes.json();
 
-      const optionsJSON = options?.publicKey ?? options;
+      const optionsJSON = unwrapPublicKeyOptions(options);
       const assertionResponse = await startAuthentication({ optionsJSON });
 
       const verifyRes = await authFetch('/v1/panel/auth/webauthn/login/verify', {
@@ -328,7 +326,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           description: data.error || 'Passkey authentication failed',
           variant: 'destructive',
         });
-        setIsLoading(false);
         return false;
       }
 
@@ -339,7 +336,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           description: i18n.t('toast.loginErrorDesc'),
           variant: 'destructive',
         });
-        setIsLoading(false);
         return false;
       }
 
@@ -348,11 +344,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         title: i18n.t('toast.loginSuccess'),
         description: i18n.t('toast.loginSuccessDesc'),
       });
-      setIsLoading(false);
       return true;
-    } catch (e: any) {
-      if (e.name === 'NotAllowedError') {
-        setIsLoading(false);
+    } catch (e) {
+      if (isWebAuthnCancellation(e)) {
         return false;
       }
       console.error('Discoverable passkey login error:', e);
@@ -361,17 +355,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         description: 'Passkey authentication failed',
         variant: 'destructive',
       });
-      setIsLoading(false);
       return false;
     }
-  };
+  }, [fetchAuthenticatedUser, toast]);
 
-  const logout = async () => {
-    setIsLoading(true);
+  const finalizeSignOut = useCallback(async (invalidate: () => Promise<Response>) => {
     let shouldRedirectToAuth = false;
 
     try {
-      const response = await authFetch('/v1/panel/auth/logout', { method: 'POST' });
+      const response = await invalidate();
       if (!response.ok) {
         const errorData = await response.json().catch(() => ({ message: "Failed to logout on server." }));
         toast({
@@ -419,27 +411,48 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         variant: "destructive",
       });
     } finally {
-      setIsLoading(false);
       if (shouldRedirectToAuth) {
         navigate('/auth');
       }
     }
-  };
+  }, [fetchAuthenticatedUser, navigate, toast]);
+
+  const logout = useCallback(
+    () => finalizeSignOut(() => authFetch('/v1/panel/auth/logout', { method: 'POST' })),
+    [finalizeSignOut]
+  );
+
+  const signOutAllSessions = useCallback(
+    () => finalizeSignOut(() => authFetch('/v1/panel/auth/sessions', { method: 'DELETE' })),
+    [finalizeSignOut]
+  );
+
+  const contextValue = useMemo<AuthContextType>(() => ({
+    user,
+    isLoading,
+    refreshUser,
+    login,
+    logout,
+    signOutAllSessions,
+    requestEmailVerification,
+    checkPasskeyOptions,
+    loginWithPasskey,
+    loginWithDiscoverablePasskey,
+  }), [
+    user,
+    isLoading,
+    refreshUser,
+    login,
+    logout,
+    signOutAllSessions,
+    requestEmailVerification,
+    checkPasskeyOptions,
+    loginWithPasskey,
+    loginWithDiscoverablePasskey,
+  ]);
 
   return (
-    <AuthContext.Provider
-      value={{
-        user,
-        isLoading,
-        refreshUser,
-        login,
-        logout,
-        requestEmailVerification,
-        checkPasskeyOptions,
-        loginWithPasskey,
-        loginWithDiscoverablePasskey,
-      }}
-    >
+    <AuthContext.Provider value={contextValue}>
       {children}
     </AuthContext.Provider>
   );

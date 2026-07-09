@@ -5,6 +5,23 @@ import { useLocation } from 'wouter';
 import { formatTimeAgo } from '@/utils/date-utils';
 import { stripMarkdown } from '@/utils/markdown-utils';
 import { useTranslation } from 'react-i18next';
+import { StatusBadge } from '@/components/ui/status-badge';
+
+type Intent = 'info' | 'success' | 'warning' | 'destructive' | 'neutral';
+
+const statusIntents: Record<string, Intent> = {
+  open: 'info',
+  closed: 'success',
+  unfinished: 'neutral',
+};
+
+const priorityIntents: Record<string, Intent> = {
+  low: 'neutral',
+  normal: 'info',
+  medium: 'info',
+  high: 'warning',
+  urgent: 'destructive',
+};
 
 export interface RecentTicket {
   id: string;
@@ -22,26 +39,24 @@ interface RecentTicketsSectionProps {
   loading: boolean;
 }
 
-const statusColors: Record<string, string> = {
-  open: 'bg-blue-500/20 text-blue-500',
-  closed: 'bg-green-500/20 text-green-500',
-  unfinished: 'bg-gray-500/20 text-gray-500'
-};
-
-const priorityColors: Record<string, string> = {
-  low: 'bg-gray-500/20 text-gray-500',
-  normal: 'bg-blue-500/20 text-blue-500',
-  medium: 'bg-blue-500/20 text-blue-500',
-  high: 'bg-orange-500/20 text-orange-500',
-  urgent: 'bg-red-500/20 text-red-500'
-};
-
 export function RecentTicketsSection({ tickets, loading }: RecentTicketsSectionProps) {
   const { t } = useTranslation();
   const [, setLocation] = useLocation();
 
   const handleTicketClick = (ticketId: string) => {
     setLocation(`/panel/tickets/${ticketId}`);
+  };
+
+  // A ticket missing its creation timestamp arrives as epoch 0 (new Date(0)),
+  // which is a valid Date so formatTimeAgo would render a "decades ago" value.
+  // Treat epoch 0 / falsy timestamps as unknown instead.
+  const formatCreatedAt = (createdAt: string | Date) => {
+    if (!createdAt) return t('search.unknown');
+    const date = new Date(createdAt);
+    if (isNaN(date.getTime()) || date.getTime() === 0) {
+      return t('search.unknown');
+    }
+    return formatTimeAgo(createdAt);
   };
 
   const truncateMessage = (message: string | undefined | null, maxLength: number = 120) => {
@@ -102,14 +117,14 @@ export function RecentTicketsSection({ tickets, loading }: RecentTicketsSectionP
                   <h4 className="font-medium text-sm line-clamp-1">{ticket.title}</h4>
                   <div className="flex items-center gap-2 ml-2 flex-shrink-0">
                     {ticket.priority && (
-                      <Badge variant="secondary" className={`text-xs ${priorityColors[ticket.priority] || ''}`}>
+                      <StatusBadge intent={priorityIntents[ticket.priority] || 'neutral'} className="text-xs">
                         {ticket.priority.toUpperCase()}
-                      </Badge>
+                      </StatusBadge>
                     )}
                     {ticket.status && (
-                      <Badge variant="secondary" className={`text-xs ${statusColors[ticket.status] || ''}`}>
+                      <StatusBadge intent={statusIntents[ticket.status] || 'neutral'} className="text-xs">
                         {ticket.status.replace('_', ' ').toUpperCase()}
-                      </Badge>
+                      </StatusBadge>
                     )}
                   </div>
                 </div>
@@ -126,7 +141,7 @@ export function RecentTicketsSection({ tickets, loading }: RecentTicketsSectionP
                     </div>
                     <div className="flex items-center gap-1">
                       <Clock className="h-3 w-3" />
-                      <span>{formatTimeAgo(ticket.createdAt)}</span>
+                      <span>{formatCreatedAt(ticket.createdAt)}</span>
                     </div>
                   </div>
                   {ticket.type && (

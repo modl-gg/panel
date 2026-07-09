@@ -2,9 +2,9 @@ import { useState, useEffect, useCallback, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useRoute, useLocation } from 'wouter';
 import {
-  ArrowLeft, Ban, RefreshCcw, Search, History,
-  Link2, StickyNote, Ticket, UserRound, Shield, FileText, Upload, Loader2,
-  ChevronDown, ChevronRight, Settings, Plus, X
+  ArrowLeft, RefreshCcw, Search, History,
+  Link2, StickyNote, Ticket, UserRound, Shield, FileText, Loader2,
+  ChevronDown, ChevronRight, Settings, Plus, X, Play
 } from 'lucide-react';
 import { getAvatarUrl } from '@/lib/api';
 import { Button } from '@modl-gg/shared-web/components/ui/button';
@@ -17,11 +17,67 @@ import { usePermissions } from '@/hooks/use-permissions';
 import { useIsMobile } from '@modl-gg/shared-web/hooks/use-mobile';
 import { toast } from '@modl-gg/shared-web/hooks/use-toast';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@modl-gg/shared-web/components/ui/select';
-import PlayerPunishment, { PlayerPunishmentData } from '@/components/ui/player-punishment';
+import PlayerPunishment from '@/components/ui/player-punishment';
 import MediaUpload from '@/components/MediaUpload';
+import PlayerReplaysList from '@/components/player-replays-list';
 import { formatDateWithTime } from '@/utils/date-utils';
 import { apiFetch } from '@/lib/api';
+import { EvidenceList, type EvidenceValue } from '@/components/ui/evidence-list';
 import { formatTicketStatusLabel, normalizeTicketStatus } from '@/lib/ticket-enums';
+import { playerFacingReason, requiresPlayerFacingReason } from '@/utils/manual-punishment';
+import { PunishmentStatusBadge } from '@/components/ui/punishment-status-badge';
+import {
+  derivePunishmentStatusFromState,
+  getEffectivePunishmentState,
+  type EffectivePunishmentState,
+} from '@/utils/punishment-status';
+
+type PlayerDetail = NonNullable<ReturnType<typeof usePlayer>['data']>;
+type PlayerPunishment = PlayerDetail['punishments'][number];
+type PlayerModification = PlayerPunishment['modifications'][number];
+
+interface StatusThresholds {
+  social?: { medium: number; habitual: number };
+  gameplay?: { medium: number; habitual: number };
+}
+
+interface WarningEntry {
+  type: string;
+  reason: string;
+  date: string;
+  by: string;
+  id?: string;
+  severity?: string | null;
+  status?: string | null;
+  evidence?: PlayerPunishment['evidence'];
+  notes?: PlayerPunishment['notes'];
+  attachedTicketIds?: string[];
+  active?: boolean;
+  expires?: string | null;
+  started?: string | Date | null;
+  altBlocking?: boolean;
+  statWiping?: boolean;
+  modifications?: PlayerModification[];
+  duration?: number;
+  effectiveCategory?: string;
+}
+
+interface TicketView {
+  id?: string;
+  _id?: string;
+  type?: string;
+  category?: string;
+  subject?: string;
+  status?: string | null;
+  created?: string | null;
+  assignedTo?: string | string[];
+  locked?: boolean;
+  reportedPlayerUuid?: string;
+  reportedPlayer?: string;
+  creatorUuid?: string;
+  creatorName?: string;
+  tags?: string[];
+}
 
 interface PlayerInfo {
   username: string;
@@ -36,23 +92,7 @@ interface PlayerInfo {
   gameplay: string;
   punishmentStatus: 'banned' | 'muted' | null;
   previousNames: string[];
-  warnings: Array<{ 
-    type: string; 
-    reason: string; 
-    date: string; 
-    by: string;
-    id?: string;
-    severity?: string;
-    status?: string;
-    evidence?: (string | {text: string; issuerName: string; date: string})[];
-    notes?: Array<{text: string; issuerName: string; date: string}>;
-    attachedTicketIds?: string[];
-    active?: boolean;
-    expires?: string;
-    started?: string | Date;
-    data?: any;
-    altBlocking?: boolean;
-  }>;
+  warnings: WarningEntry[];
   linkedAccounts: Array<{username: string; uuid: string; statusText: string}>;
   notes: string[];
   newNote?: string;
@@ -161,7 +201,7 @@ const LinkedBansDisplayDetail = ({ punishmentId, onPlayerClick }: { punishmentId
     <div>
       <p className="text-xs font-medium text-muted-foreground mb-1">Linked Bans:</p>
       <div className="flex flex-wrap gap-1">
-        {linkedBans.map((lb: any) => (
+        {linkedBans.map((lb) => (
           <Button
             key={lb.punishmentId}
             variant="outline"
@@ -187,8 +227,6 @@ const PlayerDetailPage = () => {
   const isMobile = useIsMobile();
 
   const [activeTab, setActiveTab] = useState('history');
-  const [banSearchResults, setBanSearchResults] = useState<{id: string; player: string}[]>([]);
-  const [showBanSearchResults, setShowBanSearchResults] = useState(false);
   const [avatarError, setAvatarError] = useState(false);
   const [avatarLoading, setAvatarLoading] = useState(true);
   const [isApplyingPunishment, setIsApplyingPunishment] = useState(false);
@@ -287,7 +325,8 @@ const PlayerDetailPage = () => {
         ];
 
         // Group punishment types by category
-        const adminFromSettings = punishmentTypesData.filter((pt: PunishmentType) => pt.category?.toLowerCase().trim() === 'administrative');
+        const loadedTypes = punishmentTypesData as unknown as PunishmentType[];
+        const adminFromSettings = loadedTypes.filter((pt: PunishmentType) => pt.category?.toLowerCase().trim() === 'administrative');
 
         // Merge default admin types with any additional admin types from settings
         // Default types take precedence (to ensure they're always available)
@@ -300,8 +339,8 @@ const PlayerDetailPage = () => {
 
         const categorized = {
           Administrative: mergedAdminTypes.sort((a, b) => a.ordinal - b.ordinal),
-          Social: punishmentTypesData.filter((pt: PunishmentType) => pt.category?.toLowerCase().trim() === 'social').sort((a: PunishmentType, b: PunishmentType) => a.ordinal - b.ordinal),
-          Gameplay: punishmentTypesData.filter((pt: PunishmentType) => pt.category?.toLowerCase().trim() === 'gameplay').sort((a: PunishmentType, b: PunishmentType) => a.ordinal - b.ordinal)
+          Social: loadedTypes.filter((pt: PunishmentType) => pt.category?.toLowerCase().trim() === 'social').sort((a: PunishmentType, b: PunishmentType) => a.ordinal - b.ordinal),
+          Gameplay: loadedTypes.filter((pt: PunishmentType) => pt.category?.toLowerCase().trim() === 'gameplay').sort((a: PunishmentType, b: PunishmentType) => a.ordinal - b.ordinal)
         };
 
         // Update the state with the loaded punishment types
@@ -328,7 +367,7 @@ const PlayerDetailPage = () => {
   }, [punishmentTypesByCategory, hasPermission]);
 
   // Calculate player status based on punishments and settings
-  const calculatePlayerStatus = (punishments: any[], punishmentTypes: PunishmentType[], statusThresholds: any) => {
+  const calculatePlayerStatus = (punishments: PlayerPunishment[], punishmentTypes: PunishmentType[], statusThresholds: StatusThresholds) => {
     let socialPoints = 0;
     let gameplayPoints = 0;
 
@@ -345,8 +384,8 @@ const PlayerDetailPage = () => {
 
       // Get points based on severity or single severity
       let points = 0;
-      const severity = punishment.severity || punishment.data?.severity;
-      
+      const severity = punishment.severity;
+
       if (punishmentType.customPoints !== undefined) {
         // Custom points for permanent punishments (like Bad Skin, Bad Name)
         points = punishmentType.customPoints;
@@ -396,67 +435,15 @@ const PlayerDetailPage = () => {
     };
   };
 
-  // Helper function to calculate effective punishment status and expiry based on modifications
-  const getEffectivePunishmentState = (punishment: any) => {
-    const modifications = punishment.modifications || [];
-    
-    let effectiveActive = punishment.active;
-    let effectiveExpiry = punishment.expires;
-    let effectiveDuration = punishment.duration;
-    let hasModifications = modifications.length > 0;
-    
-    // Process modifications in chronological order (oldest first)
-    const sortedModifications = [...modifications].sort((a: any, b: any) => {
-      const dateA = a.date ? new Date(a.date).getTime() : 0;
-      const dateB = b.date ? new Date(b.date).getTime() : 0;
-      return dateA - dateB;
-    });
-
-    for (const mod of sortedModifications) {
-      switch (mod.type) {
-        case 'MANUAL_PARDON':
-        case 'APPEAL_ACCEPT':
-          effectiveActive = false;
-          effectiveExpiry = mod.date; // Set expiry to when it was pardoned
-          break;
-        case 'MANUAL_DURATION_CHANGE':
-        case 'APPEAL_DURATION_CHANGE':
-          if (mod.effectiveDuration !== undefined) {
-            effectiveDuration = mod.effectiveDuration;
-            if (mod.effectiveDuration === 0 || mod.effectiveDuration === -1 || mod.effectiveDuration < 0) {
-              effectiveExpiry = null; // Permanent
-            } else if (mod.date) {
-              const modDate = new Date(mod.date);
-              if (!isNaN(modDate.getTime())) {
-                effectiveExpiry = new Date(modDate.getTime() + mod.effectiveDuration).toISOString();
-              }
-            }
-          }
-          break;
-      }
-    }
-    
-    return {
-      effectiveActive,
-      effectiveExpiry,
-      effectiveDuration,
-      hasModifications,
-      modifications: sortedModifications,
-      originalExpiry: punishment.expires
-    };
-  };
-
   // Helper function to safely get data from player.data (handles both Map and plain object)
-  const getPlayerData = (player: any, key: string) => {
-    if (!player?.data) return undefined;
-    if (typeof player.data.get === 'function') {
-      return player.data.get(key);
-    }
-    return (player.data as any)[key];
+  const getPlayerData = (player: PlayerDetail | null | undefined, key: string): unknown => {
+    const data = player?.data;
+    if (!data) return undefined;
+    return data[key];
   };
 
   // Helper function to check if a value is a valid display value for badges
-  const isValidBadgeValue = (value: any): boolean => {
+  const isValidBadgeValue = (value: unknown): boolean => {
     if (!value || value === null || value === undefined) return false;
     if (typeof value === 'number' && value === 0) return false;
     if (typeof value !== 'string') return false;
@@ -466,38 +453,10 @@ const PlayerDetailPage = () => {
     return true;
   };
 
-  // Helper function to determine if a punishment is currently active based on expiry logic
-  const isPunishmentCurrentlyActive = (warning: any, effectiveState: any) => {
-    // Check if punishment is pardoned/revoked
-    const pardonModification = effectiveState.modifications.find((mod: any) => 
-      mod.type === 'MANUAL_PARDON' || mod.type === 'APPEAL_ACCEPT'
-    );
-    
-    if (pardonModification) {
-      return false; // Pardoned punishments are always inactive
-    }
-    
-    // Check if punishment has modifications with effective expiry
-    if (effectiveState.hasModifications && effectiveState.effectiveExpiry) {
-      const expiryDate = new Date(effectiveState.effectiveExpiry);
-      if (!isNaN(expiryDate.getTime())) {
-        const now = new Date();
-        return expiryDate.getTime() > now.getTime(); // Active if expiry is in the future
-      }
-    }
-    
-    // Check original expiry for unmodified punishments
-    if (warning.expires) {
-      const expiryDate = new Date(warning.expires);
-      if (!isNaN(expiryDate.getTime())) {
-        const now = new Date();
-        return expiryDate.getTime() > now.getTime(); // Active if expiry is in the future
-      }
-    }
-    
-    // For punishments without expiry (permanent), check effective active state
-    return effectiveState.effectiveActive;
-  };
+  const isPunishmentCurrentlyActive = (
+    warning: WarningEntry,
+    effectiveState: EffectivePunishmentState<PlayerModification>,
+  ) => derivePunishmentStatusFromState(warning, effectiveState) === 'active';
 
   // Helper function to format duration in milliseconds to human readable
   const formatDuration = (milliseconds: number) => {
@@ -533,28 +492,28 @@ const PlayerDetailPage = () => {
       // Check if we're dealing with MongoDB data or the API response format
       if (player.usernames) {
         // This is MongoDB raw data that needs formatting
-        const currentUsername = player.usernames && player.usernames.length > 0 
-          ? player.usernames[player.usernames.length - 1].username 
+        const currentUsername = player.usernames.length > 0
+          ? player.usernames[player.usernames.length - 1]?.username ?? 'Unknown'
           : 'Unknown';
-        
-        const firstJoined = player.usernames && player.usernames.length > 0 
-          ? formatDateWithTime(player.usernames[0].date) 
+
+        const firstJoined = player.usernames.length > 0
+          ? formatDateWithTime(player.usernames[0]?.date)
           : 'Unknown';
-        
+
         // Get previous usernames
-        const previousNames = player.usernames && player.usernames.length > 1
+        const previousNames = player.usernames.length > 1
           ? player.usernames
               .slice(0, -1) // All except the most recent
-              .map((u: any) => u.username)
+              .map((u) => u.username)
           : [];
-        
-        // Determine player status using effectiveCategory from backend
-        const activePunishments = player.punishments ? player.punishments.filter((p: any) =>
-          p.active && p.typeOrdinal !== 0 // Exclude kicks (ordinal 0) completely
-        ) : [];
 
-        const hasActiveBan = activePunishments.some((p: any) => p.effectiveCategory === 'BAN');
-        const hasActiveMute = activePunishments.some((p: any) => p.effectiveCategory === 'MUTE');
+        // Determine player status using effectiveCategory from backend
+        const activePunishments = player.punishments.filter((p) =>
+          p.active && p.typeOrdinal !== 0 // Exclude kicks (ordinal 0) completely
+        );
+
+        const hasActiveBan = activePunishments.some((p) => p.effectiveCategory === 'BAN');
+        const hasActiveMute = activePunishments.some((p) => p.effectiveCategory === 'MUTE');
 
         const status = hasActiveBan
           ? 'Banned'
@@ -565,11 +524,11 @@ const PlayerDetailPage = () => {
           : 'Active';
         
         // Initialize warnings array
-        const warnings: any[] = [];
-        
+        const warnings: WarningEntry[] = [];
+
         // Add punishments to warnings with full details
         if (player.punishments) {
-          player.punishments.forEach((punishment: any) => {
+          player.punishments.forEach((punishment: PlayerPunishment) => {
             // Determine punishment type name from ordinal using settings data
             const getPunishmentTypeName = (ordinal: number) => {
               // First check all loaded punishment types from settings
@@ -595,7 +554,7 @@ const PlayerDetailPage = () => {
             if (punishment.notes && punishment.notes.length > 0) {
               // Use first note as the main reason (for both manual and automatic punishments)
               const firstNote = punishment.notes[0];
-              displayReason = typeof firstNote === 'string' ? firstNote : firstNote.text;
+              displayReason = typeof firstNote === 'string' ? firstNote : firstNote?.text ?? '';
             } else {
               // Fallback if no notes available
               displayReason = 'No additional details';
@@ -604,53 +563,54 @@ const PlayerDetailPage = () => {
             warnings.push({
               type: punishmentType,
               reason: displayReason,
-              date: formatDateWithTime(punishment.date || punishment.issued),
+              date: formatDateWithTime(punishment.issued),
               by: punishment.issuerName,
               // Additional punishment details
-              id: punishment.id || punishment._id,
+              id: punishment.id,
               severity: (() => {
                 // For linked bans (typeOrdinal 4), severity should always be null
                 if (punishment.typeOrdinal === 4) return null;
-                const severity = punishment.data?.severity || (punishment.data?.get ? punishment.data.get('severity') : punishment.severity);
-                return severity === 0 || severity === '0' || severity === null || severity === undefined ? null : severity;
+                const severity = punishment.severity;
+                return severity === '0' || severity === undefined ? null : severity;
               })(),
               status: (() => {
                 // For linked bans (typeOrdinal 4), status should always be null
                 if (punishment.typeOrdinal === 4) return null;
-                const status = punishment.data?.status || (punishment.data?.get ? punishment.data.get('status') : punishment.status);
-                return status === 0 || status === '0' || status === null || status === undefined ? null : status;
+                const status = punishment.status;
+                return status === '0' || status === undefined ? null : status;
               })(),
               evidence: punishment.evidence || [],
               notes: punishment.notes || [],
               attachedTicketIds: punishment.attachedTicketIds || [],
-              active: punishment.data?.active !== false || (punishment.data?.get ? punishment.data.get('active') !== false : punishment.active),
+              active: punishment.active,
               modifications: punishment.modifications || [],
-              expires: punishment.expires || punishment.data?.expires || (punishment.data?.get ? punishment.data.get('expires') : null),
-              data: punishment.data || {},
-              altBlocking: punishment.data?.altBlocking || (punishment.data?.get ? punishment.data.get('altBlocking') : false),
+              expires: punishment.expires || null,
+              altBlocking: punishment.altBlocking ?? false,
+              statWiping: punishment.statWiping ?? false,
+              effectiveCategory: punishment.effectiveCategory,
               started: punishment.started
             });
           });
         }
         
         // Extract notes
-        const notes = player.notes 
-          ? player.notes.map((note: any) => `${note.text} (Added by ${note.issuerName} on ${formatDateWithTime(note.date)})`) 
+        const notes = player.notes
+          ? player.notes.map((note) => `${note.text} (Added by ${note.issuerName} on ${formatDateWithTime(note.date)})`)
           : [];
         
         // Extract linked accounts from API data
         const linkedAccounts: Array<{username: string; uuid: string; statusText: string}> = [];
         
         if (linkedAccountsData?.linkedAccounts && Array.isArray(linkedAccountsData.linkedAccounts)) {
-          linkedAccountsData.linkedAccounts.forEach((account: any) => {
+          linkedAccountsData.linkedAccounts.forEach((account) => {
             const statusInfo = [];
             if (account.activeBans > 0) statusInfo.push(`${account.activeBans} active ban${account.activeBans > 1 ? 's' : ''}`);
             if (account.activeMutes > 0) statusInfo.push(`${account.activeMutes} active mute${account.activeMutes > 1 ? 's' : ''}`);
-            
+
             const statusText = statusInfo.length > 0 ? ` (${statusInfo.join(', ')})` : '';
             linkedAccounts.push({
               username: account.username,
-              uuid: account.uuid || account._id || account.minecraftUuid,
+              uuid: account.minecraftUuid,
               statusText: statusText
             });
           });
@@ -664,21 +624,14 @@ const PlayerDetailPage = () => {
         ];
         
         // Get status thresholds from settings
-        let statusThresholds = { social: { medium: 4, habitual: 8 }, gameplay: { medium: 5, habitual: 10 } };
-        if (settingsData?.settings?.statusThresholds) {
-          try {
-            statusThresholds = settingsData.settings.statusThresholds;
-          } catch (error) {
-            console.error("Error parsing status thresholds:", error);
-          }
-        }
-        
+        const statusThresholds: StatusThresholds = { social: { medium: 4, habitual: 8 }, gameplay: { medium: 5, habitual: 10 } };
+
         const calculatedStatus = calculatePlayerStatus(player.punishments || [], allPunishmentTypes, statusThresholds);
         
         // Sort warnings by date (most recent first)
         warnings.sort((a, b) => {
-          const dateA = new Date(a.date || a.issued || 0).getTime();
-          const dateB = new Date(b.date || b.issued || 0).getTime();
+          const dateA = new Date(a.date || 0).getTime();
+          const dateB = new Date(b.date || 0).getTime();
           return dateB - dateA; // Descending order (newest first)
         });
         
@@ -686,17 +639,17 @@ const PlayerDetailPage = () => {
           ...prev,
           username: currentUsername,
           status: getPlayerData(player, 'isOnline') ? 'Online' : (status === 'Active' ? 'Offline' : status),
-          region: player.latestIPData?.region || player.region || 'Unknown',
-          country: player.latestIPData?.country || player.country || 'Unknown',
+          region: player.latestIPData?.region || 'Unknown',
+          country: player.latestIPData?.country || 'Unknown',
           firstJoined: firstJoined,
           lastOnline: getPlayerData(player, 'isOnline') ? 'Online' :
             (getPlayerData(player, 'lastLogout') || getPlayerData(player, 'lastDisconnect') ?
-              formatDateWithTime(getPlayerData(player, 'lastLogout') || getPlayerData(player, 'lastDisconnect')) :
-              (player.ipAddresses?.length ? formatDateWithTime(player.ipAddresses[player.ipAddresses.length - 1].logins?.slice(-1)[0] || player.ipAddresses[player.ipAddresses.length - 1].firstLogin) :
+              formatDateWithTime((getPlayerData(player, 'lastLogout') || getPlayerData(player, 'lastDisconnect')) as string | null | undefined) :
+              (player.ipAddresses?.length ? formatDateWithTime(player.ipAddresses[player.ipAddresses.length - 1]?.logins?.slice(-1)?.[0] || player.ipAddresses[player.ipAddresses.length - 1]?.firstLogin) :
               'Unknown')),
           lastServer: player.lastServer || 'Unknown',
           playtime: (() => {
-            const totalSeconds = getPlayerData(player, 'totalPlaytimeSeconds') || player.totalPlaytimeSeconds || 0;
+            const totalSeconds = (getPlayerData(player, 'totalPlaytimeSeconds') as number | undefined) || 0;
             if (totalSeconds > 0) {
               const hours = Math.floor(totalSeconds / 3600);
               const minutes = Math.floor((totalSeconds % 3600) / 60);
@@ -712,14 +665,6 @@ const PlayerDetailPage = () => {
           linkedAccounts: linkedAccounts,
           notes: notes
         }));
-      } else if (player.username) {
-        // Handle API response format if different
-        setPlayerInfo(prev => ({
-          ...prev,
-          username: player.username,
-          lastOnline: player.lastOnline || 'Unknown',
-          status: player.status === 'Active' ? 'Online' : player.status
-        }));
       }
     }
   }, [player, punishmentTypesByCategory, settingsData, linkedAccountsData]);
@@ -732,32 +677,8 @@ const PlayerDetailPage = () => {
   }, [player, playerId, triggerLinkedAccountSearch]);
 
   // Mock function to simulate ban search results
-  const searchBans = (query: string) => {
-    if (!query || query.length < 2) {
-      setBanSearchResults([]);
-      return;
-    }
-    
-    // Simulate API call delay
-    setTimeout(() => {
-      // Mock data for demonstration
-      const results = [
-        { id: 'ban-123', player: 'MineKnight45' },
-        { id: 'ban-456', player: 'DiamondMiner99' },
-        { id: 'ban-789', player: 'CraftMaster21' },
-        { id: 'ban-012', player: 'StoneBlazer76' }
-      ].filter(item => 
-        item.id.toLowerCase().includes(query.toLowerCase()) || 
-        item.player.toLowerCase().includes(query.toLowerCase())
-      );
-      
-      setBanSearchResults(results);
-      setShowBanSearchResults(results.length > 0);
-    }, 300);
-  };
-
   // Helper function to find punishment type for a given warning
-  const findPunishmentTypeForWarning = (warning: any) => {
+  const findPunishmentTypeForWarning = (warning: WarningEntry) => {
     if (!warning.type) return null;
     const allTypes = [
       ...punishmentTypesByCategory.Administrative,
@@ -830,7 +751,7 @@ const PlayerDetailPage = () => {
       // Determine severity and status based on punishment type
       let severity = null;
       let status = null;
-      let data: { [key: string]: any } = { issuedServer: 'Panel' };
+      const data: { [key: string]: unknown } = { issuedServer: 'Panel' };
 
       // For non-administrative punishments that use severity/status
       if (!['Kick', 'Manual Mute', 'Manual Ban', 'Security Ban', 'Linked Ban', 'Blacklist'].includes(playerInfo.selectedPunishmentCategory)) {
@@ -873,16 +794,7 @@ const PlayerDetailPage = () => {
       
       // Prepare notes array
       const notes: Array<{text: string; issuerName: string; date?: string}> = [];
-      
-      // For manual punishments that need a reason, make the reason the first note
-      const needsReasonAsFirstNote = ['Kick', 'Manual Mute', 'Manual Ban'].includes(playerInfo.selectedPunishmentCategory);
-      if (needsReasonAsFirstNote && playerInfo.reason?.trim()) {
-        notes.push({
-          text: playerInfo.reason.trim(),
-          issuerName: user?.username || 'Admin'
-        });
-      }
-      
+
       // Add staff notes as additional notes
       if (playerInfo.staffNotes?.trim()) {
         notes.push({
@@ -898,7 +810,7 @@ const PlayerDetailPage = () => {
           if (report && report !== 'ticket-new') {
             // Extract ticket ID from format like "ticket-123" or use raw ID
             const ticketMatch = report.match(/ticket-(\w+)/);
-            if (ticketMatch) {
+            if (ticketMatch && ticketMatch[1]) {
               attachedTicketIds.push(ticketMatch[1]);
             } else if (report.trim()) {
               attachedTicketIds.push(report.trim());
@@ -911,26 +823,6 @@ const PlayerDetailPage = () => {
       const evidence = playerInfo.evidenceList?.filter((e: string) => e.trim()).map((e: string) => {
         const trimmedEvidence = e.trim();
 
-        // Helper function to determine file type from URL
-        const getFileTypeFromUrl = (url: string): string => {
-          const extension = url.split('.').pop()?.toLowerCase();
-          if (!extension) return 'application/octet-stream';
-          const mimeTypes: Record<string, string> = {
-            'jpg': 'image/jpeg',
-            'jpeg': 'image/jpeg',
-            'png': 'image/png',
-            'gif': 'image/gif',
-            'webp': 'image/webp',
-            'pdf': 'application/pdf',
-            'mp4': 'video/mp4',
-            'webm': 'video/webm',
-            'mp3': 'audio/mpeg',
-            'txt': 'text/plain'
-          };
-          return mimeTypes[extension] || 'application/octet-stream';
-        };
-
-        // If it's a JSON object (uploaded file with metadata), parse and convert
         if (trimmedEvidence.startsWith('{')) {
           try {
             const fileData = JSON.parse(trimmedEvidence);
@@ -955,20 +847,12 @@ const PlayerDetailPage = () => {
             };
           }
         }
-        // If it's a URL (legacy uploaded file), convert to object format
         else if (trimmedEvidence.startsWith('http')) {
-          // Extract filename from URL for better display
-          const fileName = trimmedEvidence.split('/').pop() || 'Unknown file';
-
           return {
-            text: fileName,
+            text: trimmedEvidence,
             issuerName: user?.username || 'Admin',
             date: new Date().toISOString(),
-            type: 'file',
-            fileUrl: trimmedEvidence,
-            fileName: fileName,
-            fileType: getFileTypeFromUrl(trimmedEvidence),
-            fileSize: 0 // We don't have size info from URL
+            type: 'url'
           };
         } else {
           // Text evidence - convert to object format
@@ -982,10 +866,11 @@ const PlayerDetailPage = () => {
       }) || [];
       
       // Prepare punishment data in the format expected by the server
-      const punishmentData: { [key: string]: any } = {
+      const punishmentData: Record<string, unknown> = {
         issuerName: user?.username || 'Admin',
         issuerId: user?.id,
         typeOrdinal: typeOrdinal,
+        reason: playerFacingReason(playerInfo.selectedPunishmentCategory, playerInfo.reason),
         notes: notes,
         evidence: evidence,
         attachedTicketIds: attachedTicketIds,
@@ -1232,12 +1117,13 @@ const PlayerDetailPage = () => {
                 <SelectItem value="linked">{t('player.tabConnected')}</SelectItem>
                 <SelectItem value="notes">{t('player.tabNotes')}</SelectItem>
                 <SelectItem value="tickets">{t('player.tabTickets')}</SelectItem>
+                <SelectItem value="replays">{t('player.tabReplays')}</SelectItem>
                 <SelectItem value="names">{t('player.tabNames')}</SelectItem>
                 <SelectItem value="punishment">{t('player.tabPunish')}</SelectItem>
               </SelectContent>
             </Select>
           ) : (
-            <TabsList className="grid grid-cols-6 gap-1 px-1">
+            <TabsList className="grid grid-cols-7 gap-1 px-1">
               <TabsTrigger value="history" className="text-xs py-2">
                 <History className="h-3.5 w-3.5 mr-1.5" />
                 {t('player.tabHistory')}
@@ -1253,6 +1139,10 @@ const PlayerDetailPage = () => {
               <TabsTrigger value="tickets" className="text-xs py-2">
                 <Ticket className="h-3.5 w-3.5 mr-1.5" />
                 {t('player.tabTickets')}
+              </TabsTrigger>
+              <TabsTrigger value="replays" className="text-xs py-2">
+                <Play className="h-3.5 w-3.5 mr-1.5" />
+                {t('player.tabReplays')}
               </TabsTrigger>
               <TabsTrigger value="names" className="text-xs py-2">
                 <UserRound className="h-3.5 w-3.5 mr-1.5" />
@@ -1294,36 +1184,9 @@ const PlayerDetailPage = () => {
                     <div className="flex justify-between items-start">
                       <div className="flex-1">
                         <div className="flex items-center gap-2 mb-1">
-                          {/* Show punishment status: Active, Inactive, or Unstarted */}
-                          {isPunishment && (() => {
-                            // Check if punishment is unstarted (started field is null/undefined)
-                            if (!warning.started) {
-                              return (
-                                <Badge variant="outline" className="text-xs bg-yellow-100 dark:bg-yellow-900 text-yellow-800 dark:text-yellow-200 border-yellow-300 dark:border-yellow-700">
-                                  {t('player.unstarted')}
-                                </Badge>
-                              );
-                            }
-                            
-                            // Check if punishment is inactive (based on effective state)
-                            const effectiveState = getEffectivePunishmentState(warning);
-                            const isInactive = !effectiveState.effectiveActive;
-                            
-                            if (isInactive) {
-                              return (
-                                <Badge variant="outline" className="text-xs bg-gray-100 dark:bg-gray-800 text-gray-800 dark:text-gray-200 border-gray-300 dark:border-gray-600">
-                                  {t('status.inactive')}
-                                </Badge>
-                              );
-                            }
-                            
-                            // Punishment is active
-                            return (
-                              <Badge variant="outline" className="text-xs bg-green-100 dark:bg-green-900 text-green-800 dark:text-green-200 border-green-300 dark:border-green-700">
-                                {t('status.active')}
-                              </Badge>
-                            );
-                          })()}
+                          {isPunishment && (
+                            <PunishmentStatusBadge status={derivePunishmentStatusFromState(warning, effectiveState)} />
+                          )}
                           <Badge variant="outline" className="bg-gray-50 dark:bg-gray-800 text-gray-900 dark:text-gray-100 border-gray-300 dark:border-gray-600">
                             {warning.type}
                           </Badge>
@@ -1344,7 +1207,7 @@ const PlayerDetailPage = () => {
                             </Badge>
                           )}
                           {isValidBadgeValue(warning.status) &&
-                           !['active', 'inactive', 'unstarted'].includes(warning.status?.toLowerCase?.() || '') && (
+                           !['active', 'inactive', 'unstarted', 'pardoned'].includes(warning.status?.toLowerCase?.() || '') && (
                             <Badge variant="outline" className={`text-xs ${
                               (warning.status && warning.status.toLowerCase() === 'low') || (warning.status && warning.status.toLowerCase() === 'first') ?
                                 'bg-green-100 dark:bg-green-900 text-green-800 dark:text-green-200 border-green-300 dark:border-green-700' :
@@ -1362,9 +1225,6 @@ const PlayerDetailPage = () => {
                           {/* Show expiry/duration information */}
                           <div className="text-xs text-muted-foreground">
                             {warning.date} by {warning.by}
-                            {warning.data?.issuedServer && (
-                              <span className="ml-1">on {warning.data.issuedServer}</span>
-                            )}
                             {warning.expires && (
                               <span className="ml-2">
                                 • Expires: {formatDateWithTime(warning.expires)}
@@ -1405,134 +1265,7 @@ const PlayerDetailPage = () => {
                     {/* Expanded details */}
                     {isExpanded && isPunishment && (
                       <div className="mt-3 pt-3 border-t border-border/30 space-y-3">
-                        {/* Evidence */}
-                        <div>
-                          <div className="flex items-center justify-between mb-1">
-                            <p className="text-xs font-medium text-muted-foreground">Evidence:</p>
-                          </div>
-                          {warning.evidence && warning.evidence.length > 0 ? (
-                            <ul className="text-xs space-y-2">
-                              {warning.evidence.map((evidenceItem, idx) => {
-                                // Handle both legacy string format and new object format
-                                let evidenceText = '';
-                                let issuerInfo = '';
-                                let evidenceType = 'text';
-                                let fileUrl = '';
-                                let fileName = '';
-                                let fileType = '';
-                                
-                                if (typeof evidenceItem === 'string') {
-                                  // Legacy string format
-                                  evidenceText = evidenceItem;
-                                  issuerInfo = 'By: System on Unknown';
-                                  evidenceType = evidenceItem.match(/^https?:\/\//) ? 'url' : 'text';
-                                } else if (typeof evidenceItem === 'object' && evidenceItem.text) {
-                                  // New object format
-                                  evidenceText = evidenceItem.text;
-                                  const issuer = evidenceItem.issuerName || 'System';
-                                  const date = evidenceItem.date ? formatDateWithTime(evidenceItem.date) : 'Unknown';
-                                  issuerInfo = `By: ${issuer} on ${date}`;
-                                  evidenceType = evidenceItem.type || 'text';
-                                  fileUrl = evidenceItem.fileUrl || '';
-                                  fileName = evidenceItem.fileName || '';
-                                  fileType = evidenceItem.fileType || '';
-                                }
-                                
-                                // Helper function to detect media type from URL
-                                const getMediaType = (url: string) => {
-                                  if (url.match(/\.(jpeg|jpg|gif|png|webp)$/i)) {
-                                    return 'image';
-                                  } else if (url.match(/\.(mp4|webm|ogg)$/i)) {
-                                    return 'video';
-                                  } else if (url.match(/^https?:\/\//)) {
-                                    return 'link';
-                                  }
-                                  return 'link';
-                                };
-                                
-                                // For file evidence, use the file URL for media detection
-                                const displayUrl = evidenceType === 'file' ? fileUrl : evidenceText;
-                                const mediaType = (evidenceType === 'url' || evidenceType === 'file') ? getMediaType(displayUrl) : 'text';
-                                
-                                return (
-                                  <li key={idx} className="bg-muted/20 p-2 rounded text-xs border-l-2 border-blue-500">
-                                    <div className="flex items-start">
-                                      <FileText className="h-3 w-3 mr-2 mt-0.5 text-muted-foreground flex-shrink-0" />
-                                      <div className="flex-1 min-w-0">
-                                        {evidenceType === 'file' ? (
-                                          <div className="space-y-2">
-                                            <div className="flex items-center gap-2">
-                                              <span className="font-medium">File:</span>
-                                              <a 
-                                                href={fileUrl} 
-                                                target="_blank" 
-                                                rel="noopener noreferrer"
-                                                className="text-blue-600 hover:text-blue-800 underline flex items-center gap-1"
-                                              >
-                                                <Upload className="h-3 w-3" />
-                                                {fileName || 'Unknown file'}
-                                              </a>
-                                            </div>
-                                            {evidenceText && evidenceText !== fileName && (
-                                              <div className="text-muted-foreground">{evidenceText}</div>
-                                            )}
-                                            {mediaType === 'image' && (
-                                              <img 
-                                                src={fileUrl} 
-                                                alt="Evidence" 
-                                                className="max-w-full max-h-48 rounded border cursor-pointer"
-                                                style={{ maxWidth: '300px' }}
-                                                onClick={() => window.open(fileUrl, '_blank')}
-                                              />
-                                            )}
-                                            {mediaType === 'video' && (
-                                              <video 
-                                                src={fileUrl} 
-                                                controls 
-                                                className="max-w-full max-h-48 rounded border"
-                                                style={{ maxWidth: '300px' }}
-                                              />
-                                            )}
-                                          </div>
-                                        ) : mediaType === 'image' ? (
-                                          <img 
-                                            src={evidenceText} 
-                                            alt="Evidence" 
-                                            className="max-w-full max-h-48 rounded border"
-                                            style={{ maxWidth: '300px' }}
-                                          />
-                                        ) : mediaType === 'video' ? (
-                                          <video 
-                                            src={evidenceText} 
-                                            controls 
-                                            className="max-w-full max-h-48 rounded border"
-                                            style={{ maxWidth: '300px' }}
-                                          />
-                                        ) : evidenceType === 'url' ? (
-                                          <a 
-                                            href={evidenceText} 
-                                            target="_blank" 
-                                            rel="noopener noreferrer"
-                                            className="text-blue-600 hover:text-blue-800 underline break-all"
-                                          >
-                                            {evidenceText}
-                                          </a>
-                                        ) : (
-                                          <span className="break-all">{evidenceText}</span>
-                                        )}
-                                        <p className="text-muted-foreground text-xs mt-1">
-                                          {issuerInfo}
-                                        </p>
-                                      </div>
-                                    </div>
-                                  </li>
-                                );
-                              })}
-                            </ul>
-                          ) : (
-                            <p className="text-xs text-muted-foreground">No evidence added</p>
-                          )}
-                        </div>
+                        <EvidenceList evidence={warning.evidence as unknown as EvidenceValue[]} />
                         
                         {/* Staff Notes */}
                         {warning.notes && warning.notes.length > 0 && (
@@ -1541,7 +1274,7 @@ const PlayerDetailPage = () => {
                             <ul className="text-xs space-y-1">
                               {warning.notes.map((note, idx) => {
                                 // For manual punishments, skip the first note as it's displayed as the reason
-                                const isManualPunishment = ['Kick', 'Manual Mute', 'Manual Ban'].includes(warning.type);
+                                const isManualPunishment = requiresPlayerFacingReason(warning.type);
                                 if (isManualPunishment && idx === 0) {
                                   return null; // Skip first note for manual punishments
                                 }
@@ -1593,7 +1326,7 @@ const PlayerDetailPage = () => {
                           <div>
                             <p className="text-xs font-medium text-muted-foreground mb-1">Modification History:</p>
                             <div className="space-y-1">
-                              {effectiveState.modifications.map((mod: any, idx: number) => (
+                              {effectiveState.modifications.map((mod, idx) => (
                                 <div key={idx} className="bg-muted/20 p-2 rounded text-xs border-l-2 border-blue-500">
                                   <div className="flex justify-between items-start mb-1">
                                     <Badge variant="outline" className="text-xs bg-blue-500/10 text-blue-700 border-blue-500/30">
@@ -1634,31 +1367,10 @@ const PlayerDetailPage = () => {
                         )}
 
                         {/* Linked Bans Display */}
-                        {warning.data?.altBlocking && (
+                        {Boolean(warning.altBlocking) && warning.id && (
                           <LinkedBansDisplayDetail punishmentId={warning.id} onPlayerClick={(uuid: string) => {
                             navigate(`/panel/player/${uuid}`);
                           }} />
-                        )}
-
-                        {/* Additional Data */}
-                        {warning.data && Object.keys(warning.data).length > 0 && (
-                          <div>
-                            <p className="text-xs font-medium text-muted-foreground mb-1">Additional Data:</p>
-                            <div className="text-xs bg-muted/20 p-2 rounded font-mono">
-                              {Object.entries(warning.data).map(([key, value]) => (
-                                <div key={key}>
-                                  <span className="text-muted-foreground">{key}:</span> {
-                                    value === null ? 'null' :
-                                    value === undefined ? 'undefined' :
-                                    value === 0 ? '0' :
-                                    value === '' ? '(empty)' :
-                                    typeof value === 'object' ? JSON.stringify(value) :
-                                    String(value)
-                                  }
-                                </div>
-                              ))}
-                            </div>
-                          </div>
                         )}
 
                         {/* Action buttons - only show for punishments with IDs */}
@@ -1863,28 +1575,28 @@ const PlayerDetailPage = () => {
                                   
                                   try {
                                     // Prepare evidence data based on whether it's a file or text
-                                    let evidenceData: any;
-                                    
+                                    let evidenceData: Record<string, unknown>;
+
                                     if (playerInfo.uploadedEvidenceFile) {
-                                      // File evidence
                                       evidenceData = {
                                         text: playerInfo.uploadedEvidenceFile.fileName,
                                         issuerName: user?.username || 'Admin',
                                         issuerId: user?.id,
-                                        date: new Date().toISOString(),
                                         type: 'file',
-                                        fileUrl: playerInfo.uploadedEvidenceFile.url,
+                                        url: playerInfo.uploadedEvidenceFile.url,
                                         fileName: playerInfo.uploadedEvidenceFile.fileName,
                                         fileType: playerInfo.uploadedEvidenceFile.fileType,
                                         fileSize: playerInfo.uploadedEvidenceFile.fileSize
                                       };
                                     } else {
-                                      // Text evidence
+                                      const trimmedEvidence = playerInfo.newPunishmentEvidence?.trim() ?? '';
+                                      const isUrl = /^https?:\/\//.test(trimmedEvidence);
                                       evidenceData = {
-                                        text: playerInfo.newPunishmentEvidence.trim(),
+                                        text: trimmedEvidence,
                                         issuerName: user?.username || 'Admin',
                                         issuerId: user?.id,
-                                        date: new Date().toISOString()
+                                        type: isUrl ? 'url' : 'text',
+                                        url: isUrl ? trimmedEvidence : null
                                       };
                                     }
                                     
@@ -1945,7 +1657,7 @@ const PlayerDetailPage = () => {
                                   value={playerInfo.selectedModificationType || ''}
                                   onChange={(e) => setPlayerInfo(prev => ({
                                     ...prev,
-                                    selectedModificationType: e.target.value as any
+                                    selectedModificationType: e.target.value as PlayerInfo['selectedModificationType']
                                   }))}
                                 >
                                   <option value="">Select modification type...</option>
@@ -1965,7 +1677,7 @@ const PlayerDetailPage = () => {
                                     }
 
                                     if (punishmentType?.canBeStatWiping) {
-                                      const currentStatWiping = warning.data?.wipeAfterExpiry || warning.data?.wiping || warning.data?.statWiping || false;
+                                      const currentStatWiping = warning.statWiping ?? false;
                                       if (!currentStatWiping) {
                                         options.push(<option key="wipe-true" value="SET_WIPING_TRUE">Enable Wiping</option>);
                                       } else {
@@ -2003,7 +1715,7 @@ const PlayerDetailPage = () => {
                                         ...prev, 
                                         newDuration: {
                                           value: prev.newDuration?.value || 1,
-                                          unit: e.target.value as any
+                                          unit: e.target.value as 'seconds' | 'minutes' | 'hours' | 'days' | 'weeks' | 'months'
                                         }
                                       }))}
                                     >
@@ -2052,14 +1764,19 @@ const PlayerDetailPage = () => {
                                   if (!playerInfo.selectedModificationType || !playerInfo.modifyPunishmentReason?.trim()) return;
                                   
                                   try {
-                                    const modificationData: any = {
+                                    const modificationData: {
+                                      punishmentId: string;
+                                      modificationType: string;
+                                      reason: string;
+                                      newDuration?: { value: number; unit: 'seconds' | 'minutes' | 'hours' | 'days' | 'weeks' | 'months' };
+                                    } = {
                                       punishmentId: warning.id!,
                                       modificationType: playerInfo.selectedModificationType,
                                       reason: playerInfo.modifyPunishmentReason
                                     };
                                     
                                     if (playerInfo.selectedModificationType === 'MANUAL_DURATION_CHANGE' && playerInfo.newDuration) {
-                                      modificationData.newDuration = durationToMilliseconds(playerInfo.newDuration);
+                                      modificationData.newDuration = playerInfo.newDuration; // { value, unit }; the hook converts to ms
                                     }
                                     
                                     await modifyPunishment.mutateAsync({
@@ -2120,17 +1837,17 @@ const PlayerDetailPage = () => {
                                 return (
                                   <div className="space-y-1">
                                     {effectiveIds.map((ticketId) => {
-                                      const ticket = (playerTickets || []).find((t: any) => (t.id || t._id) === ticketId);
+                                      const ticket = ((playerTickets ?? []) as unknown as TicketView[]).find((t) => (t.id || t._id) === ticketId);
                                       const isNewlyAdded = pendingAdd.includes(ticketId);
                                       return (
                                         <div key={ticketId} className={`flex items-center justify-between text-xs px-2 py-1 rounded ${isNewlyAdded ? 'bg-green-500/10 border border-green-500/20' : 'bg-muted/30'}`}>
                                           <span className="truncate mr-2">
                                             <Ticket className="h-3 w-3 inline mr-1" />
                                             {ticketId.slice(-8)}
-                                            {ticket && ` - ${(ticket as any).type || ''}`}
+                                            {ticket && ` - ${ticket.type || ''}`}
                                             {ticket && (
                                               <Badge variant="outline" className="ml-1 text-[10px] py-0 px-1">
-                                                {(ticket as any).locked ? 'Closed' : 'Open'}
+                                                {ticket.locked ? 'Closed' : 'Open'}
                                               </Badge>
                                             )}
                                           </span>
@@ -2168,8 +1885,8 @@ const PlayerDetailPage = () => {
                                 const pendingAdd = playerInfo.modifyTicketsAdd || [];
                                 const pendingRemove = playerInfo.modifyTicketsRemove || [];
                                 const effectiveIds = [...currentIds.filter(id => !pendingRemove.includes(id)), ...pendingAdd];
-                                const available = (playerTickets || []).filter((t: any) =>
-                                  !effectiveIds.includes(t.id || t._id) &&
+                                const available = ((playerTickets ?? []) as unknown as TicketView[]).filter((t) =>
+                                  !effectiveIds.includes(t.id || t._id || '') &&
                                   t.reportedPlayerUuid === playerId &&
                                   !t.locked
                                 );
@@ -2180,8 +1897,8 @@ const PlayerDetailPage = () => {
 
                                 return (
                                   <div className="space-y-1 max-h-32 overflow-y-auto">
-                                    {available.map((ticket: any) => {
-                                      const ticketId = ticket.id || ticket._id;
+                                    {available.map((ticket) => {
+                                      const ticketId = ticket.id || ticket._id || '';
                                       return (
                                         <div key={ticketId} className="flex items-center justify-between text-xs px-2 py-1 rounded bg-muted/30 hover:bg-muted/50 cursor-pointer"
                                           onClick={() => {
@@ -2339,7 +2056,7 @@ const PlayerDetailPage = () => {
                           className="text-xs h-6 px-2"
                           onClick={() => {
                             // Navigate to the linked account's player page using UUID
-                            const uuid = account.uuid || account._id;
+                            const uuid = account.uuid;
                             if (uuid) {
                               navigate(`/panel/player/${uuid}`);
                             } else {
@@ -2351,7 +2068,7 @@ const PlayerDetailPage = () => {
                               });
                             }
                           }}
-                          disabled={!account.uuid && !account._id}
+                          disabled={!account.uuid}
                         >
                           <Search className="h-3 w-3 mr-1" />
                           View
@@ -2368,23 +2085,9 @@ const PlayerDetailPage = () => {
                   )}
                 </ul>
               )}
-              
-              {linkedAccountsData?.searchStatus && (
-                <div className="mt-3 pt-3 border-t border-border">
-                  <div className="text-xs text-muted-foreground">
-                    <p>Search Status: {linkedAccountsData.searchStatus}</p>
-                    {linkedAccountsData.lastSearched && (
-                      <p>Last Searched: {formatDateWithTime(linkedAccountsData.lastSearched)}</p>
-                    )}
-                    {linkedAccountsData.totalFound !== undefined && (
-                      <p>Total Found: {linkedAccountsData.totalFound}</p>
-                    )}
-                  </div>
-                </div>
-              )}
             </div>
           </TabsContent>
-          
+
           <TabsContent value="notes" className="space-y-2 mx-1 mt-3">
             <h4 className="font-medium">Staff Notes</h4>
             <div className="bg-muted/30 p-3 rounded-lg">
@@ -2393,7 +2096,7 @@ const PlayerDetailPage = () => {
                   (playerInfo.notes || []).map((note, idx) => (
                     <li key={idx} className="text-sm flex items-start">
                       <StickyNote className="h-3.5 w-3.5 mr-2 mt-0.5 text-muted-foreground" />
-                      <span>{typeof note === 'string' ? note : note.text}</span>
+                      <span>{note}</span>
                     </li>
                   ))
                 ) : (
@@ -2508,15 +2211,15 @@ const PlayerDetailPage = () => {
                   <span className="text-sm">Loading tickets...</span>
                 </div>
               ) : playerTickets && playerTickets.length > 0 ? (
-                playerTickets.map((ticket: any) => {
+                (playerTickets as unknown as TicketView[]).map((ticket) => {
                   const normalizedStatus = normalizeTicketStatus(ticket.status);
                   const statusLabel = formatTicketStatusLabel(ticket.status);
 
                   return (
-                    <div 
-                      key={ticket._id} 
+                    <div
+                      key={ticket.id}
                       className="bg-muted/30 p-3 rounded-lg hover:bg-muted/40 transition-colors cursor-pointer"
-                      onClick={() => handleTicketClick(ticket._id)}
+                      onClick={() => handleTicketClick(ticket.id ?? '')}
                     >
                       <div className="flex justify-between items-start">
                         <div className="flex-1">
@@ -2534,12 +2237,9 @@ const PlayerDetailPage = () => {
                           </div>
                           <div className="text-sm">
                             <p className="font-medium">{ticket.subject || 'No subject'}</p>
-                            <p className="text-muted-foreground mt-1 line-clamp-2">
-                              {ticket.description || ticket.message || 'No description available'}
-                            </p>
                           </div>
                           <div className="text-xs text-muted-foreground mt-2">
-                            Created: {ticket.createdAt ? formatDateWithTime(ticket.createdAt) : 'Unknown'}
+                            Created: {ticket.created ? formatDateWithTime(ticket.created) : 'Unknown'}
                             {(() => {
                               const assigneeDisplay = Array.isArray(ticket.assignedTo)
                                 ? ticket.assignedTo.join(', ')
@@ -2550,7 +2250,7 @@ const PlayerDetailPage = () => {
                         </div>
                         <div className="ml-2">
                           <Badge variant="outline" className="text-xs">
-                            #{ticket._id?.slice(-6) || 'N/A'}
+                            #{ticket.id?.slice(-6) || 'N/A'}
                           </Badge>
                         </div>
                       </div>
@@ -2565,8 +2265,13 @@ const PlayerDetailPage = () => {
             </div>
           </TabsContent>
           
+          <TabsContent value="replays" className="space-y-2 mx-1 mt-3">
+            <h4 className="font-medium">{t('player.playerReplays')}</h4>
+            <PlayerReplaysList playerId={playerId} />
+          </TabsContent>
+
           <TabsContent value="names" className="space-y-2 mx-1 mt-3">
-            <h4 className="font-medium">Previous Names</h4>
+            <h4 className="font-medium">{t('player.previousNames')}</h4>
             <div className="bg-muted/30 p-3 rounded-lg">
               <ul className="space-y-2">
                 {playerInfo.previousNames && playerInfo.previousNames.length > 0 ? (
@@ -2577,7 +2282,7 @@ const PlayerDetailPage = () => {
                     </li>
                   ))
                 ) : (
-                  <li className="text-sm text-muted-foreground">No previous names found.</li>
+                  <li className="text-sm text-muted-foreground">{t('player.noPreviousNames')}</li>
                 )}
               </ul>
             </div>
@@ -2626,15 +2331,15 @@ const PlayerDetailPage = () => {
                   banLinkedAccounts: data.banLinkedAccounts
                 }));
               }}
-              onApply={async (data) => {
+              onApply={async () => {
                 // Use the existing handleApplyPunishment logic
                 await handleApplyPunishment();
               }}
               punishmentTypesByCategory={filteredPunishmentTypesByCategory}
               isLoading={isApplyingPunishment || isLoadingSettings || isLoadingPunishmentTypes}
               compact={false}
-              availableTickets={(playerTickets || []).map((t: any) => ({
-                id: t.id || t._id,
+              availableTickets={((playerTickets ?? []) as unknown as TicketView[]).map((t) => ({
+                id: t.id || t._id || '',
                 subject: t.subject || '',
                 type: t.type || t.category || '',
                 status: t.locked ? 'Closed' : 'Open',

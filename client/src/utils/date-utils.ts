@@ -98,8 +98,9 @@ export const formatTimeAgo = (dateString: string | Date): string => {
     const diffInDays = Math.floor(diffInHours / 24);
     if (diffInDays < 7) return `${diffInDays}d ago`;
 
-    const diffInWeeks = Math.floor(diffInDays / 7);
-    if (diffInWeeks < 4) return `${diffInWeeks}w ago`;
+    // Cover up to 30 days in the weeks tier so the 28-29 day gap (where floor(days/30) is 0,
+    // but floor(days/7) is already 4) doesn't produce a nonsensical "0mo ago".
+    if (diffInDays < 30) return `${Math.floor(diffInDays / 7)}w ago`;
 
     const diffInMonths = Math.floor(diffInDays / 30);
     if (diffInMonths < 12) return `${diffInMonths}mo ago`;
@@ -113,7 +114,14 @@ export const formatTimeAgo = (dateString: string | Date): string => {
 
 export const formatDateWithRelative = (dateString: string): string => {
   try {
+    if (!dateString) return 'Unknown';
+
     const date = new Date(dateString);
+
+    if (isNaN(date.getTime())) {
+      return 'Invalid Date';
+    }
+
     const now = new Date();
     const timeDiff = date.getTime() - now.getTime();
 

@@ -1,16 +1,52 @@
 import React, { useState, useEffect } from 'react';
 import { Link } from 'wouter';
-import { Search, Shield, MessageCircle, UserPlus, FileText, BookOpen, ChevronDown, LogIn, Sun, Moon } from 'lucide-react';
+import {
+  Search, Shield, MessageCircle, UserPlus, FileText, BookOpen, ChevronDown, LogIn, Sun, Moon,
+  Mail, Phone, Scale, Users, User, UserCheck, UserX, Crown, Award,
+  Book, ScrollText, Newspaper, Library, GraduationCap, HelpCircle, Info, AlertCircle,
+  ExternalLink, Link as LinkIcon, ArrowRight, ChevronRight, Home,
+  Eye, Download, Upload, Share,
+  MessageSquare, Send, Inbox, Bell, Megaphone,
+  Radio, Headphones, Mic, Video, Calendar,
+  Gamepad2, Zap, Server, Globe, Wifi, Signal,
+  Activity, BarChart, TrendingUp, Target, Trophy,
+  Settings, Wrench, Cog, Sliders, Filter,
+  Lock, Unlock, Key, ShieldCheck, ShieldAlert,
+  Plus, Minus, Check, X, AlertTriangle, CheckCircle,
+  XCircle, Clock, Timer, Pause, Play,
+  CreditCard, DollarSign, Gift, Star, Heart, ThumbsUp,
+  Flag, Map, Compass, Navigation, Bookmark, Tag,
+} from 'lucide-react';
 import { Button } from '@modl-gg/shared-web/components/ui/button';
 import { Input } from '@modl-gg/shared-web/components/ui/input';
 import { Card, CardContent, CardHeader, CardTitle } from '@modl-gg/shared-web/components/ui/card';
 import { Collapsible, CollapsibleTrigger } from '@modl-gg/shared-web/components/ui/collapsible';
 import { useTheme } from 'next-themes';
 import serverLogo from '@/assets/server-logo.png';
-import * as LucideIcons from 'lucide-react';
 import { usePublicSettings } from '@/hooks/use-public-settings';
 import { useAuth } from '@/hooks/use-auth';
 import { apiFetch } from '@/lib/api';
+import { openExternalUrl, safeExternalHref } from '@/lib/utils';
+
+// Allowlist of icons usable by homepage cards; mirrors HomepageCardSettings curated list.
+const ICONS: Record<string, React.ComponentType<{ className?: string; style?: React.CSSProperties }>> = {
+  Shield, UserPlus, MessageCircle, Mail, Phone, Scale,
+  Users, User, UserCheck, UserX, Crown, Award,
+  BookOpen, Book, FileText, ScrollText, Newspaper,
+  Library, GraduationCap, HelpCircle, Info, AlertCircle,
+  ExternalLink, Link: LinkIcon, ArrowRight, ChevronRight, Home,
+  Search, Eye, Download, Upload, Share,
+  MessageSquare, Send, Inbox, Bell, Megaphone,
+  Radio, Headphones, Mic, Video, Calendar,
+  Gamepad2, Zap, Server, Globe, Wifi, Signal,
+  Activity, BarChart, TrendingUp, Target, Trophy,
+  Settings, Wrench, Cog, Sliders, Filter,
+  Lock, Unlock, Key, ShieldCheck, ShieldAlert,
+  Plus, Minus, Check, X, AlertTriangle, CheckCircle,
+  XCircle, Clock, Timer, Pause, Play,
+  CreditCard, DollarSign, Gift, Star, Heart, ThumbsUp,
+  Flag, Map, Compass, Navigation, Bookmark, Tag,
+};
 
 // Types for knowledgebase data
 interface ArticleStub {
@@ -51,7 +87,7 @@ interface HomepageCard {
 }
 
 const HomePage: React.FC = () => {
-  const [categories, setCategories] = useState<CategoryWithArticles[]>([]);
+  const [, setCategories] = useState<CategoryWithArticles[]>([]);
   const [homepageCards, setHomepageCards] = useState<HomepageCard[]>([]);
   const [searchTerm, setSearchTerm] = useState('');
   const [searchResults, setSearchResults] = useState<ArticleStub[]>([]);
@@ -71,8 +107,8 @@ const HomePage: React.FC = () => {
           throw new Error(`HTTP error! status: ${response.status}`);
         }
         const data = await response.json();
-        setCategories(data);
-      } catch (e: any) {
+        setCategories(Array.isArray(data.categories) ? data.categories : []);
+      } catch (e) {
         console.error('Failed to load categories:', e);
         setCategories([]);
       }
@@ -91,8 +127,8 @@ const HomePage: React.FC = () => {
           throw new Error(`HTTP error! status: ${response.status}`);
         }
         const data = await response.json();
-        setHomepageCards(data);
-      } catch (e: any) {
+        setHomepageCards(Array.isArray(data.cards) ? data.cards : []);
+      } catch (e) {
         console.error('Failed to load homepage cards:', e);
         // Fallback to default cards if no custom cards are found
         setHomepageCards([]);
@@ -119,8 +155,8 @@ const HomePage: React.FC = () => {
           throw new Error(`HTTP error! status: ${response.status}`);
         }
         const data = await response.json();
-        setSearchResults(data);
-      } catch (e: any) {
+        setSearchResults(Array.isArray(data.articles) ? data.articles : []);
+      } catch (e) {
         console.error('Search failed:', e);
         setSearchResults([]);
       } finally {
@@ -137,8 +173,7 @@ const HomePage: React.FC = () => {
 
   // Function to get the icon component from Lucide
   const getIconComponent = (iconName: string) => {
-    const IconComponent = (LucideIcons as any)[iconName];
-    return IconComponent || BookOpen; // Fallback to BookOpen if icon not found
+    return ICONS[iconName] || BookOpen; // Fallback to BookOpen if icon not found
   };
 
   // Function to toggle expanded state for category dropdown cards
@@ -155,7 +190,7 @@ const HomePage: React.FC = () => {
   };
 
   // Function to render a single homepage card
-  const renderHomepageCard = (card: HomepageCard, index: number) => {
+  const renderHomepageCard = (card: HomepageCard, _index: number) => {
     const IconComponent = getIconComponent(card.icon);
     const isExpanded = expandedCards.has(card.id);
     const iconColor = card.iconColor || '#3b82f6'; // Default to blue if no color specified
@@ -186,7 +221,8 @@ const HomePage: React.FC = () => {
     } else {
       // URL action type
       const buttonText = card.actionButtonText || 'Learn More';
-      const url = card.actionUrl || '#';
+      const safeUrl = safeExternalHref(card.actionUrl);
+      const isInternal = !!safeUrl && safeUrl.startsWith('/');
       
       return (
         <Card key={card.id} className="group shadow-card hover:shadow-card-hover transition-all duration-300 hover:-translate-y-1 h-64 sm:h-72">
@@ -198,18 +234,18 @@ const HomePage: React.FC = () => {
               <h3 className="font-medium text-lg mb-3">{card.title}</h3>
               <p className="text-sm text-muted-foreground mb-4">{card.description}</p>
             </div>
-            {url.startsWith('/') ? (
-              <Link href={url}>
+            {isInternal ? (
+              <Link href={safeUrl || '#'}>
                 <Button variant="outline" size="sm" className="w-full">
                   {buttonText}
                 </Button>
               </Link>
             ) : (
-              <Button 
-                variant="outline" 
-                size="sm" 
+              <Button
+                variant="outline"
+                size="sm"
                 className="w-full"
-                onClick={() => window.open(url, '_blank')}
+                onClick={() => openExternalUrl(card.actionUrl)}
               >
                 {buttonText}
               </Button>

@@ -12,11 +12,13 @@ const MIGRATION_TYPES = [
   { value: 'LiteBans', label: 'LiteBans (Spigot/Velocity/BungeeCord)' }
 ];
 
+type MigrationRecord = NonNullable<NonNullable<ReturnType<typeof useMigrationStatus>['data']>['currentMigration']>;
+
 const MigrationTool: React.FC = () => {
   const { t } = useTranslation();
   const [selectedType, setSelectedType] = useState<string>('');
   const [showCompletedAlert, setShowCompletedAlert] = useState(false);
-  const [lastCompletedMigration, setLastCompletedMigration] = useState<any>(null);
+  const [lastCompletedMigration, setLastCompletedMigration] = useState<MigrationRecord | null>(null);
   
   const { data: migrationStatus, isLoading: statusLoading } = useMigrationStatus();
   const startMigration = useStartMigration();
@@ -45,7 +47,7 @@ const MigrationTool: React.FC = () => {
     }
     
     return undefined;
-  }, [currentMigration?.id, currentMigration?.status]);
+  }, [currentMigration?.taskId, currentMigration?.status]);
   
   const handleStartMigration = async () => {
     if (!selectedType || onCooldown || isActive) return;
@@ -76,15 +78,15 @@ const MigrationTool: React.FC = () => {
     switch (status) {
       case 'idle':
       case 'building_json':
-        return <Download className="h-5 w-5 text-blue-500 animate-pulse" />;
+        return <Download className="h-5 w-5 text-info animate-pulse" />;
       case 'uploading_json':
-        return <Upload className="h-5 w-5 text-blue-500 animate-pulse" />;
+        return <Upload className="h-5 w-5 text-info animate-pulse" />;
       case 'processing_data':
-        return <Loader2 className="h-5 w-5 text-blue-500 animate-spin" />;
+        return <Loader2 className="h-5 w-5 text-info animate-spin" />;
       case 'completed':
-        return <CheckCircle2 className="h-5 w-5 text-green-500" />;
+        return <CheckCircle2 className="h-5 w-5 text-success" />;
       case 'failed':
-        return <AlertCircle className="h-5 w-5 text-red-500" />;
+        return <AlertCircle className="h-5 w-5 text-destructive" />;
       default:
         return <Clock className="h-5 w-5 text-muted-foreground" />;
     }
@@ -103,17 +105,27 @@ const MigrationTool: React.FC = () => {
       case 'completed':
         return t('settings.migration.statusCompleted');
       case 'failed':
-        return t('settings.migration.statusFailed', { type: currentMigration.migrationType });
+        return t('settings.migration.statusFailed', { type: currentMigration?.type });
       default:
         return t('settings.migration.statusUnknown');
     }
   };
 
-  const getProgressPercentage = (status: string, progress?: any) => {
-    if (progress?.totalRecords && progress?.recordsProcessed) {
-      return Math.round((progress.recordsProcessed / progress.totalRecords) * 100);
+  const getProgressPercentage = (status: string, progress?: MigrationRecord['progress']) => {
+    // A completed migration is always 100%, regardless of how many records
+    // were skipped vs processed.
+    if (status === 'completed') {
+      return 100;
     }
-    
+
+    if (progress?.totalRecords) {
+      // Skipped records (duplicates/invalid) still represent progress through
+      // the source set, so count them alongside processed records; otherwise a
+      // run with many skips would stall the bar below 100%.
+      const handled = (progress.recordsProcessed ?? 0) + (progress.recordsSkipped ?? 0);
+      return Math.min(100, Math.round((handled / progress.totalRecords) * 100));
+    }
+
     switch (status) {
       case 'idle':
         return 5;
@@ -134,11 +146,6 @@ const MigrationTool: React.FC = () => {
     const hours = Math.floor(ms / (60 * 60 * 1000));
     const minutes = Math.floor((ms % (60 * 60 * 1000)) / (60 * 1000));
     return `${hours}h ${minutes}m`;
-  };
-
-  const formatDate = (dateString: string) => {
-    const date = new Date(dateString);
-    return date.toLocaleString();
   };
 
   if (statusLoading) {
@@ -164,7 +171,7 @@ const MigrationTool: React.FC = () => {
 
       {/* Active Migration Progress */}
       {isActive && currentMigration && (
-        <Card className="p-4 border-blue-500/50 bg-blue-500/5">
+        <Card className="p-4 border-info/50 bg-info/5">
           <div className="space-y-4">
             <div className="flex items-start justify-between">
               <div className="flex items-center space-x-3">
@@ -172,7 +179,7 @@ const MigrationTool: React.FC = () => {
                 <div>
                   <p className="font-medium">{getStatusText(currentMigration.status)}</p>
                   <p className="text-sm text-muted-foreground">
-                    {t('settings.migration.migratingFrom', { type: currentMigration.migrationType })}
+                    {t('settings.migration.migratingFrom', { type: currentMigration.type })}
                   </p>
                 </div>
               </div>
@@ -209,8 +216,8 @@ const MigrationTool: React.FC = () => {
                       {t('settings.migration.processed', { count: currentMigration.progress.recordsProcessed })}
                       {currentMigration.progress.totalRecords && ` / ${currentMigration.progress.totalRecords}`}
                     </span>
-                    {currentMigration.progress.recordsSkipped > 0 && (
-                      <span className="text-yellow-600">
+                    {(currentMigration.progress.recordsSkipped ?? 0) > 0 && (
+                      <span className="text-warning">
                         {t('settings.migration.skipped', { count: currentMigration.progress.recordsSkipped })}
                       </span>
                     )}
@@ -229,7 +236,8 @@ const MigrationTool: React.FC = () => {
       )}
 
       {showCompletedAlert && lastCompletedMigration && (() => {
-        const isCancelled = lastCompletedMigration.error?.toLowerCase().includes('cancelled');
+        const lowerError = lastCompletedMigration.error?.toLowerCase() ?? '';
+        const isCancelled = lowerError.includes('cancelled') || lowerError.includes('canceled');
         const isSuccess = lastCompletedMigration.status === 'completed';
         const variant = isSuccess ? 'success' : (isCancelled ? 'warning' : 'error');
 
@@ -237,9 +245,9 @@ const MigrationTool: React.FC = () => {
           <StatusBanner
             variant={variant}
             icon={isSuccess ? (
-              <CheckCircle2 className="h-5 w-5 text-green-600 dark:text-green-400" />
+              <CheckCircle2 className="h-5 w-5 text-success" />
             ) : isCancelled ? (
-              <X className="h-5 w-5 text-amber-600 dark:text-amber-400" />
+              <X className="h-5 w-5 text-warning" />
             ) : undefined}
           >
             {isSuccess ? (
@@ -248,7 +256,7 @@ const MigrationTool: React.FC = () => {
                 {lastCompletedMigration.progress && (
                   <span className="ml-1">
                     {t('settings.migration.processedRecords', { count: lastCompletedMigration.progress.recordsProcessed })}
-                    {lastCompletedMigration.progress.recordsSkipped > 0 &&
+                    {(lastCompletedMigration.progress.recordsSkipped ?? 0) > 0 &&
                       t('settings.migration.skippedSuffix', { count: lastCompletedMigration.progress.recordsSkipped })}.
                   </span>
                 )}
@@ -265,7 +273,7 @@ const MigrationTool: React.FC = () => {
       {onCooldown && !isActive && (
         <StatusBanner
           variant="info"
-          icon={<Clock className="h-5 w-5 text-blue-600 dark:text-blue-400" />}
+          icon={<Clock className="h-5 w-5 text-info" />}
         >
           {t('settings.migration.cooldownActive', { time: formatCooldownTime(cooldownRemainingMs) })}
         </StatusBanner>
@@ -313,53 +321,6 @@ const MigrationTool: React.FC = () => {
         </div>
       )}
 
-      {/* Migration History */}
-      {migrationStatus?.history && migrationStatus.history.length > 0 && (
-        <div className="space-y-3">
-          <h5 className="text-sm font-medium">{t('settings.migration.recentMigrations')}</h5>
-          <div className="space-y-2">
-            {migrationStatus.history.slice(0, 5).map((entry: any, index: number) => (
-              <div
-                key={entry.id || index}
-                className="flex items-center justify-between p-3 rounded-lg border bg-muted/30"
-              >
-                <div className="flex items-center space-x-3">
-                  {entry.status === 'completed' ? (
-                    <CheckCircle2 className="h-4 w-4 text-green-500" />
-                  ) : (
-                    <AlertCircle className="h-4 w-4 text-red-500" />
-                  )}
-                  <div>
-                    <p className="text-sm font-medium">
-                      {entry.migrationType.toUpperCase()}
-                    </p>
-                    <p className="text-xs text-muted-foreground">
-                      {formatDate(entry.completedAt)}
-                    </p>
-                  </div>
-                </div>
-                <div className="text-right">
-                  <p className="text-sm">
-                    {t('settings.migration.recordsCount', { count: entry.recordsProcessed })}
-                  </p>
-                  {entry.recordsSkipped > 0 && (
-                    <p className="text-xs text-yellow-600">
-                      {t('settings.migration.skipped', { count: entry.recordsSkipped })}
-                    </p>
-                  )}
-                </div>
-              </div>
-            ))}
-          </div>
-        </div>
-      )}
-
-      {/* Last Migration Timestamp */}
-      {migrationStatus?.lastMigrationTimestamp && (
-        <p className="text-xs text-muted-foreground">
-          {t('settings.migration.lastSuccessfulMigration', { date: formatDate(migrationStatus.lastMigrationTimestamp) })}
-        </p>
-      )}
     </div>
   );
 };

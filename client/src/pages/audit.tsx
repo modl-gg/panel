@@ -1,4 +1,4 @@
-import { useState, useMemo, useEffect } from 'react';
+import { useState, useMemo, useEffect, useCallback } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
   ChevronDown,
@@ -7,14 +7,12 @@ import {
   AlertCircle,
   AlertTriangle,
   Activity,
-  Bot,
   User,
   FileText,
   TrendingUp,
   TrendingDown,
   RefreshCw,
   Eye,
-  Settings,
   Users,
   Clock,
   Undo2,
@@ -25,12 +23,14 @@ import {
   ChevronLeft,
   ChevronRight
 } from 'lucide-react';
-import { getApiUrl, getCurrentDomain, apiFetch } from '@/lib/api';
+import { apiFetch } from '@/lib/api';
 import { Button } from '@modl-gg/shared-web/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@modl-gg/shared-web/components/ui/card';
 import { Badge } from '@modl-gg/shared-web/components/ui/badge';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@modl-gg/shared-web/components/ui/select';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogPortal } from '@modl-gg/shared-web/components/ui/dialog';
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@modl-gg/shared-web/components/ui/alert-dialog';
+import { Textarea } from '@modl-gg/shared-web/components/ui/textarea';
 import { subDays } from 'date-fns';
 import { formatDateOnly } from '@/utils/date-utils';
 import { useLogs } from '@/hooks/use-data';
@@ -41,12 +41,19 @@ import { PermissionWrapper } from '@/components/PermissionWrapper';
 import { PERMISSIONS } from '@/hooks/use-permissions';
 import { StatusBanner } from '@modl-gg/shared-web/components/ui/status-banner';
 import { cn } from '@modl-gg/shared-web/lib/utils';
+import { openExternalUrl } from '@/lib/utils';
 import { usePlayerWindow } from '@/contexts/PlayerWindowContext';
 import { useAuth } from '@/hooks/use-auth';
 import { Checkbox } from '@modl-gg/shared-web/components/ui/checkbox';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell, LineChart, Line, Area, AreaChart } from 'recharts';
-import { getEvidenceDisplayText, getEvidenceClickUrl, getEvidenceShortName, isEvidenceClickable } from '@/utils/evidence-utils';
+import type { PieLabelRenderProps } from 'recharts';
+import { getEvidenceDisplayText, getEvidenceClickUrl, getEvidenceShortName, isEvidenceClickable, type EvidenceLike } from '@/utils/evidence-utils';
+import { deriveEffectiveDurationMs, isPardonModification } from '@/utils/punishment-status';
 import { formatTicketStatusLabel, normalizeTicketStatus } from '@/lib/ticket-enums';
+import { protoFetch } from '@/lib/proto-fetch';
+import { toNum, tsToDate } from '@/lib/proto-ui';
+import { StaffPerformanceListResponseSchema, ActivePunishmentsAuditResponseSchema } from '@modl-gg/proto/modl/v1/audit_pb.ts';
+import { AnalyticsOverviewResponseSchema } from '@modl-gg/proto/modl/v1/analytics_pb.ts';
 
 interface StaffMember {
   id: string;
@@ -59,93 +66,48 @@ interface StaffMember {
   lastActive: string;
 }
 
+interface StaffDetailPunishment {
+  id: string;
+  playerId: string;
+  playerName: string;
+  type: string;
+  reason: string;
+  duration: string | number | null;
+  issued: string | number;
+  active: boolean;
+  rolledBack: boolean;
+  modifications?: Array<{ type: string }>;
+  evidence?: EvidenceLike[];
+  attachedTicketIds?: unknown[];
+}
+
+interface StaffDetailTicket {
+  id: string;
+  ticketId?: string;
+  subject: string;
+  title?: string;
+  category: string;
+  status: string;
+  replyCount?: number;
+  created?: string | number;
+  createdAt?: string | number;
+  timestamp?: string | number;
+  updatedAt?: string | number;
+  lastActivity: string | number | null;
+  responseTime: number;
+}
+
+interface StaffDetails {
+  username: string;
+  period: string;
+  punishments: StaffDetailPunishment[];
+  tickets: StaffDetailTicket[];
+  dailyActivity: Array<{ date: string; punishments: number; tickets: number; evidence: number }>;
+  punishmentTypeBreakdown: Array<{ type: string; count: number }>;
+  evidenceUploads: number;
+}
+
 const COLORS = ['#0088FE', '#00C49F', '#FFBB28', '#FF8042', '#8884d8', '#82ca9d'];
-
-// Enhanced action type mapping with icons
-const getActionDetails = (level: string, source: string, description: string) => {
-  const descLower = description.toLowerCase();
-  
-  if (descLower.includes('ban') || descLower.includes('mute') || descLower.includes('kick') || descLower.includes('punishment')) {
-    return { 
-      actionType: 'moderation', 
-      color: 'destructive', 
-      userType: 'Moderation',
-      icon: <Shield className="h-4 w-4" />
-    };
-  }
-  
-  if (descLower.includes('ticket')) {
-    return { 
-      actionType: 'ticket', 
-      color: 'primary', 
-      userType: 'Support',
-      icon: <FileText className="h-4 w-4" />
-    };
-  }
-  
-  if (descLower.includes('setting') || descLower.includes('config')) {
-    return { 
-      actionType: 'settings', 
-      color: 'secondary', 
-      userType: 'Configuration',
-      icon: <Settings className="h-4 w-4" />
-    };
-  }
-  
-  switch (level) {
-    case 'moderation':
-      return { 
-        actionType: 'moderation', 
-        color: 'warning', 
-        userType: 'Staff',
-        icon: <Shield className="h-4 w-4" />
-      };
-    case 'error':
-      return { 
-        actionType: 'error', 
-        color: 'destructive', 
-        userType: 'System',
-        icon: <AlertCircle className="h-4 w-4" />
-      };
-    case 'warning':
-      return { 
-        actionType: 'warning', 
-        color: 'warning', 
-        userType: 'System',
-        icon: <AlertTriangle className="h-4 w-4" />
-      };
-    case 'info':
-    default:
-      if (source !== 'system' && source !== 'System') {
-        return { 
-          actionType: 'user', 
-          color: 'primary', 
-          userType: 'User',
-          icon: <User className="h-4 w-4" />
-        };
-      }
-      return { 
-        actionType: 'system', 
-        color: 'secondary', 
-        userType: 'System',
-        icon: <Bot className="h-4 w-4" />
-      };
-  }
-};
-
-const formatRelativeTime = (date: Date) => {
-  const now = new Date();
-  const diffMs = now.getTime() - date.getTime();
-  const diffMins = Math.floor(diffMs / 60000);
-  const diffHours = Math.floor(diffMs / 3600000);
-  const diffDays = Math.floor(diffMs / 86400000);
-  
-  if (diffMins < 1) return 'just now';
-  if (diffMins < 60) return `${diffMins}m ago`;
-  if (diffHours < 24) return `${diffHours}h ago`;
-  if (diffDays < 7) return `${diffDays}d ago`;
-  return formatDateOnly(date);
-};
 
 const formatDurationDetailed = (date: Date) => {
   const now = new Date();
@@ -163,58 +125,108 @@ const formatDurationDetailed = (date: Date) => {
   return parts.length > 0 ? parts.join(' ') : '0m';
 };
 
-// API functions
-const fetchAnalyticsOverview = async () => {
-  const response = await fetch(getApiUrl('/v1/panel/analytics/overview'), {
-    credentials: 'include',
-    headers: { 'X-Server-Domain': getCurrentDomain() }
-  });
-  if (!response.ok) throw new Error('Failed to fetch analytics overview');
-  return response.json();
+interface AnalyticsOverview {
+  totalTickets: number;
+  totalPlayers: number;
+  totalStaff: number;
+  activeTickets: number;
+  ticketChange: number;
+  playerChange: number;
+}
+
+const fetchAnalyticsOverview = async (): Promise<AnalyticsOverview> => {
+  const res = await protoFetch(AnalyticsOverviewResponseSchema, '/v1/panel/analytics/overview');
+  const overview = res.overview['overview'];
+  return {
+    totalTickets: overview ? toNum(overview.totalTickets) : 0,
+    totalPlayers: overview ? toNum(overview.totalPlayers) : 0,
+    totalStaff: overview ? toNum(overview.totalStaff) : 0,
+    activeTickets: overview ? toNum(overview.activeTickets) : 0,
+    ticketChange: overview?.ticketChange ?? 0,
+    playerChange: overview?.playerChange ?? 0,
+  };
 };
 
-const fetchStaffPerformance = async (period = '30d') => {
-  const response = await fetch(getApiUrl(`/v1/panel/audit/staff-performance?period=${period}`), {
-    credentials: 'include',
-    headers: { 'X-Server-Domain': getCurrentDomain() }
-  });
-  if (!response.ok) throw new Error('Failed to fetch staff performance');
-  return response.json();
+const fetchStaffPerformance = async (period = '30d'): Promise<StaffMember[]> => {
+  const res = await protoFetch(
+    StaffPerformanceListResponseSchema,
+    `/v1/panel/audit/staff-performance?period=${period}`,
+  );
+  return res.staff.map((member) => ({
+    id: member.id,
+    username: member.username,
+    role: member.role,
+    totalActions: member.totalActions,
+    ticketResponses: member.ticketResponses,
+    punishmentsIssued: member.punishmentsIssued,
+    avgResponseTime: member.avgResponseTime,
+    lastActive: tsToDate(member.lastActive)?.toISOString() ?? '',
+  }));
 };
 
-const fetchTicketAnalytics = async (period = '30d') => {
-  const response = await fetch(getApiUrl(`/v1/panel/analytics/tickets?period=${period}`), {
-    credentials: 'include',
-    headers: { 'X-Server-Domain': getCurrentDomain() }
-  });
+interface TicketAnalytics {
+  byStatus: Array<{ status: string; count: number }>;
+  byCategory: Array<{ category: string; count: number }>;
+  avgResolutionByCategory: Array<{ category: string; avgHours: number }>;
+  dailyTickets: Array<{ date: string; count: number }>;
+}
+
+interface PunishmentAnalytics {
+  byType: Array<{ type: string; count: number }>;
+  dailyPunishments: Array<{ date: string; count: number }>;
+  byStaff: Array<{ username: string; count: number }>;
+}
+
+interface PlayerActivity {
+  newPlayersTrend: Array<{ date: string; count: number }>;
+  loginsByCountry: Array<{ country: string; count: number }>;
+  loginTrend?: Array<{ date: string; logins: number; uniquePlayers: number }>;
+  suspiciousActivity: { proxyCount: number; hostingCount: number };
+}
+
+const fetchTicketAnalytics = async (period = '30d'): Promise<TicketAnalytics> => {
+  const response = await apiFetch(`/v1/panel/analytics/tickets?period=${period}`);
   if (!response.ok) throw new Error('Failed to fetch ticket analytics');
   return response.json();
 };
 
-const fetchPunishmentAnalytics = async (period = '30d') => {
-  const response = await fetch(getApiUrl(`/v1/panel/analytics/punishments?period=${period}`), {
-    credentials: 'include',
-    headers: { 'X-Server-Domain': getCurrentDomain() }
-  });
+const canonicalIssuerName = (name: string | null | undefined): string => {
+  const trimmed = name?.trim() ?? '';
+  if (!trimmed || /^unknown( staff)?$/i.test(trimmed)) return 'Unknown';
+  if (/^console$/i.test(trimmed)) return 'Console';
+  return trimmed;
+};
+
+const mergeStaffPunishmentCounts = (
+  byStaff: Array<{ username: string; count: number }>,
+): Array<{ username: string; count: number }> => {
+  const merged = new Map<string, { username: string; count: number }>();
+  for (const entry of byStaff) {
+    const username = canonicalIssuerName(entry.username);
+    const key = username.toLowerCase();
+    const existing = merged.get(key);
+    if (existing) {
+      existing.count += entry.count;
+    } else {
+      merged.set(key, { username, count: entry.count });
+    }
+  }
+  return Array.from(merged.values()).sort((a, b) => b.count - a.count);
+};
+
+const fetchPunishmentAnalytics = async (period = '30d'): Promise<PunishmentAnalytics> => {
+  const response = await apiFetch(`/v1/panel/analytics/punishments?period=${period}`);
   if (!response.ok) throw new Error('Failed to fetch punishment analytics');
-  return response.json();
+  const analytics: PunishmentAnalytics = await response.json();
+  return {
+    ...analytics,
+    byStaff: mergeStaffPunishmentCounts(analytics.byStaff ?? []),
+  };
 };
 
-const fetchPlayerActivity = async (period = '30d') => {
-  const response = await fetch(getApiUrl(`/v1/panel/analytics/player-activity?period=${period}`), {
-    credentials: 'include',
-    headers: { 'X-Server-Domain': getCurrentDomain() }
-  });
+const fetchPlayerActivity = async (period = '30d'): Promise<PlayerActivity> => {
+  const response = await apiFetch(`/v1/panel/analytics/player-activity?period=${period}`);
   if (!response.ok) throw new Error('Failed to fetch player activity');
-  return response.json();
-};
-
-const fetchAuditLogsAnalytics = async (period = '7d') => {
-  const response = await fetch(getApiUrl(`/v1/panel/analytics/audit-logs?period=${period}`), {
-    credentials: 'include',
-    headers: { 'X-Server-Domain': getCurrentDomain() }
-  });
-  if (!response.ok) throw new Error('Failed to fetch audit logs analytics');
   return response.json();
 };
 
@@ -239,22 +251,59 @@ interface ActivePunishment {
 }
 
 const fetchPunishmentsList = async (status: string): Promise<ActivePunishment[]> => {
-  const response = await fetch(getApiUrl(`/v1/panel/audit/punishments/active?status=${status}`), {
-    credentials: 'include',
-    headers: { 'X-Server-Domain': getCurrentDomain() }
-  });
-  if (!response.ok) throw new Error('Failed to fetch punishments');
-  return response.json();
+  const res = await protoFetch(
+    ActivePunishmentsAuditResponseSchema,
+    `/v1/panel/audit/punishments/active?status=${status}`,
+  );
+  return res.punishments.map((punishment) => ({
+    id: punishment.id,
+    playerId: punishment.playerId,
+    playerName: punishment.playerName,
+    type: punishment.type,
+    typeOrdinal: punishment.typeOrdinal,
+    category: punishment.category,
+    staffName: punishment.staffName,
+    reason: punishment.reason,
+    duration: punishment.duration !== undefined ? toNum(punishment.duration) : null,
+    issued: tsToDate(punishment.issued)?.toISOString() ?? '',
+    started: tsToDate(punishment.started)?.toISOString() ?? null,
+    expires: tsToDate(punishment.expires)?.toISOString() ?? null,
+    active: punishment.active,
+    hasEvidence: punishment.hasEvidence,
+    evidenceCount: punishment.evidenceCount,
+    evidence: punishment.evidence.map((item) => ({
+      text: item.text,
+      url: item.url,
+      type: item.type,
+      fileName: item.fileName,
+    })),
+    attachedTicketIds: punishment.attachedTicketIds,
+  }));
 };
 
+interface ChartTooltipEntry {
+  dataKey: string;
+  name?: string;
+  value: number | string;
+  color?: string;
+}
+
+interface CustomTooltipProps {
+  active?: boolean;
+  payload?: ChartTooltipEntry[];
+  label?: string | number;
+  formatValue?: (value: number | string, name?: string) => string;
+  formatName?: (name: string) => string;
+}
+
 // Custom themed tooltip component for charts
-const CustomTooltip = ({ active, payload, label, formatValue, formatName }: any) => {
+const CustomTooltip = ({ active, payload, label, formatValue, formatName }: CustomTooltipProps) => {
   if (active && payload && payload.length) {
     return (
       <div className="bg-background border border-border rounded-lg p-3 shadow-lg z-50 pointer-events-none">
         {label && <p className="text-sm font-medium mb-2">{label}</p>}
-        {payload.map((entry: any, index: number) => (
-          <div key={index} className="flex items-center gap-2 text-sm">
+        {payload.map((entry, index) => (
+          <div key={entry?.dataKey ?? entry?.name ?? index} className="flex items-center gap-2 text-sm">
             <div 
               className="w-3 h-3 rounded-full flex-shrink-0" 
               style={{ backgroundColor: entry.color }}
@@ -271,168 +320,12 @@ const CustomTooltip = ({ active, payload, label, formatValue, formatName }: any)
   return null;
 };
 
-// Staff performance modal
-const StaffPerformanceModal = () => {
-  const [period, setPeriod] = useState('30d');
-  const { t } = useTranslation();
-
-  const { data: staffData = [], isLoading } = useQuery({
-    queryKey: ['staff-performance', period],
-    queryFn: () => fetchStaffPerformance(period),
-    staleTime: 5 * 60 * 1000
-  });
-  return (
-    <Dialog modal={false}>
-      <DialogTrigger asChild>
-        <Button variant="outline" size="sm">
-          <Users className="h-4 w-4 mr-2" />
-          {t('audit.staffPerformance')}
-        </Button>
-      </DialogTrigger>
-      <DialogContent
-        className="max-w-6xl max-h-[80vh] overflow-hidden"
-        {...({ overlayClassName: "pointer-events-none" } as any)}
-        onInteractOutside={(e) => e.preventDefault()}
-      >
-        <DialogHeader>
-          <DialogTitle className="flex items-center justify-between">
-            {t('audit.staffPerformanceAnalytics')}
-            <Select value={period} onValueChange={setPeriod}>
-              <SelectTrigger className="w-32">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="7d">{t('audit.period7d')}</SelectItem>
-                <SelectItem value="30d">{t('audit.period30d')}</SelectItem>
-                <SelectItem value="90d">{t('audit.period90d')}</SelectItem>
-                <SelectItem value="all">{t('audit.periodAll')}</SelectItem>
-              </SelectContent>
-            </Select>
-          </DialogTitle>
-        </DialogHeader>
-        <div className="space-y-6 overflow-auto max-h-[60vh]">
-          {isLoading ? (
-            <div className="flex items-center justify-center py-8">
-              <RefreshCw className="h-6 w-6 animate-spin" />
-            </div>
-          ) : (
-            <>
-
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            <Card className="shadow-card">
-              <CardHeader>
-                <CardTitle className="text-base">{t('audit.actionsByStaff')}</CardTitle>
-              </CardHeader>
-              <CardContent>
-                {!staffData || staffData.length === 0 ? (
-                  <div className="flex items-center justify-center h-[200px] text-muted-foreground">
-                    <div className="text-center">
-                      <Users className="h-8 w-8 mx-auto mb-2 opacity-50" />
-                      <p className="text-sm">{t('audit.noStaffActionData')}</p>
-                    </div>
-                  </div>
-                ) : (
-                  <ResponsiveContainer width="100%" height={200}>
-                    <BarChart data={staffData}>
-                      <CartesianGrid strokeDasharray="3 3" className="opacity-30" />
-                      <XAxis dataKey="username" className="text-muted-foreground" fontSize={12} />
-                      <YAxis className="text-muted-foreground" fontSize={12} />
-                      <Tooltip cursor={false} content={<CustomTooltip />} />
-                      <Bar dataKey="totalActions" fill="#8884d8" />
-                    </BarChart>
-                  </ResponsiveContainer>
-                )}
-              </CardContent>
-            </Card>
-            
-            <Card className="shadow-card">
-              <CardHeader>
-                <CardTitle className="text-base">{t('audit.responseTimes')}</CardTitle>
-              </CardHeader>
-              <CardContent>
-                {!staffData || staffData.length === 0 ? (
-                  <div className="flex items-center justify-center h-[200px] text-muted-foreground">
-                    <div className="text-center">
-                      <Clock className="h-8 w-8 mx-auto mb-2 opacity-50" />
-                      <p className="text-sm">{t('audit.noResponseTimeData')}</p>
-                    </div>
-                  </div>
-                ) : (
-                  <ResponsiveContainer width="100%" height={200}>
-                    <BarChart data={staffData}>
-                      <CartesianGrid strokeDasharray="3 3" className="opacity-30" />
-                      <XAxis dataKey="username" className="text-muted-foreground" fontSize={12} />
-                      <YAxis className="text-muted-foreground" fontSize={12} />
-                      <Tooltip content={<CustomTooltip formatValue={(value: any, name: any) => name?.includes('ResponseTime') ? `${value}h` : value} />} />
-                      <Bar dataKey="avgResponseTime" fill="#82ca9d" />
-                    </BarChart>
-                  </ResponsiveContainer>
-                )}
-              </CardContent>
-            </Card>
-          </div>
-          
-          <Card className="shadow-card">
-            <CardHeader>
-              <CardTitle className="text-base">{t('audit.staffActivityDetails')}</CardTitle>
-            </CardHeader>
-            <CardContent>
-              {!staffData || staffData.length === 0 ? (
-                <div className="flex items-center justify-center h-[200px] text-muted-foreground">
-                  <div className="text-center">
-                    <Shield className="h-8 w-8 mx-auto mb-2 opacity-50" />
-                    <p className="text-sm">{t('audit.noStaffActivityData')}</p>
-                  </div>
-                </div>
-              ) : (
-                <div className="overflow-x-auto">
-                  <table className="w-full text-sm">
-                    <thead>
-                      <tr className="border-b">
-                        <th className="text-left p-2">{t('audit.colUsername')}</th>
-                        <th className="text-left p-2">{t('audit.colRole')}</th>
-                        <th className="text-left p-2">{t('audit.colTotalActions')}</th>
-                        <th className="text-left p-2">{t('audit.colTicketResponses')}</th>
-                        <th className="text-left p-2">{t('audit.colPunishments')}</th>
-                        <th className="text-left p-2">{t('audit.colAvgResponse')}</th>
-                        <th className="text-left p-2">{t('audit.colLastActive')}</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {staffData.map((staff: StaffMember) => (
-                        <tr key={staff.id} className="border-b">
-                          <td className="p-2 font-medium">{staff.username}</td>
-                          <td className="p-2">
-                            <Badge variant="outline">{staff.role}</Badge>
-                          </td>
-                          <td className="p-2">{staff.totalActions}</td>
-                          <td className="p-2">{staff.ticketResponses}</td>
-                          <td className="p-2">{staff.punishmentsIssued}</td>
-                          <td className="p-2">{staff.avgResponseTime}m</td>
-                          <td className="p-2">{formatRelativeTime(new Date(staff.lastActive))}</td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
-              )}
-            </CardContent>
-          </Card>
-            </>
-          )}
-        </div>
-      </DialogContent>
-    </Dialog>
-  );
-};
-
 // Bulk punishment actions modal (superadmin only)
 const BulkPunishmentActionsModal = ({ activePunishments, onSuccess }: {
   activePunishments: ActivePunishment[];
   onSuccess: () => void;
 }) => {
   const { toast } = useToast();
-  const { t } = useTranslation();
   const [operation, setOperation] = useState<'pardon' | 'set-expiration'>('pardon');
   const [selectedTypes, setSelectedTypes] = useState<Set<number>>(new Set());
   const [reason, setReason] = useState('');
@@ -441,6 +334,7 @@ const BulkPunishmentActionsModal = ({ activePunishments, onSuccess }: {
   const [isPermanent, setIsPermanent] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [open, setOpen] = useState(false);
+  const [confirmOpen, setConfirmOpen] = useState(false);
 
   // Group active punishments by type with counts + preview count in single pass
   const { typeGroups, previewCount } = useMemo(() => {
@@ -473,15 +367,16 @@ const BulkPunishmentActionsModal = ({ activePunishments, onSuccess }: {
 
   const durationToMs = (): number => {
     if (isPermanent) return 0;
-    const multipliers: Record<string, number> = {
+    const multipliers = {
       minutes: 60 * 1000,
       hours: 60 * 60 * 1000,
       days: 24 * 60 * 60 * 1000,
     };
-    return durationValue * (multipliers[durationUnit] || multipliers.days);
+    const multiplier = multipliers[durationUnit as keyof typeof multipliers] || multipliers.days;
+    return durationValue * multiplier;
   };
 
-  const handleSubmit = async () => {
+  const handleSubmit = () => {
     if (selectedTypes.size === 0) {
       toast({ title: 'No types selected', description: 'Select at least one punishment type.', variant: 'destructive' });
       return;
@@ -490,12 +385,11 @@ const BulkPunishmentActionsModal = ({ activePunishments, onSuccess }: {
       toast({ title: 'Reason required', description: 'Please provide a reason.', variant: 'destructive' });
       return;
     }
+    setConfirmOpen(true);
+  };
 
-    const actionLabel = operation === 'pardon' ? 'pardon' : 'set expiration on';
-    if (!window.confirm(`Are you sure you want to ${actionLabel} ${previewCount} punishment(s)? This cannot be undone.`)) {
-      return;
-    }
-
+  const performSubmit = async () => {
+    setConfirmOpen(false);
     setIsSubmitting(true);
     try {
       const endpoint = operation === 'pardon'
@@ -667,6 +561,25 @@ const BulkPunishmentActionsModal = ({ activePunishments, onSuccess }: {
           </Button>
         </div>
       </DialogContent>
+      <AlertDialog open={confirmOpen} onOpenChange={setConfirmOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Confirm Bulk Action</AlertDialogTitle>
+            <AlertDialogDescription>
+              {`Are you sure you want to ${operation === 'pardon' ? 'pardon' : 'set expiration on'} ${previewCount} punishment(s)? This cannot be undone.`}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={performSubmit}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              Confirm
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </Dialog>
   );
 };
@@ -679,9 +592,16 @@ const StaffDetailModal = ({ staff, isOpen, onClose, initialPeriod = '30d' }: {
   initialPeriod?: string
 }) => {
   const [selectedPeriod, setSelectedPeriod] = useState(initialPeriod);
+  const [rollbackDialog, setRollbackDialog] = useState<{ open: boolean; punishmentId: string | null; summary: string; reason: string; submitting: boolean }>({
+    open: false,
+    punishmentId: null,
+    summary: '',
+    reason: '',
+    submitting: false,
+  });
   const { toast } = useToast();
   const { t } = useTranslation();
-  const { openPlayerWindow, windows } = usePlayerWindow();
+  const { openPlayerWindow } = usePlayerWindow();
 
   // Sync selectedPeriod with initialPeriod when modal opens
   useEffect(() => {
@@ -696,7 +616,7 @@ const StaffDetailModal = ({ staff, isOpen, onClose, initialPeriod = '30d' }: {
   };
 
   // Fetch detailed staff data including punishments, tickets, evidence
-  const { data: staffDetails, isLoading, refetch } = useQuery({
+  const { data: staffDetails, refetch } = useQuery({
     queryKey: ['staff-details', staff.username, selectedPeriod],
     queryFn: () => fetchStaffDetails(staff.username, selectedPeriod),
     enabled: isOpen,
@@ -709,6 +629,78 @@ const StaffDetailModal = ({ staff, isOpen, onClose, initialPeriod = '30d' }: {
   const recentPunishments = staffDetails?.punishments || [];
   const recentTickets = staffDetails?.tickets || [];
   const evidenceCount = staffDetails?.evidenceUploads || 0;
+
+  const openRollbackDialog = useCallback((punishmentId: string, summary: string) => {
+    setRollbackDialog({ open: true, punishmentId, summary, reason: '', submitting: false });
+  }, []);
+
+  const handleConfirmRollback = useCallback(async () => {
+    const { punishmentId, reason } = rollbackDialog;
+    if (!punishmentId || !reason.trim()) return;
+    setRollbackDialog(prev => ({ ...prev, submitting: true }));
+    try {
+      const response = await apiFetch(`/v1/panel/audit/punishments/${punishmentId}/rollback`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ reason: reason.trim() })
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => null);
+        throw new Error(errorData?.error || `HTTP ${response.status}: ${response.statusText}`);
+      }
+
+      const responseData = await response.json().catch(() => null);
+
+      toast({
+        title: t('audit.punishmentRolledBack'),
+        description: t('audit.punishmentRolledBackSuccess', { message: responseData?.message })
+      });
+      setRollbackDialog({ open: false, punishmentId: null, summary: '', reason: '', submitting: false });
+      refetch();
+    } catch (error) {
+      console.error('Rollback error:', error);
+      toast({
+        title: t('audit.rollbackFailed'),
+        description: t('audit.rollbackFailedWithError', { error: error instanceof Error ? error.message : t('audit.unknownError') }),
+        variant: 'destructive'
+      });
+      setRollbackDialog(prev => ({ ...prev, submitting: false }));
+    }
+  }, [rollbackDialog, refetch, toast, t]);
+
+  // Format helpers hoisted out of the .map for the recent punishments table
+  const formatRecentPunishmentDuration = useCallback((duration: string | number | null | undefined): string => {
+    const durationNum = typeof duration === 'number' ? duration : Number(duration);
+    if (!durationNum || durationNum === -1 || isNaN(durationNum)) return t('audit.permanent');
+
+    const days = Math.floor(durationNum / (1000 * 60 * 60 * 24));
+    const hours = Math.floor((durationNum % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
+    const minutes = Math.floor((durationNum % (1000 * 60 * 60)) / (1000 * 60));
+
+    if (days > 0) return `${days}d ${hours}h`;
+    if (hours > 0) return `${hours}h ${minutes}m`;
+    return `${minutes}m`;
+  }, [t]);
+
+  const getRecentPunishmentStatus = useCallback((punishment: StaffDetailPunishment) => {
+    const hasPardon = punishment.modifications?.some((mod) =>
+      isPardonModification(mod) ||
+      mod.type === 'Pardoned' ||
+      mod.type === 'Appeal Accepted' ||
+      mod.type === 'Appeal Approved'
+    );
+
+    if (hasPardon || punishment.rolledBack) {
+      return { status: t('audit.pardoned'), isActive: false, variant: 'outline' as const, color: 'bg-green-100 dark:bg-green-900 text-green-800 dark:text-green-200 border-green-300 dark:border-green-700' };
+    }
+
+    if (punishment.active === false) {
+      return { status: t('status.inactive'), isActive: false, variant: 'outline' as const, color: 'bg-gray-100 dark:bg-gray-800 text-gray-800 dark:text-gray-200 border-gray-300 dark:border-gray-700' };
+    }
+
+    return { status: t('status.active'), isActive: true, variant: 'outline' as const, color: 'bg-red-100 dark:bg-red-900 text-red-800 dark:text-red-200 border-red-300 dark:border-red-700' };
+  }, [t]);
 
   return (
     <Dialog
@@ -855,9 +847,9 @@ const StaffDetailModal = ({ staff, isOpen, onClose, initialPeriod = '30d' }: {
                         outerRadius={80}
                         fill="#8884d8"
                         dataKey="count"
-                        label={({ type, percent }) => `${type} ${((percent || 0) * 100).toFixed(0)}%`}
+                        label={({ type, percent }: PieLabelRenderProps & { type?: string }) => `${type} ${((percent || 0) * 100).toFixed(0)}%`}
                       >
-                        {punishmentTypeData.map((entry: any, index: number) => (
+                        {punishmentTypeData.map((_entry: unknown, index: number) => (
                           <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
                         ))}
                       </Pie>
@@ -890,47 +882,12 @@ const StaffDetailModal = ({ staff, isOpen, onClose, initialPeriod = '30d' }: {
                       </tr>
                     </thead>
                     <tbody>
-                      {recentPunishments.length > 0 ? recentPunishments.map((punishment: any, index: number) => {
-                        // Format duration helper function
-                        const formatDuration = (duration: any) => {
-                          const durationNum = typeof duration === 'number' ? duration : Number(duration);
-                          if (!durationNum || durationNum === -1 || isNaN(durationNum)) return t('audit.permanent');
-                          
-                          const days = Math.floor(durationNum / (1000 * 60 * 60 * 24));
-                          const hours = Math.floor((durationNum % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
-                          const minutes = Math.floor((durationNum % (1000 * 60 * 60)) / (1000 * 60));
-                          
-                          if (days > 0) return `${days}d ${hours}h`;
-                          if (hours > 0) return `${hours}h ${minutes}m`;
-                          return `${minutes}m`;
-                        };
-
-                        // Determine punishment status
-                        const getPunishmentStatus = (punishment: any) => {
-                          // Check for pardoned/appeal accepted modifications
-                          const hasPardon = punishment.modifications?.some((mod: any) => 
-                            mod.type === 'MANUAL_PARDON' || 
-                            mod.type === 'APPEAL_ACCEPT' || 
-                            mod.type === 'Pardoned' || 
-                            mod.type === 'Appeal Accepted' ||
-                            mod.type === 'Appeal Approved'
-                          );
-                          
-                          if (hasPardon || punishment.rolledBack) {
-                            return { status: t('audit.pardoned'), isActive: false, variant: 'outline' as const, color: 'bg-green-100 dark:bg-green-900 text-green-800 dark:text-green-200 border-green-300 dark:border-green-700' };
-                          }
-
-                          if (punishment.active === false) {
-                            return { status: t('status.inactive'), isActive: false, variant: 'outline' as const, color: 'bg-gray-100 dark:bg-gray-800 text-gray-800 dark:text-gray-200 border-gray-300 dark:border-gray-700' };
-                          }
-
-                          return { status: t('status.active'), isActive: true, variant: 'outline' as const, color: 'bg-red-100 dark:bg-red-900 text-red-800 dark:text-red-200 border-red-300 dark:border-red-700' };
-                        };
-
-                        const statusInfo = getPunishmentStatus(punishment);
+                      {recentPunishments.length > 0 ? recentPunishments.map((punishment, index) => {
+                        const statusInfo = getRecentPunishmentStatus(punishment);
+                        const punishmentRowKey = punishment.id || `recent-punishment-${index}`;
 
                         return (
-                          <tr key={index} className="border-b">
+                          <tr key={punishmentRowKey} className="border-b">
                             <td className="p-2 font-medium">
                               <Button
                                 variant="link"
@@ -948,7 +905,7 @@ const StaffDetailModal = ({ staff, isOpen, onClose, initialPeriod = '30d' }: {
                             <td className="p-2">
                               <div className="flex gap-1 flex-wrap">
                                 {punishment.evidence && punishment.evidence.length > 0 ? (
-                                  punishment.evidence.map((evidenceItem: any, idx: number) => {
+                                  punishment.evidence.map((evidenceItem, idx) => {
                                     const displayText = getEvidenceDisplayText(evidenceItem);
                                     const clickUrl = getEvidenceClickUrl(evidenceItem);
                                     const shortName = getEvidenceShortName(evidenceItem);
@@ -961,7 +918,7 @@ const StaffDetailModal = ({ staff, isOpen, onClose, initialPeriod = '30d' }: {
                                         className={`text-xs ${isClickable ? 'cursor-pointer hover:bg-primary/10 transition-colors' : 'cursor-default'}`}
                                         onClick={() => {
                                           if (isClickable) {
-                                            window.open(clickUrl, '_blank');
+                                            openExternalUrl(clickUrl);
                                           }
                                         }}
                                         title={isClickable ? `Click to view: ${displayText}` : displayText}
@@ -978,7 +935,7 @@ const StaffDetailModal = ({ staff, isOpen, onClose, initialPeriod = '30d' }: {
                             <td className="p-2">
                               <div className="flex gap-1 flex-wrap">
                                 {punishment.attachedTicketIds && punishment.attachedTicketIds.length > 0 ? (
-                                  punishment.attachedTicketIds.map((ticketId: any, idx: number) => {
+                                  punishment.attachedTicketIds.map((ticketId, idx) => {
                                     const ticketStr = typeof ticketId === 'string' ? ticketId : String(ticketId);
                                     return (
                                       <Badge 
@@ -1000,7 +957,7 @@ const StaffDetailModal = ({ staff, isOpen, onClose, initialPeriod = '30d' }: {
                                 )}
                               </div>
                             </td>
-                            <td className="p-2">{formatDuration(punishment.duration)}</td>
+                            <td className="p-2">{formatRecentPunishmentDuration(punishment.duration)}</td>
                             <td className="p-2">{formatDateOnly(new Date(punishment.issued))}</td>
                             <td className="p-2">
                               <div className="flex items-center gap-2">
@@ -1010,41 +967,12 @@ const StaffDetailModal = ({ staff, isOpen, onClose, initialPeriod = '30d' }: {
                                 {statusInfo.isActive && (
                                   <Button
                                     variant="outline"
-                                    size="sm"
-                                    className="text-xs h-5 px-1"
-                                    onClick={async () => {
-                                      try {
-                                                                          
-                                        const csrfFetch = apiFetch;
-                                        const response = await csrfFetch(`/v1/panel/audit/punishment/${punishment.id}/rollback`, {
-                                          method: 'POST',
-                                          headers: { 'Content-Type': 'application/json' },
-                                          body: JSON.stringify({ reason: 'Staff rollback from analytics panel' })
-                                        });
-                                        
-                                        const responseData = await response.json();
-
-                                        if (!response.ok) {
-                                          throw new Error(responseData.error || `HTTP ${response.status}: ${response.statusText}`);
-                                        }
-                                        
-                                        // Show success message
-                                        toast({
-                                          title: t('audit.punishmentRolledBack'),
-                                          description: t('audit.punishmentRolledBackSuccess', { message: responseData.message })
-                                        });
-
-                                        // Refresh the modal data
-                                        refetch();
-                                      } catch (error) {
-                                        console.error('Rollback error:', error);
-                                        toast({
-                                          title: t('audit.rollbackFailed'),
-                                          description: t('audit.rollbackFailedWithError', { error: error instanceof Error ? error.message : t('audit.unknownError') }),
-                                          variant: "destructive"
-                                        });
-                                      }
-                                    }}
+                                    size="icon"
+                                    className="h-7 w-7"
+                                    onClick={() => openRollbackDialog(
+                                      punishment.id,
+                                      `${punishment.type || t('audit.unknown')} — ${punishment.playerName || t('audit.unknown')}`
+                                    )}
                                     title={t('audit.rollbackThisPunishment')}
                                   >
                                     <Undo2 className="h-3 w-3" />
@@ -1085,15 +1013,19 @@ const StaffDetailModal = ({ staff, isOpen, onClose, initialPeriod = '30d' }: {
                       </tr>
                     </thead>
                     <tbody>
-                      {recentTickets && recentTickets.length > 0 ? recentTickets.map((ticket: any, index: number) => {
-                        const timeSinceOpened = formatDurationDetailed(new Date(ticket.created || ticket.createdAt || ticket.timestamp));
-                        const timeSinceLastActivity = ticket.lastActivity ? formatDurationDetailed(new Date(ticket.lastActivity)) : 
+                      {recentTickets && recentTickets.length > 0 ? recentTickets.map((ticket, index) => {
+                        // StaffDetailsResponse.TicketDetail exposes no opened/created timestamp,
+                        // so only render a duration when such a field is actually present (avoids a misleading "0m").
+                        const openedRaw = ticket.created || ticket.createdAt || ticket.timestamp;
+                        const timeSinceOpened = openedRaw ? formatDurationDetailed(new Date(openedRaw)) : '--';
+                        const timeSinceLastActivity = ticket.lastActivity ? formatDurationDetailed(new Date(ticket.lastActivity)) :
                                                      ticket.updatedAt ? formatDurationDetailed(new Date(ticket.updatedAt)) : '--';
                         const normalizedStatus = normalizeTicketStatus(ticket.status);
                         const statusLabel = formatTicketStatusLabel(ticket.status);
-                        
+                        const ticketRowKey = ticket.ticketId || ticket.id || `recent-ticket-${index}`;
+
                         return (
-                          <tr key={index} className="border-b">
+                          <tr key={ticketRowKey} className="border-b">
                             <td className="p-2 font-medium">
                               <Button
                                 variant="link"
@@ -1129,6 +1061,42 @@ const StaffDetailModal = ({ staff, isOpen, onClose, initialPeriod = '30d' }: {
           </div>
         </div>
       </DialogContent>
+      <AlertDialog
+        open={rollbackDialog.open}
+        onOpenChange={(o) => {
+          if (!o) setRollbackDialog({ open: false, punishmentId: null, summary: '', reason: '', submitting: false });
+        }}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>{t('audit.rollbackThisPunishment')}</AlertDialogTitle>
+            <AlertDialogDescription>{rollbackDialog.summary}</AlertDialogDescription>
+          </AlertDialogHeader>
+          <div className="space-y-2">
+            <label className="text-sm font-medium">{t('common.reason')}</label>
+            <Textarea
+              value={rollbackDialog.reason}
+              onChange={(e) => setRollbackDialog(prev => ({ ...prev, reason: e.target.value }))}
+              placeholder={t('common.reason')}
+              className="min-h-[80px]"
+              maxLength={500}
+            />
+          </div>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={rollbackDialog.submitting}>{t('common.cancel')}</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={(e) => {
+                e.preventDefault();
+                handleConfirmRollback();
+              }}
+              disabled={!rollbackDialog.reason.trim() || rollbackDialog.submitting}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              {rollbackDialog.submitting ? <RefreshCw className="h-4 w-4 animate-spin" /> : t('common.confirm')}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </Dialog>
   );
 };
@@ -1167,11 +1135,8 @@ const StaffDetailRow = ({ staff, period }: { staff: StaffMember, period: string 
 };
 
 // API function to fetch detailed staff data
-const fetchStaffDetails = async (username: string, period: string) => {
-  const response = await fetch(getApiUrl(`/v1/panel/audit/staff/${username}/details?period=${period}`), {
-    credentials: 'include',
-    headers: { 'X-Server-Domain': getCurrentDomain() }
-  });
+const fetchStaffDetails = async (username: string, period: string): Promise<StaffDetails> => {
+  const response = await apiFetch(`/v1/panel/audit/staff/${username}/details?period=${period}`);
   if (!response.ok) throw new Error('Failed to fetch staff details');
   return response.json();
 };
@@ -1187,14 +1152,14 @@ const TicketAnalyticsSection = ({ analyticsPeriod }: { analyticsPeriod: string }
 
   // Calculate totals from the data
   const totalTickets = useMemo(() => {
-    return (ticketAnalytics?.byStatus || []).reduce((sum: number, item: any) => sum + item.count, 0);
+    return (ticketAnalytics?.byStatus || []).reduce((sum: number, item) => sum + item.count, 0);
   }, [ticketAnalytics]);
 
   // Calculate average resolution time
   const avgResolutionHours = useMemo(() => {
     const resolutions = ticketAnalytics?.avgResolutionByCategory || [];
     if (resolutions.length === 0) return 0;
-    const total = resolutions.reduce((sum: number, item: any) => sum + (item.avgHours || 0), 0);
+    const total = resolutions.reduce((sum: number, item) => sum + (item.avgHours || 0), 0);
     return Math.round(total / resolutions.length);
   }, [ticketAnalytics]);
 
@@ -1252,9 +1217,9 @@ const TicketAnalyticsSection = ({ analyticsPeriod }: { analyticsPeriod: string }
                     outerRadius={80}
                     fill="#8884d8"
                     dataKey="count"
-                    label={({ status, percent }) => `${status} ${((percent || 0) * 100).toFixed(0)}%`}
+                    label={({ status, percent }: PieLabelRenderProps & { status?: string }) => `${status} ${((percent || 0) * 100).toFixed(0)}%`}
                   >
-                    {ticketAnalytics.byStatus.map((entry: any, index: number) => (
+                    {ticketAnalytics.byStatus.map((_entry: unknown, index: number) => (
                       <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
                     ))}
                   </Pie>
@@ -1342,7 +1307,7 @@ const TicketAnalyticsSection = ({ analyticsPeriod }: { analyticsPeriod: string }
                 <YAxis className="text-muted-foreground" fontSize={12} />
                 <Tooltip
                   cursor={false}
-                  content={<CustomTooltip formatValue={(value: any) => `${Number(value).toFixed(1)}h`} />}
+                  content={<CustomTooltip formatValue={(value) => `${Number(value).toFixed(1)}h`} />}
                 />
                 <Bar dataKey="avgHours" fill="#10b981" style={{ filter: 'none' }} name="Avg Hours" />
               </BarChart>
@@ -1368,26 +1333,34 @@ const ActivePunishmentsCard = () => {
   const pageSize = 20;
   const { openPlayerWindow } = usePlayerWindow();
 
-  const { data: activePunishments = [], isLoading, refetch } = useQuery({
+  const { data: activePunishments = [], isLoading, refetch, dataUpdatedAt } = useQuery({
     queryKey: ['punishments-list', statusFilter],
     queryFn: () => fetchPunishmentsList(statusFilter),
-    staleTime: 5 * 60 * 1000
+    staleTime: 5 * 60 * 1000,
+    select: (rows: ActivePunishment[]): (ActivePunishment & { issuedMs: number; startedMs: number; effectiveDurationMs: number | null })[] =>
+      rows.map(p => ({
+        ...p,
+        issuedMs: p.issued ? new Date(p.issued).getTime() : 0,
+        startedMs: p.started ? new Date(p.started).getTime() : 0,
+        effectiveDurationMs: deriveEffectiveDurationMs(p),
+      })),
   });
 
-  // Extract unique staff names and categories for filter options
+  // Extract unique staff names and categories for filter options.
+  // Dependency on dataUpdatedAt avoids rebuilds on identical-data refetches.
   const staffNames = useMemo(() => {
     const names = new Set(activePunishments.map(p => p.staffName));
     return Array.from(names).sort();
-  }, [activePunishments]);
+  }, [dataUpdatedAt]);
 
   const punishmentTypes = useMemo(() => {
     const types = new Set(activePunishments.map(p => p.type));
     return Array.from(types).sort();
-  }, [activePunishments]);
+  }, [dataUpdatedAt]);
 
   // Filter and sort
   const filteredPunishments = useMemo(() => {
-    let filtered = [...activePunishments];
+    let filtered = activePunishments.slice();
 
     if (staffFilter !== 'all') {
       filtered = filtered.filter(p => p.staffName === staffFilter);
@@ -1405,20 +1378,20 @@ const ActivePunishmentsCard = () => {
       let valA: number, valB: number;
       switch (sortBy) {
         case 'issued':
-          valA = new Date(a.issued).getTime();
-          valB = new Date(b.issued).getTime();
+          valA = a.issuedMs;
+          valB = b.issuedMs;
           break;
         case 'started':
-          valA = a.started ? new Date(a.started).getTime() : 0;
-          valB = b.started ? new Date(b.started).getTime() : 0;
+          valA = a.startedMs;
+          valB = b.startedMs;
           break;
         case 'duration':
-          valA = a.duration ?? -1;
-          valB = b.duration ?? -1;
+          valA = a.effectiveDurationMs ?? Number.MAX_SAFE_INTEGER;
+          valB = b.effectiveDurationMs ?? Number.MAX_SAFE_INTEGER;
           break;
         default:
-          valA = new Date(a.issued).getTime();
-          valB = new Date(b.issued).getTime();
+          valA = a.issuedMs;
+          valB = b.issuedMs;
       }
       return sortDir === 'desc' ? valB - valA : valA - valB;
     });
@@ -1616,10 +1589,12 @@ const ActivePunishmentsCard = () => {
                     <td className="p-2">
                       {punishment.started ? formatDateOnly(new Date(punishment.started)) : <span className="text-muted-foreground">--</span>}
                     </td>
-                    <td className="p-2">{formatDuration(punishment.duration)}</td>
+                    <td className="p-2">{formatDuration(punishment.effectiveDurationMs)}</td>
                     <td className="p-2">
                       {!punishment.active ? (
                         <span className="text-xs text-muted-foreground">n/a</span>
+                      ) : !punishment.started ? (
+                        <span className="text-xs text-muted-foreground">{t('player.unstarted')}</span>
                       ) : (
                         <span className={cn(
                           "text-xs font-medium",
@@ -1638,7 +1613,7 @@ const ActivePunishmentsCard = () => {
                               key={idx}
                               variant="outline"
                               className={cn("text-xs", ev.url && "cursor-pointer hover:bg-primary/10 transition-colors")}
-                              onClick={() => ev.url && window.open(ev.url, '_blank')}
+                              onClick={() => openExternalUrl(ev.url)}
                               title={ev.text || ev.fileName || 'Evidence'}
                             >
                               <Paperclip className="h-3 w-3 mr-1" />
@@ -1765,6 +1740,9 @@ const AuditLog = () => {
 
   const { refetch, isRefetching } = useLogs();
 
+  // All analytics queries stay always-on: the top stat cards, the staff "active"
+  // subtitle, and the combined metrics overview chart depend on values from each
+  // of these queries regardless of which section (if any) is expanded.
   const { data: analyticsOverview } = useQuery({
     queryKey: ['analytics-overview'],
     queryFn: fetchAnalyticsOverview,
@@ -1774,25 +1752,25 @@ const AuditLog = () => {
   const { data: staffPerformanceData = [] } = useQuery({
     queryKey: ['staff-performance', analyticsPeriod],
     queryFn: () => fetchStaffPerformance(analyticsPeriod),
-    staleTime: 5 * 60 * 1000
+    staleTime: 5 * 60 * 1000,
   });
 
-  const { data: punishmentAnalytics } = useQuery({
+  const { data: punishmentAnalytics, dataUpdatedAt: punishmentUpdatedAt } = useQuery({
     queryKey: ['punishment-analytics', analyticsPeriod],
     queryFn: () => fetchPunishmentAnalytics(analyticsPeriod),
-    staleTime: 5 * 60 * 1000
+    staleTime: 5 * 60 * 1000,
   });
 
-  const { data: playerActivity } = useQuery({
+  const { data: playerActivity, dataUpdatedAt: playerActivityUpdatedAt } = useQuery({
     queryKey: ['player-activity', analyticsPeriod],
     queryFn: () => fetchPlayerActivity(analyticsPeriod),
-    staleTime: 5 * 60 * 1000
+    staleTime: 5 * 60 * 1000,
   });
 
-  const { data: ticketAnalytics } = useQuery({
+  const { data: ticketAnalytics, dataUpdatedAt: ticketUpdatedAt } = useQuery({
     queryKey: ['ticket-analytics', analyticsPeriod],
     queryFn: () => fetchTicketAnalytics(analyticsPeriod),
-    staleTime: 5 * 60 * 1000
+    staleTime: 5 * 60 * 1000,
   });
 
   // Combine all daily data for the metrics chart
@@ -1801,7 +1779,7 @@ const AuditLog = () => {
 
     // Add ticket data
     if (ticketAnalytics?.dailyTickets) {
-      ticketAnalytics.dailyTickets.forEach((item: any) => {
+      ticketAnalytics.dailyTickets.forEach((item) => {
         const existing = dateMap.get(item.date) || { date: item.date, tickets: 0, punishments: 0, players: 0 };
         existing.tickets = item.count || 0;
         dateMap.set(item.date, existing);
@@ -1810,7 +1788,7 @@ const AuditLog = () => {
 
     // Add punishment data
     if (punishmentAnalytics?.dailyPunishments) {
-      punishmentAnalytics.dailyPunishments.forEach((item: any) => {
+      punishmentAnalytics.dailyPunishments.forEach((item) => {
         const existing = dateMap.get(item.date) || { date: item.date, tickets: 0, punishments: 0, players: 0 };
         existing.punishments = item.count || 0;
         dateMap.set(item.date, existing);
@@ -1819,7 +1797,7 @@ const AuditLog = () => {
 
     // Add player data
     if (playerActivity?.newPlayersTrend) {
-      playerActivity.newPlayersTrend.forEach((item: any) => {
+      playerActivity.newPlayersTrend.forEach((item) => {
         const existing = dateMap.get(item.date) || { date: item.date, tickets: 0, punishments: 0, players: 0 };
         existing.players = item.count || 0;
         dateMap.set(item.date, existing);
@@ -1836,7 +1814,20 @@ const AuditLog = () => {
       }
       return a.date.localeCompare(b.date);
     });
-  }, [ticketAnalytics, punishmentAnalytics, playerActivity]);
+  }, [ticketUpdatedAt, punishmentUpdatedAt, playerActivityUpdatedAt]);
+
+  const maxLoginsByCountry = useMemo(() => {
+    const list = playerActivity?.loginsByCountry || [];
+    if (list.length === 0) return 0;
+    let max = 0;
+    for (const item of list) {
+      if (item.count > max) max = item.count;
+    }
+    return max;
+  }, [playerActivityUpdatedAt]);
+
+  // Memoize a single CustomTooltip element used across many charts.
+  const customTooltipEl = useMemo(() => <CustomTooltip />, []);
 
   return (
     <PageContainer>
@@ -1874,11 +1865,11 @@ const AuditLog = () => {
           {/* Tickets Opened */}
           <StatCard
             title={t('audit.ticketsOpened')}
-            value={analyticsOverview?.overview.totalTickets || 0}
+            value={analyticsOverview?.totalTickets ?? 0}
             icon={FileText}
             iconColor="text-blue-600"
-            trend={analyticsOverview?.overview.ticketChange >= 0 ? 'up' : 'down'}
-            trendValue={analyticsOverview?.overview.ticketChange}
+            trend={(analyticsOverview?.ticketChange ?? 0) >= 0 ? 'up' : 'down'}
+            trendValue={analyticsOverview?.ticketChange}
             isExpanded={expandedSection === 'tickets'}
             onToggle={() => toggleSection('tickets')}
           />
@@ -1886,7 +1877,7 @@ const AuditLog = () => {
           {/* Punishments Issued */}
           <StatCard
             title={t('audit.punishmentsIssued')}
-            value={punishmentAnalytics?.byType?.reduce((sum: number, item: any) => sum + item.count, 0) || 0}
+            value={punishmentAnalytics?.byType?.reduce((sum: number, item) => sum + item.count, 0) || 0}
             icon={Gavel}
             iconColor="text-red-600"
             isExpanded={expandedSection === 'punishments'}
@@ -1896,8 +1887,8 @@ const AuditLog = () => {
           {/* Staff Members */}
           <StatCard
             title={t('audit.staffMembers')}
-            value={analyticsOverview?.overview.totalStaff || 0}
-            subtitle={t('audit.activeStaff', { count: staffPerformanceData.filter((s: any) => new Date(s.lastActive) > subDays(new Date(), 7)).length })}
+            value={analyticsOverview?.totalStaff ?? 0}
+            subtitle={t('audit.activeStaff', { count: staffPerformanceData.filter((s) => new Date(s.lastActive) > subDays(new Date(), 7)).length })}
             icon={Users}
             iconColor="text-purple-600"
             isExpanded={expandedSection === 'staff'}
@@ -1907,11 +1898,11 @@ const AuditLog = () => {
           {/* Players Joined */}
           <StatCard
             title={t('audit.playersJoined')}
-            value={analyticsOverview?.overview.totalPlayers || 0}
+            value={analyticsOverview?.totalPlayers ?? 0}
             icon={User}
             iconColor="text-green-600"
-            trend={analyticsOverview?.overview.playerChange >= 0 ? 'up' : 'down'}
-            trendValue={analyticsOverview?.overview.playerChange}
+            trend={(analyticsOverview?.playerChange ?? 0) >= 0 ? 'up' : 'down'}
+            trendValue={analyticsOverview?.playerChange}
             isExpanded={expandedSection === 'players'}
             onToggle={() => toggleSection('players')}
           />
@@ -2017,7 +2008,7 @@ const AuditLog = () => {
                               <CartesianGrid strokeDasharray="3 3" className="opacity-30" />
                               <XAxis dataKey="type" className="text-muted-foreground" fontSize={12} />
                               <YAxis className="text-muted-foreground" fontSize={12} />
-                              <Tooltip cursor={false} content={<CustomTooltip formatName={(name: any) => name === "count" ? "Count" : name} />} />
+                              <Tooltip cursor={false} content={<CustomTooltip formatName={(name) => name === "count" ? "Count" : name} />} />
                               <Bar dataKey="count" fill="#ef4444" style={{ filter: 'none' }} />
                             </BarChart>
                           </ResponsiveContainer>
@@ -2043,7 +2034,7 @@ const AuditLog = () => {
                               <CartesianGrid strokeDasharray="3 3" className="opacity-30" />
                               <XAxis dataKey="date" className="text-muted-foreground" fontSize={12} />
                               <YAxis className="text-muted-foreground" fontSize={12} />
-                              <Tooltip content={<CustomTooltip formatName={(name: any) => name === "count" ? "Count" : name} />} />
+                              <Tooltip content={<CustomTooltip formatName={(name) => name === "count" ? "Count" : name} />} />
                               <Line type="monotone" dataKey="count" stroke="#ef4444" strokeWidth={2} dot={{r:0}} activeDot={false} />
                             </LineChart>
                           </ResponsiveContainer>
@@ -2066,7 +2057,7 @@ const AuditLog = () => {
                         </div>
                       ) : (
                         <div className="space-y-2">
-                          {punishmentAnalytics.byStaff.map((staff: any, index: number) => (
+                          {punishmentAnalytics.byStaff.map((staff, index) => (
                             <div key={staff.username || `punisher-${index}`} className="flex items-center justify-between p-2 border rounded">
                               <div className="flex items-center gap-2">
                                 <Shield className="h-4 w-4 text-blue-600" />
@@ -2105,7 +2096,7 @@ const AuditLog = () => {
                               <CartesianGrid strokeDasharray="3 3" className="opacity-30" />
                               <XAxis dataKey="username" className="text-muted-foreground" fontSize={12} />
                               <YAxis className="text-muted-foreground" fontSize={12} />
-                              <Tooltip cursor={false} content={<CustomTooltip formatName={(name: any) => name === "totalActions" ? "Total Actions" : name} />} />
+                              <Tooltip cursor={false} content={<CustomTooltip formatName={(name) => name === "totalActions" ? "Total Actions" : name} />} />
                               <Bar dataKey="totalActions" fill="#8884d8" style={{ filter: 'none' }} />
                             </BarChart>
                           </ResponsiveContainer>
@@ -2131,7 +2122,7 @@ const AuditLog = () => {
                               <CartesianGrid strokeDasharray="3 3" className="opacity-30" />
                               <XAxis dataKey="username" className="text-muted-foreground" fontSize={12} />
                               <YAxis className="text-muted-foreground" fontSize={12} />
-                              <Tooltip cursor={false} content={<CustomTooltip formatName={(name: any) => name === "ticketResponses" ? "Ticket Responses" : name} />} />
+                              <Tooltip cursor={false} content={<CustomTooltip formatName={(name) => name === "ticketResponses" ? "Ticket Responses" : name} />} />
                               <Bar dataKey="ticketResponses" fill="#82ca9d" style={{ filter: 'none' }} />
                             </BarChart>
                           </ResponsiveContainer>
@@ -2165,7 +2156,7 @@ const AuditLog = () => {
                               </tr>
                             </thead>
                             <tbody>
-                              {staffPerformanceData.map((staff: any) => (
+                              {staffPerformanceData.map((staff) => (
                                 <StaffDetailRow key={staff.id} staff={staff} period={analyticsPeriod} />
                               ))}
                             </tbody>
@@ -2199,7 +2190,7 @@ const AuditLog = () => {
                                 <CartesianGrid strokeDasharray="3 3" className="opacity-30" />
                                 <XAxis dataKey="date" className="text-muted-foreground" fontSize={12} />
                                 <YAxis className="text-muted-foreground" fontSize={12} />
-                                <Tooltip content={<CustomTooltip formatName={(name: any) => name === "count" ? "New Players" : name} />} />
+                                <Tooltip content={<CustomTooltip formatName={(name) => name === "count" ? "New Players" : name} />} />
                                 <Area type="monotone" dataKey="count" stroke="#10b981" fill="#10b981" fillOpacity={0.3} dot={false} activeDot={false} name="New Players" />
                               </AreaChart>
                             </ResponsiveContainer>
@@ -2210,7 +2201,7 @@ const AuditLog = () => {
                               <CartesianGrid strokeDasharray="3 3" className="opacity-30" />
                               <XAxis dataKey="date" className="text-muted-foreground" fontSize={12} />
                               <YAxis className="text-muted-foreground" fontSize={12} />
-                              <Tooltip content={<CustomTooltip />} />
+                              <Tooltip content={customTooltipEl} />
                               <Area type="monotone" dataKey="logins" stroke="#10b981" fill="#10b981" fillOpacity={0.3} dot={false} activeDot={false} name="Logins" />
                               <Area type="monotone" dataKey="uniquePlayers" stroke="#3b82f6" fill="#3b82f6" fillOpacity={0.3} dot={false} activeDot={false} name="Unique Players" />
                             </AreaChart>
@@ -2233,15 +2224,15 @@ const AuditLog = () => {
                           </div>
                         ) : (
                           <div className="space-y-2 py-4">
-                            {playerActivity.loginsByCountry.slice(0, 8).map((country: any, index: number) => (
-                              <div key={index} className="flex items-center justify-between">
+                            {playerActivity.loginsByCountry.slice(0, 8).map((country, index) => (
+                              <div key={country.country || `country-${index}`} className="flex items-center justify-between">
                                 <span>{country.country}</span>
                                 <div className="flex items-center gap-2">
                                   <div className="w-20 bg-gray-200 dark:bg-gray-700 rounded-full h-2">
                                     <div
                                       className="bg-blue-600 h-2 rounded-full"
                                       style={{
-                                        width: `${(country.count / Math.max(...playerActivity.loginsByCountry.map((c: any) => c.count))) * 100}%`
+                                        width: `${maxLoginsByCountry > 0 ? (country.count / maxLoginsByCountry) * 100 : 0}%`
                                       }}
                                     />
                                   </div>

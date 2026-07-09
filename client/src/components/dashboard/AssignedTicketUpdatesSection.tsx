@@ -7,6 +7,7 @@ import { useLocation } from 'wouter';
 import { formatTimeAgo } from '@/utils/date-utils';
 import { stripMarkdown } from '@/utils/markdown-utils';
 import { useTranslation } from 'react-i18next';
+import { StatusBadge } from '@/components/ui/status-badge';
 
 const INITIAL_VISIBLE = 2;
 const LOAD_MORE_COUNT = 2;
@@ -113,7 +114,7 @@ export function AssignedTicketUpdatesSection({
                   {updates.slice(0, visibleCount).map((update) => (
                     <div
                       key={update.id}
-                      className="p-3 border border-border rounded-lg hover:bg-muted/50 transition-colors cursor-pointer bg-blue-500/5 border-blue-500/20"
+                      className="p-3 border border-border rounded-lg hover:bg-muted/50 transition-colors cursor-pointer bg-info/5 border-info/20"
                       onClick={() => handleTicketClick(update.ticketId)}
                     >
                       <div className="flex justify-between items-start mb-2">
@@ -121,26 +122,23 @@ export function AssignedTicketUpdatesSection({
                           {update.ticketTitle}
                         </h5>
                         <div className="flex items-center gap-2 ml-2 flex-shrink-0">
-                          <div className="w-2 h-2 bg-blue-500 rounded-full"></div>
-                          <Badge
-                            variant="secondary"
-                            className={`text-xs ${
-                              update.isStaffReply
-                                ? 'bg-green-500/20 text-green-500'
-                                : 'bg-blue-500/20 text-blue-500'
-                            }`}
+                          <div className="w-2 h-2 bg-info rounded-full"></div>
+                          <StatusBadge
+                            intent={update.isStaffReply ? 'success' : 'info'}
+                            className="text-xs"
                           >
                             {update.isStaffReply ? t('dashboard.assignedTickets.staff') : t('dashboard.assignedTickets.player')}
-                          </Badge>
+                          </StatusBadge>
                           <Button
                             variant="ghost"
                             size="sm"
-                            className="h-6 w-6 p-0 text-muted-foreground hover:text-blue-500"
+                            className="h-6 w-6 p-0 text-muted-foreground hover:text-info"
                             onClick={(e) => {
                               e.stopPropagation();
                               handleDismissTicket(update.ticketId);
                             }}
                             title="Dismiss all updates for this ticket"
+                            aria-label="Dismiss all updates for this ticket"
                           >
                             <X className="h-3 w-3" />
                           </Button>

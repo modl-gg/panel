@@ -16,7 +16,7 @@ interface Player {
   lastSeen?: Date | string;
   lastDisconnect?: Date | string;
   status: string;
-  data?: any;
+  data?: { isOnline?: boolean };
   isOnline?: boolean;
 }
 
@@ -98,6 +98,14 @@ const LookupPage = () => {
           className="pl-10 pr-10"
           value={searchQuery}
           onChange={(e) => setSearchQuery(e.target.value)}
+          onKeyDown={(e) => {
+            const firstPlayer = filteredPlayers[0];
+            if (e.key === 'Enter' && firstPlayer) {
+              e.preventDefault();
+              handlePlayerSelect(firstPlayer);
+            }
+          }}
+          autoFocus
           autoCorrect="off"
           autoCapitalize="off"
         />
@@ -159,7 +167,7 @@ const LookupPage = () => {
             ))
           ) : (
             <div className="text-center py-6">
-              <p className="text-muted-foreground">{t('search.noPlayersFound')}</p>
+              <p className="text-muted-foreground">{t('search.noPlayersFound', { query: searchQuery })}</p>
             </div>
           )}
         </div>
@@ -169,7 +177,7 @@ const LookupPage = () => {
             <div className="space-y-3">
               <h2 className="text-sm font-medium text-muted-foreground mb-4">{t('pages.lookup.recentLookups')}</h2>
               
-              {recentSearches
+              {[...recentSearches]
                 .sort((a, b) => b.timestamp - a.timestamp)
                 .slice(0, 5)
                 .map(({player}) => (

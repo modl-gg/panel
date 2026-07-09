@@ -1,7 +1,8 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Fingerprint, Plus, Pencil, Trash2, Loader2 } from 'lucide-react';
-import { startRegistration } from '@simplewebauthn/browser';
+import { startRegistration, type PublicKeyCredentialCreationOptionsJSON } from '@simplewebauthn/browser';
+import { isWebAuthnCancellation, unwrapPublicKeyOptions, type MaybePublicKeyWrapped } from '@/utils/webauthn';
 import { Button } from '@modl-gg/shared-web/components/ui/button';
 import { Input } from '@modl-gg/shared-web/components/ui/input';
 import { useToast } from '@modl-gg/shared-web/hooks/use-toast';
@@ -64,7 +65,8 @@ const PasskeySettings = () => {
     try {
       const res = await passkeyFetch('/v1/panel/auth/webauthn/credentials');
       if (res.ok) {
-        setCredentials(await res.json());
+        const data = await res.json();
+        setCredentials(Array.isArray(data.credentials) ? data.credentials : []);
       }
     } catch {
       // silently fail
@@ -86,15 +88,15 @@ const PasskeySettings = () => {
         return;
       }
 
-      const { challengeId, options } = await optionsRes.json();
-      const attResp = await startRegistration({ optionsJSON: options?.publicKey ?? options });
+      const { challengeId, options }: { challengeId: string; options: MaybePublicKeyWrapped<PublicKeyCredentialCreationOptionsJSON> } = await optionsRes.json();
+      const attResp = await startRegistration({ optionsJSON: unwrapPublicKeyOptions(options) });
 
       setPendingChallengeId(challengeId);
       setPendingResponse(JSON.stringify(attResp));
       setCredentialName('');
       setNameDialogOpen(true);
-    } catch (e: any) {
-      if (e.name !== 'NotAllowedError') {
+    } catch (e) {
+      if (!isWebAuthnCancellation(e)) {
         toast({ title: t('toast.error'), description: t('settings.passkey.registrationCancelledOrFailed'), variant: 'destructive' });
       }
     } finally {
@@ -290,6 +292,9 @@ const PasskeySettings = () => {
         <DialogContent>
           <DialogHeader>
             <DialogTitle>{t('settings.passkey.renamePasskey')}</DialogTitle>
+            <DialogDescription>
+              {t('settings.passkey.renamePasskeyDesc')}
+            </DialogDescription>
           </DialogHeader>
           <Input
             value={renameName}
@@ -316,7 +321,7 @@ const PasskeySettings = () => {
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel>{t('common.cancel')}</AlertDialogCancel>
-            <AlertDialogAction onClick={handleDelete}>{t('common.remove')}</AlertDialogAction>
+            <AlertDialogAction onClick={handleDelete} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">{t('common.remove')}</AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>

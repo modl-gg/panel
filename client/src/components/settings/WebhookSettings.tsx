@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Eye, EyeOff, TestTube, MessageCircle, ChevronDown, ChevronRight } from 'lucide-react';
 import { Button } from '@modl-gg/shared-web/components/ui/button';
@@ -27,7 +27,7 @@ interface EmbedTemplate {
   fields: EmbedField[];
 }
 
-interface WebhookSettings {
+export interface WebhookSettings {
   discordWebhookUrl: string;
   discordAdminRoleId: string;
   botName: string;
@@ -114,9 +114,12 @@ const WebhookSettings: React.FC<WebhookSettingsProps> = ({
   });
 
   const [showWebhookUrl, setShowWebhookUrl] = useState(false);
-  const [isSaving, setIsSaving] = useState(false);
+  const [, setIsSaving] = useState(false);
   const [isTesting, setIsTesting] = useState(false);
-  const [saveTimeout, setSaveTimeout] = useState<NodeJS.Timeout | null>(null);
+  // The debounce timer id lives in a ref (not state) so rapid successive edits
+  // synchronously see and clear the previously scheduled save, preventing
+  // duplicate auto-save POSTs.
+  const saveTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   
   // Collapsible state for embed templates
   const [isNewTicketsExpanded, setIsNewTicketsExpanded] = useState(false);
@@ -183,24 +186,24 @@ const WebhookSettings: React.FC<WebhookSettingsProps> = ({
   // Cleanup timeout on unmount
   useEffect(() => {
     return () => {
-      if (saveTimeout) {
-        clearTimeout(saveTimeout);
+      if (saveTimeoutRef.current) {
+        clearTimeout(saveTimeoutRef.current);
       }
     };
-  }, [saveTimeout]);
+  }, []);
 
   const autoSave = async (newSettings: WebhookSettings) => {
     if (!hasPermission('admin.settings.modify') || !onSave) {
       return;
     }
 
-    // Clear existing timeout
-    if (saveTimeout) {
-      clearTimeout(saveTimeout);
+    // Clear existing timeout (ref read reflects the latest scheduled timer immediately)
+    if (saveTimeoutRef.current) {
+      clearTimeout(saveTimeoutRef.current);
     }
 
     // Set new timeout to save after 1 second of no changes
-    const timeoutId = setTimeout(async () => {
+    saveTimeoutRef.current = setTimeout(async () => {
       setIsSaving(true);
       try {
         // Use panelIconUrl as default if avatar URL is empty
@@ -219,16 +222,14 @@ const WebhookSettings: React.FC<WebhookSettingsProps> = ({
         setIsSaving(false);
       }
     }, 1000);
-
-    setSaveTimeout(timeoutId);
   };
 
-  const handleInputChange = (field: keyof WebhookSettings, value: any) => {
+  const handleInputChange = <K extends keyof WebhookSettings>(field: K, value: WebhookSettings[K]) => {
     // Prevent clearing important fields unintentionally
     if (field === 'discordWebhookUrl' && value === undefined) {
       return;
     }
-    
+
     const newSettings = {
       ...settings,
       [field]: value

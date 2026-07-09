@@ -29,6 +29,7 @@ import MediaUpload from '@/components/MediaUpload';
 import { getCreatorIdentifier } from '@/utils/creator-verification';
 import { useMediaUpload } from '@/hooks/use-media-upload';
 import { getApiErrorMessage, isValidEmail, normalizeEmail } from '@/utils/email-validation';
+import { Notice } from '@/components/ui/notice';
 
 // Map URL types to internal ticket types
 const typeMapping: Record<string, string> = {
@@ -61,6 +62,14 @@ interface FormSection {
   showIfValue?: string;
   showIfValues?: string[];
   hideByDefault?: boolean;
+}
+
+interface TicketFormConfig {
+  fields?: FormField[];
+  sections?: FormSection[];
+  requireEmail?: boolean;
+  allowEmailNotifications?: boolean;
+  requireEmailAuth?: boolean;
 }
 
 const SubmitTicketPage = () => {
@@ -104,8 +113,6 @@ const SubmitTicketPage = () => {
 
     if (!effectiveType) return;
 
-    const typeConfig = ticketTypes.find(t => t.id === effectiveType);
-
     // For staff/application forms, auto-generate the subject
     const finalSubject = (effectiveType === 'staff' || effectiveType === 'application')
       ? `${displayName.trim() || 'User'}'s Staff Application`
@@ -122,10 +129,10 @@ const SubmitTicketPage = () => {
     }
 
     // Get form configuration from settings
-    let formConfig = null;
+    let formConfig: TicketFormConfig | null = null;
     try {
       if (settingsData?.settings) {
-        const ticketForms = settingsData.settings.ticketForms;
+        const ticketForms = settingsData.settings.ticketForms as Record<string, TicketFormConfig> | undefined;
         const ticketTypeLower = effectiveType.toLowerCase();
 
         if (ticketForms && ticketForms[ticketTypeLower]) {
@@ -164,7 +171,7 @@ const SubmitTicketPage = () => {
         const triggerFieldValue = formData[section.showIfFieldId];
         if (section.showIfValue && triggerFieldValue === section.showIfValue) {
           visibleSections.add(section.id);
-        } else if (section.showIfValues && section.showIfValues.includes(triggerFieldValue)) {
+        } else if (triggerFieldValue !== undefined && section.showIfValues && section.showIfValues.includes(triggerFieldValue)) {
           visibleSections.add(section.id);
         }
       }
@@ -230,7 +237,8 @@ const SubmitTicketPage = () => {
       if (field.type === 'description') {
         continue;
       }
-      if (field.required && (!formData[field.id] || formData[field.id].trim() === '')) {
+      const fieldValue = formData[field.id];
+      if (field.required && (!fieldValue || fieldValue.trim() === '')) {
         toast({
           title: t('submitTicket.requiredFieldMissing'),
           description: t('submitTicket.requiredFieldMissingDesc', { label: field.label }),
@@ -326,8 +334,9 @@ const SubmitTicketPage = () => {
       const tempTicketId = `temp-${Date.now()}`;
       const creatorIdentifier = getCreatorIdentifier(tempTicketId);
 
-      // Format the creator name as "{name} (Web User)" for unverified submissions
-      const webCreatorName = `${displayName.trim()} (Web User)`;
+      // proto CreateTicketRequest.creator_name has max_len = 16, so send the trimmed display
+      // name truncated to that limit. (Web origin is conveyed server-side, not embedded here.)
+      const webCreatorName = displayName.trim().slice(0, 16);
 
       if (hiddenExcludedFiles > 0) {
         toast({
@@ -348,7 +357,6 @@ const SubmitTicketPage = () => {
           fieldLabels: fieldLabelsMapping,
           attachments,
           creatorIdentifier: creatorIdentifier,
-          createdServer: 'Web',
           emailAuthEnabled: formConfig.requireEmailAuth === true || formData['emailAuthEnabled'] === 'true',
         }),
       });
@@ -368,10 +376,10 @@ const SubmitTicketPage = () => {
 
       // Redirect to the ticket page
       setLocation(`/ticket/${data.ticketId}`);
-    } catch (error: any) {
+    } catch (error) {
       toast({
         title: 'Error',
-        description: error.message || 'Failed to create ticket',
+        description: error instanceof Error && error.message ? error.message : 'Failed to create ticket',
         variant: 'destructive',
       });
     } finally {
@@ -393,10 +401,10 @@ const SubmitTicketPage = () => {
     if (!effectiveType) return null;
 
     // Get form configuration from settings
-    let formConfig = null;
+    let formConfig: TicketFormConfig | null = null;
     try {
       if (settingsData?.settings) {
-        const ticketForms = settingsData.settings.ticketForms;
+        const ticketForms = settingsData.settings.ticketForms as Record<string, TicketFormConfig> | undefined;
         const ticketTypeLower = effectiveType.toLowerCase();
 
         if (ticketForms && ticketForms[ticketTypeLower]) {
@@ -413,20 +421,10 @@ const SubmitTicketPage = () => {
 
     if (!formConfig || !formConfig.fields) {
       return (
-        <div className="text-center py-8 border-2 border-dashed border-red-200 dark:border-red-800 bg-red-50 dark:bg-red-950 rounded-lg">
-          <div className="text-red-600 dark:text-red-400 mb-4">
-            <svg className="h-12 w-12 mx-auto" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L4.082 15.5c-.77.833.192 2.5 1.732 2.5z" />
-            </svg>
-          </div>
-          <h3 className="text-lg font-medium text-red-800 dark:text-red-300 mb-2">{t('submitTicket.formNotConfigured')}</h3>
-          <p className="text-red-700 dark:text-red-400 mb-4">
-            {t('submitTicket.noFormConfig', { type: effectiveType })}
-          </p>
-          <p className="text-sm text-red-600 dark:text-red-500">
-            {t('submitTicket.contactAdmin')}
-          </p>
-        </div>
+        <Notice variant="error" title={t('submitTicket.formNotConfigured')}>
+          <p className="mb-2">{t('submitTicket.noFormConfig', { type: effectiveType })}</p>
+          <p className="text-xs opacity-80">{t('submitTicket.contactAdmin')}</p>
+        </Notice>
       );
     }
 
@@ -458,17 +456,9 @@ const SubmitTicketPage = () => {
 
     if (fields.length === 0) {
       return (
-        <div className="text-center py-8 border-2 border-dashed border-yellow-200 dark:border-yellow-800 bg-yellow-50 dark:bg-yellow-950 rounded-lg">
-          <div className="text-yellow-600 dark:text-yellow-400 mb-4">
-            <svg className="h-12 w-12 mx-auto" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L4.082 15.5c-.77.833.192 2.5 1.732 2.5z" />
-            </svg>
-          </div>
-          <h3 className="text-lg font-medium text-yellow-800 dark:text-yellow-300 mb-2">{t('submitTicket.emptyFormConfig')}</h3>
-          <p className="text-yellow-700 dark:text-yellow-400 mb-4">
-            {t('submitTicket.emptyFormConfigDesc', { type: effectiveType })}
-          </p>
-        </div>
+        <Notice variant="warning" title={t('submitTicket.emptyFormConfig')}>
+          {t('submitTicket.emptyFormConfigDesc', { type: effectiveType })}
+        </Notice>
       );
     }
 
@@ -478,17 +468,15 @@ const SubmitTicketPage = () => {
 
     fields.forEach((field: FormField) => {
       if (field.sectionId) {
-        if (!fieldsBySection[field.sectionId]) {
-          fieldsBySection[field.sectionId] = [];
-        }
-        fieldsBySection[field.sectionId].push(field);
+        const sectionFields = fieldsBySection[field.sectionId] ?? (fieldsBySection[field.sectionId] = []);
+        sectionFields.push(field);
       } else {
         fieldsWithoutSection.push(field);
       }
     });
 
-    Object.keys(fieldsBySection).forEach(sectionId => {
-      fieldsBySection[sectionId].sort((a, b) => a.order - b.order);
+    Object.values(fieldsBySection).forEach(sectionFields => {
+      sectionFields.sort((a, b) => a.order - b.order);
     });
 
     fieldsWithoutSection.sort((a, b) => a.order - b.order);
@@ -507,7 +495,7 @@ const SubmitTicketPage = () => {
           const triggerFieldValue = formData[section.showIfFieldId];
           if (section.showIfValue && triggerFieldValue === section.showIfValue) {
             visibleSections.add(section.id);
-          } else if (section.showIfValues && section.showIfValues.includes(triggerFieldValue)) {
+          } else if (triggerFieldValue !== undefined && section.showIfValues && section.showIfValues.includes(triggerFieldValue)) {
             visibleSections.add(section.id);
           }
         }
@@ -655,7 +643,8 @@ const SubmitTicketPage = () => {
                     id={`${field.id}-${option}`}
                     checked={formData[field.id]?.includes(option) || false}
                     onCheckedChange={(checked: boolean) => {
-                      const currentValues = formData[field.id] ? formData[field.id].split(',') : [];
+                      const fieldValue = formData[field.id];
+                      const currentValues = fieldValue ? fieldValue.split(',') : [];
                       if (checked) {
                         const newValues = [...currentValues, option].filter(v => v.trim() !== '');
                         handleFormFieldChange(field.id, newValues.join(','));
@@ -697,9 +686,9 @@ const SubmitTicketPage = () => {
                 variant="compact"
                 maxFiles={1}
               />
-              {formPendingFiles[field.id]?.length ? (
+              {formPendingFiles[field.id]?.[0] ? (
                 <div className="text-sm text-muted-foreground">
-                  Selected file: {formPendingFiles[field.id][0].name} (uploads on submit)
+                  Selected file: {formPendingFiles[field.id]?.[0]?.name} (uploads on submit)
                 </div>
               ) : null}
             </div>
@@ -857,21 +846,9 @@ const SubmitTicketPage = () => {
       <div className="min-h-screen bg-background p-6">
         <div className="max-w-5xl mx-auto">
           {/* Security Disclaimer */}
-          <div className="bg-yellow-50 dark:bg-yellow-950 border border-yellow-200 dark:border-yellow-800 rounded-lg p-4 mb-6">
-            <div className="flex items-start gap-3">
-              <div className="text-yellow-600 dark:text-yellow-400 mt-0.5">
-                <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
-                  <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clipRule="evenodd" />
-                </svg>
-              </div>
-              <div>
-                <h3 className="font-medium text-yellow-800 dark:text-yellow-300">{t('submitTicket.securityNotice')}</h3>
-                <p className="text-sm text-yellow-700 dark:text-yellow-400 mt-1">
-                  {t('submitTicket.securityNoticeDesc')}
-                </p>
-              </div>
-            </div>
-          </div>
+          <Notice variant="warning" title={t('submitTicket.securityNotice')} className="mb-6">
+            {t('submitTicket.securityNoticeDesc')}
+          </Notice>
 
           <Card className="mb-6 shadow-card">
             <CardHeader>

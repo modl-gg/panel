@@ -1,26 +1,26 @@
 import React, { useState, useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
-import { MessageCircle, Tag, Plus, X, ChevronDown, ChevronRight, Layers, Shield, Edit3, Trash2, GripVertical, Save, Crown } from 'lucide-react';
+import { MessageCircle, Plus, X, ChevronDown, ChevronRight, Layers, Edit3, Trash2, GripVertical, Save } from 'lucide-react';
 import { Button } from '@modl-gg/shared-web/components/ui/button';
 import { Input } from '@modl-gg/shared-web/components/ui/input';
 import { Textarea } from '@modl-gg/shared-web/components/ui/textarea';
 import { Label } from '@modl-gg/shared-web/components/ui/label';
 import { Badge } from '@modl-gg/shared-web/components/ui/badge';
 import { Switch } from '@modl-gg/shared-web/components/ui/switch';
-import { Slider } from '@modl-gg/shared-web/components/ui/slider';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@modl-gg/shared-web/components/ui/select';
-import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@modl-gg/shared-web/components/ui/collapsible';
 import { DndProvider, useDrag, useDrop } from 'react-dnd';
 import { HTML5Backend } from 'react-dnd-html5-backend';
 import { Card, CardContent, CardHeader, CardTitle } from '@modl-gg/shared-web/components/ui/card';
 import { Separator } from '@modl-gg/shared-web/components/ui/separator';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@modl-gg/shared-web/components/ui/tabs';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@modl-gg/shared-web/components/ui/dialog';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@modl-gg/shared-web/components/ui/alert-dialog';
-import { QuickResponseAction, QuickResponseCategory, QuickResponsesConfiguration, defaultQuickResponsesConfig } from '@/types/quickResponses';
-import { TicketFormField, TicketFormSection, TicketFormSettings, TicketFormsConfiguration } from '@/types/forms';
+import { type QuickResponseAction, type QuickResponseCategory, type QuickResponsesConfiguration, defaultQuickResponsesConfig } from '@/types/quickResponses';
+import { type TicketFormField, type TicketFormSection, type TicketFormsConfiguration } from '@/types/forms';
 import { useBillingStatus } from '@/hooks/use-data';
 import { useAuth } from '@/hooks/use-auth';
 import { hasPremiumAccess } from '@/lib/backend-enums';
+import type { PunishmentType } from '@modl-gg/proto/modl/v1/settings_pb.ts';
 
 // Label type definition
 interface Label {
@@ -30,10 +30,23 @@ interface Label {
   description?: string;
 }
 
+export interface AIPunishmentConfig {
+  id: string;
+  name: string;
+  aiDescription: string;
+  enabled: boolean;
+}
+
+export interface AIModerationSettings {
+  enableAIReview: boolean;
+  enableAutomatedActions: boolean;
+  aiPunishmentConfigs: Record<string, AIPunishmentConfig>;
+}
+
 interface TicketSettingsProps {
   // Quick Responses State
   quickResponsesState: QuickResponsesConfiguration;
-  setQuickResponsesState: (value: QuickResponsesConfiguration) => void;
+  setQuickResponsesState: (value: QuickResponsesConfiguration | ((prev: QuickResponsesConfiguration) => QuickResponsesConfiguration)) => void;
 
   // Label Management State (new unified system)
   labels: Label[];
@@ -60,22 +73,13 @@ interface TicketSettingsProps {
   setSelectedTicketFormType: (value: 'bug' | 'support' | 'application') => void;
   
   // AI Moderation State
-  aiModerationSettings: any;
-  setAiModerationSettings: (value: any) => void;
-  punishmentTypesState: any[];
+  aiModerationSettings: AIModerationSettings;
+  setAiModerationSettings: (value: AIModerationSettings | ((prev: AIModerationSettings) => AIModerationSettings)) => void;
+  punishmentTypesState: PunishmentType[];
 
-  // Optional callbacks that may be passed from parent
-  onEditSection?: (section: TicketFormSection) => void;
-  onDeleteSection?: (sectionId: string) => void;
-  onEditField?: (field: TicketFormField) => void;
-  onDeleteField?: (fieldId: string) => void;
-  onAddField?: () => void;
-  moveField?: (dragIndex: number, hoverIndex: number, sectionId: string) => void;
   moveFieldBetweenSections?: (fieldId: string, fromSectionId: string, toSectionId: string, targetIndex?: number) => void;
 
-  // Optional prop to show only a specific section
-  // 'quick-responses' | 'label-management' | 'ticket-forms' | 'ai-moderation' | undefined (show all)
-  visibleSection?: string;
+  visibleSection: 'quick-responses' | 'label-management' | 'ticket-forms' | 'ai-moderation';
 }
 
 // Default label colors for the color picker
@@ -93,6 +97,26 @@ const DEFAULT_LABEL_COLORS = [
   '#6e7781', // Gray
   '#ffffff', // White
 ];
+
+const TICKET_TYPE_LABEL_KEYS: Record<string, string> = {
+  chat_report: 'tickets.chatReport',
+  player_report: 'tickets.playerReport',
+  bug: 'tickets.bugReport',
+  appeal: 'tickets.banAppeal',
+  support: 'tickets.support',
+  application: 'tickets.staffApplication',
+};
+
+function formatTicketTypeLabel(type: string, t: (key: string) => string): string {
+  const key = TICKET_TYPE_LABEL_KEYS[type];
+  if (key) {
+    return t(key);
+  }
+  return type
+    .split('_')
+    .map((word) => (word ? word.charAt(0).toUpperCase() + word.slice(1) : word))
+    .join(' ');
+}
 
 // Label Management Table Component
 interface LabelManagementTableProps {
@@ -353,12 +377,6 @@ const TicketSettings = ({
   setPlayerReportTags,
   appealTags,
   setAppealTags,
-  newBugTag,
-  setNewBugTag,
-  newPlayerTag,
-  setNewPlayerTag,
-  newAppealTag,
-  setNewAppealTag,
   ticketForms,
   setTicketForms,
   selectedTicketFormType,
@@ -366,13 +384,6 @@ const TicketSettings = ({
   aiModerationSettings,
   setAiModerationSettings,
   punishmentTypesState,
-  // Optional props with defaults
-  onEditSection,
-  onDeleteSection,
-  onEditField,
-  onDeleteField,
-  onAddField,
-  moveField,
   moveFieldBetweenSections,
   visibleSection
 }: TicketSettingsProps) => {
@@ -393,12 +404,6 @@ const TicketSettings = ({
     });
   };
 
-  // Collapsible state
-  const [isQuickResponsesExpanded, setIsQuickResponsesExpanded] = useState(false);
-  const [isTagManagementExpanded, setIsTagManagementExpanded] = useState(false);
-  const [isTicketFormsExpanded, setIsTicketFormsExpanded] = useState(false);
-  const [isAIModerationExpanded, setIsAIModerationExpanded] = useState(false);
-
   // Quick Response editing states
   const [editingAction, setEditingAction] = useState<QuickResponseAction | null>(null);
   const [editingCategory, setEditingCategory] = useState<QuickResponseCategory | null>(null);
@@ -415,7 +420,7 @@ const TicketSettings = ({
   const [newTicketFormFieldRequired, setNewTicketFormFieldRequired] = useState(false);
   const [newTicketFormFieldOptions, setNewTicketFormFieldOptions] = useState<string[]>([]);
   const [newTicketFormFieldSectionId, setNewTicketFormFieldSectionId] = useState('');
-  const [newTicketFormFieldGoToSection, setNewTicketFormFieldGoToSection] = useState('');
+  const [, setNewTicketFormFieldGoToSection] = useState('');
   const [newTicketFormFieldOptionSectionMapping, setNewTicketFormFieldOptionSectionMapping] = useState<Record<string, string>>({});
   const [newTicketFormOption, setNewTicketFormOption] = useState('');
   const [isOptionNavigationExpanded, setIsOptionNavigationExpanded] = useState(false);
@@ -429,9 +434,7 @@ const TicketSettings = ({
   
   // AI Punishment Types states
   const [isAddAIPunishmentDialogOpen, setIsAddAIPunishmentDialogOpen] = useState(false);
-  const [selectedAIPunishmentType, setSelectedAIPunishmentType] = useState<any | null>(null);
-  const [selectedPunishmentTypeId, setSelectedPunishmentTypeId] = useState<number | null>(null);
-  const [newAIPunishmentDescription, setNewAIPunishmentDescription] = useState('');
+  const [selectedAIPunishmentType, setSelectedAIPunishmentType] = useState<AIPunishmentConfig | null>(null);
 
   // Quick Response deletion confirmation state
   const [quickResponseDeleteDialogOpen, setQuickResponseDeleteDialogOpen] = useState(false);
@@ -444,11 +447,6 @@ const TicketSettings = ({
   // Tag deletion confirmation states
   const [tagDeleteDialogOpen, setTagDeleteDialogOpen] = useState(false);
   const [tagToDelete, setTagToDelete] = useState<{type: 'bug' | 'player' | 'appeal'; index: number; name: string} | null>(null);
-
-  const handleTagDeleteClick = (type: 'bug' | 'player' | 'appeal', index: number, name: string) => {
-    setTagToDelete({ type, index, name });
-    setTagDeleteDialogOpen(true);
-  };
 
   const confirmTagDelete = () => {
     if (tagToDelete) {
@@ -574,17 +572,6 @@ const TicketSettings = ({
     }));
   };
 
-  const addNewTicketFormFieldOption = () => {
-    if (newTicketFormOption.trim()) {
-      setNewTicketFormFieldOptions(prev => [...prev, newTicketFormOption.trim()]);
-      setNewTicketFormOption('');
-    }
-  };
-
-  const removeTicketFormFieldOption = (index: number) => {
-    setNewTicketFormFieldOptions(prev => prev.filter((_, i) => i !== index));
-  };
-
   // Section Management Functions
   const addTicketFormSection = () => {
     if (!newTicketFormSectionTitle.trim()) return;
@@ -648,9 +635,12 @@ const TicketSettings = ({
     setTicketForms(prev => {
       const sections = [...(prev[selectedTicketFormType]?.sections || [])];
       const dragSection = sections[dragIndex];
+      if (!dragSection) {
+        return prev;
+      }
       sections.splice(dragIndex, 1);
       sections.splice(hoverIndex, 0, dragSection);
-      
+
       // Update order values
       const updatedSections = sections.map((section, index) => ({
         ...section,
@@ -678,9 +668,12 @@ const TicketSettings = ({
       
       // Reorder within section
       const dragField = sectionFields[dragIndex];
+      if (!dragField) {
+        return prev;
+      }
       sectionFields.splice(dragIndex, 1);
       sectionFields.splice(hoverIndex, 0, dragField);
-      
+
       // Update order values for fields in this section
       const updatedSectionFields = sectionFields.map((field, index) => ({
         ...field,
@@ -702,7 +695,7 @@ const TicketSettings = ({
   }, [selectedTicketFormType, setTicketForms]);
 
   // Create default implementations for optional callbacks
-  const defaultMoveFieldBetweenSections = React.useCallback((fieldId: string, fromSectionId: string, toSectionId: string, targetIndex?: number) => {
+  const defaultMoveFieldBetweenSections = React.useCallback((fieldId: string, _fromSectionId: string, toSectionId: string, targetIndex?: number) => {
     setTicketForms(prev => {
       const allFields = [...(prev[selectedTicketFormType]?.fields || [])];
       
@@ -754,9 +747,12 @@ const TicketSettings = ({
               actions: (() => {
                 const actions = [...category.actions];
                 const draggedAction = actions[dragIndex];
+                if (!draggedAction) {
+                  return category.actions;
+                }
                 actions.splice(dragIndex, 1);
                 actions.splice(hoverIndex, 0, draggedAction);
-                
+
                 // Update order values
                 return actions.map((action, index) => ({
                   ...action,
@@ -776,11 +772,6 @@ const TicketSettings = ({
     }
   }, [quickResponsesState, setQuickResponsesState]);
 
-  // AI Moderation computed values
-  const availablePunishmentTypes = punishmentTypesState?.filter(pt =>
-    pt.isCustomizable && pt.ordinal != null && (!aiModerationSettings.aiPunishmentConfigs?.[pt.ordinal] || !aiModerationSettings.aiPunishmentConfigs[pt.ordinal].enabled)
-  ) || [];
-
   // Clear form when dialog opens for new field (not editing)
   useEffect(() => {
     if (isAddTicketFormFieldDialogOpen && !selectedTicketFormField) {
@@ -795,12 +786,6 @@ const TicketSettings = ({
       setIsOptionNavigationExpanded(false);
     }
   }, [isAddTicketFormFieldDialogOpen, selectedTicketFormField]);
-
-  // Determine which sections to show
-  const showQuickResponses = !visibleSection || visibleSection === 'quick-responses';
-  const showLabelManagement = !visibleSection || visibleSection === 'label-management';
-  const showTicketForms = !visibleSection || visibleSection === 'ticket-forms';
-  const showAIModeration = !visibleSection || visibleSection === 'ai-moderation';
 
   // Helper to render Quick Responses content
   const quickResponsesContent = (
@@ -817,7 +802,7 @@ const TicketSettings = ({
               <div>
                 <CardTitle className="text-base">{category.name}</CardTitle>
                 <p className="text-sm text-muted-foreground mt-1">
-                  {category.ticketTypes.join(', ')} - {t('settings.tickets.actionsCount', { count: category.actions.length })}
+                  {category.ticketTypes.map((type) => formatTicketTypeLabel(type, t)).join(', ')} - {t('settings.tickets.actionsCount', { count: category.actions.length })}
                 </p>
               </div>
               <div className="flex items-center space-x-2">
@@ -922,116 +907,29 @@ const TicketSettings = ({
     <>
       {/* Add AI Punishment Type Dialog */}
       {isAddAIPunishmentDialogOpen && (
-        <Dialog open={isAddAIPunishmentDialogOpen} onOpenChange={setIsAddAIPunishmentDialogOpen}>
-          <DialogContent className="max-w-lg">
-            <DialogHeader>
-              <DialogTitle>{t('settings.tickets.enableAIPunishmentType')}</DialogTitle>
-              <DialogDescription>
-                {selectedPunishmentTypeId ? (() => {
-                  const selectedType = punishmentTypesState.find(pt => pt.id === selectedPunishmentTypeId);
-                  return selectedType ? t('settings.tickets.configureAIDescFor', { name: selectedType.name }) : t('settings.tickets.configureAIDescSelected');
-                })() : t('settings.tickets.selectPunishmentTypeForAI')}
-              </DialogDescription>
-            </DialogHeader>
-
-            <div className="space-y-4">
-              {selectedPunishmentTypeId && (() => {
-                const selectedType = punishmentTypesState.find(t => t.id === selectedPunishmentTypeId);
-                return selectedType ? (
-                  <div className="bg-muted/30 p-3 rounded-lg">
-                    <div className="flex items-center justify-between">
-                      <div>
-                        <h5 className="font-medium">{selectedType.name}</h5>
-                        <div className="flex items-center gap-2 mt-1">
-                          <Badge variant="outline" className="text-xs">
-                            {selectedType.category}
-                          </Badge>
-                          <Badge variant="secondary" className="text-xs">
-                            {t('settings.tickets.ordinal')}: {selectedType.ordinal}
-                          </Badge>
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-                ) : null;
-              })()}
-
-              {!selectedPunishmentTypeId && (
-                <div className="space-y-2">
-                  <Label>{t('settings.tickets.selectPunishmentType')}</Label>
-                  <Select value={selectedPunishmentTypeId?.toString() || ''} onValueChange={(value) => setSelectedPunishmentTypeId(parseInt(value))}>
-                    <SelectTrigger>
-                      <SelectValue placeholder={t('settings.tickets.choosePunishmentType')} />
-                    </SelectTrigger>
-                    <SelectContent className="max-h-60 overflow-y-auto">
-                      {punishmentTypesState
-                        .filter(pt => !Object.values(aiModerationSettings?.aiPunishmentConfigs || {}).some((config: any) => config.name === pt.name))
-                        .map((punishmentType) => (
-                          <SelectItem key={punishmentType.id} value={String(punishmentType.id)}>
-                            {punishmentType.name} ({punishmentType.category})
-                          </SelectItem>
-                        ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-              )}
-
-              {selectedPunishmentTypeId && (
-                <div className="space-y-2">
-                  <Label htmlFor="ai-punishment-desc">{t('settings.tickets.aiDescription')}</Label>
-                  <Textarea
-                    id="ai-punishment-desc"
-                    className="min-h-[100px]"
-                    placeholder={t('settings.tickets.aiDescriptionPlaceholder')}
-                    value={newAIPunishmentDescription}
-                    onChange={(e) => setNewAIPunishmentDescription(e.target.value)}
-                  />
-                </div>
-              )}
-            </div>
-
-            <DialogFooter>
-              <Button
-                variant="outline"
-                onClick={() => {
-                  setIsAddAIPunishmentDialogOpen(false);
-                  setSelectedPunishmentTypeId(null);
-                  setNewAIPunishmentDescription('');
-                }}
-              >
-                {t('common.cancel')}
-              </Button>
-              <Button
-                onClick={() => {
-                  if (selectedPunishmentTypeId && newAIPunishmentDescription.trim()) {
-                    const selectedType = punishmentTypesState.find(t => t.id === selectedPunishmentTypeId);
-                    if (selectedType && selectedType.ordinal != null) {
-                      const configKey = String(selectedType.ordinal);
-                      setAiModerationSettings((prev: any) => ({
-                        ...prev,
-                        aiPunishmentConfigs: {
-                          ...prev.aiPunishmentConfigs,
-                          [configKey]: {
-                            id: configKey,
-                            name: selectedType.name,
-                            aiDescription: newAIPunishmentDescription.trim(),
-                            enabled: true
-                          }
-                        }
-                      }));
-                    }
-                    setIsAddAIPunishmentDialogOpen(false);
-                    setSelectedPunishmentTypeId(null);
-                    setNewAIPunishmentDescription('');
+        <AddAIPunishmentDialog
+          punishmentTypes={punishmentTypesState}
+          existingConfigs={aiModerationSettings?.aiPunishmentConfigs || {}}
+          onEnable={(selectedType, aiDescription) => {
+            if (selectedType.ordinal != null) {
+              const configKey = String(selectedType.ordinal);
+              setAiModerationSettings((prev) => ({
+                ...prev,
+                aiPunishmentConfigs: {
+                  ...prev.aiPunishmentConfigs,
+                  [configKey]: {
+                    id: configKey,
+                    name: selectedType.name,
+                    aiDescription,
+                    enabled: true
                   }
-                }}
-                disabled={!selectedPunishmentTypeId || !newAIPunishmentDescription.trim()}
-              >
-                {t('settings.tickets.enableForAI')}
-              </Button>
-            </DialogFooter>
-          </DialogContent>
-        </Dialog>
+                }
+              }));
+            }
+            setIsAddAIPunishmentDialogOpen(false);
+          }}
+          onClose={() => setIsAddAIPunishmentDialogOpen(false)}
+        />
       )}
 
       {/* Tag Deletion Dialog */}
@@ -1137,7 +1035,7 @@ const TicketSettings = ({
             <AlertDialogAction
               onClick={() => {
                 if (aiPunishmentToDelete) {
-                  setAiModerationSettings((prev: any) => {
+                  setAiModerationSettings((prev) => {
                     const newConfigs = { ...prev.aiPunishmentConfigs };
                     delete newConfigs[aiPunishmentToDelete.id];
                     return { ...prev, aiPunishmentConfigs: newConfigs };
@@ -1156,60 +1054,23 @@ const TicketSettings = ({
 
       {/* AI Punishment Edit Dialog */}
       {selectedAIPunishmentType && (
-        <Dialog open={Boolean(selectedAIPunishmentType)} onOpenChange={() => setSelectedAIPunishmentType(null)}>
-          <DialogContent className="max-w-lg">
-            <DialogHeader>
-              <DialogTitle>{t('settings.tickets.editAIPunishmentConfig')}</DialogTitle>
-              <DialogDescription>
-                {t('settings.tickets.updateAIDescFor', { name: selectedAIPunishmentType.name })}
-              </DialogDescription>
-            </DialogHeader>
-
-            <div className="space-y-4">
-              <div className="space-y-2">
-                <Label htmlFor="edit-ai-punishment-desc">{t('settings.tickets.aiDescription')}</Label>
-                <textarea
-                  id="edit-ai-punishment-desc"
-                  className="w-full rounded-md border border-border bg-background px-3 py-2 text-sm min-h-[100px]"
-                  value={newAIPunishmentDescription}
-                  onChange={(e) => setNewAIPunishmentDescription(e.target.value)}
-                />
-                <p className="text-xs text-muted-foreground">
-                  {t('settings.tickets.aiDescriptionHelp')}
-                </p>
-              </div>
-            </div>
-
-            <DialogFooter>
-              <Button
-                variant="outline"
-                onClick={() => setSelectedAIPunishmentType(null)}
-              >
-                {t('common.cancel')}
-              </Button>
-              <Button
-                onClick={() => {
-                  if (selectedAIPunishmentType && newAIPunishmentDescription.trim()) {
-                    setAiModerationSettings((prev: any) => ({
-                      ...prev,
-                      aiPunishmentConfigs: {
-                        ...prev.aiPunishmentConfigs,
-                        [selectedAIPunishmentType.id]: {
-                          ...prev.aiPunishmentConfigs[selectedAIPunishmentType.id],
-                          aiDescription: newAIPunishmentDescription.trim()
-                        }
-                      }
-                    }));
-                    setSelectedAIPunishmentType(null);
-                  }
-                }}
-                disabled={!newAIPunishmentDescription.trim()}
-              >
-                {t('common.saveChanges')}
-              </Button>
-            </DialogFooter>
-          </DialogContent>
-        </Dialog>
+        <EditAIPunishmentDialog
+          config={selectedAIPunishmentType}
+          onSave={(aiDescription) => {
+            setAiModerationSettings((prev) => ({
+              ...prev,
+              aiPunishmentConfigs: {
+                ...prev.aiPunishmentConfigs,
+                [selectedAIPunishmentType.id]: {
+                  ...(prev.aiPunishmentConfigs[selectedAIPunishmentType.id] ?? selectedAIPunishmentType),
+                  aiDescription
+                }
+              }
+            }));
+            setSelectedAIPunishmentType(null);
+          }}
+          onClose={() => setSelectedAIPunishmentType(null)}
+        />
       )}
 
       {/* Quick Response Action Dialog */}
@@ -1217,6 +1078,7 @@ const TicketSettings = ({
         <DialogContent className="max-w-2xl">
           <DialogHeader>
             <DialogTitle>{editingAction ? t('settings.tickets.editQuickResponse') : t('settings.tickets.addQuickResponse')}</DialogTitle>
+            <DialogDescription>{t('settings.tickets.quickResponseDialogDesc')}</DialogDescription>
           </DialogHeader>
           <QuickResponseActionForm
             action={editingAction}
@@ -1241,6 +1103,7 @@ const TicketSettings = ({
         <DialogContent>
           <DialogHeader>
             <DialogTitle>{editingCategory ? t('settings.tickets.editCategory') : t('settings.tickets.addCategory')}</DialogTitle>
+            <DialogDescription>{t('settings.tickets.quickResponseCategoryDialogDesc')}</DialogDescription>
           </DialogHeader>
           <QuickResponseCategoryForm
             category={editingCategory}
@@ -1275,7 +1138,7 @@ const TicketSettings = ({
             </div>
             <div className="space-y-2">
               <Label>{t('settings.tickets.fieldType')}</Label>
-              <Select value={newTicketFormFieldType} onValueChange={(v: any) => setNewTicketFormFieldType(v)}>
+              <Select value={newTicketFormFieldType} onValueChange={(v) => setNewTicketFormFieldType(v as typeof newTicketFormFieldType)}>
                 <SelectTrigger>
                   <SelectValue />
                 </SelectTrigger>
@@ -1473,934 +1336,470 @@ const TicketSettings = ({
     </>
   );
 
-  // When a specific section is selected, render content directly without collapsibles
-  if (visibleSection) {
-    return (
-      <div className="space-y-6 p-2">
-        {visibleSection === 'quick-responses' && quickResponsesContent}
-        {visibleSection === 'label-management' && labelManagementContent}
-        {visibleSection === 'ticket-forms' && (
-          <DndProvider backend={HTML5Backend}>
-            <div className="space-y-6">
-              <p className="text-sm text-muted-foreground">
-                {t('settings.tickets.ticketFormsDesc')}
-              </p>
-
-              {/* Form Type Selector */}
-              <div className="space-y-3">
-                <Label className="text-sm font-medium">{t('settings.tickets.formType')}</Label>
-                <div className="flex gap-2">
-                  <Button
-                    variant={selectedTicketFormType === 'bug' ? 'default' : 'outline'}
-                    size="sm"
-                    onClick={() => setSelectedTicketFormType('bug')}
-                  >
-                    {t('settings.tickets.bugReport')}
-                  </Button>
-                  <Button
-                    variant={selectedTicketFormType === 'support' ? 'default' : 'outline'}
-                    size="sm"
-                    onClick={() => setSelectedTicketFormType('support')}
-                  >
-                    {t('settings.tickets.supportRequest')}
-                  </Button>
-                  <Button
-                    variant={selectedTicketFormType === 'application' ? 'default' : 'outline'}
-                    size="sm"
-                    onClick={() => setSelectedTicketFormType('application')}
-                  >
-                    {t('settings.tickets.staffApplication')}
-                  </Button>
-                </div>
-              </div>
-
-              {/* General Settings */}
-              <div className="space-y-4">
-                <h5 className="text-sm font-medium">{t('settings.tickets.generalSettings')}</h5>
-                <div className="space-y-3">
-                  <div className="flex items-center justify-between p-3 bg-muted/50 rounded-lg">
-                    <div>
-                      <Label className="text-sm font-medium">{t('settings.tickets.requireEmailForCreation')}</Label>
-                      <p className="text-xs text-muted-foreground">{t('settings.tickets.requireEmailForCreationDesc')}</p>
-                    </div>
-                    <Switch
-                      checked={ticketForms[selectedTicketFormType]?.requireEmail ?? false}
-                      onCheckedChange={(checked) =>
-                        setTicketForms(prev => ({
-                          ...prev,
-                          [selectedTicketFormType]: {
-                            ...prev[selectedTicketFormType],
-                            requireEmail: checked,
-                            ...(!checked ? { requireEmailAuth: false } : {}),
-                          }
-                        }))
-                      }
-                    />
-                  </div>
-                  <div className={`flex items-center justify-between p-3 bg-muted/50 rounded-lg ${!(ticketForms[selectedTicketFormType]?.requireEmail) ? 'opacity-50' : ''}`}>
-                    <div>
-                      <Label className="text-sm font-medium">{t('settings.tickets.requireEmailAuthToAccess')}</Label>
-                      <p className="text-xs text-muted-foreground">{t('settings.tickets.requireEmailAuthToAccessDesc')}</p>
-                    </div>
-                    <Switch
-                      checked={ticketForms[selectedTicketFormType]?.requireEmailAuth ?? false}
-                      disabled={!(ticketForms[selectedTicketFormType]?.requireEmail)}
-                      onCheckedChange={(checked) =>
-                        setTicketForms(prev => ({
-                          ...prev,
-                          [selectedTicketFormType]: {
-                            ...prev[selectedTicketFormType],
-                            requireEmailAuth: checked,
-                          }
-                        }))
-                      }
-                    />
-                  </div>
-                  <div className="flex items-center justify-between p-3 bg-muted/50 rounded-lg">
-                    <div>
-                      <Label className="text-sm font-medium">{t('settings.tickets.allowEmailNotifications')}</Label>
-                      <p className="text-xs text-muted-foreground">{t('settings.tickets.allowEmailNotificationsDesc')}</p>
-                    </div>
-                    <Switch
-                      checked={ticketForms[selectedTicketFormType]?.allowEmailNotifications !== false}
-                      onCheckedChange={(checked) =>
-                        setTicketForms(prev => ({
-                          ...prev,
-                          [selectedTicketFormType]: {
-                            ...prev[selectedTicketFormType],
-                            allowEmailNotifications: checked,
-                          }
-                        }))
-                      }
-                    />
-                  </div>
-                </div>
-              </div>
-
-              <Separator />
-
-              {/* Form Sections */}
-              <div className="space-y-4">
-                <div className="flex items-center justify-between">
-                  <h5 className="text-sm font-medium">
-                    {selectedTicketFormType === 'bug' && t('settings.tickets.bugReportFormStructure')}
-                    {selectedTicketFormType === 'support' && t('settings.tickets.supportRequestFormStructure')}
-                    {selectedTicketFormType === 'application' && t('settings.tickets.applicationFormStructure')}
-                  </h5>
-                  <Button
-                    size="sm"
-                    onClick={() => setIsAddTicketFormSectionDialogOpen(true)}
-                  >
-                    <Plus className="h-4 w-4 mr-2" />
-                    {t('settings.tickets.createSection')}
-                  </Button>
-                </div>
-
-                {/* Section List */}
-                <div className="space-y-3">
-                  {ticketForms[selectedTicketFormType]?.sections
-                    ?.sort((a, b) => a.order - b.order)
-                    .map((section, sectionIndex) => (
-                      <DraggableSectionCard
-                        key={section.id}
-                        section={section}
-                        index={sectionIndex}
-                        moveSection={moveSectionInForm}
-                        selectedTicketFormType={selectedTicketFormType}
-                        ticketForms={ticketForms}
-                        onEditSection={(section) => {
-                          setSelectedTicketFormSection(section);
-                          setNewTicketFormSectionTitle(section.title);
-                          setNewTicketFormSectionDescription(section.description || '');
-                          setNewTicketFormSectionHideByDefault(section.hideByDefault || false);
-                          setIsAddTicketFormSectionDialogOpen(true);
-                        }}
-                        onDeleteSection={(sectionId) => {
-                          const sectionToRemove = ticketForms[selectedTicketFormType]?.sections?.find(s => s.id === sectionId);
-                          if (sectionToRemove) {
-                            handleSectionDeleteClick(sectionId, sectionToRemove.title);
-                          }
-                        }}
-                        onEditField={(field) => {
-                          setSelectedTicketFormField(field);
-                          setNewTicketFormFieldLabel(field.label);
-                          setNewTicketFormFieldType(field.type);
-                          setNewTicketFormFieldDescription(field.description || '');
-                          setNewTicketFormFieldRequired(field.required);
-                          setNewTicketFormFieldOptions(field.options || []);
-                          setNewTicketFormFieldSectionId(field.sectionId || '');
-                          setNewTicketFormFieldGoToSection(field.goToSection || '');
-                          setNewTicketFormFieldOptionSectionMapping(field.optionSectionMapping || {});
-                          setIsOptionNavigationExpanded(Object.keys(field.optionSectionMapping || {}).length > 0);
-                          setIsAddTicketFormFieldDialogOpen(true);
-                        }}
-                        onDeleteField={(fieldId) => {
-                          const fieldToRemove = ticketForms[selectedTicketFormType]?.fields?.find(f => f.id === fieldId);
-                          if (fieldToRemove) {
-                            handleFieldDeleteClick(fieldId, fieldToRemove.label);
-                          }
-                        }}
-                        onAddField={() => {
-                          setSelectedTicketFormField(null);
-                          setNewTicketFormFieldLabel('');
-                          setNewTicketFormFieldType('text');
-                          setNewTicketFormFieldDescription('');
-                          setNewTicketFormFieldRequired(false);
-                          setNewTicketFormFieldOptions([]);
-                          setNewTicketFormFieldSectionId(section.id);
-                          setNewTicketFormFieldGoToSection('');
-                          setNewTicketFormFieldOptionSectionMapping({});
-                          setIsOptionNavigationExpanded(false);
-                          setIsAddTicketFormFieldDialogOpen(true);
-                        }}
-                        moveField={moveFieldInForm}
-                        moveFieldBetweenSections={moveFieldBetweenSections}
-                      />
-                    ))}
-
-                  {(!ticketForms[selectedTicketFormType]?.sections || ticketForms[selectedTicketFormType]?.sections?.length === 0) && (
-                    <div className="text-center py-8 border-2 border-dashed border-muted rounded-lg">
-                      <Layers className="h-8 w-8 mx-auto mb-3 text-muted-foreground" />
-                      <p className="text-sm text-muted-foreground mb-4">{t('settings.tickets.noSectionsYet')}</p>
-                      <Button
-                        onClick={() => setIsAddTicketFormSectionDialogOpen(true)}
-                      >
-                        <Plus className="h-4 w-4 mr-2" />
-                        {t('settings.tickets.createFirstSection')}
-                      </Button>
-                    </div>
-                  )}
-                </div>
-              </div>
-            </div>
-          </DndProvider>
-        )}
-        {visibleSection === 'ai-moderation' && isPremiumUser() && (
-          <div>
-            <p className="text-sm text-muted-foreground mb-4">
-              {t('settings.tickets.aiModerationDesc')}
+  return (
+    <div className="space-y-6 p-2">
+      {visibleSection === 'quick-responses' && quickResponsesContent}
+      {visibleSection === 'label-management' && labelManagementContent}
+      {visibleSection === 'ticket-forms' && (
+        <DndProvider backend={HTML5Backend}>
+          <div className="space-y-6">
+            <p className="text-sm text-muted-foreground">
+              {t('settings.tickets.ticketFormsDesc')}
             </p>
 
-            <div className="space-y-4">
-              <div className="flex items-center justify-between p-3 bg-muted/50 rounded-lg">
-                <div>
-                  <Label className="text-sm font-medium">{t('settings.tickets.enableAIModeration')}</Label>
-                  <p className="text-xs text-muted-foreground">{t('settings.tickets.enableAIModerationDesc')}</p>
-                </div>
-                <Switch
-                  checked={aiModerationSettings.enableAIReview !== false}
-                  onCheckedChange={(checked) =>
-                    setAiModerationSettings((prev: any) => ({ ...prev, enableAIReview: checked }))
-                  }
-                />
-              </div>
+            <Tabs
+              value={selectedTicketFormType}
+              onValueChange={(value) => setSelectedTicketFormType(value as 'bug' | 'support' | 'application')}
+              className="w-full space-y-6"
+            >
+              <TabsList className="grid w-full grid-cols-3">
+                <TabsTrigger value="bug">{t('settings.tickets.bugReport')}</TabsTrigger>
+                <TabsTrigger value="support">{t('settings.tickets.supportRequest')}</TabsTrigger>
+                <TabsTrigger value="application">{t('settings.tickets.staffApplication')}</TabsTrigger>
+              </TabsList>
 
-              {aiModerationSettings.enableAIReview && (
-                <>
-                  <div className="flex items-center justify-between p-3 bg-muted/50 rounded-lg">
-                    <div>
-                      <Label className="text-sm font-medium">{t('settings.tickets.enableAutomatedActions')}</Label>
-                      <p className="text-xs text-muted-foreground">{t('settings.tickets.enableAutomatedActionsDesc')}</p>
-                    </div>
-                    <Switch
-                      checked={aiModerationSettings.enableAutomatedActions}
-                      onCheckedChange={(checked) =>
-                        setAiModerationSettings((prev: any) => ({ ...prev, enableAutomatedActions: checked }))
-                      }
-                    />
-                  </div>
-
-                  <div className="space-y-3">
-                    <Label className="text-sm font-medium">{t('settings.tickets.aiPunishmentTypes')}</Label>
-                    <p className="text-xs text-muted-foreground mb-2">
-                      {t('settings.tickets.aiPunishmentTypesDesc')}
-                    </p>
-
-                    {aiModerationSettings.aiPunishmentConfigs && Object.keys(aiModerationSettings.aiPunishmentConfigs).length > 0 ? (
-                      <div className="space-y-3">
-                        {Object.values(aiModerationSettings.aiPunishmentConfigs).map((config: any) => (
-                          <div key={config.id} className="flex items-start justify-between p-4 border rounded-lg bg-card">
-                            <div className="flex-1 space-y-2">
-                              <div className="flex items-center gap-3">
-                                <Switch
-                                  checked={config.enabled}
-                                  onCheckedChange={(checked) => {
-                                    setAiModerationSettings((prev: any) => ({
-                                      ...prev,
-                                      aiPunishmentConfigs: {
-                                        ...prev.aiPunishmentConfigs,
-                                        [config.id]: { ...config, enabled: checked }
-                                      }
-                                    }));
-                                  }}
-                                />
-                                <h5 className="font-medium">{config.name || 'Unknown Type'}</h5>
-                              </div>
-                              <p className="text-sm text-muted-foreground ml-10">{config.aiDescription}</p>
-                            </div>
-                            <div className="flex gap-2 ml-4">
-                              <Button
-                                variant="outline"
-                                size="sm"
-                                onClick={() => {
-                                  setSelectedAIPunishmentType(config);
-                                  setNewAIPunishmentDescription(config.aiDescription);
-                                }}
-                              >
-                                {t('common.edit')}
-                              </Button>
-                              <Button
-                                variant="destructive"
-                                size="sm"
-                                onClick={() => {
-                                  setAiPunishmentToDelete({ id: config.id, name: config.name || 'Unknown' });
-                                  setAiPunishmentDeleteDialogOpen(true);
-                                }}
-                              >
-                                {t('common.remove')}
-                              </Button>
-                            </div>
-                          </div>
-                        ))}
-                      </div>
-                    ) : (
-                      <div className="text-center py-4 border-2 border-dashed border-muted rounded-lg">
-                        <p className="text-sm text-muted-foreground mb-2">{t('settings.tickets.noAIPunishmentTypes')}</p>
-                      </div>
-                    )}
-
-                    <Button
-                      size="sm"
-                      onClick={() => setIsAddAIPunishmentDialogOpen(true)}
-                    >
-                      <Plus className="h-4 w-4 mr-2" />
-                      {t('settings.tickets.addPunishmentType')}
-                    </Button>
-                  </div>
-                </>
-              )}
-            </div>
-          </div>
-        )}
-
-        {/* Dialogs need to be rendered even in direct mode */}
-        {renderDialogs()}
-      </div>
-    );
-  }
-
-  return (
-    <div className="space-y-6 p-6">
-      <div>
-        <h3 className="text-lg font-medium mb-4">{t('settings.tickets.title')}</h3>
-        <p className="text-sm text-muted-foreground mb-6">
-          {t('settings.tickets.titleDesc')}
-        </p>
-      </div>
-
-      <div className="space-y-6">
-        {/* Quick Responses Section */}
-        {showQuickResponses && (
-        <Collapsible open={isQuickResponsesExpanded} onOpenChange={setIsQuickResponsesExpanded}>
-            <CollapsibleTrigger className="flex items-center justify-between w-full p-4 bg-muted/50 rounded-lg hover:bg-muted/70 transition-colors">
-              <div className="flex items-center">
-                <MessageCircle className="h-4 w-4 mr-2" />
-                <h4 className="text-base font-medium">{t('settings.tickets.quickResponses')}</h4>
-              </div>
-              <div className="flex items-center space-x-2">
-                {!isQuickResponsesExpanded && (
-                  <span className="text-sm text-muted-foreground">
-                    {t('settings.tickets.categoriesConfigured', { count: quickResponsesState?.categories?.length || 0 })}
-                  </span>
-                )}
-                {isQuickResponsesExpanded ? (
-                  <ChevronDown className="h-4 w-4" />
-                ) : (
-                  <ChevronRight className="h-4 w-4" />
-                )}
-              </div>
-            </CollapsibleTrigger>
-
-            <CollapsibleContent className="pt-4">
-              <div className="border rounded-lg p-4">
-                <DndProvider backend={HTML5Backend}>
-                  <p className="text-sm text-muted-foreground mb-6">
-                    {t('settings.tickets.quickResponsesDesc')}
-                  </p>
-                  
-                  <div className="space-y-6">
-                  {quickResponsesState?.categories?.length > 0 ? quickResponsesState.categories.map((category) => (
-                    <Card key={category.id} className="border-l-4 border-l-blue-500 rounded-card shadow-card-inner bg-surface-2">
-                      <CardHeader className="pb-3">
-                        <div className="flex items-center justify-between">
-                          <div>
-                            <CardTitle className="text-base">{category.name}</CardTitle>
-                            <p className="text-sm text-muted-foreground mt-1">
-                              {category.ticketTypes.join(', ')} - {t('settings.tickets.actionsCount', { count: category.actions.length })}
-                            </p>
-                          </div>
-                          <div className="flex items-center space-x-2">
-                            <Button 
-                              variant="ghost" 
-                              size="sm"
-                              onClick={() => {
-                                setEditingCategory(category);
-                                setShowCategoryDialog(true);
-                              }}
-                            >
-                              <Edit3 className="h-4 w-4" />
-                            </Button>
-                            <Button 
-                              variant="ghost" 
-                              size="sm"
-                              onClick={() => {
-                                setSelectedCategoryId(category.id);
-                                setEditingAction(null);
-                                setShowActionDialog(true);
-                              }}
-                            >
-                              <Plus className="h-4 w-4" />
-                            </Button>
-                          </div>
-                        </div>
-                      </CardHeader>
-                      <CardContent className="space-y-3">
-                        {category.actions.map((action, index) => (
-                          <DraggableQuickResponseAction
-                            key={action.id}
-                            action={action}
-                            index={index}
-                            categoryId={category.id}
-                            moveAction={moveAction}
-                            onEdit={() => {
-                              setEditingAction(action);
-                              setSelectedCategoryId(category.id);
-                              setShowActionDialog(true);
-                            }}
-                            onDelete={() => {
-                              setQuickResponseToDelete({
-                                categoryId: category.id,
-                                actionId: action.id,
-                                actionName: action.name
-                              });
-                              setQuickResponseDeleteDialogOpen(true);
-                            }}
-                          />
-                        ))}
-                        {category.actions.length === 0 && (
-                          <div className="text-center py-6 text-muted-foreground">
-                            <p className="text-sm">{t('settings.tickets.noQuickResponsesConfigured')}</p>
-                            <Button
-                              variant="outline"
-                              size="sm"
-                              className="mt-2"
-                              onClick={() => {
-                                setSelectedCategoryId(category.id);
-                                setEditingAction(null);
-                                setShowActionDialog(true);
-                              }}
-                            >
-                              <Plus className="h-4 w-4 mr-2" />
-                              {t('settings.tickets.addFirstResponse')}
-                            </Button>
-                          </div>
-                        )}
-                      </CardContent>
-                    </Card>
-                  )) : (
-                    <div className="text-center py-8 text-muted-foreground">
-                      <p className="text-sm">{t('settings.tickets.loadingQuickResponses')}</p>
-                    </div>
-                  )}
-                  </div>
-                </DndProvider>
-              </div>
-            </CollapsibleContent>
-          </Collapsible>
-        )}
-
-          {/* Label Management Section */}
-          {showLabelManagement && (
-          <Collapsible open={visibleSection ? true : isTagManagementExpanded} onOpenChange={visibleSection ? undefined : setIsTagManagementExpanded}>
-            <CollapsibleTrigger className="flex items-center justify-between w-full p-4 bg-muted/50 rounded-lg hover:bg-muted/70 transition-colors">
-              <div className="flex items-center">
-                <Tag className="h-4 w-4 mr-2" />
-                <h4 className="text-base font-medium">{t('settings.tickets.labelManagement')}</h4>
-              </div>
-              <div className="flex items-center space-x-2">
-                {!isTagManagementExpanded && (
-                  <span className="text-sm text-muted-foreground">
-                    {t('settings.tickets.labelsConfigured', { count: labels?.length || 0 })}
-                  </span>
-                )}
-                {isTagManagementExpanded ? (
-                  <ChevronDown className="h-4 w-4" />
-                ) : (
-                  <ChevronRight className="h-4 w-4" />
-                )}
-              </div>
-            </CollapsibleTrigger>
-
-            <CollapsibleContent className="pt-4">
-              <div className="border rounded-lg p-4">
-                <p className="text-sm text-muted-foreground mb-6">
-                  {t('settings.tickets.labelManagementDesc')}
+              <TabsContent value={selectedTicketFormType} className="mt-0 space-y-6">
+                <p className="text-sm text-muted-foreground">
+                  {selectedTicketFormType === 'bug' && t('settings.tickets.bugReportFormStructure')}
+                  {selectedTicketFormType === 'support' && t('settings.tickets.supportRequestFormStructure')}
+                  {selectedTicketFormType === 'application' && t('settings.tickets.applicationFormStructure')}
                 </p>
 
-                <LabelManagementTable
-                  labels={labels || []}
-                  onLabelsChange={setLabels}
-                />
-              </div>
-            </CollapsibleContent>
-          </Collapsible>
-          )}
-
-          {/* Ticket Form Configuration Section */}
-          {showTicketForms && (
-          <Collapsible open={visibleSection ? true : isTicketFormsExpanded} onOpenChange={visibleSection ? undefined : setIsTicketFormsExpanded}>
-            <CollapsibleTrigger className="flex items-center justify-between w-full p-4 bg-muted/50 rounded-lg hover:bg-muted/70 transition-colors">
-              <div className="flex items-center">
-                <Layers className="h-4 w-4 mr-2" />
-                <h4 className="text-base font-medium">{t('settings.tickets.ticketFormConfiguration')}</h4>
-              </div>
-              <div className="flex items-center space-x-2">
-                {!isTicketFormsExpanded && (
-                  <span className="text-sm text-muted-foreground">
-                    {t('settings.tickets.sectionsAcrossForms', { sections: Object.entries(ticketForms || {}).reduce((acc, [, form]) => acc + (form && typeof form === 'object' && 'sections' in form && Array.isArray(form.sections) ? form.sections.length : 0), 0), forms: Object.keys(ticketForms || {}).length })}
-                  </span>
-                )}
-                {isTicketFormsExpanded ? (
-                  <ChevronDown className="h-4 w-4" />
-                ) : (
-                  <ChevronRight className="h-4 w-4" />
-                )}
-              </div>
-            </CollapsibleTrigger>
-            
-            <CollapsibleContent className="pt-4">
-              <div className="border rounded-lg p-4">
-                <DndProvider backend={HTML5Backend}>
-                  <div className="space-y-4">
-                    <p className="text-sm text-muted-foreground">
-                      {t('settings.tickets.ticketFormsLongDesc')}
-                    </p>
-
-                    {/* Form Type Selector */}
-                    <div className="space-y-3">
-                      <Label className="text-sm font-medium">{t('settings.tickets.formType')}</Label>
-                      <div className="flex gap-2">
-                        <Button
-                          variant={selectedTicketFormType === 'bug' ? 'default' : 'outline'}
-                          size="sm"
-                          onClick={() => setSelectedTicketFormType('bug')}
-                        >
-                          {t('settings.tickets.bugReport')}
-                        </Button>
-                        <Button
-                          variant={selectedTicketFormType === 'support' ? 'default' : 'outline'}
-                          size="sm"
-                          onClick={() => setSelectedTicketFormType('support')}
-                        >
-                          {t('settings.tickets.supportRequest')}
-                        </Button>
-                        <Button
-                          variant={selectedTicketFormType === 'application' ? 'default' : 'outline'}
-                          size="sm"
-                          onClick={() => setSelectedTicketFormType('application')}
-                        >
-                          {t('settings.tickets.staffApplication')}
-                        </Button>
+                <div className="space-y-4">
+                  <h5 className="text-sm font-medium">{t('settings.tickets.generalSettings')}</h5>
+                  <div className="space-y-3">
+                    <div className="flex items-center justify-between p-3 bg-muted/50 rounded-lg">
+                      <div>
+                        <Label className="text-sm font-medium">{t('settings.tickets.requireEmailForCreation')}</Label>
+                        <p className="text-xs text-muted-foreground">{t('settings.tickets.requireEmailForCreationDesc')}</p>
                       </div>
+                      <Switch
+                        checked={ticketForms[selectedTicketFormType]?.requireEmail ?? false}
+                        onCheckedChange={(checked) =>
+                          setTicketForms(prev => ({
+                            ...prev,
+                            [selectedTicketFormType]: {
+                              ...prev[selectedTicketFormType],
+                              requireEmail: checked,
+                              ...(!checked ? { requireEmailAuth: false } : {}),
+                            }
+                          }))
+                        }
+                      />
                     </div>
-
-                    {/* General Settings */}
-                    <div className="space-y-4">
-                      <h5 className="text-sm font-medium">{t('settings.tickets.generalSettings')}</h5>
-                      <div className="space-y-3">
-                        <div className="flex items-center justify-between p-3 bg-muted/50 rounded-lg">
-                          <div>
-                            <Label className="text-sm font-medium">{t('settings.tickets.requireEmailForCreation')}</Label>
-                            <p className="text-xs text-muted-foreground">{t('settings.tickets.requireEmailForCreationDesc')}</p>
-                          </div>
-                          <Switch
-                            checked={ticketForms[selectedTicketFormType]?.requireEmail ?? false}
-                            onCheckedChange={(checked) =>
-                              setTicketForms(prev => ({
-                                ...prev,
-                                [selectedTicketFormType]: {
-                                  ...prev[selectedTicketFormType],
-                                  requireEmail: checked,
-                                  ...(!checked ? { requireEmailAuth: false } : {}),
-                                }
-                              }))
-                            }
-                          />
-                        </div>
-                        <div className={`flex items-center justify-between p-3 bg-muted/50 rounded-lg ${!(ticketForms[selectedTicketFormType]?.requireEmail) ? 'opacity-50' : ''}`}>
-                          <div>
-                            <Label className="text-sm font-medium">{t('settings.tickets.requireEmailAuthToAccess')}</Label>
-                            <p className="text-xs text-muted-foreground">{t('settings.tickets.requireEmailAuthToAccessDesc')}</p>
-                          </div>
-                          <Switch
-                            checked={ticketForms[selectedTicketFormType]?.requireEmailAuth ?? false}
-                            disabled={!(ticketForms[selectedTicketFormType]?.requireEmail)}
-                            onCheckedChange={(checked) =>
-                              setTicketForms(prev => ({
-                                ...prev,
-                                [selectedTicketFormType]: {
-                                  ...prev[selectedTicketFormType],
-                                  requireEmailAuth: checked,
-                                }
-                              }))
-                            }
-                          />
-                        </div>
-                        <div className="flex items-center justify-between p-3 bg-muted/50 rounded-lg">
-                          <div>
-                            <Label className="text-sm font-medium">{t('settings.tickets.allowEmailNotifications')}</Label>
-                            <p className="text-xs text-muted-foreground">{t('settings.tickets.allowEmailNotificationsDesc')}</p>
-                          </div>
-                          <Switch
-                            checked={ticketForms[selectedTicketFormType]?.allowEmailNotifications !== false}
-                            onCheckedChange={(checked) =>
-                              setTicketForms(prev => ({
-                                ...prev,
-                                [selectedTicketFormType]: {
-                                  ...prev[selectedTicketFormType],
-                                  allowEmailNotifications: checked,
-                                }
-                              }))
-                            }
-                          />
-                        </div>
+                    <div className={`flex items-center justify-between p-3 bg-muted/50 rounded-lg ${!(ticketForms[selectedTicketFormType]?.requireEmail) ? 'opacity-50' : ''}`}>
+                      <div>
+                        <Label className="text-sm font-medium">{t('settings.tickets.requireEmailAuthToAccess')}</Label>
+                        <p className="text-xs text-muted-foreground">{t('settings.tickets.requireEmailAuthToAccessDesc')}</p>
                       </div>
+                      <Switch
+                        checked={ticketForms[selectedTicketFormType]?.requireEmailAuth ?? false}
+                        disabled={!(ticketForms[selectedTicketFormType]?.requireEmail)}
+                        onCheckedChange={(checked) =>
+                          setTicketForms(prev => ({
+                            ...prev,
+                            [selectedTicketFormType]: {
+                              ...prev[selectedTicketFormType],
+                              requireEmailAuth: checked,
+                            }
+                          }))
+                        }
+                      />
                     </div>
+                    <div className="flex items-center justify-between p-3 bg-muted/50 rounded-lg">
+                      <div>
+                        <Label className="text-sm font-medium">{t('settings.tickets.allowEmailNotifications')}</Label>
+                        <p className="text-xs text-muted-foreground">{t('settings.tickets.allowEmailNotificationsDesc')}</p>
+                      </div>
+                      <Switch
+                        checked={ticketForms[selectedTicketFormType]?.allowEmailNotifications !== false}
+                        onCheckedChange={(checked) =>
+                          setTicketForms(prev => ({
+                            ...prev,
+                            [selectedTicketFormType]: {
+                              ...prev[selectedTicketFormType],
+                              allowEmailNotifications: checked,
+                            }
+                          }))
+                        }
+                      />
+                    </div>
+                  </div>
+                </div>
 
-                    <Separator />
+                <Separator />
 
-                    {/* Form Sections */}
-                    <div className="space-y-4">
-                      <div className="flex items-center justify-between">
-                        <h5 className="text-sm font-medium">
-                          {selectedTicketFormType === 'bug' && t('settings.tickets.bugReportFormStructure')}
-                          {selectedTicketFormType === 'support' && t('settings.tickets.supportRequestFormStructure')}
-                          {selectedTicketFormType === 'application' && t('settings.tickets.applicationFormStructure')}
-                        </h5>
+                {/* Form Sections */}
+                <div className="space-y-4">
+                  <div className="flex items-center justify-between">
+                    <h5 className="text-sm font-medium">{t('settings.tickets.formSections')}</h5>
+                    <Button
+                      size="sm"
+                      onClick={() => setIsAddTicketFormSectionDialogOpen(true)}
+                    >
+                      <Plus className="h-4 w-4 mr-2" />
+                      {t('settings.tickets.createSection')}
+                    </Button>
+                  </div>
+
+                  {/* Section List */}
+                  <div className="space-y-3">
+                    {ticketForms[selectedTicketFormType]?.sections
+                      ?.sort((a, b) => a.order - b.order)
+                      .map((section, sectionIndex) => (
+                        <DraggableSectionCard
+                          key={section.id}
+                          section={section}
+                          index={sectionIndex}
+                          moveSection={moveSectionInForm}
+                          selectedTicketFormType={selectedTicketFormType}
+                          ticketForms={ticketForms}
+                          onEditSection={(section) => {
+                            setSelectedTicketFormSection(section);
+                            setNewTicketFormSectionTitle(section.title);
+                            setNewTicketFormSectionDescription(section.description || '');
+                            setNewTicketFormSectionHideByDefault(section.hideByDefault || false);
+                            setIsAddTicketFormSectionDialogOpen(true);
+                          }}
+                          onDeleteSection={(sectionId) => {
+                            const sectionToRemove = ticketForms[selectedTicketFormType]?.sections?.find(s => s.id === sectionId);
+                            if (sectionToRemove) {
+                              handleSectionDeleteClick(sectionId, sectionToRemove.title);
+                            }
+                          }}
+                          onEditField={(field) => {
+                            setSelectedTicketFormField(field);
+                            setNewTicketFormFieldLabel(field.label);
+                            setNewTicketFormFieldType(field.type);
+                            setNewTicketFormFieldDescription(field.description || '');
+                            setNewTicketFormFieldRequired(field.required);
+                            setNewTicketFormFieldOptions(field.options || []);
+                            setNewTicketFormFieldSectionId(field.sectionId || '');
+                            setNewTicketFormFieldGoToSection(field.goToSection || '');
+                            setNewTicketFormFieldOptionSectionMapping(field.optionSectionMapping || {});
+                            setIsOptionNavigationExpanded(Object.keys(field.optionSectionMapping || {}).length > 0);
+                            setIsAddTicketFormFieldDialogOpen(true);
+                          }}
+                          onDeleteField={(fieldId) => {
+                            const fieldToRemove = ticketForms[selectedTicketFormType]?.fields?.find(f => f.id === fieldId);
+                            if (fieldToRemove) {
+                              handleFieldDeleteClick(fieldId, fieldToRemove.label);
+                            }
+                          }}
+                          onAddField={() => {
+                            setSelectedTicketFormField(null);
+                            setNewTicketFormFieldLabel('');
+                            setNewTicketFormFieldType('text');
+                            setNewTicketFormFieldDescription('');
+                            setNewTicketFormFieldRequired(false);
+                            setNewTicketFormFieldOptions([]);
+                            setNewTicketFormFieldSectionId(section.id);
+                            setNewTicketFormFieldGoToSection('');
+                            setNewTicketFormFieldOptionSectionMapping({});
+                            setIsOptionNavigationExpanded(false);
+                            setIsAddTicketFormFieldDialogOpen(true);
+                          }}
+                          moveField={moveFieldInForm}
+                          moveFieldBetweenSections={moveFieldBetweenSections ?? defaultMoveFieldBetweenSections}
+                        />
+                      ))}
+
+                    {(!ticketForms[selectedTicketFormType]?.sections || ticketForms[selectedTicketFormType]?.sections?.length === 0) && (
+                      <div className="text-center py-8 border-2 border-dashed border-muted rounded-lg">
+                        <Layers className="h-8 w-8 mx-auto mb-3 text-muted-foreground" />
+                        <p className="text-sm text-muted-foreground mb-4">{t('settings.tickets.noSectionsYet')}</p>
                         <Button
-                          size="sm"
                           onClick={() => setIsAddTicketFormSectionDialogOpen(true)}
                         >
                           <Plus className="h-4 w-4 mr-2" />
-                          {t('settings.tickets.createSection')}
+                          {t('settings.tickets.createFirstSection')}
                         </Button>
                       </div>
-
-                      {/* Section List with nested fields */}
-                      <div className="space-y-3">
-                        {ticketForms[selectedTicketFormType]?.sections
-                          ?.sort((a, b) => a.order - b.order)
-                          .map((section, sectionIndex) => (
-                            <DraggableSectionCard
-                              key={section.id}
-                              section={section}
-                              index={sectionIndex}
-                              moveSection={moveSectionInForm}
-                              selectedTicketFormType={selectedTicketFormType}
-                              ticketForms={ticketForms}
-                              onEditSection={(section) => {
-                                setSelectedTicketFormSection(section);
-                                setNewTicketFormSectionTitle(section.title);
-                                setNewTicketFormSectionDescription(section.description || '');
-                                setNewTicketFormSectionHideByDefault(section.hideByDefault || false);
-                                setIsAddTicketFormSectionDialogOpen(true);
-                              }}
-                              onDeleteSection={(sectionId) => {
-                                const sectionToRemove = ticketForms[selectedTicketFormType]?.sections?.find(s => s.id === sectionId);
-                                if (sectionToRemove) {
-                                  handleSectionDeleteClick(sectionId, sectionToRemove.title);
-                                }
-                              }}
-                              onEditField={(field) => {
-                                setSelectedTicketFormField(field);
-                                setNewTicketFormFieldLabel(field.label);
-                                setNewTicketFormFieldType(field.type);
-                                setNewTicketFormFieldDescription(field.description || '');
-                                setNewTicketFormFieldRequired(field.required);
-                                setNewTicketFormFieldOptions(field.options || []);
-                                setNewTicketFormFieldSectionId(field.sectionId || '');
-                                setNewTicketFormFieldGoToSection(field.goToSection || '');
-                                setNewTicketFormFieldOptionSectionMapping(field.optionSectionMapping || {});
-                                setIsOptionNavigationExpanded(Object.keys(field.optionSectionMapping || {}).length > 0);
-                                setIsAddTicketFormFieldDialogOpen(true);
-                              }}
-                              onDeleteField={(fieldId) => {
-                                const fieldToRemove = ticketForms[selectedTicketFormType]?.fields?.find(f => f.id === fieldId);
-                                if (fieldToRemove) {
-                                  handleFieldDeleteClick(fieldId, fieldToRemove.label);
-                                }
-                              }}
-                              onAddField={() => {
-                                // Clear all field form state for new field
-                                setSelectedTicketFormField(null);
-                                setNewTicketFormFieldLabel('');
-                                setNewTicketFormFieldType('text');
-                                setNewTicketFormFieldDescription('');
-                                setNewTicketFormFieldRequired(false);
-                                setNewTicketFormFieldOptions([]);
-                                setNewTicketFormFieldSectionId(section.id);
-                                setNewTicketFormFieldGoToSection('');
-                                setNewTicketFormFieldOptionSectionMapping({});
-                                setIsOptionNavigationExpanded(false);
-                                setIsAddTicketFormFieldDialogOpen(true);
-                              }}
-                              moveField={moveFieldInForm}
-                              moveFieldBetweenSections={moveFieldBetweenSections}
-                            />
-                          ))}
-
-                        {(!ticketForms[selectedTicketFormType]?.sections || ticketForms[selectedTicketFormType]?.sections?.length === 0) && (
-                          <div className="text-center py-12 text-muted-foreground border-2 border-dashed border-muted rounded-lg">
-                            <Layers className="h-8 w-8 mx-auto mb-3 opacity-50" />
-                            <p className="text-sm font-medium">{t('settings.tickets.noSectionsConfigured')}</p>
-                            <p className="text-xs mt-1 mb-3">{t('settings.tickets.createSectionsHint')}</p>
-                            <Button
-                              size="sm"
-                              variant="outline"
-                              onClick={() => setIsAddTicketFormSectionDialogOpen(true)}
-                            >
-                              <Plus className="h-4 w-4 mr-2" />
-                              {t('settings.tickets.createFirstSection')}
-                            </Button>
-                          </div>
-                        )}
-                      </div>
-                    </div>
+                    )}
                   </div>
-                </DndProvider>
-              </div>
-            </CollapsibleContent>
-          </Collapsible>
-          )}
+                </div>
+              </TabsContent>
+            </Tabs>
+          </div>
+        </DndProvider>
+      )}
+      {visibleSection === 'ai-moderation' && isPremiumUser() && (
+        <div>
+          <p className="text-sm text-muted-foreground mb-4">
+            {t('settings.tickets.aiModerationDesc')}
+          </p>
 
-          {/* AI Moderation Settings Section */}
-          {showAIModeration && (
-          <Collapsible open={visibleSection ? (isPremiumUser() ? true : false) : isAIModerationExpanded} onOpenChange={isPremiumUser() ? (visibleSection ? undefined : setIsAIModerationExpanded) : undefined}>
-            <CollapsibleTrigger className={`flex items-center justify-between w-full p-4 bg-muted/50 rounded-lg transition-colors ${isPremiumUser() ? 'hover:bg-muted/70' : 'cursor-not-allowed opacity-60'}`}>
-              <div className="flex items-center">
-                <Shield className="h-4 w-4 mr-2" />
-                <h4 className="text-base font-medium">{t('settings.tickets.aiModerationSettings')}</h4>
-                {!isPremiumUser() && (
-                  <Badge variant="secondary" className="ml-2 bg-orange-100 text-orange-800 dark:bg-orange-900 dark:text-orange-100">
-                    <Crown className="h-3 w-3 mr-1" />
-                    Premium
-                  </Badge>
-                )}
+          <div className="space-y-4">
+            <div className="flex items-center justify-between p-3 bg-muted/50 rounded-lg">
+              <div>
+                <Label className="text-sm font-medium">{t('settings.tickets.enableAIModeration')}</Label>
+                <p className="text-xs text-muted-foreground">{t('settings.tickets.enableAIModerationDesc')}</p>
               </div>
-              <div className="flex items-center space-x-2">
-                {!isAIModerationExpanded && isPremiumUser() && (
-                  <span className="text-sm text-muted-foreground">
-                    {aiModerationSettings.enableAutomatedActions ? t('settings.tickets.automated') : t('settings.tickets.manual')}
-                  </span>
-                )}
-                {!isPremiumUser() && (
-                  <span className="text-sm text-muted-foreground">{t('settings.tickets.premiumRequired')}</span>
-                )}
-                {isPremiumUser() && (isAIModerationExpanded ? (
-                  <ChevronDown className="h-4 w-4" />
-                ) : (
-                  <ChevronRight className="h-4 w-4" />
-                ))}
-              </div>
-            </CollapsibleTrigger>
-            
-            <CollapsibleContent className="pt-4">
-              <div className={`border rounded-lg p-4 ${!isPremiumUser() ? 'opacity-60 pointer-events-none' : ''}`}>
-                {!isPremiumUser() ? (
-                  <div className="text-center py-8">
-                    <Crown className="h-12 w-12 mx-auto mb-4 text-orange-500" />
-                    <h3 className="text-lg font-medium mb-2">{t('settings.tickets.premiumFeature')}</h3>
-                    <p className="text-sm text-muted-foreground mb-4">
-                      {t('settings.tickets.aiModerationPremiumDesc')}
-                    </p>
-                    <Button variant="default" className="bg-orange-600 hover:bg-orange-700">
-                      <Crown className="h-4 w-4 mr-2" />
-                      {t('settings.tickets.upgradeToPremium')}
-                    </Button>
+              <Switch
+                checked={aiModerationSettings.enableAIReview !== false}
+                onCheckedChange={(checked) =>
+                  setAiModerationSettings((prev) => ({ ...prev, enableAIReview: checked }))
+                }
+              />
+            </div>
+
+            {aiModerationSettings.enableAIReview && (
+              <>
+                <div className="flex items-center justify-between p-3 bg-muted/50 rounded-lg">
+                  <div>
+                    <Label className="text-sm font-medium">{t('settings.tickets.enableAutomatedActions')}</Label>
+                    <p className="text-xs text-muted-foreground">{t('settings.tickets.enableAutomatedActionsDesc')}</p>
                   </div>
-                ) : (
-                  <>
-                    <p className="text-sm text-muted-foreground">
-                      {t('settings.tickets.aiModerationConfigureDesc')}
-                    </p>
+                  <Switch
+                    checked={aiModerationSettings.enableAutomatedActions}
+                    onCheckedChange={(checked) =>
+                      setAiModerationSettings((prev) => ({ ...prev, enableAutomatedActions: checked }))
+                    }
+                  />
+                </div>
 
-                    <div className="space-y-6">
-                      {/* Enable AI Review Toggle */}
-                      <div className="flex items-center justify-between">
-                        <div className="space-y-1">
-                          <Label htmlFor="enable-ai-review" className="text-sm font-medium">
-                            {t('settings.tickets.enableAIReview')}
-                          </Label>
-                          <p className="text-xs text-muted-foreground">
-                            {t('settings.tickets.enableAIReviewDesc')}
-                          </p>
-                        </div>
-                        <Switch
-                          id="enable-ai-review"
-                          checked={aiModerationSettings.enableAIReview !== false}
-                          onCheckedChange={(checked) => {
-                            setAiModerationSettings((prev: any) => ({
-                              ...prev,
-                              enableAIReview: checked
-                            }));
-                          }}
-                        />
-                      </div>
+                <div className="space-y-3">
+                  <Label className="text-sm font-medium">{t('settings.tickets.aiPunishmentTypes')}</Label>
+                  <p className="text-xs text-muted-foreground mb-2">
+                    {t('settings.tickets.aiPunishmentTypesDesc')}
+                  </p>
 
-                      {/* AI Settings Content - Disabled when AI Review is off */}
-                      <div className={`space-y-6 ${aiModerationSettings.enableAIReview === false ? 'opacity-50 pointer-events-none' : ''}`}>
-                        {/* Enable Automated Actions Toggle */}
-                        <div className="flex items-center justify-between">
-                          <div className="space-y-1">
-                            <Label htmlFor="enable-automated-actions" className="text-sm font-medium">
-                              {t('settings.tickets.enableAutomatedActions')}
-                            </Label>
-                            <p className="text-xs text-muted-foreground">
-                              {t('settings.tickets.enableAutomatedActionsFullDesc')}
-                            </p>
-                          </div>
-                          <Switch
-                            id="enable-automated-actions"
-                            checked={aiModerationSettings.enableAutomatedActions}
-                            onCheckedChange={(checked) => {
-                              setAiModerationSettings((prev: any) => ({
-                                ...prev,
-                                enableAutomatedActions: checked
-                              }));
-                            }}
-                          />
-                        </div>
-
-                        {/* AI Punishment Types Management Section */}
-                        <div className="space-y-4">
-                          <div className="flex items-center justify-between">
-                            <div>
-                              <h4 className="text-base font-medium">{t('settings.tickets.aiPunishmentTypes')}</h4>
-                              <p className="text-sm text-muted-foreground">
-                                {t('settings.tickets.aiPunishmentTypesManageDesc')}
-                              </p>
+                  {aiModerationSettings.aiPunishmentConfigs && Object.keys(aiModerationSettings.aiPunishmentConfigs).length > 0 ? (
+                    <div className="space-y-3">
+                      {Object.values(aiModerationSettings.aiPunishmentConfigs).map((config: AIPunishmentConfig) => (
+                        <div key={config.id} className="flex items-start justify-between p-4 border rounded-lg bg-card">
+                          <div className="flex-1 space-y-2">
+                            <div className="flex items-center gap-3">
+                              <Switch
+                                checked={config.enabled}
+                                onCheckedChange={(checked) => {
+                                  setAiModerationSettings((prev) => ({
+                                    ...prev,
+                                    aiPunishmentConfigs: {
+                                      ...prev.aiPunishmentConfigs,
+                                      [config.id]: { ...config, enabled: checked }
+                                    }
+                                  }));
+                                }}
+                              />
+                              <h5 className="font-medium">{config.name || 'Unknown Type'}</h5>
                             </div>
+                            <p className="text-sm text-muted-foreground ml-10">{config.aiDescription}</p>
+                          </div>
+                          <div className="flex gap-2 ml-4">
                             <Button
                               variant="outline"
+                              size="sm"
+                              onClick={() => setSelectedAIPunishmentType(config)}
+                            >
+                              {t('common.edit')}
+                            </Button>
+                            <Button
+                              variant="destructive"
                               size="sm"
                               onClick={() => {
-                                setSelectedPunishmentTypeId(null);
-                                setNewAIPunishmentDescription('');
-                                setIsAddAIPunishmentDialogOpen(true);
+                                setAiPunishmentToDelete({ id: config.id, name: config.name || 'Unknown' });
+                                setAiPunishmentDeleteDialogOpen(true);
                               }}
                             >
-                              <Plus className="mr-2 h-4 w-4" />
-                              {t('settings.tickets.addType')}
+                              {t('common.remove')}
                             </Button>
                           </div>
-
-                          <div className="space-y-4">
-                            {/* Current AI Punishment Types */}
-                            <div className="space-y-3">
-                        {Object.values(aiModerationSettings.aiPunishmentConfigs || {}).map((punishmentType: any) => (
-                          <div key={punishmentType.id} className="flex items-start justify-between p-4 border rounded-lg bg-card">
-                            <div className="flex-1 space-y-2">
-                              <div className="flex items-center gap-3">
-                                <Switch
-                                  checked={punishmentType.enabled}
-                                  onCheckedChange={(checked) => {
-                                    setAiModerationSettings((prev: any) => ({
-                                      ...prev,
-                                      aiPunishmentConfigs: {
-                                        ...prev.aiPunishmentConfigs,
-                                        [punishmentType.id]: {
-                                          ...punishmentType,
-                                          enabled: checked
-                                        }
-                                      }
-                                    }));
-                                  }}
-                                />
-                                <div>
-                                  <h5 className="font-medium">{punishmentType.name}</h5>
-                                </div>
-                              </div>
-                              <p className="text-sm text-muted-foreground ml-10">
-                                {punishmentType.aiDescription}
-                              </p>
-                            </div>
-                            <div className="flex gap-2 ml-4">
-                              <Button
-                                variant="outline"
-                                size="sm"
-                                onClick={() => {
-                                  setSelectedAIPunishmentType(punishmentType);
-                                  setNewAIPunishmentDescription(punishmentType.aiDescription);
-                                }}
-                              >
-                                {t('common.edit')}
-                              </Button>
-                              <Button
-                                variant="destructive"
-                                size="sm"
-                                onClick={() => {
-                                  setAiPunishmentToDelete({
-                                    id: punishmentType.id,
-                                    name: punishmentType.name
-                                  });
-                                  setAiPunishmentDeleteDialogOpen(true);
-                                }}
-                              >
-                                {t('common.remove')}
-                              </Button>
-                            </div>
-                          </div>
-                        ))}
-
-                              {Object.keys(aiModerationSettings.aiPunishmentConfigs || {}).length === 0 && (
-                                <div className="text-center py-8 text-muted-foreground">
-                                  <p className="text-sm">{t('settings.tickets.noAIPunishmentTypes')}</p>
-                                  <p className="text-xs">{t('settings.tickets.addAIPunishmentTypesHint')}</p>
-                                </div>
-                              )}
-                            </div>
-                          </div>
                         </div>
-                      </div>
+                      ))}
                     </div>
-                  </>
-                )}
-              </div>
-            </CollapsibleContent>
-          </Collapsible>
-          )}
-        </div>
+                  ) : (
+                    <div className="text-center py-4 border-2 border-dashed border-muted rounded-lg">
+                      <p className="text-sm text-muted-foreground mb-2">{t('settings.tickets.noAIPunishmentTypes')}</p>
+                    </div>
+                  )}
 
-        {renderDialogs()}
+                  <Button
+                    size="sm"
+                    onClick={() => setIsAddAIPunishmentDialogOpen(true)}
+                  >
+                    <Plus className="h-4 w-4 mr-2" />
+                    {t('settings.tickets.addPunishmentType')}
+                  </Button>
+                </div>
+              </>
+            )}
+          </div>
+        </div>
+      )}
+
+      {renderDialogs()}
     </div>
   );
 };
 
 // Quick Response Action Form Component
-const QuickResponseActionForm = ({ 
-  action, 
-  categoryId, 
-  quickResponsesState, 
-  setQuickResponsesState, 
-  punishmentTypes, 
-  onSave, 
-  onCancel 
+interface AddAIPunishmentDialogProps {
+  punishmentTypes: PunishmentType[];
+  existingConfigs: Record<string, AIPunishmentConfig>;
+  onEnable: (punishmentType: PunishmentType, aiDescription: string) => void;
+  onClose: () => void;
+}
+
+const AddAIPunishmentDialog = ({ punishmentTypes, existingConfigs, onEnable, onClose }: AddAIPunishmentDialogProps) => {
+  const { t } = useTranslation();
+  const [selectedTypeId, setSelectedTypeId] = useState<number | null>(null);
+  const [description, setDescription] = useState('');
+  const selectedType = selectedTypeId != null ? punishmentTypes.find(pt => pt.id === selectedTypeId) : undefined;
+
+  return (
+    <Dialog open onOpenChange={(open) => { if (!open) onClose(); }}>
+      <DialogContent className="max-w-lg">
+        <DialogHeader>
+          <DialogTitle>{t('settings.tickets.enableAIPunishmentType')}</DialogTitle>
+          <DialogDescription>
+            {selectedTypeId != null
+              ? (selectedType ? t('settings.tickets.configureAIDescFor', { name: selectedType.name }) : t('settings.tickets.configureAIDescSelected'))
+              : t('settings.tickets.selectPunishmentTypeForAI')}
+          </DialogDescription>
+        </DialogHeader>
+
+        <div className="space-y-4">
+          {selectedType && (
+            <div className="bg-muted/30 p-3 rounded-lg">
+              <div className="flex items-center justify-between">
+                <div>
+                  <h5 className="font-medium">{selectedType.name}</h5>
+                  <div className="flex items-center gap-2 mt-1">
+                    <Badge variant="outline" className="text-xs">
+                      {selectedType.category}
+                    </Badge>
+                    <Badge variant="secondary" className="text-xs">
+                      {t('settings.tickets.ordinal')}: {selectedType.ordinal}
+                    </Badge>
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {selectedTypeId == null && (
+            <div className="space-y-2">
+              <Label>{t('settings.tickets.selectPunishmentType')}</Label>
+              <Select value="" onValueChange={(value) => setSelectedTypeId(parseInt(value))}>
+                <SelectTrigger>
+                  <SelectValue placeholder={t('settings.tickets.choosePunishmentType')} />
+                </SelectTrigger>
+                <SelectContent className="max-h-60 overflow-y-auto">
+                  {punishmentTypes
+                    .filter(pt => !Object.values(existingConfigs).some((config: AIPunishmentConfig) => config.name === pt.name))
+                    .map((punishmentType) => (
+                      <SelectItem key={punishmentType.id} value={String(punishmentType.id)}>
+                        {punishmentType.name} ({punishmentType.category})
+                      </SelectItem>
+                    ))}
+                </SelectContent>
+              </Select>
+            </div>
+          )}
+
+          {selectedTypeId != null && (
+            <div className="space-y-2">
+              <Label htmlFor="ai-punishment-desc">{t('settings.tickets.aiDescription')}</Label>
+              <Textarea
+                id="ai-punishment-desc"
+                className="min-h-[100px]"
+                placeholder={t('settings.tickets.aiDescriptionPlaceholder')}
+                value={description}
+                onChange={(e) => setDescription(e.target.value)}
+              />
+            </div>
+          )}
+        </div>
+
+        <DialogFooter>
+          <Button variant="outline" onClick={onClose}>
+            {t('common.cancel')}
+          </Button>
+          <Button
+            onClick={() => {
+              if (selectedType && description.trim()) {
+                onEnable(selectedType, description.trim());
+              }
+            }}
+            disabled={!selectedType || !description.trim()}
+          >
+            {t('settings.tickets.enableForAI')}
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  );
+};
+
+interface EditAIPunishmentDialogProps {
+  config: AIPunishmentConfig;
+  onSave: (aiDescription: string) => void;
+  onClose: () => void;
+}
+
+const EditAIPunishmentDialog = ({ config, onSave, onClose }: EditAIPunishmentDialogProps) => {
+  const { t } = useTranslation();
+  const [description, setDescription] = useState(config.aiDescription);
+
+  return (
+    <Dialog open onOpenChange={(open) => { if (!open) onClose(); }}>
+      <DialogContent className="max-w-lg">
+        <DialogHeader>
+          <DialogTitle>{t('settings.tickets.editAIPunishmentConfig')}</DialogTitle>
+          <DialogDescription>
+            {t('settings.tickets.updateAIDescFor', { name: config.name })}
+          </DialogDescription>
+        </DialogHeader>
+
+        <div className="space-y-4">
+          <div className="space-y-2">
+            <Label htmlFor="edit-ai-punishment-desc">{t('settings.tickets.aiDescription')}</Label>
+            <textarea
+              id="edit-ai-punishment-desc"
+              className="w-full rounded-md border border-border bg-background px-3 py-2 text-sm min-h-[100px]"
+              value={description}
+              onChange={(e) => setDescription(e.target.value)}
+            />
+            <p className="text-xs text-muted-foreground">
+              {t('settings.tickets.aiDescriptionHelp')}
+            </p>
+          </div>
+        </div>
+
+        <DialogFooter>
+          <Button variant="outline" onClick={onClose}>
+            {t('common.cancel')}
+          </Button>
+          <Button
+            onClick={() => {
+              if (description.trim()) {
+                onSave(description.trim());
+              }
+            }}
+            disabled={!description.trim()}
+          >
+            {t('common.saveChanges')}
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  );
+};
+
+const QuickResponseActionForm = ({
+  action,
+  categoryId,
+  quickResponsesState,
+  setQuickResponsesState,
+  onSave,
+  onCancel
 }: {
   action: QuickResponseAction | null;
   categoryId: string | null;
   quickResponsesState: QuickResponsesConfiguration;
   setQuickResponsesState: (value: QuickResponsesConfiguration) => void;
-  punishmentTypes: any[];
+  punishmentTypes: PunishmentType[];
   onSave: () => void;
   onCancel: () => void;
 }) => {
@@ -2717,14 +2116,10 @@ const DraggableFieldCard = ({
   onDeleteField
 }: DraggableFieldCardProps) => {
   const { t } = useTranslation();
-  // Add null check for field
-  if (!field || !field.id) {
-    return null;
-  }
-  
+
   const [{ isDragging }, drag] = useDrag({
     type: 'field',
-    item: { index, sectionId, fieldId: field.id },
+    item: { index, sectionId, fieldId: field?.id ?? '' },
     collect: (monitor) => ({
       isDragging: monitor.isDragging(),
     }),
@@ -2746,6 +2141,10 @@ const DraggableFieldCard = ({
       }
     },
   });
+
+  if (!field || !field.id) {
+    return null;
+  }
 
   const getFieldTypeLabel = (type: string) => {
     switch (type) {

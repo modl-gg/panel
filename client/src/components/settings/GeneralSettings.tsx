@@ -1,17 +1,22 @@
 import React, { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { CreditCard, SettingsIcon, Globe, Key, Upload, Eye, EyeOff, Check, Copy, RefreshCw, Trash2, Plus, ChevronDown, ChevronRight, HardDrive, MessageCircle, Database } from 'lucide-react';
+import { CreditCard, SettingsIcon, Globe, Key, Upload, Eye, EyeOff, Check, Copy, RefreshCw, Trash2, Plus, ChevronDown, ChevronRight, HardDrive, MessageCircle, Database, Info } from 'lucide-react';
 import { Button } from '@modl-gg/shared-web/components/ui/button';
 import { Input } from '@modl-gg/shared-web/components/ui/input';
 import { Label } from '@modl-gg/shared-web/components/ui/label';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@modl-gg/shared-web/components/ui/select';
+import { Tooltip, TooltipContent, TooltipTrigger } from '@modl-gg/shared-web/components/ui/tooltip';
 import { Separator } from '@modl-gg/shared-web/components/ui/separator';
+import { SUPPORTED_LANGUAGES } from '@/lib/languages';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@modl-gg/shared-web/components/ui/collapsible';
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@modl-gg/shared-web/components/ui/alert-dialog';
 import { useAuth } from '@/hooks/use-auth';
 import { usePermissions } from '@/hooks/use-permissions';
 import BillingSettings from './BillingSettings';
 import DomainSettings from './DomainSettings';
 import UsageSettings from './UsageSettings';
 import WebhookSettings from './WebhookSettings';
+import type { WebhookSettings as WebhookSettingsData } from './WebhookSettings';
 import MigrationTool from './MigrationTool';
 import { queryClient } from '@/lib/queryClient';
 import { toast } from '@modl-gg/shared-web/hooks/use-toast';
@@ -20,8 +25,8 @@ interface GeneralSettingsProps {
   // Server Configuration
   serverDisplayName: string;
   setServerDisplayName: (value: string) => void;
-  discordWebhookUrl: string;
-  setDiscordWebhookUrl: (value: string) => void;
+  defaultLanguage: string;
+  setDefaultLanguage: (value: string) => void;
 
   // Server Icons
   homepageIconUrl: string;
@@ -47,16 +52,14 @@ interface GeneralSettingsProps {
   maskApiKey: (key: string) => string;
 
   // Billing and Usage Data
-  usageData?: any;
   getBillingSummary: () => string;
-  getUsageSummary: () => string;
   getServerConfigSummary: () => string;
   getDomainSummary: () => string;
 
   // Webhook Settings
-  webhookSettings?: any;
+  webhookSettings?: WebhookSettingsData;
   getWebhookSummary: () => string;
-  handleWebhookSave: (settings: any) => Promise<void>;
+  handleWebhookSave: (settings: WebhookSettingsData) => Promise<void>;
   savingWebhookSettings?: boolean;
 
   // Optional prop to show only a specific section
@@ -67,8 +70,8 @@ interface GeneralSettingsProps {
 const GeneralSettings = ({
   serverDisplayName,
   setServerDisplayName,
-  discordWebhookUrl,
-  setDiscordWebhookUrl,
+  defaultLanguage,
+  setDefaultLanguage,
   homepageIconUrl,
   panelIconUrl,
   uploadingHomepageIcon,
@@ -88,9 +91,7 @@ const GeneralSettings = ({
   revealApiKey,
   copyApiKey,
   maskApiKey,
-  usageData,
   getBillingSummary,
-  getUsageSummary,
   getServerConfigSummary,
   getDomainSummary,
   webhookSettings,
@@ -146,6 +147,34 @@ const GeneralSettings = ({
           value={serverDisplayName}
           onChange={(e) => setServerDisplayName(e.target.value)}
         />
+      </div>
+
+      <Separator />
+
+      <div className="space-y-2">
+        <div className="flex items-center gap-1.5">
+          <Label htmlFor="default-language">{t('settings.general.defaultLanguage')}</Label>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <button type="button" className="text-muted-foreground hover:text-foreground" aria-label={t('settings.general.defaultLanguage')}>
+                <Info className="h-3.5 w-3.5" />
+              </button>
+            </TooltipTrigger>
+            <TooltipContent className="max-w-xs">
+              {t('settings.general.defaultLanguageTooltip')}
+            </TooltipContent>
+          </Tooltip>
+        </div>
+        <Select value={defaultLanguage} onValueChange={setDefaultLanguage}>
+          <SelectTrigger id="default-language" className="max-w-xs">
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            {SUPPORTED_LANGUAGES.map((language) => (
+              <SelectItem key={language.code} value={language.code}>{language.nativeName}</SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
       </div>
 
       <Separator />
@@ -261,10 +290,22 @@ const GeneralSettings = ({
                   <code className="text-sm font-mono bg-background px-2 py-1 rounded border">
                     {showApiKey ? (fullApiKey || apiKey) : maskApiKey(apiKey)}
                   </code>
-                  <Button variant="ghost" size="sm" onClick={revealApiKey}>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={revealApiKey}
+                    aria-label={showApiKey ? 'Hide API key' : 'Show API key'}
+                    title={showApiKey ? 'Hide API key' : 'Show API key'}
+                  >
                     {showApiKey ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
                   </Button>
-                  <Button variant="outline" size="sm" onClick={copyApiKey}>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={copyApiKey}
+                    aria-label="Copy API key"
+                    title="Copy API key"
+                  >
                     {apiKeyCopied ? <Check className="h-4 w-4" /> : <Copy className="h-4 w-4" />}
                   </Button>
                 </div>
@@ -272,14 +313,56 @@ const GeneralSettings = ({
             </div>
 
             <div className="flex gap-2">
-              <Button variant="outline" onClick={generateApiKey} disabled={isGeneratingApiKey}>
-                <RefreshCw className={`h-4 w-4 mr-2 ${isGeneratingApiKey ? 'animate-spin' : ''}`} />
-                {t('settings.general.regenerate')}
-              </Button>
-              <Button variant="destructive" onClick={revokeApiKey} disabled={isRevokingApiKey}>
-                <Trash2 className="h-4 w-4 mr-2" />
-                {t('settings.general.revoke')}
-              </Button>
+              <AlertDialog>
+                <AlertDialogTrigger asChild>
+                  <Button variant="outline" disabled={isGeneratingApiKey}>
+                    <RefreshCw className={`h-4 w-4 mr-2 ${isGeneratingApiKey ? 'animate-spin' : ''}`} />
+                    {t('settings.general.regenerate')}
+                  </Button>
+                </AlertDialogTrigger>
+                <AlertDialogContent>
+                  <AlertDialogHeader>
+                    <AlertDialogTitle>{t('settings.general.regenerateApiKeyTitle', 'Regenerate API key?')}</AlertDialogTitle>
+                    <AlertDialogDescription>
+                      {t('settings.general.regenerateApiKeyConfirm', 'The old key will stop working immediately and any Minecraft servers using it will lose access until updated.')}
+                    </AlertDialogDescription>
+                  </AlertDialogHeader>
+                  <AlertDialogFooter>
+                    <AlertDialogCancel>{t('common.cancel')}</AlertDialogCancel>
+                    <AlertDialogAction
+                      onClick={generateApiKey}
+                      className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                    >
+                      {t('settings.general.regenerate')}
+                    </AlertDialogAction>
+                  </AlertDialogFooter>
+                </AlertDialogContent>
+              </AlertDialog>
+              <AlertDialog>
+                <AlertDialogTrigger asChild>
+                  <Button variant="destructive" disabled={isRevokingApiKey}>
+                    <Trash2 className="h-4 w-4 mr-2" />
+                    {t('settings.general.revoke')}
+                  </Button>
+                </AlertDialogTrigger>
+                <AlertDialogContent>
+                  <AlertDialogHeader>
+                    <AlertDialogTitle>{t('settings.general.revokeApiKeyTitle', 'Revoke API key?')}</AlertDialogTitle>
+                    <AlertDialogDescription>
+                      {t('settings.general.revokeApiKeyConfirm', 'This will immediately invalidate the key. Minecraft servers using this key will lose access. This cannot be undone.')}
+                    </AlertDialogDescription>
+                  </AlertDialogHeader>
+                  <AlertDialogFooter>
+                    <AlertDialogCancel>{t('common.cancel')}</AlertDialogCancel>
+                    <AlertDialogAction
+                      onClick={revokeApiKey}
+                      className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                    >
+                      {t('settings.general.revoke')}
+                    </AlertDialogAction>
+                  </AlertDialogFooter>
+                </AlertDialogContent>
+              </AlertDialog>
             </div>
           </div>
         ) : (

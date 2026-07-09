@@ -1,13 +1,14 @@
 import React, { useState, useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Globe, CheckCircle, Copy, ExternalLink, RefreshCw, Check, Crown } from 'lucide-react';
+import { CheckCircle, Copy, ExternalLink, RefreshCw, Check, Crown } from 'lucide-react';
 import { Button } from '@modl-gg/shared-web/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@modl-gg/shared-web/components/ui/card';
 import { Input } from '@modl-gg/shared-web/components/ui/input';
 import { Label } from '@modl-gg/shared-web/components/ui/label';
 import { StatusBanner } from '@modl-gg/shared-web/components/ui/status-banner';
-import { Badge } from '@modl-gg/shared-web/components/ui/badge';
 import { Separator } from '@modl-gg/shared-web/components/ui/separator';
+import { StatusBadge } from '@/components/ui/status-badge';
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@modl-gg/shared-web/components/ui/alert-dialog';
 import { useToast } from '@modl-gg/shared-web/hooks/use-toast';
 import { apiFetch, getCurrentDomain } from '@/lib/api';
 import { useAuth } from '@/hooks/use-auth';
@@ -41,8 +42,9 @@ const DomainSettings: React.FC = () => {
   useEffect(() => {
     const hostname = getCurrentDomain();
     const parts = hostname.split('.');
-    if (parts.length > 2) {
-      setCurrentDomain(parts[0]);
+    const [subdomain] = parts;
+    if (parts.length > 2 && subdomain !== undefined) {
+      setCurrentDomain(subdomain);
     }
   }, []);
 
@@ -278,13 +280,13 @@ const DomainSettings: React.FC = () => {
     });
   };
 
-  const getStatusColor = (status: string) => {
+  const getStatusIntent = (status: string): 'success' | 'warning' | 'info' | 'destructive' | 'neutral' => {
     switch (status) {
-      case 'active': return 'bg-green-500';
-      case 'pending': return 'bg-yellow-500';
-      case 'verifying': return 'bg-blue-500';
-      case 'error': return 'bg-red-500';
-      default: return 'bg-gray-500';
+      case 'active': return 'success';
+      case 'pending': return 'warning';
+      case 'verifying': return 'info';
+      case 'error': return 'destructive';
+      default: return 'neutral';
     }
   };
 
@@ -392,9 +394,9 @@ const DomainSettings: React.FC = () => {
               <Separator />
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-3">
-                  <Badge variant="outline" className={`${getStatusColor(domainStatus.status)} text-white`}>
+                  <StatusBadge intent={getStatusIntent(domainStatus.status)}>
                     {getStatusText(domainStatus.status)}
-                  </Badge>
+                  </StatusBadge>
                   <span className="text-sm font-medium">{domainStatus.domain}</span>
                 </div>
                 <div className="flex gap-2">
@@ -421,14 +423,34 @@ const DomainSettings: React.FC = () => {
                       </>
                     )}
                   </Button>
-                  <Button
-                    variant="destructive"
-                    size="sm"
-                    onClick={handleRemoveDomain}
-                    disabled={isLoading || accessingFromCustomDomain || !canManageCustomDomain}
-                  >
-                    {t('common.remove')}
-                  </Button>
+                  <AlertDialog>
+                    <AlertDialogTrigger asChild>
+                      <Button
+                        variant="destructive"
+                        size="sm"
+                        disabled={isLoading || accessingFromCustomDomain || !canManageCustomDomain}
+                      >
+                        {t('common.remove')}
+                      </Button>
+                    </AlertDialogTrigger>
+                    <AlertDialogContent>
+                      <AlertDialogHeader>
+                        <AlertDialogTitle>{t('settings.domain.removeDomainTitle', 'Remove custom domain?')}</AlertDialogTitle>
+                        <AlertDialogDescription>
+                          {t('settings.domain.removeDomainConfirm', "Traffic to this domain will stop working immediately. You'll need to update your DNS / panel config to restore access.")}
+                        </AlertDialogDescription>
+                      </AlertDialogHeader>
+                      <AlertDialogFooter>
+                        <AlertDialogCancel>{t('common.cancel')}</AlertDialogCancel>
+                        <AlertDialogAction
+                          onClick={handleRemoveDomain}
+                          className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                        >
+                          {t('common.remove')}
+                        </AlertDialogAction>
+                      </AlertDialogFooter>
+                    </AlertDialogContent>
+                  </AlertDialog>
                 </div>
               </div>
 

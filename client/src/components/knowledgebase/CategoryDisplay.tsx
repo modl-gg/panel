@@ -18,20 +18,20 @@ interface CategoryDisplayProps {
 const CategoryDisplay: React.FC<CategoryDisplayProps> = ({ name, description, articles, slug }) => {
   return (
     <div className="mb-8 p-4 border rounded-lg shadow">
-      <h2 id={slug} className="text-2xl font-semibold mb-4 text-gray-800">{name}</h2>
-      {description && <p className="text-gray-600 mb-3">{description}</p>}
+      <h2 id={slug} className="text-2xl font-semibold mb-4 text-foreground">{name}</h2>
+      {description && <p className="text-foreground/80 mb-3">{description}</p>}
       {articles && articles.length > 0 ? (
         <ul className="list-disc pl-5 space-y-1">
           {articles.map(article => (
             <li key={article.id}>
-              <Link href={`/article/${article.slug}`} className="text-blue-600 hover:underline hover:text-blue-800">
+              <Link href={`/article/${article.slug}`} className="text-primary hover:underline hover:text-primary/80">
                 {article.title}
               </Link>
             </li>
           ))}
         </ul>
       ) : (
-        <p className="text-gray-500">No articles in this category yet.</p>
+        <p className="text-muted-foreground">No articles in this category yet.</p>
       )}
     </div>
   );

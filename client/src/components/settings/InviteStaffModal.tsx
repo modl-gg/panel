@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
-import * as z from 'zod';
+import { z } from 'zod';
 import { Button } from '@modl-gg/shared-web/components/ui/button';
 import {
   Dialog,
@@ -23,6 +23,7 @@ import {
 import { Input } from '@modl-gg/shared-web/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@modl-gg/shared-web/components/ui/select';
 import { useAuth } from '@/hooks/use-auth';
+import { errorMessageOr } from '@/utils/errors';
 import { useToast } from '@modl-gg/shared-web/hooks/use-toast';
 import { Loader2 } from 'lucide-react';
 import { useRoles } from '@/hooks/use-data';
@@ -104,10 +105,10 @@ const InviteStaffModal: React.FC<InviteStaffModalProps> = ({ isOpen, onClose, on
       // Trigger refresh and close modal
       onInviteSent();
       onClose();
-    } catch (error: any) {
+    } catch (error) {
       toast({
         title: t('toast.error'),
-        description: error.message || t('settings.staff.sendInvitationFailed'),
+        description: errorMessageOr(error, t('settings.staff.sendInvitationFailed')),
         variant: 'destructive',
       });
     } finally {
@@ -136,9 +137,6 @@ const InviteStaffModal: React.FC<InviteStaffModalProps> = ({ isOpen, onClose, on
                     <Input placeholder="name@example.com" {...field} />
                   </FormControl>
                   <FormMessage />
-                  <p className="text-xs text-muted-foreground">
-                    {t('settings.staff.iCloudNotice')}
-                  </p>
                 </FormItem>
               )}
             />

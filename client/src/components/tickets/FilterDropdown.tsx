@@ -17,6 +17,7 @@ interface FilterDropdownProps {
   onChange: (selected: string[]) => void;
   multiSelect?: boolean;
   placeholder?: string;
+  searchable?: boolean;
 }
 
 export function FilterDropdown({
@@ -26,9 +27,11 @@ export function FilterDropdown({
   onChange,
   multiSelect = false,
   placeholder = 'Select...',
+  searchable = false,
 }: FilterDropdownProps) {
   const { t } = useTranslation();
   const [isOpen, setIsOpen] = useState(false);
+  const [query, setQuery] = useState('');
   const dropdownRef = useRef<HTMLDivElement>(null);
 
   // Close dropdown when clicking outside
@@ -42,6 +45,20 @@ export function FilterDropdown({
     document.addEventListener('mousedown', handleClickOutside);
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
+
+  // Reset the search query whenever the dropdown closes.
+  useEffect(() => {
+    if (!isOpen) setQuery('');
+  }, [isOpen]);
+
+  const normalizedQuery = query.trim().toLowerCase();
+  const filteredOptions = searchable && normalizedQuery
+    ? options.filter(
+        (option) =>
+          option.label.toLowerCase().includes(normalizedQuery) ||
+          option.value.toLowerCase().includes(normalizedQuery),
+      )
+    : options;
 
   const handleSelect = (value: string) => {
     if (multiSelect) {
@@ -77,13 +94,25 @@ export function FilterDropdown({
 
       {isOpen && (
         <div className="absolute top-full left-0 mt-1 w-56 bg-popover border border-border rounded-md shadow-lg z-50">
+          {searchable && (
+            <div className="p-1 border-b border-border">
+              <input
+                type="text"
+                value={query}
+                onChange={(e) => setQuery(e.target.value)}
+                placeholder={placeholder}
+                autoFocus
+                className="w-full h-8 px-2 text-sm bg-background border border-border rounded outline-none focus:ring-1 focus:ring-primary"
+              />
+            </div>
+          )}
           <div className="max-h-60 overflow-y-auto p-1">
-            {options.length === 0 ? (
+            {filteredOptions.length === 0 ? (
               <div className="px-2 py-4 text-center text-sm text-muted-foreground">
                 {t('tickets.filter.noOptions')}
               </div>
             ) : (
-              options.map((option) => (
+              filteredOptions.map((option) => (
                 <button
                   key={option.value}
                   className={`w-full flex items-center gap-2 px-2 py-1.5 text-sm rounded transition-colors ${

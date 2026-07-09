@@ -1,7 +1,17 @@
 import React, { useState, useEffect } from 'react';
-import { LogOut, Monitor, Smartphone } from 'lucide-react';
+import { Loader2, LogOut, Monitor, Smartphone } from 'lucide-react';
 import PasskeySettings from './PasskeySettings';
 import { Button } from '@modl-gg/shared-web/components/ui/button';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@modl-gg/shared-web/components/ui/alert-dialog';
 import { Input } from '@modl-gg/shared-web/components/ui/input';
 import { Label } from '@modl-gg/shared-web/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@modl-gg/shared-web/components/ui/select';
@@ -9,6 +19,7 @@ import { useToast } from '@modl-gg/shared-web/hooks/use-toast';
 import { useAuth } from '@/hooks/use-auth';
 import { useTranslation } from 'react-i18next';
 import { apiFetch } from '@/lib/api';
+import { SUPPORTED_LANGUAGES } from '@/lib/languages';
 
 interface AccountSettingsProps {
   profileUsername: string;
@@ -51,29 +62,56 @@ function isMobileUserAgent(ua: string): boolean {
   return /Android|iPhone|iPad|Mobile/.test(ua);
 }
 
-function SessionsSection({ onSignOutAll }: { onSignOutAll: () => void }) {
+function SessionsSection() {
   const { t } = useTranslation();
   const { toast } = useToast();
+  const { logout, signOutAllSessions } = useAuth();
   const [sessions, setSessions] = useState<SessionInfo[]>([]);
   const [loading, setLoading] = useState(true);
-  const [signingOut, setSigningOut] = useState(false);
+  const [loadError, setLoadError] = useState(false);
+  const [pendingSession, setPendingSession] = useState<SessionInfo | null>(null);
+  const [removingId, setRemovingId] = useState<string | null>(null);
+  const [signAllOutOpen, setSignAllOutOpen] = useState(false);
 
   useEffect(() => {
     apiFetch('/v1/panel/auth/sessions')
-      .then(r => r.ok ? r.json() : [])
-      .then(setSessions)
-      .catch(() => setSessions([]))
+      .then(r => {
+        if (!r.ok) throw new Error('Failed to load sessions');
+        return r.json();
+      })
+      .then((data) => {
+        setSessions(Array.isArray(data?.sessions) ? data.sessions : []);
+        setLoadError(false);
+      })
+      .catch(() => {
+        setSessions([]);
+        setLoadError(true);
+      })
       .finally(() => setLoading(false));
   }, []);
 
-  const handleSignOutAll = async () => {
-    setSigningOut(true);
+  const confirmRemoveSession = async () => {
+    const session = pendingSession;
+    setPendingSession(null);
+    if (!session) return;
+
+    if (session.isCurrent) {
+      logout();
+      return;
+    }
+
+    setRemovingId(session.id);
     try {
-      await apiFetch('/v1/panel/auth/logout', { method: 'POST' });
-      onSignOutAll();
+      const response = await apiFetch(`/v1/panel/auth/sessions/${encodeURIComponent(session.id)}`, { method: 'DELETE' });
+      if (!response.ok && response.status !== 404) throw new Error('Failed to remove session');
+      setSessions(prev => prev.filter(s => s.id !== session.id));
+      if (response.ok) {
+        toast({ title: t('settings.sessions.removed') });
+      }
     } catch {
-      toast({ title: t('common.error'), variant: 'destructive' });
-      setSigningOut(false);
+      toast({ title: t('settings.sessions.removeFailed'), variant: 'destructive' });
+    } finally {
+      setRemovingId(null);
     }
   };
 
@@ -81,13 +119,15 @@ function SessionsSection({ onSignOutAll }: { onSignOutAll: () => void }) {
     <div className="space-y-3">
       <div className="flex items-center gap-3">
         <Monitor className="h-4 w-4 text-muted-foreground shrink-0" />
-        <h3 className="text-base font-medium">Sessions</h3>
+        <h3 className="text-base font-medium">{t('settings.sessions.title')}</h3>
       </div>
 
       {loading ? (
-        <p className="text-sm text-muted-foreground">Loading…</p>
+        <p className="text-sm text-muted-foreground">{t('settings.sessions.loading')}</p>
+      ) : loadError ? (
+        <p className="text-sm text-destructive">{t('settings.sessions.loadFailed')}</p>
       ) : sessions.length === 0 ? (
-        <p className="text-sm text-muted-foreground">No active sessions.</p>
+        <p className="text-sm text-muted-foreground">{t('settings.sessions.empty')}</p>
       ) : (
         <div className="space-y-2">
           {sessions.map((s) => {
@@ -105,13 +145,24 @@ function SessionsSection({ onSignOutAll }: { onSignOutAll: () => void }) {
                   <p className="text-sm font-medium">
                     {browser} on {os}
                     {s.isCurrent && (
-                      <span className="ml-2 text-xs bg-primary/10 text-primary rounded px-1.5 py-0.5">Current</span>
+                      <span className="ml-2 text-xs bg-primary/10 text-primary rounded px-1.5 py-0.5">{t('settings.sessions.current')}</span>
                     )}
                   </p>
                   <p className="text-xs text-muted-foreground truncate">
                     {s.ipAddress ?? 'Unknown IP'} · Added {added}
                   </p>
                 </div>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="h-8 w-8 shrink-0 text-muted-foreground hover:text-destructive"
+                  aria-label={t('settings.sessions.signOutSession')}
+                  title={t('settings.sessions.signOutSession')}
+                  disabled={removingId === s.id}
+                  onClick={() => setPendingSession(s)}
+                >
+                  {removingId === s.id ? <Loader2 className="h-4 w-4 animate-spin" /> : <LogOut className="h-4 w-4" />}
+                </Button>
               </div>
             );
           })}
@@ -121,12 +172,42 @@ function SessionsSection({ onSignOutAll }: { onSignOutAll: () => void }) {
       <Button
         variant="outline"
         size="sm"
-        onClick={handleSignOutAll}
-        disabled={signingOut}
+        onClick={() => setSignAllOutOpen(true)}
+        disabled={loading || sessions.length === 0}
       >
         <LogOut className="h-4 w-4 mr-2" />
-        Sign out all
+        {t('settings.sessions.signAllOut')}
       </Button>
+
+      <AlertDialog open={pendingSession !== null} onOpenChange={(open) => { if (!open) setPendingSession(null); }}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>{t('settings.sessions.removeTitle')}</AlertDialogTitle>
+            <AlertDialogDescription>
+              {pendingSession?.isCurrent
+                ? t('settings.sessions.removeCurrentDescription')
+                : t('settings.sessions.removeDescription')}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>{t('common.cancel')}</AlertDialogCancel>
+            <AlertDialogAction onClick={confirmRemoveSession}>{t('settings.sessions.removeAction')}</AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      <AlertDialog open={signAllOutOpen} onOpenChange={setSignAllOutOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>{t('settings.sessions.signAllOutTitle')}</AlertDialogTitle>
+            <AlertDialogDescription>{t('settings.sessions.signAllOutDescription')}</AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>{t('common.cancel')}</AlertDialogCancel>
+            <AlertDialogAction onClick={() => signOutAllSessions()}>{t('settings.sessions.signAllOut')}</AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }
@@ -169,7 +250,7 @@ const AccountSettings = ({
       });
     } catch (error) {
       toast({
-        title: t('common.error'),
+        title: t('toast.error'),
         description: error instanceof Error ? error.message : t('settings.emailUpdateFailed'),
         variant: 'destructive',
       });
@@ -198,7 +279,7 @@ const AccountSettings = ({
       setTimeout(() => window.location.reload(), 1000);
     } catch (error) {
       toast({
-        title: t('common.error'),
+        title: t('toast.error'),
         description: error instanceof Error ? error.message : t('settings.emailUpdateFailed'),
         variant: 'destructive',
       });
@@ -282,21 +363,26 @@ const AccountSettings = ({
                 )}
               </div>
               {emailChangeStep === 'code-sent' && (
-                <div className="flex items-center gap-3 mt-2">
-                  <Input
-                    type="text"
-                    value={emailCode}
-                    onChange={(e) => setEmailCode(e.target.value)}
-                    placeholder="Enter code"
-                    className="max-w-[160px]"
-                    onKeyDown={(e) => { if (e.key === 'Enter') handleConfirmEmailChange(); }}
-                  />
-                  <Button size="sm" onClick={handleConfirmEmailChange} disabled={isUpdatingEmail || !emailCode}>
-                    {isUpdatingEmail ? t('common.saving') : 'Verify'}
-                  </Button>
-                  <Button variant="ghost" size="sm" onClick={() => { setEmailChangeStep('idle'); setEmailCode(''); }}>
-                    {t('common.cancel')}
-                  </Button>
+                <div className="mt-2 space-y-2">
+                  <div className="flex items-center gap-3">
+                    <Input
+                      type="text"
+                      value={emailCode}
+                      onChange={(e) => setEmailCode(e.target.value)}
+                      placeholder="Enter code"
+                      className="max-w-[160px]"
+                      onKeyDown={(e) => { if (e.key === 'Enter') handleConfirmEmailChange(); }}
+                    />
+                    <Button size="sm" onClick={handleConfirmEmailChange} disabled={isUpdatingEmail || !emailCode}>
+                      {isUpdatingEmail ? t('common.saving') : 'Verify'}
+                    </Button>
+                    <Button variant="ghost" size="sm" onClick={() => { setEmailChangeStep('idle'); setEmailCode(''); }}>
+                      {t('common.cancel')}
+                    </Button>
+                  </div>
+                  <p className="text-xs text-amber-600 dark:text-amber-500 max-w-md">
+                    {t('settings.emailChangeWarning')}
+                  </p>
                 </div>
               )}
               <p className="text-xs text-muted-foreground mt-1.5">
@@ -313,10 +399,9 @@ const AccountSettings = ({
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="en">English</SelectItem>
-                  <SelectItem value="de">Deutsch</SelectItem>
-                  <SelectItem value="es">Español</SelectItem>
-                  <SelectItem value="nl">Nederlands</SelectItem>
+                  {SUPPORTED_LANGUAGES.map((language) => (
+                    <SelectItem key={language.code} value={language.code}>{language.nativeName}</SelectItem>
+                  ))}
                 </SelectContent>
               </Select>
               <p className="text-xs text-muted-foreground mt-1.5">
@@ -348,7 +433,7 @@ const AccountSettings = ({
         {/* MIDDLE: passkeys + sessions */}
         <div className="border-l border-border px-6 space-y-6">
           <PasskeySettings />
-          <SessionsSection onSignOutAll={logout} />
+          <SessionsSection />
         </div>
 
         {/* RIGHT: small offset column aligned with sign-out button */}

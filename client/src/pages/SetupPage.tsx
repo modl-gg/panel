@@ -94,7 +94,7 @@ export default function SetupPage() {
   const searchString = useSearch();
   const [state, setState] = useState<SetupState>('verifying');
   const [message, setMessage] = useState('');
-  const [autoLoginToken, setAutoLoginToken] = useState<string | null>(null);
+  const [, setAutoLoginToken] = useState<string | null>(null);
   const [serverName, setServerName] = useState<string | null>(null);
 
   const getCurrentStep = (): number => {

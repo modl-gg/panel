@@ -6,6 +6,7 @@ import { useLocation } from 'wouter';
 import { useToast } from '@modl-gg/shared-web/hooks/use-toast';
 import { formatTimeAgo } from '@/utils/date-utils';
 import { useTranslation } from 'react-i18next';
+import { StatusBadge } from '@/components/ui/status-badge';
 
 export interface TicketSubscriptionUpdate {
   id: string;
@@ -128,7 +129,7 @@ export function TicketSubscriptionsSection({
                 updates.slice(0, 5).map((update) => (
                   <div
                     key={update.id}
-                    className="p-3 border border-border rounded-lg hover:bg-muted/50 transition-colors cursor-pointer bg-blue-500/5 border-blue-500/20"
+                    className="p-3 border border-border rounded-lg hover:bg-muted/50 transition-colors cursor-pointer bg-info/5 border-info/20"
                     onClick={() => {
                       handleTicketClick(update.ticketId);
                     }}
@@ -138,26 +139,23 @@ export function TicketSubscriptionsSection({
                         {update.ticketTitle}
                       </h5>
                       <div className="flex items-center gap-2 ml-2 flex-shrink-0">
-                        <div className="w-2 h-2 bg-blue-500 rounded-full"></div>
-                        <Badge 
-                          variant="secondary" 
-                          className={`text-xs ${
-                            update.isStaffReply 
-                              ? 'bg-green-500/20 text-green-500' 
-                              : 'bg-blue-500/20 text-blue-500'
-                          }`}
+                        <div className="w-2 h-2 bg-info rounded-full"></div>
+                        <StatusBadge
+                          intent={update.isStaffReply ? 'success' : 'info'}
+                          className="text-xs"
                         >
                           {update.isStaffReply ? t('dashboard.subscriptions.staff') : t('dashboard.subscriptions.player')}
-                        </Badge>
+                        </StatusBadge>
                         <Button
                           variant="ghost"
                           size="sm"
-                          className="h-6 w-6 p-0 text-muted-foreground hover:text-blue-500"
+                          className="h-6 w-6 p-0 text-muted-foreground hover:text-info"
                           onClick={(e) => {
                             e.stopPropagation();
                             handleDismissTicket(update.ticketId);
                           }}
                           title="Dismiss all updates for this ticket"
+                          aria-label="Dismiss all updates for this ticket"
                         >
                           <X className="h-3 w-3" />
                         </Button>
@@ -170,6 +168,7 @@ export function TicketSubscriptionsSection({
                             handleUnsubscribe(update.ticketId, update.ticketTitle);
                           }}
                           title="Unsubscribe"
+                          aria-label="Unsubscribe"
                         >
                           <UserMinus className="h-3 w-3" />
                         </Button>

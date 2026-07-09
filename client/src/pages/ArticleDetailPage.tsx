@@ -45,8 +45,8 @@ const ArticleDetailPage: React.FC = () => {
         const data = await response.json();
         setArticle(data);
         setError(null);
-      } catch (e: any) {
-        setError(e.message || 'Failed to load article.');
+      } catch (e) {
+        setError(e instanceof Error && e.message ? e.message : 'Failed to load article.');
         console.error(e);
       } finally {
         setIsLoading(false);

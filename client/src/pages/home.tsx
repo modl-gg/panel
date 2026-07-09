@@ -6,18 +6,49 @@ import {
   Moon
 } from 'lucide-react';
 import { Button } from '@modl-gg/shared-web/components/ui/button';
+import { Card, CardContent } from '@modl-gg/shared-web/components/ui/card';
+import { Skeleton } from '@modl-gg/shared-web/components/ui/skeleton';
 import { useTheme } from 'next-themes';
 import {
   useRecentTickets,
   useRecentPunishments,
   useAssignedTicketUpdates,
-  useMarkTicketAsRead
+  useMarkTicketAsRead,
+  useDashboardAlerts
 } from '@/hooks/use-data';
 import { useToast } from '@modl-gg/shared-web/hooks/use-toast';
 import PageContainer from '@/components/layout/PageContainer';
 import { RecentTicketsSection } from '@/components/dashboard/RecentTicketsSection';
 import { RecentPunishmentsSection } from '@/components/dashboard/RecentPunishmentsSection';
 import { AssignedTicketUpdatesSection } from '@/components/dashboard/AssignedTicketUpdatesSection';
+import { DashboardAlertsSection } from '@/components/dashboard/DashboardAlertsSection';
+
+function DashboardLoadingSkeleton() {
+  return (
+    <>
+      <Card className="shadow-card">
+        <CardContent className="p-5 space-y-3">
+          <Skeleton className="h-5 w-48" />
+          <Skeleton className="h-4 w-full" />
+          <Skeleton className="h-4 w-3/4" />
+        </CardContent>
+      </Card>
+
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+        {Array.from({ length: 2 }).map((_, index) => (
+          <Card key={index} className="shadow-card">
+            <CardContent className="p-5 space-y-4">
+              <Skeleton className="h-5 w-40" />
+              <Skeleton className="h-16 w-full" />
+              <Skeleton className="h-16 w-full" />
+              <Skeleton className="h-16 w-5/6" />
+            </CardContent>
+          </Card>
+        ))}
+      </div>
+    </>
+  );
+}
 
 const Home = () => {
   const [isSpinning, setIsSpinning] = useState(false);
@@ -29,6 +60,8 @@ const Home = () => {
   const { data: recentTicketsData, isLoading: isLoadingTickets, refetch: refetchTickets } = useRecentTickets(3);
   const { data: recentPunishmentsData, isLoading: isLoadingPunishments, refetch: refetchPunishments } = useRecentPunishments(5);
   const { data: assignedUpdatesData, isLoading: isLoadingUpdates, refetch: refetchUpdates } = useAssignedTicketUpdates(10);
+  const { data: alertsData, isLoading: isLoadingAlerts, refetch: refetchAlerts } = useDashboardAlerts();
+  const isInitialDashboardLoading = isLoadingTickets || isLoadingPunishments || isLoadingUpdates || isLoadingAlerts;
 
   // Mutations for updates management
   const markTicketAsReadMutation = useMarkTicketAsRead();
@@ -41,6 +74,7 @@ const Home = () => {
         refetchTickets(),
         refetchPunishments(),
         refetchUpdates(),
+        refetchAlerts(),
         new Promise(resolve => setTimeout(resolve, 800))
       ]);
 
@@ -60,8 +94,8 @@ const Home = () => {
     }
   };
 
-  const handleDismissTicket = async (ticketId: string) => {
-    return markTicketAsReadMutation.mutateAsync(ticketId);
+  const handleDismissTicket = async (ticketId: string): Promise<void> => {
+    await markTicketAsReadMutation.mutateAsync(ticketId);
   };
 
   return (
@@ -76,7 +110,7 @@ const Home = () => {
               size="icon"
               className="text-muted-foreground"
               onClick={handleRefreshData}
-              disabled={isSpinning}
+              disabled={isSpinning || isInitialDashboardLoading}
             >
               <RefreshCw className={`h-5 w-5 ${isSpinning ? 'animate-spin' : ''}`} />
             </Button>
@@ -91,27 +125,35 @@ const Home = () => {
           </div>
         </div>
 
-        {/* Assigned Ticket Updates - Full Width */}
-        <AssignedTicketUpdatesSection
-          updates={assignedUpdatesData || []}
-          loading={isLoadingUpdates}
-          onDismissTicket={handleDismissTicket}
-        />
+        {isInitialDashboardLoading ? (
+          <DashboardLoadingSkeleton />
+        ) : (
+          <>
+            <DashboardAlertsSection alerts={alertsData} />
 
-        {/* Dashboard Grid */}
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-          {/* Recent Tickets */}
-          <RecentTicketsSection
-            tickets={recentTicketsData || []}
-            loading={isLoadingTickets}
-          />
+            {/* Assigned Ticket Updates - Full Width */}
+            <AssignedTicketUpdatesSection
+              updates={assignedUpdatesData || []}
+              loading={false}
+              onDismissTicket={handleDismissTicket}
+            />
 
-          {/* Recent Punishments */}
-          <RecentPunishmentsSection
-            punishments={recentPunishmentsData || []}
-            loading={isLoadingPunishments}
-          />
-        </div>
+            {/* Dashboard Grid */}
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+              {/* Recent Tickets */}
+              <RecentTicketsSection
+                tickets={recentTicketsData || []}
+                loading={false}
+              />
+
+              {/* Recent Punishments */}
+              <RecentPunishmentsSection
+                punishments={recentPunishmentsData || []}
+                loading={false}
+              />
+            </div>
+          </>
+        )}
       </div>
     </PageContainer>
   );

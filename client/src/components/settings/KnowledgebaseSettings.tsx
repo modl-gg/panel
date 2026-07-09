@@ -7,20 +7,34 @@ import { useToast } from '@modl-gg/shared-web/hooks/use-toast';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@modl-gg/shared-web/components/ui/alert-dialog';
 import { queryClient } from '@/lib/queryClient';
 import { apiFetch } from '@/lib/api';
-import { useQuery, useMutation } from '@tanstack/react-query';
+import { useQuery, useMutation, type UseMutationResult } from '@tanstack/react-query';
 import { Plus, Edit, Trash2, GripVertical } from 'lucide-react';
-import { DndProvider, useDrag, useDrop, DropTargetMonitor } from 'react-dnd';
+import { DndProvider, useDrag, useDrop, type DropTargetMonitor } from 'react-dnd';
+import type { Identifier } from 'dnd-core';
 import { HTML5Backend } from 'react-dnd-html5-backend';
 import ArticleListItem from './ArticleListItem';
 import MarkdownEditor from '@modl-gg/shared-web/components/ui/MarkdownEditor';
-import { KnowledgebaseCategory, KnowledgebaseArticle } from '@modl-gg/shared-web/types';
+import { type KnowledgebaseCategory, type KnowledgebaseArticle, type KnowledgebaseArticleStub } from '@modl-gg/shared-web/types';
 
-const normalizeArticle = (article: any): KnowledgebaseArticle => ({
+interface ArticleVisibilityInput {
+  isVisible?: boolean;
+  visible?: boolean;
+}
+
+type RawKnowledgebaseArticle = Omit<KnowledgebaseArticle, 'isVisible'> & ArticleVisibilityInput;
+
+type RawKnowledgebaseArticleStub = Omit<KnowledgebaseArticleStub, 'isVisible'> & ArticleVisibilityInput;
+
+type RawKnowledgebaseCategory = Omit<KnowledgebaseCategory, 'articles'> & {
+  articles?: RawKnowledgebaseArticleStub[];
+};
+
+const normalizeArticle = <T extends ArticleVisibilityInput>(article: T): T & { isVisible: boolean } => ({
   ...article,
   isVisible: article?.isVisible ?? article?.visible ?? true,
 });
 
-const normalizeCategory = (category: any): KnowledgebaseCategory => ({
+const normalizeCategory = (category: RawKnowledgebaseCategory): KnowledgebaseCategory => ({
   ...category,
   articles: Array.isArray(category?.articles)
     ? category.articles.map(normalizeArticle)
@@ -37,12 +51,18 @@ const fetchCategories = async (): Promise<KnowledgebaseCategory[]> => {
     throw new Error('Failed to fetch categories');
   }
   const data = await response.json();
-  return Array.isArray(data) ? data.map(normalizeCategory) : [];
+  return Array.isArray(data.categories) ? data.categories.map(normalizeCategory) : [];
 };
 const ItemTypes = {
   CATEGORY: 'category',
   ARTICLE: 'article',
 };
+
+interface CategoryDragItem {
+  id: string;
+  originalIndex: number;
+  type: typeof ItemTypes.CATEGORY;
+}
 
 interface CategoryItemProps {
   category: KnowledgebaseCategory;
@@ -54,16 +74,11 @@ interface CategoryItemProps {
   editingCategory: KnowledgebaseCategory | null;
   handleUpdateCategory: () => void;
   setEditingCategory: React.Dispatch<React.SetStateAction<KnowledgebaseCategory | null>>;
-  updateCategoryMutation: any;
-  deleteCategoryMutation: any;
-  editingArticle: KnowledgebaseArticle | null;
-  setEditingArticle: React.Dispatch<React.SetStateAction<KnowledgebaseArticle | null>>;
-  handleUpdateArticle: () => void;
+  updateCategoryMutation: UseMutationResult<KnowledgebaseCategory, Error, { id: string; name: string; description?: string }>;
+  deleteCategoryMutation: UseMutationResult<void, Error, string>;
   handleDeleteArticle: (categoryId: string, articleId: string, title: string) => void;
-  updateArticleMutation: any; // This should be specific to article update
-  deleteArticleMutation: any;
   handleDropCategory: () => void;
-  reorderArticlesMutation: any; // Add mutation for reordering articles
+  reorderArticlesMutation: UseMutationResult<void, Error, { categoryId: string; orderedArticleIds: string[] }>;
   fetchArticleForEditing: (categoryId: string, articleId: string) => Promise<void>;
 }
 
@@ -79,23 +94,20 @@ const CategoryItem: React.FC<CategoryItemProps> = ({
   setEditingCategory,
   updateCategoryMutation,
   deleteCategoryMutation,
-  editingArticle,
-  setEditingArticle,
-  handleUpdateArticle, // This is the global one for opening edit modal
   handleDeleteArticle, // This is the global one
-  updateArticleMutation: uam, // This is the global update mutation
-  deleteArticleMutation: dam, // This is the global delete mutation
   handleDropCategory,
   reorderArticlesMutation,
   fetchArticleForEditing
 }) => {
   const { t } = useTranslation();
   const ref = React.useRef<HTMLDivElement>(null);
-  const [displayedCategoryArticles, setDisplayedCategoryArticles] = useState<KnowledgebaseArticle[]>([]);
+  const [displayedCategoryArticles, setDisplayedCategoryArticles] = useState<KnowledgebaseArticleStub[]>([]);
 
   useEffect(() => {
     if (category.articles) {
-      setDisplayedCategoryArticles(category.articles.sort((a,b) => a.ordinal - b.ordinal));
+      // Copy before sorting: Array.prototype.sort mutates in place, and
+      // category.articles is owned by the react-query cache.
+      setDisplayedCategoryArticles([...category.articles].sort((a,b) => a.ordinal - b.ordinal));
     }
   }, [category.articles]);
 
@@ -104,7 +116,9 @@ const CategoryItem: React.FC<CategoryItemProps> = ({
     setDisplayedCategoryArticles((prevArticles) => {
       const updatedArticles = [...prevArticles];
       const [draggedItem] = updatedArticles.splice(dragIndex, 1);
-      updatedArticles.splice(hoverIndex, 0, draggedItem);
+      if (draggedItem) {
+        updatedArticles.splice(hoverIndex, 0, draggedItem);
+      }
       return updatedArticles;
     });
   }, [category.id]);
@@ -115,14 +129,14 @@ const CategoryItem: React.FC<CategoryItemProps> = ({
     reorderArticlesMutation.mutate({ categoryId: category.id, orderedArticleIds });
   }, [category.id, displayedCategoryArticles, reorderArticlesMutation]);
 
-  const [{ handlerId }, drop] = useDrop<CategoryDragItem, void, { handlerId: any }>({
+  const [{ handlerId }, drop] = useDrop<CategoryDragItem, void, { handlerId: Identifier | null }>({
     accept: ItemTypes.CATEGORY,
     collect(monitor) {
       return {
         handlerId: monitor.getHandlerId(),
       };
     },
-    hover(item: CategoryDragItem, monitor: DropTargetMonitor) {
+    hover(item: CategoryDragItem, _monitor: DropTargetMonitor) {
       if (!ref.current) return;
       const dragIndex = item.originalIndex;
       const hoverIndex = index;
@@ -136,7 +150,7 @@ const CategoryItem: React.FC<CategoryItemProps> = ({
     type: ItemTypes.CATEGORY,
     item: () => ({ id: category.id, originalIndex: index, type: ItemTypes.CATEGORY }),
     collect: (monitor) => ({ isDragging: monitor.isDragging() }),
-    end: (item, monitor) => {
+    end: (_item, monitor) => {
       // If the item was dropped on a compatible target (which it will be, even if it's its own spot after moving)
       // and the drop was not cancelled, then we persist the order.
       if (monitor.didDrop()) {
@@ -188,9 +202,9 @@ const CategoryItem: React.FC<CategoryItemProps> = ({
                 <Button variant="ghost" size="sm" onClick={() => setEditingCategory(null)}>{t('common.cancel')}</Button>
               </>
             ) : (
-              <Button variant="ghost" size="sm" onClick={() => onEdit(category)}><Edit className="h-4 w-4" /></Button>
+              <Button variant="ghost" size="sm" onClick={() => onEdit(category)} aria-label={t('common.edit')}><Edit className="h-4 w-4" /></Button>
             )}
-            <Button variant="ghost" size="sm" onClick={() => onDelete(category)} disabled={deleteCategoryMutation.isPending}><Trash2 className="h-4 w-4 text-destructive" /></Button>
+            <Button variant="ghost" size="sm" onClick={() => onDelete(category)} disabled={deleteCategoryMutation.isPending} aria-label={t('common.delete')}><Trash2 className="h-4 w-4 text-destructive" /></Button>
           </div>
         </div>
         <div className="mt-4 pl-6 space-y-3">
@@ -339,7 +353,9 @@ const KnowledgebaseSettings: React.FC = () => {
 
   useEffect(() => {
     if (categories) {
-      setDisplayedCategories(categories.sort((a, b) => a.ordinal - b.ordinal));
+      // Copy before sorting: Array.prototype.sort mutates in place, and
+      // categories is the array held in the react-query cache.
+      setDisplayedCategories([...categories].sort((a, b) => a.ordinal - b.ordinal));
     }
   }, [categories]);
 
@@ -378,7 +394,9 @@ const KnowledgebaseSettings: React.FC = () => {
     setDisplayedCategories((prevCategories) => {
       const updatedCategories = [...prevCategories];
       const [draggedItem] = updatedCategories.splice(dragIndex, 1);
-      updatedCategories.splice(hoverIndex, 0, draggedItem);
+      if (draggedItem) {
+        updatedCategories.splice(hoverIndex, 0, draggedItem);
+      }
       return updatedCategories;
     });
   }, []);
@@ -514,7 +532,7 @@ const KnowledgebaseSettings: React.FC = () => {
       if (!response.ok) {
         throw new Error('Failed to fetch article details');
       }
-      const articleData = await response.json();
+      const articleData: RawKnowledgebaseArticle = await response.json();
       setEditingArticle(normalizeArticle(articleData));
 
       // Scroll to the article editing section with smooth animation
@@ -610,12 +628,7 @@ const KnowledgebaseSettings: React.FC = () => {
                   updateCategoryMutation={updateCategoryMutation}
                   deleteCategoryMutation={deleteCategoryMutation}
                   // Pass article related props
-                  editingArticle={editingArticle}
-                  setEditingArticle={setEditingArticle}
-                  handleUpdateArticle={handleUpdateArticle}
                   handleDeleteArticle={handleDeleteArticleClick} // Global delete
-                  updateArticleMutation={updateArticleMutation} // Global update for articles (modal)
-                  deleteArticleMutation={deleteArticleMutation} // Global delete for articles
                   handleDropCategory={handleDropCategory}
                   reorderArticlesMutation={reorderArticlesMutation} // Pass down the reorder mutation
                   fetchArticleForEditing={fetchArticleForEditing}

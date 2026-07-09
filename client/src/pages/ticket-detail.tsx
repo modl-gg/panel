@@ -1,6 +1,6 @@
-import { useState, useEffect, memo, useMemo, useRef } from 'react';
+import { useState, useEffect, memo, useMemo, useRef, useCallback } from 'react';
 import { useTranslation } from 'react-i18next';
-import { useLocation, Link } from 'wouter';
+import { useLocation } from 'wouter';
 import { Popover, PopoverContent, PopoverTrigger } from '@modl-gg/shared-web/components/ui/popover';
 import { queryClient } from '@/lib/queryClient';
 import { getAvatarUrl } from '@/lib/api';
@@ -9,7 +9,6 @@ import { usePermissions } from '@/hooks/use-permissions';
 import { formatDate, formatDateWithRelative } from '../utils/date-utils';
 import {
   MessageSquare,
-  User,
   AlertCircle,
   Clock,
   FileText,
@@ -22,7 +21,6 @@ import {
   StickyNote,
   ArrowLeft,
   ThumbsUp,
-  Bug,
   Axe,
   Tag,
   Plus,
@@ -32,8 +30,6 @@ import {
   Loader2,
   ShieldCheck,
   Ticket,
-  ChevronDown,
-  ChevronRight,
   Settings,
   Image,
   Video,
@@ -47,9 +43,9 @@ import { Button } from '@modl-gg/shared-web/components/ui/button';
 import { Badge } from '@modl-gg/shared-web/components/ui/badge';
 import { Skeleton } from '@modl-gg/shared-web/components/ui/skeleton';
 import { Checkbox } from '@modl-gg/shared-web/components/ui/checkbox';
-import { usePanelTicket, useUpdateTicket, useSettings, useStaff, useModifyPunishment, useApplyPunishment, useQuickResponses, usePunishmentTypes, useLabels } from '@/hooks/use-data';
+import { usePanelTicket, useUpdateTicket, useSettings, useStaff, useModifyPunishment, useApplyPunishment, useQuickResponses, usePunishmentTypes, useLabels, usePunishmentById } from '@/hooks/use-data';
 import { LabelBadge } from '@/components/ui/label-badge';
-import { QuickResponsesConfiguration, defaultQuickResponsesConfig } from '@/types/quickResponses';
+import { type QuickResponsesConfiguration, defaultQuickResponsesConfig } from '@/types/quickResponses';
 import { useToast } from '@modl-gg/shared-web/hooks/use-toast';
 import PageContainer from '@/components/layout/PageContainer';
 import { apiFetch } from '@/lib/api';
@@ -59,54 +55,26 @@ import MarkdownHelp from '@/components/ui/markdown-help';
 import { ClickablePlayer } from '@/components/ui/clickable-player';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@modl-gg/shared-web/components/ui/tooltip';
 import { getUnverifiedExplanation } from '@/utils/creator-verification';
-import PlayerPunishment, { PlayerPunishmentData } from '@/components/ui/player-punishment';
+import PlayerPunishment, { type PlayerPunishmentData } from '@/components/ui/player-punishment';
 import MediaUpload from '@/components/MediaUpload';
-import TicketAttachments from '@/components/TicketAttachments';
 import { useMediaUpload, useMediaUploadConfig } from '@/hooks/use-media-upload';
+import { normalizeCdnHost, isTrustedCdnUrl as isUrlOnTrustedCdn } from '@/utils/evidence-utils';
 import { isClosedTicketStatus } from '@/lib/ticket-enums';
+import { playerFacingReason, requiresPlayerFacingReason } from '@/utils/manual-punishment';
+import { type JsonObject } from '@bufbuild/protobuf';
+import type { PunishmentType } from '@modl-gg/proto/modl/v1/settings_pb.ts';
+import type { StaffMember } from '@/hooks/data/staff';
 
-interface PunishmentType {
-  id: number;
-  name: string;
-  category: 'Gameplay' | 'Social' | 'Administrative';
-  isCustomizable: boolean;
-  ordinal: number;
-  durations?: {
-    low: { 
-      first: { value: number; unit: 'seconds' | 'minutes' | 'hours' | 'days' | 'weeks' | 'months'; banValue?: number; banUnit?: 'seconds' | 'minutes' | 'hours' | 'days' | 'weeks' | 'months'; };
-      medium: { value: number; unit: 'seconds' | 'minutes' | 'hours' | 'days' | 'weeks' | 'months'; banValue?: number; banUnit?: 'seconds' | 'minutes' | 'hours' | 'days' | 'weeks' | 'months'; };
-      habitual: { value: number; unit: 'seconds' | 'minutes' | 'hours' | 'days' | 'weeks' | 'months'; banValue?: number; banUnit?: 'seconds' | 'minutes' | 'hours' | 'days' | 'weeks' | 'months'; };
-    };
-    regular: {
-      first: { value: number; unit: 'seconds' | 'minutes' | 'hours' | 'days' | 'weeks' | 'months'; banValue?: number; banUnit?: 'seconds' | 'minutes' | 'hours' | 'days' | 'weeks' | 'months'; };
-      medium: { value: number; unit: 'seconds' | 'minutes' | 'hours' | 'days' | 'weeks' | 'months'; banValue?: number; banUnit?: 'seconds' | 'minutes' | 'hours' | 'days' | 'weeks' | 'months'; };
-      habitual: { value: number; unit: 'seconds' | 'minutes' | 'hours' | 'days' | 'weeks' | 'months'; banValue?: number; banUnit?: 'seconds' | 'minutes' | 'hours' | 'days' | 'weeks' | 'months'; };
-    };
-    severe: {
-      first: { value: number; unit: 'seconds' | 'minutes' | 'hours' | 'days' | 'weeks' | 'months'; banValue?: number; banUnit?: 'seconds' | 'minutes' | 'hours' | 'days' | 'weeks' | 'months'; };
-      medium: { value: number; unit: 'seconds' | 'minutes' | 'hours' | 'days' | 'weeks' | 'months'; banValue?: number; banUnit?: 'seconds' | 'minutes' | 'hours' | 'days' | 'weeks' | 'months'; };
-      habitual: { value: number; unit: 'seconds' | 'minutes' | 'hours' | 'days' | 'weeks' | 'months'; banValue?: number; banUnit?: 'seconds' | 'minutes' | 'hours' | 'days' | 'weeks' | 'months'; };
-    };
-  };
-  points?: {
-    low: number;
-    regular: number;
-    severe: number;
-  };
-  customPoints?: number;
-  staffDescription?: string;
-  playerDescription?: string;
-  canBeAltBlocking?: boolean;
-  canBeStatWiping?: boolean;
-  isAppealable?: boolean;
-  singleSeverityPunishment?: boolean;
-  singleSeverityDurations?: {
-    first: { value: number; unit: 'seconds' | 'minutes' | 'hours' | 'days' | 'weeks' | 'months'; type: 'mute' | 'ban'; };
-    medium: { value: number; unit: 'seconds' | 'minutes' | 'hours' | 'days' | 'weeks' | 'months'; type: 'mute' | 'ban'; };
-    habitual: { value: number; unit: 'seconds' | 'minutes' | 'hours' | 'days' | 'weeks' | 'months'; type: 'mute' | 'ban'; };
-  };
-  singleSeverityPoints?: number;
-}
+const asString = (value: unknown): string | undefined =>
+  typeof value === 'string' ? value : undefined;
+
+const humanizeActionLabel = (action: string): string =>
+  action.includes('_')
+    ? action
+        .split('_')
+        .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
+        .join(' ')
+    : action;
 
 export interface TicketMessage {
   id: string;
@@ -115,7 +83,7 @@ export interface TicketMessage {
   content: string;
   timestamp: string;
   staff?: boolean; // Indicates if the sender is a staff member
-  attachments?: string[];
+  attachments?: Array<string | JsonObject>;
   avatar?: string; // Avatar URL for the message sender
   closedAs?: string; // Optional field to track if this message closed the ticket
   creatorIdentifier?: string; // Browser identifier for creator verification
@@ -126,7 +94,7 @@ interface TicketNote {
   text?: string; // Backend may use 'text' instead of 'content'
   author?: string;
   issuerName?: string; // Backend may use 'issuerName' instead of 'author'
-  date: string;
+  date: string | number;
   attachments?: Array<{
     id: string;
     url: string;
@@ -155,6 +123,8 @@ export interface TicketDetails {
   status: 'Open' | 'Closed'; // Simplified to just Open/Closed
   reportedBy: string;
   reportedById?: string;
+  creatorEmail?: string;
+  isWebUser?: boolean;
   date: string;
   category: TicketCategory;
   relatedPlayer?: string;
@@ -181,6 +151,18 @@ export interface TicketDetails {
   assignedTo?: string[];
 }
 
+interface PunishmentEvidenceDisplay {
+  type?: string;
+  text?: string;
+  url?: string;
+  fileUrl?: string;
+  fileName?: string;
+  uploadedBy?: string;
+  issuerName?: string;
+  uploadedAt?: string | null;
+  date?: string;
+}
+
 const FilePreview = memo(({ file }: { file: File }) => {
   const [url, setUrl] = useState<string | null>(null);
   
@@ -190,6 +172,7 @@ const FilePreview = memo(({ file }: { file: File }) => {
       setUrl(objectUrl);
       return () => URL.revokeObjectURL(objectUrl);
     }
+    return undefined;
   }, [file]);
 
   if (url) {
@@ -219,10 +202,10 @@ const FilePreview = memo(({ file }: { file: File }) => {
 });
 FilePreview.displayName = 'FilePreview';
 
-const MessageAvatar = memo(({ message, ticketData, staffData }: { 
-  message: TicketMessage; 
-  ticketData?: any; 
-  staffData?: any; 
+const MessageAvatar = memo(({ message, ticketData, staffData }: {
+  message: TicketMessage;
+  ticketData?: { creatorUuid?: string | null } | null;
+  staffData?: StaffMember[];
 }) => {
   const [avatarError, setAvatarError] = useState(false);
   const [avatarLoading, setAvatarLoading] = useState(true);
@@ -264,7 +247,7 @@ const MessageAvatar = memo(({ message, ticketData, staffData }: {
 
   // For staff messages, check if they have an assigned Minecraft account or message avatar
   if (message.senderType === 'staff' || message.staff) {
-    const staffMember = staffData?.find((staff: any) => staff.username === message.sender);
+    const staffMember = staffData?.find((staff) => staff.username === message.sender);
     const minecraftUuid = staffMember?.assignedMinecraftUuid;
     const avatarUrl = message.avatar || (minecraftUuid ? getAvatarUrl(minecraftUuid, 32, true) : null);
 
@@ -326,19 +309,19 @@ const TicketDetail = () => {
   const applyPunishment = useApplyPunishment();
 
   // Get settings data early so it's available for useMemo hooks
-  const { data: settingsData } = useSettings();
+  useSettings();
   const { data: quickResponsesData } = useQuickResponses();
   const { data: punishmentTypesData } = usePunishmentTypes();
 
   // Get punishment ordinal from dynamic punishment types data
-  const getPunishmentOrdinal = useMemo(() => (punishmentName: string): number => {
+  const getPunishmentOrdinal = useCallback((punishmentName: string): number => {
     // Use punishment types from dedicated endpoint
     if (punishmentTypesData && Array.isArray(punishmentTypesData)) {
       const punishmentType = punishmentTypesData.find(
-        (type: any) => type.name === punishmentName
+        (type) => type.name === punishmentName
       );
       if (punishmentType) {
-        return punishmentType.ordinal;
+        return punishmentType.ordinal ?? -1;
       }
     }
 
@@ -347,7 +330,7 @@ const TicketDetail = () => {
   }, [punishmentTypesData]);
 
   // Convert duration to milliseconds
-  const convertDurationToMilliseconds = useMemo(() => (duration: { value: number; unit: string }): number => {
+  const convertDurationToMilliseconds = useCallback((duration: { value: number; unit: string }): number => {
     const multipliers = {
       'seconds': 1000,
       'minutes': 60 * 1000,
@@ -356,12 +339,16 @@ const TicketDetail = () => {
       'weeks': 7 * 24 * 60 * 60 * 1000,
       'months': 30 * 24 * 60 * 60 * 1000
     };
-    
+
     return duration.value * (multipliers[duration.unit as keyof typeof multipliers] || 0);
   }, []);
   
   // Helper function to get punishment types by category
-  const punishmentTypesByCategory = useMemo(() => {
+  const punishmentTypesByCategory = useMemo<{
+    Administrative: PunishmentType[];
+    Social: PunishmentType[];
+    Gameplay: PunishmentType[];
+  }>(() => {
     if (!punishmentTypesData || !Array.isArray(punishmentTypesData)) {
       // Return empty categories if no punishment types loaded yet
       return {
@@ -372,13 +359,17 @@ const TicketDetail = () => {
     }
 
     // Organize punishment types by category (same logic as PlayerWindow.tsx)
-    const categories: any = {
+    const categories: {
+      Administrative: PunishmentType[];
+      Social: PunishmentType[];
+      Gameplay: PunishmentType[];
+    } = {
       Administrative: [],
       Social: [],
       Gameplay: []
     };
 
-    punishmentTypesData.forEach((type: any) => {
+    punishmentTypesData.forEach((type) => {
       const punishmentType = {
         ...type,
         id: type.id || type.ordinal,
@@ -386,7 +377,7 @@ const TicketDetail = () => {
       };
 
       const categoryKey = type.category?.charAt(0).toUpperCase() + type.category?.slice(1).toLowerCase();
-      if (categories[categoryKey]) {
+      if (categoryKey === 'Administrative' || categoryKey === 'Social' || categoryKey === 'Gameplay') {
         categories[categoryKey].push(punishmentType);
       } else if (type.category?.toLowerCase() === 'administrative') {
         categories.Administrative.push(punishmentType);
@@ -398,8 +389,8 @@ const TicketDetail = () => {
     });
 
     // Sort each category by ordinal
-    Object.keys(categories).forEach(category => {
-      categories[category].sort((a: any, b: any) => (a.ordinal || 0) - (b.ordinal || 0));
+    (['Administrative', 'Social', 'Gameplay'] as const).forEach(category => {
+      categories[category].sort((a, b) => (a.ordinal || 0) - (b.ordinal || 0));
     });
 
     return categories;
@@ -407,8 +398,8 @@ const TicketDetail = () => {
 
   // Filter punishment types by user's punishment.apply.* permissions
   const filteredPunishmentTypesByCategory = useMemo(() => {
-    const filterByPermission = (types: any[]) =>
-      types.filter((type: any) => {
+    const filterByPermission = (types: PunishmentType[]) =>
+      types.filter((type) => {
         const permId = 'punishment.apply.' + type.name.toLowerCase().replace(/ /g, '-');
         return hasPermission(permId);
       });
@@ -421,15 +412,15 @@ const TicketDetail = () => {
   }, [punishmentTypesByCategory, hasPermission]);
 
   // Get current punishment type from punishment data
-  const getCurrentPunishmentType = useMemo(() => (punishmentData: any) => {
+  const getCurrentPunishmentType = useCallback((punishmentData: PlayerPunishmentData) => {
     if (!punishmentData?.selectedPunishmentCategory) return null;
-    
+
     const allTypes = [
       ...(punishmentTypesByCategory?.Administrative || []),
       ...(punishmentTypesByCategory?.Social || []),
       ...(punishmentTypesByCategory?.Gameplay || [])
     ];
-    
+
     return allTypes.find(type => type.name === punishmentData.selectedPunishmentCategory);
   }, [punishmentTypesByCategory]);
 
@@ -448,7 +439,7 @@ const TicketDetail = () => {
     }
 
     // Only validate reason for administrative manual punishments that explicitly need it
-    const needsReason = ['Kick', 'Manual Mute', 'Manual Ban'].includes(punishmentData.selectedPunishmentCategory);
+    const needsReason = requiresPlayerFacingReason(punishmentData.selectedPunishmentCategory);
     if (needsReason && !punishmentData.reason?.trim()) {
       toast({
         title: t('ticket.missingInfo'),
@@ -581,7 +572,7 @@ const TicketDetail = () => {
         }
       }
         // Prepare data map for additional punishment data
-      const data: { [key: string]: any } = {
+      const data: { [key: string]: unknown } = {
         silent: punishmentData.silentPunishment || false,
       };
         // Set duration in data for all punishments that have a calculated duration
@@ -616,16 +607,7 @@ const TicketDetail = () => {
       
       // Prepare notes array - notes must be objects with text, issuerName, and date
       const notes: Array<{text: string; issuerName: string; date?: string}> = [];
-      
-      // For manual punishments that need a reason, make the reason the first note
-      const needsReasonAsFirstNote = ['Kick', 'Manual Mute', 'Manual Ban'].includes(punishmentData.selectedPunishmentCategory);
-      if (needsReasonAsFirstNote && punishmentData.reason?.trim()) {
-        notes.push({
-          text: punishmentData.reason.trim(),
-          issuerName: user?.username || 'Admin'
-        });
-      }
-      
+
       // Add staff notes as additional notes
       if (punishmentData.staffNotes?.trim()) {
         notes.push({
@@ -644,8 +626,9 @@ const TicketDetail = () => {
           if (report && report !== 'ticket-new') {
             // Extract ticket ID from format like "ticket-123"
             const ticketMatch = report.match(/ticket-(\w+)/);
-            if (ticketMatch && !attachedTicketIds.includes(ticketMatch[1])) {
-              attachedTicketIds.push(ticketMatch[1]);
+            const matchedTicketId = ticketMatch?.[1];
+            if (matchedTicketId && !attachedTicketIds.includes(matchedTicketId)) {
+              attachedTicketIds.push(matchedTicketId);
             }
           }
         });
@@ -723,10 +706,11 @@ const TicketDetail = () => {
       }
       
       // Prepare punishment data in the format expected by the server
-      const punishmentApiData: { [key: string]: any } = {
+      const punishmentApiData: { [key: string]: unknown } = {
         issuerName: user?.username || 'Admin',
         issuerId: user?.id,
         typeOrdinal: typeOrdinal,
+        reason: playerFacingReason(punishmentData.selectedPunishmentCategory, punishmentData.reason),
         notes: notes,
         evidence: evidence,
         attachedTicketIds: attachedTicketIds,
@@ -739,7 +723,7 @@ const TicketDetail = () => {
         throw new Error('No player UUID found for this ticket. Only username available: ' + ticketDetails.relatedPlayer);
       }
       
-      const result = await applyPunishment.mutateAsync({
+      await applyPunishment.mutateAsync({
         uuid: ticketDetails.relatedPlayerId,
         punishmentData: punishmentApiData
       });
@@ -760,49 +744,15 @@ const TicketDetail = () => {
     }
   };
 
-  // Helper function to convert duration to milliseconds
-  const convertDurationToMs = (duration: { value: number; unit: string }) => {
-    const multipliers = {
-      'seconds': 1000,
-      'minutes': 60 * 1000,
-      'hours': 60 * 60 * 1000,
-      'days': 24 * 60 * 60 * 1000,
-      'weeks': 7 * 24 * 60 * 60 * 1000,
-      'months': 30 * 24 * 60 * 60 * 1000
-    };
-    
-    return duration.value * (multipliers[duration.unit as keyof typeof multipliers] || 0);
-  };
-
-  const [formSubject, setFormSubject] = useState('');
-  const [formData, setFormData] = useState<Record<string, string>>({});
   const [replyAttachments, setReplyAttachments] = useState<Array<{id: string, url: string, key: string, fileName: string, fileType: string, fileSize: number, uploadedAt: string, uploadedBy: string}>>([]);
   const [noteAttachments, setNoteAttachments] = useState<Array<{id: string, url: string, key: string, fileName: string, fileType: string, fileSize: number, uploadedAt: string, uploadedBy: string}>>([]);
   const [pendingFiles, setPendingFiles] = useState<File[]>([]);
   const { uploadMedia } = useMediaUpload();
   const { data: mediaConfig } = useMediaUploadConfig();
 
-  const normalizedCdnHost = useMemo(() => {
-    const rawDomain = mediaConfig?.cdnDomain?.trim();
-    if (!rawDomain) return null;
+  const normalizedCdnHost = useMemo(() => normalizeCdnHost(mediaConfig?.cdnDomain), [mediaConfig?.cdnDomain]);
 
-    try {
-      const parsed = new URL(rawDomain.startsWith('http') ? rawDomain : `https://${rawDomain}`);
-      return parsed.hostname.toLowerCase();
-    } catch {
-      return rawDomain.replace(/^https?:\/\//i, '').split('/')[0].toLowerCase();
-    }
-  }, [mediaConfig?.cdnDomain]);
-
-  const isTrustedCdnUrl = (url?: string | null): boolean => {
-    if (!url || !normalizedCdnHost) return false;
-    try {
-      const parsed = new URL(url);
-      return parsed.hostname.toLowerCase() === normalizedCdnHost;
-    } catch {
-      return false;
-    }
-  };
+  const isTrustedCdnUrl = (url?: string | null): boolean => isUrlOnTrustedCdn(url, normalizedCdnHost);
 
   // Helper function to get file icon
   const getFileIcon = (type: string) => {
@@ -826,7 +776,7 @@ const TicketDetail = () => {
   const pathParts = path.split('/');
   
   // Get the last part of the URL which should be the ticket ID
-  let ticketId = pathParts[pathParts.length - 1];
+  let ticketId = pathParts[pathParts.length - 1] ?? '';
   
   // Reverse the transformation done in navigation (ID- back to #)
   if (ticketId.startsWith('ID-')) {
@@ -852,9 +802,9 @@ const TicketDetail = () => {
   // Function to get available quick responses for current ticket category
   const getQuickResponsesForTicket = (category: TicketCategory) => {
     // Use quick responses from dedicated endpoint, fallback to default config
-    const quickResponsesPayload = (quickResponsesData as any)?.data ?? quickResponsesData;
+    const quickResponsesPayload = quickResponsesData?.data;
     const quickResponses: QuickResponsesConfiguration =
-      (quickResponsesPayload?.categories ? quickResponsesPayload : null) || defaultQuickResponsesConfig;
+      (quickResponsesPayload?.categories ? (quickResponsesPayload as unknown as QuickResponsesConfiguration) : null) || defaultQuickResponsesConfig;
 
     // Map display category to possible ticketType values
     // Support both formats: 'chat_report' (TicketSettings format) and 'chat' (MongoDB format)
@@ -930,34 +880,23 @@ const TicketDetail = () => {
     }
   });
 
-  // Simplified status colors - just Open and Closed
-  const statusColors = {
-    'Open': 'bg-green-50 text-green-700 border-green-200',
-    'Closed': 'bg-red-50 text-red-700 border-red-200'
-  };
-
-  const priorityColors = {
-    'Critical': 'bg-destructive/10 text-destructive border-destructive/20',
-    'Medium': 'bg-warning/10 text-warning border-warning/20',
-    'Low': 'bg-info/10 text-info border-info/20',
-    'Fixed': 'bg-success/10 text-success border-success/20'
-  };  // Use React Query to fetch ticket data from panel API
-  const { data: ticketData, isLoading, isError, error, refetch } = usePanelTicket(ticketId);
+  // Use React Query to fetch ticket data from panel API
+  const { data: ticketData, isLoading, isError, refetch } = usePanelTicket(ticketId);
   
   useEffect(() => {
-    if (ticketData) {
+    if (ticketData?.id) {
       // Backend marks the ticket as read on fetch — invalidate dashboard notification queries
       queryClient.invalidateQueries({ queryKey: ['/v1/panel/ticket-subscriptions/updates'] });
       queryClient.invalidateQueries({ queryKey: ['/v1/panel/ticket-subscriptions/assigned-updates'] });
     }
-  }, [ticketData]);
+  }, [ticketData?.id]);
 
   // Scroll to top of message list when messages load
   useEffect(() => {
     if (messageListRef.current) {
       messageListRef.current.scrollTop = 0;
     }
-  }, [ticketDetails.messages]);
+  }, [ticketDetails.messages?.length, ticketData?.id]);
   
   // Mutation hook for updating tickets
   const updateTicketMutation = useUpdateTicket();
@@ -1085,6 +1024,23 @@ const TicketDetail = () => {
       });
     }
   };
+  const ticketDataSignature = useMemo(() => {
+    if (!ticketData) return null;
+    const replies = ticketData.messages || [];
+    const lastMessageId = replies.length > 0 ? (replies[replies.length - 1]?.id || replies.length) : 0;
+    return [
+      ticketData.id,
+      ticketData.locked,
+      ticketData.hidden,
+      ticketData.status,
+      replies.length,
+      lastMessageId,
+      (ticketData.notes || []).length,
+      (ticketData.tags || []).join(','),
+      (Array.isArray(ticketData.assignedTo) ? ticketData.assignedTo.join(',') : ticketData.assignedTo) || '',
+    ].join('|');
+  }, [ticketData]);
+
   useEffect(() => {
     if (ticketData) {
       // Process ticket data
@@ -1120,11 +1076,6 @@ const TicketDetail = () => {
         if (!isNaN(dateFromField.getTime())) {
           validDate = dateFromField.toISOString();
         }
-      } else if (ticketData.created) {
-        const createdDate = new Date(ticketData.created);
-        if (!isNaN(createdDate.getTime())) {
-          validDate = createdDate.toISOString();
-        }
       }
       
       // Map MongoDB data to our TicketDetails interface
@@ -1134,14 +1085,16 @@ const TicketDetail = () => {
         // Simplify status to Open/Closed - anything but Closed is Open
         status: (ticketData.locked === true || isClosedTicketStatus(ticketData.status)) ? 'Closed' : 'Open',
         reportedBy: ticketData.reportedBy || 'Unknown',
-        reportedById: ticketData.reportedById || ticketData.creatorUuid || ticketData.reportedByUuid,
+        reportedById: ticketData.creatorUuid || undefined,
+        creatorEmail: ticketData.creatorEmail,
+        isWebUser: !ticketData.creatorUuid || Boolean(ticketData.creatorEmail),
         date: validDate,
         category,
-        relatedPlayer: ticketData.relatedPlayer?.username || ticketData.relatedPlayerName || ticketData.reportedPlayer,
-        relatedPlayerId: ticketData.relatedPlayer?.uuid || ticketData.relatedPlayerId || ticketData.reportedPlayerUuid,
-        messages: ((ticketData.messages || ticketData.replies || []).map((reply: any, index: number) => ({
-          id: reply._id || reply.id || `msg-${Date.now()}-${Math.random().toString(36).substring(2, 7)}`,
-          sender: reply.name || reply.sender || (reply.staff ? 'Staff' : (index === 0 ? (ticketData.creatorName || ticketData.reportedBy || 'Player') : 'Player')),
+        relatedPlayer: ticketData.reportedPlayer,
+        relatedPlayerId: ticketData.reportedPlayerUuid,
+        messages: (ticketData.messages || []).map((reply, index) => ({
+          id: reply.id || `msg-${Date.now()}-${Math.random().toString(36).substring(2, 7)}`,
+          sender: reply.name || (reply.staff ? 'Staff' : (index === 0 ? (ticketData.creatorName || ticketData.reportedBy || 'Player') : 'Player')),
           senderType: reply.type === 'staff' ? 'staff' :
                      reply.type === 'system' ? 'system' : 'user',
           content: reply.content,
@@ -1151,10 +1104,10 @@ const TicketDetail = () => {
           attachments: reply.attachments,
           closedAs: (reply.action === "Comment" || reply.action === "Reopen") ? undefined : reply.action,
           creatorIdentifier: reply.creatorIdentifier
-        }))),
+        })),
         notes: ticketData.notes || [],
         tags,
-        createdServer: ticketData.createdServer || undefined,
+        createdServer: undefined,
         locked: ticketData.locked === true,
         hidden: ticketData.hidden === true,
         assignedTo: ticketData.assignedTo || [],
@@ -1162,9 +1115,22 @@ const TicketDetail = () => {
         selectedAction: 'Comment',
         // Extract AI analysis from ticket data if present
         aiAnalysis: ticketData.aiAnalysis
+          ? {
+              analysis: ticketData.aiAnalysis.analysis,
+              suggestedAction: ticketData.aiAnalysis.suggestedAction
+                ? {
+                    punishmentTypeId: ticketData.aiAnalysis.suggestedAction.punishmentTypeId,
+                    severity: ticketData.aiAnalysis.suggestedAction.severity as 'low' | 'regular' | 'severe'
+                  }
+                : null,
+              wasAppliedAutomatically: ticketData.aiAnalysis.wasAppliedAutomatically,
+              dismissed: ticketData.aiAnalysis.dismissed,
+              createdAt: new Date(Number(ticketData.aiAnalysis.createdAt))
+            }
+          : undefined
       });
     }
-  }, [ticketData]);
+  }, [ticketDataSignature]);
 
   // Define updated handlers that save changes to MongoDB
   const handleAddNote = () => {
@@ -1228,19 +1194,6 @@ const TicketDetail = () => {
     return "Type your reply here...";
   };
 
-  // Helper function to convert duration to milliseconds
-  const getDurationMultiplier = (unit: string): number => {
-    switch (unit) {
-      case 'seconds': return 1000;
-      case 'minutes': return 60 * 1000;
-      case 'hours': return 60 * 60 * 1000;
-      case 'days': return 24 * 60 * 60 * 1000;
-      case 'weeks': return 7 * 24 * 60 * 60 * 1000;
-      case 'months': return 30 * 24 * 60 * 60 * 1000;
-      default: return 1000;
-    }
-  };
-
   const handleSendReply = async () => {
     const hasAttachments = pendingFiles.length > 0 || replyAttachments.length > 0;
     if ((!ticketDetails.newReply?.trim() && !hasAttachments) && !ticketDetails.selectedAction) return;
@@ -1296,7 +1249,7 @@ const TicketDetail = () => {
     const now = new Date();
     const timestamp = now.toISOString();
     
-    let messageContent = ticketDetails.newReply?.trim() || '';
+    const messageContent = ticketDetails.newReply?.trim() || '';
     let status: 'Open' | 'Closed' = ticketDetails.status;
     
     let actionDesc = '';
@@ -1334,8 +1287,8 @@ const TicketDetail = () => {
       const isClosing = status === 'Closed';
 
       // Get current staff member's avatar from staffData
-      const currentStaff = staffData?.find((staff: any) => staff.username === user?.username || staff.email === user?.email);
-      const staffAvatar = currentStaff?.assignedMinecraftUuid ? getAvatarUrl(currentStaff.assignedMinecraftUuid, 32, true) : null;
+      const currentStaff = staffData?.find((staff) => staff.username === user?.username || staff.email === user?.email);
+      const staffAvatar = currentStaff?.assignedMinecraftUuid ? getAvatarUrl(currentStaff.assignedMinecraftUuid, 32, true) : undefined;
 
       const newMessage = {
         id: `msg-${Date.now()}`,
@@ -1378,7 +1331,7 @@ const TicketDetail = () => {
       
       try {
         // Prepare update data
-        const updateData: any = {
+        const updateData = {
           status,
           newReply: newMessage,
           locked: isClosing || status === 'Closed' ? true : ticketDetails.locked
@@ -1390,8 +1343,10 @@ const TicketDetail = () => {
         const appealAction = actionConfig?.appealAction;
 
         if (appealAction) {
-          const punishmentId = ticketData?.data?.punishmentId;
-          const playerUuid = ticketData?.data?.playerUuid;
+          const rawPunishmentId = ticketData?.data?.punishmentId;
+          const rawPlayerUuid = ticketData?.data?.playerUuid;
+          const punishmentId = typeof rawPunishmentId === 'string' ? rawPunishmentId : undefined;
+          const playerUuid = typeof rawPlayerUuid === 'string' ? rawPlayerUuid : undefined;
 
           if (punishmentId && playerUuid) {
             try {
@@ -1410,14 +1365,16 @@ const TicketDetail = () => {
                 });
               } else if (appealAction === 'reduce') {
                 // Determine the new duration
-                let newDuration;
+                let newDuration: { value: number; unit: string };
 
+                const durationValue = ticketDetails.duration?.value;
+                const durationUnit = ticketDetails.duration?.unit;
                 if (ticketDetails.isPermanent) {
                   // Permanent punishment - send 0 value
                   newDuration = { value: 0, unit: 'seconds' };
-                } else if (ticketDetails.duration?.value && ticketDetails.duration?.unit) {
+                } else if (durationValue && durationUnit) {
                   // Use the provided duration - the hook will convert to milliseconds
-                  newDuration = ticketDetails.duration;
+                  newDuration = { value: durationValue, unit: durationUnit };
                 } else {
                   throw new Error('Invalid duration specified for reduction');
                 }
@@ -1503,37 +1460,18 @@ const TicketDetail = () => {
     handleUpdateTagsWithPersistence(newTags);
   };
   
-  const handleStatusChange = (newStatus: 'Open' | 'Closed', lockTicket = false) => {
-    setTicketDetails(prev => ({
-      ...prev,
-      status: newStatus,
-      locked: lockTicket || newStatus === 'Closed' ? true : prev.locked
-    }));
-    
-    updateTicketMutation.mutate({
-      id: ticketDetails.id,
-      data: {
-        status: newStatus,
-        locked: lockTicket || newStatus === 'Closed' ? true : ticketDetails.locked
-      }
-    });
-  };
-  
   const handleTicketAction = (action: string) => {
     setTicketDetails(prev => ({
       ...prev,
       selectedAction: action
     }));
     
-    let newStatus: 'Open' | 'Closed' = ticketDetails.status;
     let text = '';
-    
+
     // Handle special actions
     if (action === 'Close') {
-      newStatus = 'Closed';
       text = 'This ticket has been closed. Please create a new ticket if you need further assistance.';
     } else if (action === 'Reopen') {
-      newStatus = 'Open';
       text = 'This ticket has been reopened.';
     } else if (action === 'Comment') {
       // Clear the reply for comment mode
@@ -1546,19 +1484,14 @@ const TicketDetail = () => {
       // Get quick response configuration
       const actions = getQuickResponsesForTicket(ticketDetails.category);
       const actionConfig = actions.find(act => act.name === action);
-      
+
       if (actionConfig) {
         // Use quick response message
         text = actionConfig.message;
-        
+
         // Replace placeholders
         if (ticketDetails.relatedPlayer && text.includes('{reported-player}')) {
           text = text.replace('{reported-player}', ticketDetails.relatedPlayer);
-        }
-        
-        // Check if this action should close the ticket
-        if (actionConfig.closeTicket) {
-          newStatus = 'Closed';
         }
       }
     }
@@ -1724,7 +1657,7 @@ const TicketDetail = () => {
 
                       {/* Display the tags using LabelBadge */}
                       {ticketDetails.tags && ticketDetails.tags.map((tag, index) => {
-                        const labelConfig = availableLabels.find((l: any) => l.name === tag);
+                        const labelConfig = availableLabels.find((l) => l.name === tag);
                         return (
                           <LabelBadge
                             key={index}
@@ -1737,7 +1670,7 @@ const TicketDetail = () => {
 
                       {/* Label add dropdown */}
                       {(() => {
-                        const unusedLabels = availableLabels.filter((label: any) =>
+                        const unusedLabels = availableLabels.filter((label) =>
                           !ticketDetails.tags?.includes(label.name)
                         );
                         if (unusedLabels.length === 0) return null;
@@ -1751,7 +1684,7 @@ const TicketDetail = () => {
                             </PopoverTrigger>
                             <PopoverContent className="w-48 p-2" align="start">
                               <div className="space-y-1">
-                                {unusedLabels.map((label: any) => (
+                                {unusedLabels.map((label) => (
                                   <button
                                     key={label.id}
                                     className="w-full flex items-center gap-2 px-2 py-1.5 text-sm rounded hover:bg-muted transition-colors text-left"
@@ -1777,16 +1710,14 @@ const TicketDetail = () => {
                   <div className="flex items-center">
                     <span className="text-muted-foreground">Opened by:</span>
                     <span className="ml-1 inline-flex items-center gap-1.5">
-                      {ticketData?.creatorUuid && (
+                      {ticketDetails.reportedById && (
                         <img
-                          src={getAvatarUrl(ticketData.creatorUuid, 16, true)}
+                          src={getAvatarUrl(ticketDetails.reportedById, 16, true)}
                           alt=""
                           className="h-4 w-4 rounded-sm"
                         />
                       )}
-                      {ticketDetails.reportedBy?.includes('(Web User)') ? (
-                        <span className="text-sm">{ticketDetails.reportedBy}</span>
-                      ) : (
+                      {ticketDetails.reportedById ? (
                         <ClickablePlayer
                           playerText={ticketDetails.reportedBy}
                           uuid={ticketDetails.reportedById}
@@ -1795,9 +1726,20 @@ const TicketDetail = () => {
                         >
                           {ticketDetails.reportedBy}
                         </ClickablePlayer>
+                      ) : (
+                        <span className="text-sm">{ticketDetails.reportedBy}</span>
+                      )}
+                      {ticketDetails.isWebUser && (
+                        <span className="text-xs text-muted-foreground">web user</span>
                       )}
                     </span>
                   </div>
+                  {!ticketDetails.reportedById && ticketDetails.creatorEmail && (
+                    <div className="flex items-center">
+                      <span className="text-muted-foreground">Email:</span>
+                      <span className="ml-1 text-sm">{ticketDetails.creatorEmail}</span>
+                    </div>
+                  )}
                   <div>
                     <span className="text-muted-foreground">Date:</span>
                     <span className="ml-1">{formatDate(ticketDetails.date)}</span>
@@ -1906,6 +1848,7 @@ const TicketDetail = () => {
                     <Button
                       variant="outline"
                       size="sm"
+                      disabled={updateTicketMutation.isPending}
                       onClick={() => {
                         const newHidden = !ticketDetails.hidden;
                         setTicketDetails(prev => ({ ...prev, hidden: newHidden }));
@@ -1925,11 +1868,14 @@ const TicketDetail = () => {
                         });
                       }}
                     >
-                      {ticketDetails.hidden ? (
-                        <><Eye className="h-4 w-4 mr-2" />Unhide from Public</>
+                      {updateTicketMutation.isPending ? (
+                        <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                      ) : ticketDetails.hidden ? (
+                        <Eye className="h-4 w-4 mr-2" />
                       ) : (
-                        <><EyeOff className="h-4 w-4 mr-2" />Hide from Public</>
+                        <EyeOff className="h-4 w-4 mr-2" />
                       )}
+                      {ticketDetails.hidden ? 'Unhide from Public' : 'Hide from Public'}
                     </Button>
                   </div>
                 )}
@@ -1938,7 +1884,7 @@ const TicketDetail = () => {
 
             {/* Punishment Details Section for Appeals */}
             {ticketDetails.category === 'Punishment Appeal' && ticketData?.data?.punishmentId && (
-              <PunishmentDetailsCard punishmentId={ticketData.data.punishmentId} />
+              <PunishmentDetailsCard punishmentId={String(ticketData.data.punishmentId)} />
             )}
 
             {/* Replay Link Section */}
@@ -1984,47 +1930,37 @@ const TicketDetail = () => {
                 </CardHeader>
                 <CardContent>
                   <div className="max-h-[300px] overflow-y-auto space-y-1 font-mono text-sm bg-muted/50 rounded-lg p-3">
-                    {ticketData.chatMessages.map((msg: any, index: number) => {
-                      // Parse message - could be JSON object or have content property
-                      let username = 'Unknown';
-                      let message = '';
-                      let timestamp = '';
+                    {ticketData.chatMessages.map((msg, index) => {
+                      const raw = typeof msg === 'string' ? msg : (msg?.content ?? '');
+                      let sender = typeof msg === 'object' && msg ? (msg.sender ?? '') : '';
+                      let text = raw;
+                      let time: unknown = typeof msg === 'object' && msg ? (msg.timestamp ?? '') : '';
 
-                      if (typeof msg === 'object') {
-                        if (msg.content) {
-                          // Legacy format: {content: "json string", timestamp: ...}
-                          try {
-                            const parsed = JSON.parse(msg.content);
-                            username = parsed.username || 'Unknown';
-                            message = parsed.message || '';
-                            timestamp = parsed.timestamp || '';
-                          } catch {
-                            message = msg.content;
-                          }
-                        } else {
-                          // Direct format: {username, message, timestamp}
-                          username = msg.username || 'Unknown';
-                          message = msg.message || '';
-                          timestamp = msg.timestamp || '';
-                        }
-                      } else if (typeof msg === 'string') {
+                      if (!sender && raw) {
                         try {
-                          const parsed = JSON.parse(msg);
-                          username = parsed.username || 'Unknown';
-                          message = parsed.message || '';
-                          timestamp = parsed.timestamp || '';
+                          const parsed = JSON.parse(raw);
+                          sender = parsed.username ?? parsed.sender ?? '';
+                          text = parsed.message ?? parsed.content ?? raw;
+                          time = parsed.timestamp ?? time;
                         } catch {
-                          message = msg;
+                          text = raw;
                         }
                       }
 
+                      const structured = sender !== '';
+                      const hasTime = time !== '' && time !== null && time !== undefined;
+                      const timeMs = hasTime ? (typeof time === 'string' ? Date.parse(time) : Number(time)) : NaN;
+                      const timeLabel = structured && Number.isFinite(timeMs) ? new Date(timeMs).toLocaleTimeString() : '';
+
                       return (
                         <div key={index} className="flex gap-2 py-0.5 hover:bg-muted/70 px-1 rounded">
-                          <span className="text-muted-foreground shrink-0">
-                            {timestamp ? new Date(timestamp).toLocaleTimeString() : ''}
-                          </span>
-                          <span className="font-semibold text-primary">{username}:</span>
-                          <span className="text-foreground break-all">{message}</span>
+                          {timeLabel ? (
+                            <span className="text-muted-foreground shrink-0">{timeLabel}</span>
+                          ) : null}
+                          {structured ? (
+                            <span className="font-semibold text-primary">{sender}:</span>
+                          ) : null}
+                          <span className="text-foreground break-all">{text}</span>
                         </div>
                       );
                     })}
@@ -2033,8 +1969,10 @@ const TicketDetail = () => {
               </Card>
             )}
 
-            {/* AI Analysis Section - Show for any ticket with AI analysis that hasn't been applied or dismissed */}
-            {ticketDetails.aiAnalysis && !ticketDetails.aiAnalysis.dismissed && !ticketDetails.aiAnalysis.wasAppliedAutomatically && (
+            {/* AI Analysis Section - Show for an OPEN ticket whose suggestion hasn't been applied or dismissed.
+                A manual apply closes the ticket (wasAppliedAutomatically stays false), so gating on the open
+                status collapses this card after a manual apply and avoids the 2s forced-reload loop. */}
+            {ticketDetails.aiAnalysis && !ticketDetails.aiAnalysis.dismissed && !ticketDetails.aiAnalysis.wasAppliedAutomatically && ticketDetails.status !== 'Closed' && (
               <div className="bg-blue-50 dark:bg-blue-950 border border-blue-200 dark:border-blue-800 rounded-lg p-4 mb-4" data-testid="ai-analysis">
                 <div className="flex items-start gap-3">
                   <div className="p-2 bg-blue-100 dark:bg-blue-900 rounded-full">
@@ -2085,11 +2023,11 @@ const TicketDetail = () => {
                             </p>
                           </div>
                           
-                          {/* Action buttons - only show if not automatically applied and not dismissed */}
+                          {/* Action buttons - only show on an open, not-yet-applied, not-dismissed suggestion */}
                           {!ticketDetails.aiAnalysis.wasAppliedAutomatically && !ticketDetails.aiAnalysis.dismissed && (
                             <div className="flex gap-2">
-                              <Button 
-                                size="sm" 
+                              <Button
+                                size="sm"
                                 variant="default"
                                 className="bg-green-600 hover:bg-green-700 dark:bg-green-700 dark:hover:bg-green-800"
                                 onClick={applyAISuggestion}
@@ -2127,15 +2065,23 @@ const TicketDetail = () => {
               </div>
             )}
 
-            {/* Show AI status when suggestion has been applied or dismissed */}
-            {ticketDetails.aiAnalysis && (ticketDetails.aiAnalysis.wasAppliedAutomatically || ticketDetails.aiAnalysis.dismissed) && (
+            {/* Show AI status when the suggestion has been applied (auto or manually) or dismissed.
+                A manual apply leaves wasAppliedAutomatically false but closes the ticket, so a closed
+                ticket with a still-present, non-dismissed suggestion is treated as manually applied. */}
+            {ticketDetails.aiAnalysis && (
+              ticketDetails.aiAnalysis.wasAppliedAutomatically ||
+              ticketDetails.aiAnalysis.dismissed ||
+              (ticketDetails.status === 'Closed' && !!ticketDetails.aiAnalysis.suggestedAction)
+            ) && (
               <div className="bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-lg p-3 mb-4">
                 <div className="flex items-center gap-2 text-sm">
                   <ShieldCheck className="h-4 w-4 text-green-600 dark:text-green-400" />
                   <span className="text-gray-700 dark:text-gray-300">
-                    {ticketDetails.aiAnalysis.wasAppliedAutomatically 
+                    {ticketDetails.aiAnalysis.wasAppliedAutomatically
                       ? 'AI suggestion was automatically applied'
-                      : 'AI suggestion was dismissed'}
+                      : ticketDetails.aiAnalysis.dismissed
+                        ? 'AI suggestion was dismissed'
+                        : 'AI suggestion was applied by staff'}
                   </span>
                 </div>
               </div>
@@ -2194,7 +2140,8 @@ const TicketDetail = () => {
                               {(message.closedAs && message.closedAs !== "Comment" && message.closedAs !== "Reopen") && (
                                 (() => {
                                   const action = message.closedAs;
-                                  let badgeText = action;
+                                  const actionLabel = humanizeActionLabel(action);
+                                  let badgeText = actionLabel;
                                   let badgeVariant: "default" | "secondary" | "destructive" | "outline" = "outline";
                                   let badgeIcon = null;
                                   const actionLower = action.toLowerCase();
@@ -2212,7 +2159,7 @@ const TicketDetail = () => {
                                     } else if (message.content.includes('permanent')) {
                                       badgeText = 'Made Permanent';
                                     } else {
-                                      badgeText = action;
+                                      badgeText = actionLabel;
                                     }
                                     badgeVariant = 'outline';
                                     badgeIcon = <ArrowLeft className="h-3 w-3 mr-1" />;
@@ -2292,31 +2239,30 @@ const TicketDetail = () => {
                             {/* Show attachments if any */}
                             {message.attachments && message.attachments.length > 0 && (
                               <div className="flex flex-col gap-2 mt-2">
-                                {message.attachments.map((attachment: any, idx: number) => {
+                                {message.attachments.map((attachment, idx) => {
                                   // Handle both attachment objects and URL strings
-                                  const attachmentData = typeof attachment === 'string' ? 
-                                    { url: attachment, fileName: attachment.split('/').pop() || 'file', fileType: null } : 
-                                    attachment;
-                                  
+                                  const url = typeof attachment === 'string' ? attachment : asString(attachment.url);
+                                  const fileName = typeof attachment === 'string' ? (attachment.split('/').pop() || 'file') : asString(attachment.fileName);
+
                                   // Infer type if missing
-                                  let fileType = attachmentData.fileType;
-                                  if (!fileType && attachmentData.url) {
-                                    const ext = attachmentData.url.split('.').pop()?.toLowerCase();
+                                  let fileType = typeof attachment === 'string' ? null : (asString(attachment.fileType) ?? null);
+                                  if (!fileType && url) {
+                                    const ext = url.split('.').pop()?.toLowerCase();
                                     if (['jpg', 'jpeg', 'png', 'gif', 'webp'].includes(ext || '')) fileType = 'image/' + ext;
                                     else if (['mp4', 'webm', 'mov'].includes(ext || '')) fileType = 'video/' + ext;
                                   }
 
-                                  const canPreview = isTrustedCdnUrl(attachmentData.url);
+                                  const canPreview = isTrustedCdnUrl(url);
                                   const isImage = canPreview && fileType?.startsWith('image/');
                                   const isVideo = canPreview && fileType?.startsWith('video/');
 
                                   if (isImage) {
                                     return (
                                       <div key={idx} className="relative group max-w-sm mt-2">
-                                        <a href={attachmentData.url} target="_blank" rel="noopener noreferrer">
-                                          <img 
-                                            src={attachmentData.url} 
-                                            alt={attachmentData.fileName} 
+                                        <a href={url} target="_blank" rel="noopener noreferrer">
+                                          <img
+                                            src={url}
+                                            alt={fileName}
                                             className="max-w-full max-h-[300px] rounded-md border shadow-sm object-contain bg-background"
                                             loading="lazy"
                                           />
@@ -2328,25 +2274,25 @@ const TicketDetail = () => {
                                   if (isVideo) {
                                     return (
                                       <div key={idx} className="max-w-sm mt-1">
-                                        <video 
-                                          src={attachmentData.url} 
-                                          controls 
+                                        <video
+                                          src={url}
+                                          controls
                                           className="max-w-full max-h-[300px] rounded-md border shadow-sm bg-black"
                                           preload="metadata"
                                         />
                                       </div>
                                     );
                                   }
-                                  
+
                                   return (
-                                    <Badge 
-                                      key={idx} 
-                                      variant="outline" 
+                                    <Badge
+                                      key={idx}
+                                      variant="outline"
                                       className="flex items-center gap-1 cursor-pointer hover:bg-muted/50 w-fit"
-                                      onClick={() => window.open(attachmentData.url, '_blank')}
+                                      onClick={() => window.open(url, '_blank')}
                                     >
                                       {getFileIcon(fileType || 'application/octet-stream')}
-                                      <span className="text-xs">{truncateFileName(attachmentData.fileName || attachmentData.url.split('/').pop() || 'file')}</span>
+                                      <span className="text-xs">{truncateFileName(fileName || url?.split('/').pop() || 'file')}</span>
                                     </Badge>
                                   );
                                 })}
@@ -2373,7 +2319,7 @@ const TicketDetail = () => {
                           </Button>
                           
                           {/* Dynamic quick response actions */}
-                          {getQuickResponsesForTicket(ticketDetails.category).map((action, index) => {
+                          {getQuickResponsesForTicket(ticketDetails.category).map((action) => {
                             // Get icon based on action type
                             const getActionIcon = (actionName: string) => {
                               if (actionName.toLowerCase().includes('accept') || actionName.toLowerCase().includes('completed') || actionName.toLowerCase().includes('fixed')) {
@@ -2664,9 +2610,10 @@ const TicketDetail = () => {
                         />
                         
                         <div className="flex justify-end">
-                          <Button 
-                            variant="default" 
+                          <Button
+                            variant="default"
                             size="sm"
+                            disabled={updateTicketMutation.isPending}
                             onClick={() => {
                               // Set action to Reopen
                               if (!ticketDetails.newReply) {
@@ -2722,7 +2669,11 @@ const TicketDetail = () => {
                               });
                             }}
                           >
-                            <UnlockIcon className="h-4 w-4 mr-2" />
+                            {updateTicketMutation.isPending ? (
+                              <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                            ) : (
+                              <UnlockIcon className="h-4 w-4 mr-2" />
+                            )}
                             Reopen & Reply
                           </Button>
                         </div>
@@ -2736,10 +2687,10 @@ const TicketDetail = () => {
                 <div className="space-y-4">
                   <div className="space-y-4 mb-5 max-h-[480px] overflow-y-auto p-2">
                     {(ticketDetails.notes || []).map((note, idx) => (
-                      <div key={idx} className="bg-muted/20 p-4 rounded-lg">
+                      <div key={`${note.date}-${note.issuerName || note.author || 'staff'}-${idx}`} className="bg-muted/20 p-4 rounded-lg">
                         <div className="flex justify-between items-start mb-3">
                           <span className="font-medium text-sm text-foreground">{note.issuerName || note.author || 'Staff'}</span>
-                          <span className="text-xs text-muted-foreground flex-shrink-0">{formatDate(note.date)}</span>
+                          <span className="text-xs text-muted-foreground flex-shrink-0">{formatDate(typeof note.date === 'number' ? new Date(note.date).toISOString() : note.date)}</span>
                         </div>
                         <div className="note-content">
                           <MarkdownRenderer
@@ -2751,9 +2702,9 @@ const TicketDetail = () => {
                           <div className="mt-3 pt-3 border-t border-border/50">
                             <p className="text-xs text-muted-foreground mb-2">Attachments:</p>
                             <div className="flex flex-wrap gap-2">
-                              {note.attachments.map((att, attIdx) => (
+                              {note.attachments.map((att) => (
                                 <a
-                                  key={attIdx}
+                                  key={att.id || att.url}
                                   href={att.url}
                                   target="_blank"
                                   rel="noopener noreferrer"
@@ -2894,9 +2845,7 @@ const TicketDetail = () => {
 
 // Component to display punishment details for appeals
 const PunishmentDetailsCard = ({ punishmentId }: { punishmentId: string }) => {
-  const [punishmentData, setPunishmentData] = useState<any>(null);
-  const [isLoading, setIsLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  const { data: punishmentData, isLoading, error } = usePunishmentById(punishmentId);
   const [isAddingEvidence, setIsAddingEvidence] = useState(false);
   const [newEvidence, setNewEvidence] = useState('');
   const [uploadedFile, setUploadedFile] = useState<{
@@ -2905,102 +2854,19 @@ const PunishmentDetailsCard = ({ punishmentId }: { punishmentId: string }) => {
     fileType: string;
     fileSize: number;
   } | null>(null);
-  const [showAdditionalData, setShowAdditionalData] = useState(false);
   const { user } = useAuth();
   const { toast } = useToast();
   const { data: mediaConfig } = useMediaUploadConfig();
 
-  const normalizedCdnHost = useMemo(() => {
-    const rawDomain = mediaConfig?.cdnDomain?.trim();
-    if (!rawDomain) return null;
+  const normalizedCdnHost = useMemo(() => normalizeCdnHost(mediaConfig?.cdnDomain), [mediaConfig?.cdnDomain]);
 
-    try {
-      const parsed = new URL(rawDomain.startsWith('http') ? rawDomain : `https://${rawDomain}`);
-      return parsed.hostname.toLowerCase();
-    } catch {
-      return rawDomain.replace(/^https?:\/\//i, '').split('/')[0].toLowerCase();
-    }
-  }, [mediaConfig?.cdnDomain]);
-
-  const isTrustedCdnUrl = (url?: string | null): boolean => {
-    if (!url || !normalizedCdnHost) return false;
-    try {
-      const parsed = new URL(url);
-      return parsed.hostname.toLowerCase() === normalizedCdnHost;
-    } catch {
-      return false;
-    }
-  };
-
-  useEffect(() => {
-    const fetchPunishmentDetails = async () => {
-      try {
-        setIsLoading(true);
-        setError(null);
-        
-        // Fetch punishment details from the player API
-        const { getApiUrl, getCurrentDomain } = await import('@/lib/api');
-        const response = await fetch(getApiUrl(`/v1/panel/players/punishments/${punishmentId}`), {
-          credentials: 'include',
-          headers: { 'X-Server-Domain': getCurrentDomain() }
-        });
-        
-        if (!response.ok) {
-          throw new Error('Failed to fetch punishment details');
-        }
-        
-        const data = await response.json();
-        setPunishmentData(data);
-      } catch (err) {
-        console.error('Error fetching punishment details:', err);
-        setError(err instanceof Error ? err.message : 'Unknown error');
-      } finally {
-        setIsLoading(false);
-      }
-    };
-
-    if (punishmentId) {
-      fetchPunishmentDetails();
-    }
-  }, [punishmentId]);
-
-  const formatExpiryStatus = (expires: string | null, active: boolean): string => {
-    if (!expires) {
-      return active ? 'Permanent' : 'Inactive';
-    }
-
-    const expiryDate = new Date(expires);
-    const now = new Date();
-    const timeDiff = expiryDate.getTime() - now.getTime();
-
-    const formatTimeDifference = (timeDiff: number) => {
-      const days = Math.floor(Math.abs(timeDiff) / (24 * 60 * 60 * 1000));
-      const hours = Math.floor((Math.abs(timeDiff) % (24 * 60 * 60 * 1000)) / (60 * 60 * 1000));
-      const minutes = Math.floor((Math.abs(timeDiff) % (60 * 60 * 1000)) / (60 * 1000));
-      
-      if (days > 0) {
-        return `${days}d${hours > 0 ? ` ${hours}h` : ''}`;
-      } else if (hours > 0) {
-        return `${hours}h${minutes > 0 && hours < 24 ? ` ${minutes}m` : ''}`;
-      } else {
-        return `${minutes}m`;
-      }
-    };
-
-    if (timeDiff > 0) {
-      const timeLeft = formatTimeDifference(timeDiff);
-      return `expires in ${timeLeft}`;
-    } else {
-      const timeAgo = formatTimeDifference(timeDiff);
-      return `expired ${timeAgo} ago`;
-    }
-  };
+  const isTrustedCdnUrl = (url?: string | null): boolean => isUrlOnTrustedCdn(url, normalizedCdnHost);
 
   const shouldShowReason = (punishmentType: string): boolean => {
     return punishmentType === 'Manual Ban' || punishmentType === 'Manual Mute';
   };
 
-  const isValidBadgeValue = (value: any): boolean => {
+  const isValidBadgeValue = (value: unknown): boolean => {
     if (!value || value === null || value === undefined) return false;
     if (typeof value === 'number' && value === 0) return false;
     if (typeof value !== 'string') return false;
@@ -3083,8 +2949,8 @@ const PunishmentDetailsCard = ({ punishmentId }: { punishmentId: string }) => {
             <div>
               <span className="text-muted-foreground font-medium">Player:</span>
               <span className="ml-2">
-                <ClickablePlayer 
-                  playerText={punishmentData.playerUsername}
+                <ClickablePlayer
+                  playerText={punishmentData.playerUsername ?? ''}
                   uuid={punishmentData.playerUuid}
                   showIcon={true}
                   className="text-sm"
@@ -3101,7 +2967,7 @@ const PunishmentDetailsCard = ({ punishmentId }: { punishmentId: string }) => {
             
             <div>
               <span className="text-muted-foreground font-medium">Issued:</span>
-              <span className="ml-2">{formatDateWithRelative(punishmentData.issued)}</span>
+              <span className="ml-2">{formatDateWithRelative(punishmentData.issued ?? '')}</span>
             </div>
             
             <div>
@@ -3241,15 +3107,14 @@ const PunishmentDetailsCard = ({ punishmentId }: { punishmentId: string }) => {
             </div>
             {punishmentData.evidence && punishmentData.evidence.length > 0 ? (
               <div className="space-y-2">
-                {punishmentData.evidence.map((evidenceItem: any, index: number) => {
+                {punishmentData.evidence.map((evidenceItem: string | PunishmentEvidenceDisplay, index: number) => {
                   // Handle both legacy string format and new object format
                   let evidenceText = '';
                   let issuerInfo = '';
                   let evidenceType = 'text';
                   let fileUrl = '';
                   let fileName = '';
-                  let fileType = '';
-                  
+
                   if (typeof evidenceItem === 'string') {
                     // Legacy string format
                     evidenceText = evidenceItem;
@@ -3258,13 +3123,13 @@ const PunishmentDetailsCard = ({ punishmentId }: { punishmentId: string }) => {
                   } else if (typeof evidenceItem === 'object' && evidenceItem.text) {
                     // New object format
                     evidenceText = evidenceItem.text;
-                    const issuer = evidenceItem.issuerName || 'System';
-                    const date = evidenceItem.date ? formatDate(evidenceItem.date) : 'Unknown';
+                    const issuer = evidenceItem.uploadedBy || evidenceItem.issuerName || 'System';
+                    const dateValue = evidenceItem.uploadedAt || evidenceItem.date;
+                    const date = dateValue ? formatDate(dateValue) : 'Unknown';
                     issuerInfo = `By: ${issuer} on ${date}`;
                     evidenceType = evidenceItem.type || 'text';
-                    fileUrl = evidenceItem.fileUrl || '';
+                    fileUrl = evidenceItem.url || evidenceItem.fileUrl || '';
                     fileName = evidenceItem.fileName || '';
-                    fileType = evidenceItem.fileType || '';
                   }
                   
                   // Helper function to detect media type from URL
@@ -3431,8 +3296,17 @@ const PunishmentDetailsCard = ({ punishmentId }: { punishmentId: string }) => {
                       
                       try {
                         // Prepare evidence data based on whether it's a file or text
-                        let evidenceData: any;
-                        
+                        let evidenceData: {
+                          text: string;
+                          issuerName: string;
+                          date: string;
+                          type?: string;
+                          fileUrl?: string;
+                          fileName?: string;
+                          fileType?: string;
+                          fileSize?: number;
+                        };
+
                         if (uploadedFile) {
                           // File evidence
                           evidenceData = {
@@ -3472,17 +3346,8 @@ const PunishmentDetailsCard = ({ punishmentId }: { punishmentId: string }) => {
                           description: 'Evidence has been added to the punishment successfully'
                         });
                         
-                        // Refresh punishment data
-                        const { getApiUrl, getCurrentDomain } = await import('@/lib/api');
-                        const refreshResponse = await fetch(getApiUrl(`/v1/panel/players/punishment/${punishmentId}`), {
-                          credentials: 'include',
-                          headers: { 'X-Server-Domain': getCurrentDomain() }
-                        });
-                        if (refreshResponse.ok) {
-                          const refreshedData = await refreshResponse.json();
-                          setPunishmentData(refreshedData);
-                        }
-                        
+                        queryClient.invalidateQueries({ queryKey: ['/v1/panel/players/punishments', punishmentId] });
+
                         // Reset form
                         setIsAddingEvidence(false);
                         setNewEvidence('');
@@ -3525,7 +3390,7 @@ const PunishmentDetailsCard = ({ punishmentId }: { punishmentId: string }) => {
             </div>
             {punishmentData.notes && punishmentData.notes.length > 0 ? (
               <div className="space-y-2">
-                {punishmentData.notes.map((note: any, index: number) => {
+                {punishmentData.notes.map((note, index: number) => {
                   const issuer = note.issuerName || 'System';
                   const date = note.date ? formatDate(note.date) : 'Unknown';
                   const issuerInfo = `By: ${issuer} on ${date}`;
@@ -3550,51 +3415,14 @@ const PunishmentDetailsCard = ({ punishmentId }: { punishmentId: string }) => {
             )}
           </div>
 
-          {/* Additional Data Section */}
-          {punishmentData.data && Object.keys(punishmentData.data).length > 0 && (
-            <div className="mt-3">
-              <div className="flex items-center gap-2 mb-1">
-                <div className="text-muted-foreground font-medium text-sm">Additional Data:</div>
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  className="h-5 px-1 text-xs"
-                  onClick={() => setShowAdditionalData(!showAdditionalData)}
-                >
-                  {showAdditionalData ? (
-                    <ChevronDown className="h-3 w-3" />
-                  ) : (
-                    <ChevronRight className="h-3 w-3" />
-                  )}
-                </Button>
-              </div>
-              {showAdditionalData && (
-                <div className="text-xs bg-muted/20 p-2 rounded font-mono">
-                  {Object.entries(punishmentData.data).map(([key, value]) => (
-                    <div key={key}>
-                      <span className="text-muted-foreground">{key}:</span> {
-                        value === null ? 'null' :
-                        value === undefined ? 'undefined' :
-                        value === 0 ? '0' :
-                        value === '' ? '(empty)' :
-                        typeof value === 'object' ? JSON.stringify(value) : 
-                        String(value)
-                      }
-                    </div>
-                  ))}
-                </div>
-              )}
-            </div>
-          )}
-
           {/* Modifications Section */}
           {punishmentData.modifications && punishmentData.modifications.length > 0 && (
             <div className="mt-3">
               <div className="text-muted-foreground font-medium text-sm mb-1">Modifications:</div>
               <div className="space-y-2">
-                {punishmentData.modifications.map((mod: any, index: number) => {
+                {punishmentData.modifications.map((mod, index: number) => {
                   const issuer = mod.issuerName || 'System';
-                  const date = mod.issued ? formatDate(mod.issued) : 'Unknown';
+                  const date = mod.date ? formatDate(mod.date) : 'Unknown';
                   const issuerInfo = `By: ${issuer} on ${date}`;
                   const modType = mod.type.replace(/_/g, ' ').toLowerCase().replace(/\b\w/g, (l: string) => l.toUpperCase());
                   

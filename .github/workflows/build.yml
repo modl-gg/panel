@@ -11,10 +11,9 @@ on:
 jobs:
   build:
     runs-on: ubuntu-latest
-    
+
     permissions:
       contents: read
-      packages: read
 
     steps:
     - name: Checkout code
@@ -24,21 +23,15 @@ jobs:
       uses: actions/setup-node@v4
       with:
         node-version: '23'
-        registry-url: 'https://npm.pkg.github.com'
-        scope: '@modl-gg'
 
-    - name: Configure npm for GitHub Packages
+    - name: Configure npm for Nexus
       run: |
-        rm .npmrc
-        echo "@modl-gg:registry=https://npm.pkg.github.com" >> .npmrc
-        echo "//npm.pkg.github.com/:_authToken=${{ secrets.GITHUB_TOKEN }}" >> .npmrc
-      env:
-        NODE_AUTH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        echo "//nexus.modl.gg/repository/npm-releases/:_auth=$(echo -n '${{ secrets.NEXUS_USER }}:${{ secrets.NEXUS_PASS }}' | base64)" >> ~/.npmrc
+        echo "//nexus.modl.gg/repository/npm-releases/:always-auth=true" >> ~/.npmrc
+        echo "@modl-gg:registry=https://nexus.modl.gg/repository/npm-releases/" >> ~/.npmrc
 
     - name: Install dependencies
       run: npm i
-      env:
-        NODE_AUTH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
     - name: Run build
       run: npm run build

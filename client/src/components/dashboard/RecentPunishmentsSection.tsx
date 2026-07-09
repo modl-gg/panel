@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@modl-gg/shared-web/components/ui/card';
 import { Badge } from '@modl-gg/shared-web/components/ui/badge';
 import { Button } from '@modl-gg/shared-web/components/ui/button';
-import { Shield, Clock, User, AlertTriangle, ChevronDown, ChevronUp } from 'lucide-react';
+import { Shield, User, AlertTriangle, ChevronDown, ChevronUp } from 'lucide-react';
 import { usePlayerWindow } from '@/contexts/PlayerWindowContext';
 import { formatTimeAgo } from '@/utils/date-utils';
 import { useTranslation } from 'react-i18next';
@@ -13,7 +13,6 @@ export interface RecentPunishment {
   playerName: string;
   playerUuid: string;
   reason: string;
-  duration?: string | number;
   issuerName: string;
   issued: string | Date;
   active: boolean;
@@ -41,23 +40,6 @@ export function RecentPunishmentsSection({ punishments, loading }: RecentPunishm
       newExpanded.add(punishmentId);
     }
     setExpandedPunishments(newExpanded);
-  };
-
-  const formatDuration = (duration?: string | number) => {
-    if (!duration) return t('dashboard.recentPunishments.permanent');
-    
-    // Convert to string if it's a number
-    const durationStr = String(duration);
-    
-    // Parse duration like "30d", "2h", "1w"
-    const match = durationStr.match(/^(\d+)([dhm])$/);
-    if (!match) return durationStr;
-    
-    const [, amount, unit] = match;
-    const unitNames = { d: 'day', h: 'hour', m: 'minute' };
-    const unitName = unitNames[unit as keyof typeof unitNames];
-    
-    return `${amount} ${unitName}${parseInt(amount) > 1 ? 's' : ''}`;
   };
 
   if (loading) {
@@ -125,8 +107,8 @@ export function RecentPunishmentsSection({ punishments, loading }: RecentPunishm
                               </Badge>
                             )}
                             {!punishment.active && (
-                              <Badge variant="outline" className="text-xs">
-                                EXPIRED
+                              <Badge variant="outline" className="text-xs uppercase">
+                                {t('status.inactive')}
                               </Badge>
                             )}
                           </div>
@@ -156,7 +138,7 @@ export function RecentPunishmentsSection({ punishments, loading }: RecentPunishm
                         {punishment.playerName}
                       </Button>
                       <span className="text-sm text-muted-foreground">
-                        {punishment.type || t('dashboard.recentPunishments.punishment')} {t('dashboard.recentPunishments.by')} {punishment.issuerName || t('search.unknown')}
+                        {punishment.type || t('dashboard.recentPunishments.punishment')} {t('dashboard.recentPunishments.by', { issuer: punishment.issuerName || t('search.unknown') })}
                       </span>
                     </div>
                   </div>
@@ -168,16 +150,6 @@ export function RecentPunishmentsSection({ punishments, loading }: RecentPunishm
                           <span className="text-xs font-medium text-muted-foreground">{t('dashboard.recentPunishments.reason')}</span>
                           <p className="text-sm mt-1">{punishment.reason || t('dashboard.recentPunishments.noReason')}</p>
                         </div>
-                        
-                        {punishment.duration && (
-                          <div>
-                            <span className="text-xs font-medium text-muted-foreground">{t('dashboard.recentPunishments.duration')}</span>
-                            <div className="flex items-center gap-1 text-sm mt-1">
-                              <Clock className="h-3 w-3" />
-                              <span>{formatDuration(punishment.duration)}</span>
-                            </div>
-                          </div>
-                        )}
                         
                         <div className="flex justify-between items-center pt-2">
                           <div className="flex items-center gap-1 text-xs text-muted-foreground">

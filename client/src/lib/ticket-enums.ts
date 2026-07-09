@@ -90,3 +90,13 @@ export function isTerminalAppealStatus(value: NullableString): boolean {
   const status = normalizeAppealStatus(value);
   return status === "approved" || status === "rejected" || status === "closed";
 }
+
+export function deriveAppealStatus(workflowStatus: NullableString, ticketStatus: NullableString): NormalizedAppealStatus {
+  if (workflowStatus && isTerminalAppealStatus(workflowStatus)) {
+    return normalizeAppealStatus(workflowStatus);
+  }
+  if (isClosedTicketStatus(ticketStatus)) {
+    return "closed";
+  }
+  return normalizeAppealStatus(workflowStatus || ticketStatus);
+}

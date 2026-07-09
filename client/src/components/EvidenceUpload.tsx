@@ -1,14 +1,16 @@
 import React, { useState } from 'react';
-import { Shield, FileText, Image, Video, Eye, Trash2 } from 'lucide-react';
+import { Shield, FileText, Image, Video, Eye, Trash2, Loader2 } from 'lucide-react';
 import { Button } from '@modl-gg/shared-web/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@modl-gg/shared-web/components/ui/card';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@modl-gg/shared-web/components/ui/dialog';
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from '@modl-gg/shared-web/components/ui/dialog';
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@modl-gg/shared-web/components/ui/alert-dialog';
 import { Badge } from '@modl-gg/shared-web/components/ui/badge';
 import { useToast } from '@modl-gg/shared-web/hooks/use-toast';
 import MediaUpload from './MediaUpload';
 import { useMediaUpload } from '@/hooks/use-media-upload';
 import { formatFileSize } from '@/utils/file-utils';
 import { useTranslation } from 'react-i18next';
+import { useAuth } from '@/hooks/use-auth';
 
 interface EvidenceItem {
   id: string;
@@ -40,7 +42,9 @@ export function EvidenceUpload({
   readonly = false
 }: EvidenceUploadProps) {
   const { t } = useTranslation();
+  const { user } = useAuth();
   const [evidence, setEvidence] = useState<EvidenceItem[]>(existingEvidence);
+  const [deletingIds, setDeletingIds] = useState<Set<string>>(new Set());
   const { deleteMedia } = useMediaUpload();
   const { toast } = useToast();
 
@@ -49,20 +53,22 @@ export function EvidenceUpload({
     const fileName = file?.name || result.url.split('/').pop() || 'uploaded-file';
     
     const newEvidence: EvidenceItem = {
-      id: Date.now().toString(),
+      id: `${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
       url: result.url,
       key: result.key,
       fileName: fileName,
       fileType: file?.type || 'application/octet-stream',
       fileSize: file?.size || 0,
       uploadedAt: new Date().toISOString(),
-      uploadedBy: 'Current User', // This should come from auth context
+      uploadedBy: user?.username || user?.email || 'Unknown',
       category
     };
 
-    const updatedEvidence = [...evidence, newEvidence];
-    setEvidence(updatedEvidence);
-    onEvidenceUpdate?.(updatedEvidence);
+    setEvidence(prev => {
+      const updatedEvidence = [...prev, newEvidence];
+      onEvidenceUpdate?.(updatedEvidence);
+      return updatedEvidence;
+    });
 
     toast({
       title: t('upload.evidenceUploaded'),
@@ -71,6 +77,11 @@ export function EvidenceUpload({
   };
 
   const handleDeleteEvidence = async (evidenceItem: EvidenceItem) => {
+    setDeletingIds(prev => {
+      const next = new Set(prev);
+      next.add(evidenceItem.id);
+      return next;
+    });
     try {
       await deleteMedia(evidenceItem.key);
       const updatedEvidence = evidence.filter(e => e.id !== evidenceItem.id);
@@ -86,6 +97,12 @@ export function EvidenceUpload({
         title: t('upload.deleteFailed'),
         description: t('upload.deleteEvidenceFailed'),
         variant: "destructive",
+      });
+    } finally {
+      setDeletingIds(prev => {
+        const next = new Set(prev);
+        next.delete(evidenceItem.id);
+        return next;
       });
     }
   };
@@ -152,6 +169,9 @@ export function EvidenceUpload({
                     <DialogContent className="max-w-4xl">
                       <DialogHeader>
                         <DialogTitle>{item.fileName}</DialogTitle>
+                        <DialogDescription className="sr-only">
+                          {t('common.attachmentPreviewDesc')}
+                        </DialogDescription>
                       </DialogHeader>
                       <div className="mt-4">
                         {isImage(item.fileType) ? (
@@ -184,13 +204,39 @@ export function EvidenceUpload({
                   </Dialog>
 
                   {!readonly && (
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      onClick={() => handleDeleteEvidence(item)}
-                    >
-                      <Trash2 className="h-4 w-4" />
-                    </Button>
+                    <AlertDialog>
+                      <AlertDialogTrigger asChild>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          aria-label="Delete evidence"
+                          disabled={deletingIds.has(item.id)}
+                        >
+                          {deletingIds.has(item.id) ? (
+                            <Loader2 className="h-4 w-4 animate-spin" />
+                          ) : (
+                            <Trash2 className="h-4 w-4" />
+                          )}
+                        </Button>
+                      </AlertDialogTrigger>
+                      <AlertDialogContent>
+                        <AlertDialogHeader>
+                          <AlertDialogTitle>{t('upload.deleteEvidenceTitle', 'Delete evidence?')}</AlertDialogTitle>
+                          <AlertDialogDescription>
+                            {t('upload.deleteEvidenceConfirm', { name: item.fileName, defaultValue: 'This will permanently remove "{{name}}". This action cannot be undone.' })}
+                          </AlertDialogDescription>
+                        </AlertDialogHeader>
+                        <AlertDialogFooter>
+                          <AlertDialogCancel>{t('common.cancel')}</AlertDialogCancel>
+                          <AlertDialogAction
+                            onClick={() => handleDeleteEvidence(item)}
+                            className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                          >
+                            {t('common.delete')}
+                          </AlertDialogAction>
+                        </AlertDialogFooter>
+                      </AlertDialogContent>
+                    </AlertDialog>
                   )}
                 </div>
               </div>

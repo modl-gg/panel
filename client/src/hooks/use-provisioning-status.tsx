@@ -2,6 +2,7 @@ import { useEffect } from 'react';
 import { useLocation } from 'wouter';
 import { apiFetch } from '@/lib/api';
 import { normalizeProvisioningStatus } from '@/lib/backend-enums';
+import { useAuth } from '@/hooks/use-auth';
 
 interface ProvisioningStatusResponse {
   status?: string | null;
@@ -12,8 +13,13 @@ interface ProvisioningStatusResponse {
 
 export function useProvisioningStatusCheck() {
   const [location, setLocation] = useLocation();
+  const { user, isLoading } = useAuth();
 
   useEffect(() => {
+    if (isLoading || !user) {
+      return;
+    }
+
     const exemptPaths = [
       '/provisioning-in-progress',
       '/auth',
@@ -45,7 +51,10 @@ export function useProvisioningStatusCheck() {
         const provisioningStatus = normalizeProvisioningStatus(data.status ?? data.provisioningStatus);
         const emailVerified = data.emailVerified === true;
 
-        if (process.env.ENVIRONMENT !== 'development') {
+        // Vite statically replaces import.meta.env.DEV at build time; the old
+        // process.env.ENVIRONMENT read threw ReferenceError in the browser (no process shim),
+        // which the catch below swallowed -> the gate silently never enforced.
+        if (!import.meta.env.DEV) {
           if (!emailVerified) {
             setLocation('/verify-email?status=check&reason=email_not_verified');
           } else if (provisioningStatus !== 'COMPLETED') {
@@ -60,5 +69,5 @@ export function useProvisioningStatusCheck() {
     };
 
     checkProvisioningStatus();
-  }, [setLocation, location]);
+  }, [user, isLoading, setLocation, location]);
 } 

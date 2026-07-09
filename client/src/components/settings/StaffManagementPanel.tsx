@@ -1,14 +1,13 @@
 import React, { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useQueryClient } from '@tanstack/react-query';
-import { useAuth } from '@/hooks/use-auth';
 import { usePermissions } from '@/hooks/use-permissions';
 import { apiFetch } from '@/lib/api';
 import { Button } from '@modl-gg/shared-web/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@modl-gg/shared-web/components/ui/card';
 import ChangeRoleModal from './ChangeRoleModal';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@modl-gg/shared-web/components/ui/table';
-import { useStaff, useRoles } from '@/hooks/use-data';
+import { useStaff } from '@/hooks/use-data';
 import { Skeleton } from '@modl-gg/shared-web/components/ui/skeleton';
 import { MoreHorizontal, RefreshCw, User } from 'lucide-react';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@modl-gg/shared-web/components/ui/dropdown-menu';
@@ -29,18 +28,9 @@ interface StaffMember {
   assignedMinecraftUsername?: string;
 }
 
-// Role interface to match the one from StaffRolesCard
-interface Role {
-  id: string;
-  name: string;
-  order?: number;
-}
-
 const StaffManagementPanel = () => {
   const { t } = useTranslation();
-  const { data: staff, isLoading, error, refetch: refetchStaff, isRefetching } = useStaff();
-  const { data: rolesData } = useRoles();
-  const { user: currentUser } = useAuth();
+  const { data: staff, isLoading, error, refetch: refetchStaff } = useStaff();
   const { hasPermission, canModifyUserRole, canRemoveStaffUser, canAssignStaffMinecraftPlayer } = usePermissions();
 
   // Helper function to check if there are any available actions for a staff member
@@ -120,10 +110,10 @@ const StaffManagementPanel = () => {
       });
 
       if (!response.ok) {
-        const errorData = await response.json().catch(() => ({ message: t('settings.staff.removeStaffFailed') }));
+        const errorData = await response.json().catch(() => ({}));
         toast({
           title: t('toast.error'),
-          description: errorData.message || t('settings.staff.removeStaffFailed'),
+          description: errorData.error || errorData.message || t('settings.staff.removeStaffFailed'),
           variant: 'destructive',
         });
         return;
@@ -149,8 +139,8 @@ const StaffManagementPanel = () => {
         method: 'POST',
       });
       if (!response.ok) {
-        const errorData = await response.json().catch(() => ({ message: t('settings.staff.resendInvitationFailed') }));
-        throw new Error(errorData.message);
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(errorData.error || errorData.message || t('settings.staff.resendInvitationFailed'));
       }
       toast({
         title: t('toast.success'),

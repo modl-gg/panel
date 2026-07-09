@@ -70,6 +70,7 @@ const DEFAULT_PERMISSIONS: Permission[] = [
   { id: 'admin.audit.view.logs', name: 'View Logs', description: 'View audit trail of staff actions', category: 'admin', parentId: 'admin.audit.view' },
 
   // Punishment permissions
+  { id: 'punishment.view', name: 'View Punishments', description: 'View player profiles, punishments, and linked accounts', category: 'punishment', parentId: null },
   { id: 'punishment.modify', name: 'Modify Punishments', description: 'Full control over existing punishments (includes all sub-permissions)', category: 'punishment', parentId: null },
   { id: 'punishment.modify.pardon', name: 'Pardon Punishments', description: 'Pardon punishments and clear associated points', category: 'punishment', parentId: 'punishment.modify' },
   { id: 'punishment.modify.duration', name: 'Modify Duration', description: 'Change punishment duration', category: 'punishment', parentId: 'punishment.modify' },
@@ -177,14 +178,14 @@ const DraggableRoleCard: React.FC<DraggableRoleCardProps> = ({
   // User can drag roles that have higher order number (lower authority) and not super admin
   const canDragRole = role.name !== 'Super Admin' && currentUserOrder < roleOrder;
 
-  const [{ isDragging }, drag, preview] = useDrag(() => ({
+  const [{ isDragging }, drag] = useDrag(() => ({
     type: 'role',
     item: () => {
       onDragStart();
       return { index, role, originalIndex: index };
     },
     canDrag: canDragRole,
-    end: (item, monitor) => {
+    end: (_item, monitor) => {
       const didDrop = monitor.didDrop();
       onDragEnd(didDrop);
     },
@@ -265,7 +266,7 @@ const DraggableRoleCard: React.FC<DraggableRoleCardProps> = ({
             </Badge>
           )}
           {role.name === 'Super Admin' && (
-            <Badge variant="default" className="text-xs bg-yellow-500">
+            <Badge variant="default" className="text-xs bg-warning text-warning-foreground">
               {t('settings.roles.highestRank')}
             </Badge>
           )}
@@ -276,6 +277,7 @@ const DraggableRoleCard: React.FC<DraggableRoleCardProps> = ({
             size="sm"
             onClick={() => onEditRole(role)}
             disabled={role.name === 'Super Admin' || (roleOrderMap.get(currentUserRole || '') ?? 999) >= getRoleOrder(role)}
+            aria-label={t('common.edit')}
           >
             <Edit className="h-4 w-4" />
           </Button>
@@ -284,6 +286,7 @@ const DraggableRoleCard: React.FC<DraggableRoleCardProps> = ({
             size="sm"
             onClick={() => onDeleteRole(role)}
             disabled={role.name === 'Super Admin' || (roleOrderMap.get(currentUserRole || '') ?? 999) >= getRoleOrder(role)}
+            aria-label={t('common.delete')}
           >
             <Trash2 className="h-4 w-4 text-destructive" />
           </Button>
@@ -333,7 +336,7 @@ export default function StaffRolesCard() {
   const [originalRoles, setOriginalRoles] = useState<StaffRole[]>([]);
   const [pendingReorder, setPendingReorder] = useState<StaffRole[] | null>(null);
   const [showReorderConfirm, setShowReorderConfirm] = useState(false);
-  const [isDragInProgress, setIsDragInProgress] = useState(false);
+  const [, setIsDragInProgress] = useState(false);
   const { toast } = useToast();
   
   // API hooks
@@ -355,6 +358,7 @@ export default function StaffRolesCard() {
 
   const roles = rolesData?.roles || [];
   const permissions = permissionsData?.permissions || [];
+  const permissionCatalog = permissions.length > 0 ? permissions : DEFAULT_PERMISSIONS;
   
   // If no roles are loaded from the database, use default roles as fallback
   const effectiveRoles = roles.length > 0 ? roles : DEFAULT_ROLES;
@@ -367,10 +371,6 @@ export default function StaffRolesCard() {
     });
   }
   
-  if (!currentUser) {
-    return <div>{t('common.loadingUser')}</div>;
-  }
-
   // Update local roles when server data changes
   useEffect(() => {
     if (effectiveRoles.length > 0) {
@@ -384,6 +384,12 @@ export default function StaffRolesCard() {
       setOriginalRoles(sortedRoles);
     }
   }, [effectiveRoles]);
+
+  // Guard placed AFTER all hook declarations so the hook count never changes
+  // between renders (Rules of Hooks).
+  if (!currentUser) {
+    return <div>{t('common.loadingUser')}</div>;
+  }
 
   // Handle drag start
   const handleDragStart = () => {
@@ -403,7 +409,8 @@ export default function StaffRolesCard() {
   const moveRole = (dragIndex: number, hoverIndex: number) => {
     const newRoles = [...localRoles];
     const draggedRole = newRoles[dragIndex];
-    
+    if (!draggedRole) return;
+
     // Remove the dragged role and insert at new position
     newRoles.splice(dragIndex, 1);
     newRoles.splice(hoverIndex, 0, draggedRole);
@@ -413,7 +420,7 @@ export default function StaffRolesCard() {
   };
 
   // Handle role reordering when drag ends (actual commit)
-  const commitRoleReorder = (originalIndex: number, targetIndex: number) => {
+  const commitRoleReorder = (_originalIndex: number, _targetIndex: number) => {
     // The localRoles state already reflects the current visual state from hover operations
     // We just need to set pending reorder and show confirmation
     setPendingReorder([...localRoles]);
@@ -428,11 +435,41 @@ export default function StaffRolesCard() {
       // Filter out Super Admin from the reorder request since it should never be reordered
       // Super Admin should always stay at order 0, other roles start from order 1
       const nonSuperAdminRoles = pendingReorder.filter(role => role.name !== 'Super Admin');
-      const roleOrder = nonSuperAdminRoles.map((role, index) => ({ 
-        id: role.id, 
-        order: index + 1  // Start from 1 since Super Admin is always 0
-      }));
-      
+
+      let roleOrder: Array<{ id: string; order: number }>;
+      if (isSuperAdmin) {
+        // Super Admin has authority over every role, so it may renumber the
+        // entire non-super-admin hierarchy starting at 1.
+        roleOrder = nonSuperAdminRoles.map((role, index) => ({
+          id: role.id,
+          order: index + 1, // Start from 1 since Super Admin is always 0
+        }));
+      } else {
+        // A non-super-admin performer may only reorder roles STRICTLY below
+        // their own authority. The backend rejects the whole request if any
+        // submitted role is at/above the performer's order, so we must:
+        //  (1) only submit roles whose order is greater than the performer's, and
+        //  (2) assign new orders that remain strictly greater than performerOrder,
+        //      preserving the existing higher-authority roles' positions.
+        const performerOrder = roleOrderMap.get(currentUser.role) ?? 999;
+        const editableRoles = nonSuperAdminRoles.filter(role => {
+          const currentOrder = role.order ?? 999;
+          return currentOrder > performerOrder;
+        });
+        roleOrder = editableRoles.map((role, index) => ({
+          id: role.id,
+          order: performerOrder + 1 + index,
+        }));
+      }
+
+      if (roleOrder.length === 0) {
+        // Nothing the performer is allowed to reorder; treat as a no-op success.
+        setOriginalRoles([...localRoles]);
+        setPendingReorder(null);
+        setShowReorderConfirm(false);
+        return;
+      }
+
       const response = await apiFetch('/v1/panel/roles/reorder', {
         method: 'POST',
         headers: {
@@ -620,9 +657,8 @@ export default function StaffRolesCard() {
 
   const togglePermission = (permissionId: string) => {
     if (!canGrantPermission(permissionId)) return;
-    const allPerms = permissions.length > 0 ? permissions : DEFAULT_PERMISSIONS;
     const isCurrentlyEnabled = roleFormData.permissions.includes(permissionId);
-    const childPermissions = allPerms.filter((p: Permission) => p.parentId === permissionId).map((p: Permission) => p.id);
+    const childPermissions = permissionCatalog.filter((p: Permission) => p.parentId === permissionId).map((p: Permission) => p.id);
 
     if (isCurrentlyEnabled) {
       // Toggling OFF: remove only the parent, children become individually manageable
@@ -640,7 +676,7 @@ export default function StaffRolesCard() {
   };
 
   const getPermissionsByCategory = (category: string) => {
-    return permissions.filter((p: Permission) => p.category === category);
+    return permissionCatalog.filter((p: Permission) => p.category === category);
   };
 
   const hasPermission = (role: StaffRole, permissionId: string) => {
@@ -885,29 +921,29 @@ export default function StaffRolesCard() {
       </Dialog>
 
       {/* Delete Confirmation Dialog */}
-      <Dialog open={!!deleteConfirmRole} onOpenChange={(open) => !open && setDeleteConfirmRole(null)}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>{t('settings.roles.deleteRoleTitle')}</DialogTitle>
-            <DialogDescription>
+      <AlertDialog open={!!deleteConfirmRole} onOpenChange={(open) => !open && setDeleteConfirmRole(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>{t('settings.roles.deleteRoleTitle')}</AlertDialogTitle>
+            <AlertDialogDescription>
               {t('settings.roles.deleteRoleConfirm', { name: deleteConfirmRole?.name })}
-            </DialogDescription>
-          </DialogHeader>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setDeleteConfirmRole(null)}>
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel onClick={() => setDeleteConfirmRole(null)}>
               {t('common.cancel')}
-            </Button>
-            <Button
-              variant="destructive"
+            </AlertDialogCancel>
+            <AlertDialogAction
               onClick={confirmDeleteRole}
               disabled={deleteRoleMutation.isPending}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
             >
               <Trash2 className="h-4 w-4 mr-2" />
               {deleteRoleMutation.isPending ? t('common.deleting') : t('settings.roles.deleteRole')}
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
 
       {/* Role Reorder Confirmation Dialog */}
       <AlertDialog open={showReorderConfirm} onOpenChange={setShowReorderConfirm}>

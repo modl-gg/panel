@@ -7,10 +7,20 @@ import {
   AlertCircle,
 } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
+import { useIsFetching } from '@tanstack/react-query';
+import { usePermissions, PERMISSIONS } from '@/hooks/use-permissions';
+import { useAuth } from '@/hooks/use-auth';
 
 const MobileNavbar = () => {
   const { t } = useTranslation();
   const [location, navigate] = useLocation();
+  const { hasPermission } = usePermissions();
+  const { user } = useAuth();
+
+  // Mirror Sidebar's loading-flash guard so permission-gated items don't appear
+  // before the user's permissions have loaded.
+  const fetchingCount = useIsFetching({ queryKey: ['userPermissions', user?.role] });
+  const permissionsLoading = fetchingCount > 0;
 
   const isActive = (path: string) => {
     return location === path
@@ -18,7 +28,7 @@ const MobileNavbar = () => {
       : "text-muted-foreground";
   };
 
-  const navItems = [
+  const allNavItems = [
     {
       icon: <Home className="h-5 w-5" />,
       label: t('nav.home'),
@@ -41,6 +51,7 @@ const MobileNavbar = () => {
       icon: <AlertCircle className="h-5 w-5" />,
       label: t('nav.audit'),
       path: "/panel/audit",
+      permission: PERMISSIONS.ADMIN_AUDIT_VIEW,
       onClick: () => navigate('/panel/audit')
     },
     {
@@ -51,9 +62,16 @@ const MobileNavbar = () => {
     }
   ];
 
+  // Filter nav items based on permissions, mirroring Sidebar's gating
+  const navItems = allNavItems.filter(item => {
+    if (!item.permission) return true;
+    if (permissionsLoading) return false;
+    return hasPermission(item.permission);
+  });
+
   return (
     <div className="fixed bottom-0 left-0 right-0 bg-background border-t border-border z-50 shadow-md pb-safe">
-      <div className="grid grid-cols-5 h-16">
+      <div className={`grid h-16`} style={{ gridTemplateColumns: `repeat(${navItems.length}, minmax(0, 1fr))` }}>
         {navItems.map((item, index) => (
           <NavItem 
             key={index}

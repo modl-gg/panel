@@ -29,7 +29,7 @@ const AssignMinecraftPlayerModal: React.FC<AssignMinecraftPlayerModalProps> = ({
   staffMember
 }) => {
   const { t } = useTranslation();
-  const [selectedPlayerUuid, setSelectedPlayerUuid] = useState<string>('');
+  const [selectedPlayerUuid, setSelectedPlayerUuid] = useState<string | undefined>('');
   const [searchQuery, setSearchQuery] = useState<string>('');
   const { toast } = useToast();
   
@@ -41,17 +41,14 @@ const AssignMinecraftPlayerModal: React.FC<AssignMinecraftPlayerModalProps> = ({
   const assignedUuids = useMemo(() => {
     if (!staff) return [];
     return staff
-      .filter((member: any) => member.assignedMinecraftUuid)
-      .map((member: any) => member.assignedMinecraftUuid);
+      .filter((member) => member.assignedMinecraftUuid)
+      .map((member) => member.assignedMinecraftUuid);
   }, [staff]);
 
   // Filter out already assigned players from search results
   const availablePlayers = useMemo(() => {
     if (!searchResults) return [];
-    return searchResults.filter((player: any) => {
-      const playerUuid = player.uuid || player.minecraftUuid;
-      return !assignedUuids.includes(playerUuid);
-    });
+    return searchResults.filter((player) => !assignedUuids.includes(player.uuid));
   }, [searchResults, assignedUuids]);
 
   const handleAssign = async () => {
@@ -66,16 +63,13 @@ const AssignMinecraftPlayerModal: React.FC<AssignMinecraftPlayerModalProps> = ({
       return;
     }
 
-    const selectedPlayer = availablePlayers.find((p: any) => {
-      const playerUuid = p.uuid || p.minecraftUuid;
-      return playerUuid === selectedPlayerUuid;
-    });
+    const selectedPlayer = availablePlayers.find((p) => p.uuid === selectedPlayerUuid);
     if (!selectedPlayer) return;
 
     try {
       await assignPlayerMutation.mutateAsync({
-        username: staffMember.username,
-        minecraftUuid: selectedPlayer.uuid || selectedPlayer.minecraftUuid,
+        email: staffMember.email,
+        minecraftUuid: selectedPlayer.uuid,
         minecraftUsername: selectedPlayer.username
       });
 
@@ -100,7 +94,7 @@ const AssignMinecraftPlayerModal: React.FC<AssignMinecraftPlayerModalProps> = ({
 
     try {
       await assignPlayerMutation.mutateAsync({
-        username: staffMember.username,
+        email: staffMember.email,
         minecraftUuid: undefined,
         minecraftUsername: undefined
       });
@@ -207,8 +201,8 @@ const AssignMinecraftPlayerModal: React.FC<AssignMinecraftPlayerModalProps> = ({
                   <div className="px-2 py-1 text-xs text-muted-foreground mb-2">
                     {t('settings.staff.foundAvailablePlayers', { count: availablePlayers.length })}
                   </div>
-                  {availablePlayers.map((player: any) => {
-                    const playerUuid = player.uuid || player.minecraftUuid;
+                  {availablePlayers.map((player) => {
+                    const playerUuid = player.uuid;
                     return (
                       <Button
                         key={playerUuid}

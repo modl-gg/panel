@@ -1,11 +1,11 @@
-import { ReactNode } from 'react';
-import { usePermissions } from '@/hooks/use-permissions';
+import type { ReactNode } from 'react';
+import { usePermissions, type SettingsTab } from '@/hooks/use-permissions';
 import { useTranslation } from 'react-i18next';
 
 interface PermissionWrapperProps {
   children: ReactNode;
   permissions?: string[];
-  settingsTab?: string;
+  settingsTab?: SettingsTab;
   fallback?: ReactNode;
 }
 
@@ -18,8 +18,8 @@ export function PermissionWrapper({
   const { hasAllPermissions, canAccessSettingsTab } = usePermissions();
 
   // Check permissions based on provided criteria
-  const hasAccess = settingsTab 
-    ? canAccessSettingsTab(settingsTab as any)
+  const hasAccess = settingsTab
+    ? canAccessSettingsTab(settingsTab)
     : (permissions && permissions.length === 0) || hasAllPermissions(permissions || []);
 
   return hasAccess ? <>{children}</> : <>{fallback}</>;
@@ -29,14 +29,14 @@ export function PermissionWrapper({
 export function withPermissionCheck<T extends object>(
   Component: React.ComponentType<T>,
   requiredPermissions: string[] = [],
-  settingsTab?: string
+  settingsTab?: SettingsTab
 ) {
   return function PermissionCheckedComponent(props: T) {
     const { t } = useTranslation();
     const { hasAllPermissions, canAccessSettingsTab } = usePermissions();
 
     const hasAccess = settingsTab
-      ? canAccessSettingsTab(settingsTab as any)
+      ? canAccessSettingsTab(settingsTab)
       : (requiredPermissions && requiredPermissions.length === 0) || hasAllPermissions(requiredPermissions || []);
 
     if (!hasAccess) {

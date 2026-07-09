@@ -1,3 +1,4 @@
+import { useEffect, useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { apiFetch } from '@/lib/api';
 
@@ -31,7 +32,7 @@ function selectBestPlayerMatch(players: PlayerLookupResultItem[], identifier: st
     (player.username || '').trim().toLowerCase() === normalizedIdentifier
   );
 
-  return exactMatch || players[0];
+  return exactMatch || players[0] || null;
 }
 
 export function usePlayerLookup(identifier: string) {
@@ -50,9 +51,13 @@ export function usePlayerLookup(identifier: string) {
       if (!res.ok) {
         throw new Error('Player not found');
       }
-      
-      const players = await res.json();
-      if (!players || players.length === 0) {
+
+      // The backend returns proto-JSON PlayerSearchResultsResponse, i.e. the wrapper object
+      // { items: [...] }, NOT a bare array. Unwrap `.items` (default to []) and guard so a
+      // plain object never reaches players.find(...) (which would throw TypeError).
+      const body = await res.json();
+      const players: PlayerLookupResultItem[] = Array.isArray(body?.items) ? body.items : [];
+      if (players.length === 0) {
         throw new Error('Player not found');
       }
 
@@ -92,13 +97,23 @@ interface PunishmentLookupResult {
   };
 }
 
-export function usePunishmentLookup(punishmentId: string) {
-  return useQuery({
-    queryKey: ['punishment-lookup', punishmentId],
-    queryFn: async (): Promise<PunishmentLookupResult> => {
-      if (!punishmentId) throw new Error('No punishment ID provided');
+export function usePunishmentLookup(punishmentId: string, debounceMs: number = 300) {
+  const [debouncedId, setDebouncedId] = useState(punishmentId);
 
-      const res = await apiFetch(`/v1/panel/players/punishments/${punishmentId}`);
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setDebouncedId(punishmentId);
+    }, debounceMs);
+
+    return () => clearTimeout(timer);
+  }, [punishmentId, debounceMs]);
+
+  return useQuery({
+    queryKey: ['punishment-lookup', debouncedId],
+    queryFn: async (): Promise<PunishmentLookupResult> => {
+      if (!debouncedId) throw new Error('No punishment ID provided');
+
+      const res = await apiFetch(`/v1/panel/players/punishments/${debouncedId}`);
       if (!res.ok) {
         if (res.status === 404) {
           throw new Error('Punishment not found');
@@ -121,7 +136,7 @@ export function usePunishmentLookup(punishmentId: string) {
         },
       };
     },
-    enabled: !!punishmentId && punishmentId.length > 0,
+    enabled: !!debouncedId && debouncedId.length > 0,
     staleTime: 1000 * 60 * 5,
     retry: false
   });

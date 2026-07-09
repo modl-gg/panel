@@ -22,7 +22,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Popover, PopoverContent, PopoverTrigger } from '@modl-gg/shared-web/components/ui/popover';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@modl-gg/shared-web/components/ui/tooltip';
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '@modl-gg/shared-web/components/ui/card';
-import { useTicket, useAddTicketReply, useSubmitTicketForm, useSettings, useRequestTicketVerification, useVerifyTicketCode, setCookie } from '@/hooks/use-data';
+import { useTicket, useAddTicketReply, useSubmitTicketForm, useSettings, useRequestTicketVerification, useVerifyTicketCode, setCookie, publicAuthTokenKey } from '@/hooks/use-data';
 import TicketAttachments from '@/components/TicketAttachments';
 import MediaUpload from '@/components/MediaUpload';
 import { getAvatarUrl } from '@/lib/api';
@@ -32,9 +32,15 @@ import MarkdownRenderer from '@/components/ui/markdown-renderer';
 import MarkdownHelp from '@/components/ui/markdown-help';
 import { formatDate } from '@/utils/date-utils';
 import { getCreatorIdentifier, getUnverifiedExplanation } from '@/utils/creator-verification';
+import { Notice } from '@/components/ui/notice';
 import { useMediaUpload } from '@/hooks/use-media-upload';
 import { isValidEmail, normalizeEmail } from '@/utils/email-validation';
 import { normalizeTicketStatus } from '@/lib/ticket-enums';
+
+interface MessageAttachment {
+  url?: string;
+  fileName?: string;
+}
 
 export interface TicketMessage {
   id: string;
@@ -43,7 +49,7 @@ export interface TicketMessage {
   content: string;
   timestamp: string;
   staff?: boolean;
-  attachments?: string[];
+  attachments?: Array<string | MessageAttachment>;
   closedAs?: string;
   avatar?: string; // Staff avatar URL from backend
   creatorIdentifier?: string; // Browser identifier for creator verification
@@ -96,6 +102,14 @@ interface TicketAttachment {
   uploadedBy: string;
 }
 
+interface TicketFormConfig {
+  fields?: FormField[];
+  sections?: FormSection[];
+  requireEmail?: boolean;
+  allowEmailNotifications?: boolean;
+  requireEmailAuth?: boolean;
+}
+
 // Format date to MM/dd/yy HH:mm in browser's timezone
 
 // Avatar component for messages
@@ -131,8 +145,8 @@ const MessageAvatar = ({ message, creatorUuid }: { message: TicketMessage, creat
     }
     // Fallback for player without UUID
     return (
-      <div className="h-8 w-8 bg-blue-100 dark:bg-blue-900 rounded-md flex items-center justify-center flex-shrink-0">
-        <span className="text-xs font-bold text-blue-600 dark:text-blue-300">{message.sender?.substring(0, 2) || 'U'}</span>
+      <div className="h-8 w-8 bg-primary/15 rounded-md flex items-center justify-center flex-shrink-0">
+        <span className="text-xs font-bold text-primary">{message.sender?.substring(0, 2) || 'U'}</span>
       </div>
     );
   }
@@ -166,16 +180,16 @@ const MessageAvatar = ({ message, creatorUuid }: { message: TicketMessage, creat
 
     // Fallback for staff without assigned Minecraft UUID
     return (
-      <div className="h-8 w-8 bg-green-100 dark:bg-green-900 rounded-md flex items-center justify-center flex-shrink-0">
-        <span className="text-xs font-bold text-green-600 dark:text-green-300">{message.sender?.substring(0, 2) || 'S'}</span>
+      <div className="h-8 w-8 bg-success/15 rounded-md flex items-center justify-center flex-shrink-0">
+        <span className="text-xs font-bold text-success">{message.sender?.substring(0, 2) || 'S'}</span>
       </div>
     );
   }
 
   // System messages
   return (
-    <div className="h-8 w-8 bg-gray-100 dark:bg-gray-800 rounded-md flex items-center justify-center flex-shrink-0">
-      <span className="text-xs font-bold text-gray-600 dark:text-gray-300">SY</span>
+    <div className="h-8 w-8 bg-muted rounded-md flex items-center justify-center flex-shrink-0">
+      <span className="text-xs font-bold text-muted-foreground">SY</span>
     </div>
   );
 };
@@ -221,14 +235,14 @@ const PlayerTicket = () => {
   });
 
   const statusColors = {
-    'Unfinished': 'bg-gray-50 dark:bg-gray-800 text-gray-700 dark:text-gray-300 border-gray-200 dark:border-gray-700',
-    'Open': 'bg-green-50 dark:bg-green-900 text-green-700 dark:text-green-300 border-green-200 dark:border-green-700',
-    'Closed': 'bg-gray-50 dark:bg-gray-800 text-gray-700 dark:text-gray-300 border-gray-200 dark:border-gray-700'
+    'Unfinished': 'bg-muted text-muted-foreground border-border',
+    'Open': 'bg-success/10 text-success border-success/20',
+    'Closed': 'bg-muted text-muted-foreground border-border'
   };
 
   // Update ticket details when data is fetched
   useEffect(() => {
-    if (ticketData) {
+    if (ticketData && !('requiresVerification' in ticketData)) {
       // Ticket data received
       // Map API data to our TicketDetails interface
       const normalizedStatus = normalizeTicketStatus(ticketData.status);
@@ -252,15 +266,15 @@ const PlayerTicket = () => {
       }
 
       // Process messages and ensure valid timestamps
-      const processedMessages = (ticketData.replies || ticketData.messages || []).map((message: any) => {
-        const processed = {
-          id: message.id || message._id || `msg-${Date.now()}-${Math.random().toString(36).substring(2, 7)}`,
-          sender: message.sender || message.name || 'Unknown',
-          senderType: message.senderType || (message.type === 'staff' ? 'staff' : message.type === 'system' ? 'system' : 'user'),
+      const processedMessages = (ticketData.replies || ticketData.messages || []).map((message) => {
+        const processed: TicketMessage = {
+          id: message.id || `msg-${Date.now()}-${Math.random().toString(36).substring(2, 7)}`,
+          sender: message.name || 'Unknown',
+          senderType: message.type === 'staff' ? 'staff' : message.type === 'system' ? 'system' : 'user',
           content: message.content || '',
-          timestamp: message.timestamp || message.created || new Date().toISOString(),
+          timestamp: message.created || new Date().toISOString(),
           staff: message.staff,
-          attachments: message.attachments,
+          attachments: message.attachments as unknown as MessageAttachment[],
           closedAs: (message.action === "Comment" || message.action === "Reopen") ? undefined : message.action,
           creatorIdentifier: message.creatorIdentifier, // Include creator identifier for verification
           avatar: message.avatar, // Preserve staff avatar URL
@@ -276,7 +290,7 @@ const PlayerTicket = () => {
         reportedBy: ticketData.creatorName || ticketData.reportedBy || 'Unknown',
         date: validDate,
         category: ticketData.category || 'Support',
-        type: (ticketData.type || 'bug').toLowerCase(),
+        type: (ticketData.type || 'bug').toLowerCase() as TicketDetails['type'],
         messages: processedMessages,
         locked: ticketData.locked === true
       });
@@ -395,7 +409,7 @@ const PlayerTicket = () => {
   }
 
   // Email verification gate
-  if (ticketData?.requiresVerification) {
+  if ('requiresVerification' in ticketData) {
     const handleRequestCode = async () => {
       try {
         const result = await requestVerificationMutation.mutateAsync(id || '');
@@ -405,10 +419,10 @@ const PlayerTicket = () => {
           title: t('playerTicket.codeSent'),
           description: t('playerTicket.codeSentDesc'),
         });
-      } catch (error: any) {
+      } catch (error) {
         toast({
           title: t('playerTicket.codeFailed'),
-          description: error.message || t('playerTicket.tryAgain'),
+          description: (error instanceof Error ? error.message : undefined) || t('playerTicket.tryAgain'),
           variant: "destructive"
         });
       }
@@ -423,7 +437,7 @@ const PlayerTicket = () => {
           code: verificationCode.trim()
         });
         if (result.token) {
-          setCookie(`ticket_auth_${id}`, result.token, 7);
+          setCookie(publicAuthTokenKey('ticket', id || ''), result.token, 7);
           // Refetch the ticket with the new token
           queryClient.invalidateQueries({ queryKey: ['/v1/public/tickets', id] });
           toast({
@@ -431,10 +445,10 @@ const PlayerTicket = () => {
             description: t('playerTicket.verifiedDesc'),
           });
         }
-      } catch (error: any) {
+      } catch (error) {
         toast({
           title: t('playerTicket.verificationFailed'),
-          description: error.message || t('playerTicket.invalidCode'),
+          description: (error instanceof Error ? error.message : undefined) || t('playerTicket.invalidCode'),
           variant: "destructive"
         });
       } finally {
@@ -450,7 +464,7 @@ const PlayerTicket = () => {
             <CardDescription>
               {t('playerTicket.verificationRequiredDesc')}
               {ticketData.emailHint && (
-                <> {t('playerTicket.codeSentTo')} <strong>{ticketData.emailHint}</strong>.</>
+                <> {t('playerTicket.codeSentTo', { email: ticketData.emailHint })}</>
               )}
             </CardDescription>
           </CardHeader>
@@ -515,22 +529,17 @@ const PlayerTicket = () => {
     }
     
     // Get form configuration from settings - REQUIRED
-    let formConfig = null;
+    let formConfig: TicketFormConfig | null = null;
 
     try {
       if (settingsData?.settings) {
-        const ticketForms = settingsData.settings.ticketForms;
+        const ticketForms = settingsData.settings.ticketForms as Record<string, TicketFormConfig>;
         const ticketTypeLower = ticketDetails.type.toLowerCase();
 
-        // Try the ticket type first (case-insensitive), then try 'application' for 'staff' tickets (legacy support)
-        if (ticketForms && ticketForms[ticketTypeLower]) {
-          formConfig = ticketForms[ticketTypeLower];
-        } else if (ticketForms && ticketForms[ticketDetails.type]) {
-          // Fallback to exact match for backwards compatibility
-          formConfig = ticketForms[ticketDetails.type];
-        } else if ((ticketTypeLower === 'staff' || ticketTypeLower === 'application') && ticketForms && ticketForms['application']) {
-          formConfig = ticketForms['application'];
-        }
+        const legacyApplicationForm = (ticketTypeLower === 'staff' || ticketTypeLower === 'application')
+          ? ticketForms['application']
+          : undefined;
+        formConfig = ticketForms[ticketTypeLower] || ticketForms[ticketDetails.type] || legacyApplicationForm || null;
       }
     } catch (error) {
       console.error('Error processing form templates:', error);
@@ -564,12 +573,12 @@ const PlayerTicket = () => {
         
         if (section.showIfValue && triggerFieldValue === section.showIfValue) {
           visibleSections.add(section.id);
-        } else if (section.showIfValues && section.showIfValues.includes(triggerFieldValue)) {
+        } else if (triggerFieldValue !== undefined && section.showIfValues && section.showIfValues.includes(triggerFieldValue)) {
           visibleSections.add(section.id);
         }
       }
     });
-    
+
     // Also check field-level navigation (legacy support and optionSectionMapping)
     const allFields = formConfig.fields || [];
     allFields.forEach((field: FormField) => {
@@ -627,7 +636,8 @@ const PlayerTicket = () => {
         continue;
       }
       
-      if (field.required && (!formData[field.id] || formData[field.id].trim() === '')) {
+      const fieldValue = formData[field.id];
+      if (field.required && (!fieldValue || fieldValue.trim() === '')) {
         toast({
           title: t('submitTicket.requiredFieldMissing'),
           description: t('submitTicket.requiredFieldMissingDesc', { label: field.label }),
@@ -729,7 +739,7 @@ const PlayerTicket = () => {
         id: ticketDetails.id,
         formData: {
           subject: finalSubject,
-          creatorEmail,
+          creatorEmail: creatorEmail ?? undefined,
           formData: cleanFormData,
           fieldLabels: fieldLabelsMapping,
           attachments,
@@ -747,11 +757,11 @@ const PlayerTicket = () => {
       });
 
       window.location.reload();
-    } catch (error: any) {
+    } catch (error) {
       console.error('Error submitting ticket form:', error);
       toast({
         title: t('playerTicket.submissionFailed'),
-        description: error?.message || t('playerTicket.submissionFailedDesc'),
+        description: (error instanceof Error ? error.message : undefined) || t('playerTicket.submissionFailedDesc'),
         variant: "destructive"
       });
     } finally {
@@ -786,22 +796,17 @@ const PlayerTicket = () => {
     }
     
     // Get form configuration from settings - REQUIRED
-    let formConfig = null;
+    let formConfig: TicketFormConfig | null = null;
 
     try {
       if (settingsData?.settings) {
-        const ticketForms = settingsData.settings.ticketForms;
+        const ticketForms = settingsData.settings.ticketForms as Record<string, TicketFormConfig>;
         const ticketTypeLower = ticketDetails.type.toLowerCase();
 
-        // Try the ticket type first (case-insensitive), then try 'application' for 'staff' tickets (legacy support)
-        if (ticketForms && ticketForms[ticketTypeLower]) {
-          formConfig = ticketForms[ticketTypeLower];
-        } else if (ticketForms && ticketForms[ticketDetails.type]) {
-          // Fallback to exact match for backwards compatibility
-          formConfig = ticketForms[ticketDetails.type];
-        } else if ((ticketTypeLower === 'staff' || ticketTypeLower === 'application') && ticketForms && ticketForms['application']) {
-          formConfig = ticketForms['application'];
-        }
+        const legacyApplicationForm = (ticketTypeLower === 'staff' || ticketTypeLower === 'application')
+          ? ticketForms['application']
+          : undefined;
+        formConfig = ticketForms[ticketTypeLower] || ticketForms[ticketDetails.type] || legacyApplicationForm || null;
       }
     } catch (error) {
       console.error('Error processing form templates:', error);
@@ -810,20 +815,10 @@ const PlayerTicket = () => {
     // If no form config found, show error - no fallback
     if (!formConfig || !formConfig.fields) {
       return (
-        <div className="text-center py-8 border-2 border-dashed border-red-200 dark:border-red-800 bg-red-50 dark:bg-red-950 rounded-lg">
-          <div className="text-red-600 dark:text-red-400 mb-4">
-            <svg className="h-12 w-12 mx-auto" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L4.082 15.5c-.77.833.192 2.5 1.732 2.5z" />
-            </svg>
-          </div>
-          <h3 className="text-lg font-medium text-red-800 dark:text-red-300 mb-2">{t('submitTicket.formNotConfigured')}</h3>
-          <p className="text-red-700 dark:text-red-400 mb-4">
-            {t('submitTicket.noFormConfig', { type: ticketDetails.type })}
-          </p>
-          <p className="text-sm text-red-600 dark:text-red-500">
-            {t('submitTicket.contactAdmin')}
-          </p>
-        </div>
+        <Notice variant="error" title={t('submitTicket.formNotConfigured')}>
+          <p className="mb-2">{t('submitTicket.noFormConfig', { type: ticketDetails.type })}</p>
+          <p className="text-xs opacity-80">{t('submitTicket.contactAdmin')}</p>
+        </Notice>
       );
     }
     
@@ -858,20 +853,10 @@ const PlayerTicket = () => {
     // Ensure we have fields to render
     if (fields.length === 0) {
       return (
-        <div className="text-center py-8 border-2 border-dashed border-yellow-200 dark:border-yellow-800 bg-yellow-50 dark:bg-yellow-950 rounded-lg">
-          <div className="text-yellow-600 dark:text-yellow-400 mb-4">
-            <svg className="h-12 w-12 mx-auto" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L4.082 15.5c-.77.833.192 2.5 1.732 2.5z" />
-            </svg>
-          </div>
-          <h3 className="text-lg font-medium text-yellow-800 dark:text-yellow-300 mb-2">{t('submitTicket.emptyFormConfig')}</h3>
-          <p className="text-yellow-700 dark:text-yellow-400 mb-4">
-            {t('submitTicket.emptyFormConfigDesc', { type: ticketDetails.type })}
-          </p>
-          <p className="text-sm text-yellow-600 dark:text-yellow-500">
-            {t('submitTicket.contactAdmin')}
-          </p>
-        </div>
+        <Notice variant="warning" title={t('submitTicket.emptyFormConfig')}>
+          <p className="mb-2">{t('submitTicket.emptyFormConfigDesc', { type: ticketDetails.type })}</p>
+          <p className="text-xs opacity-80">{t('submitTicket.contactAdmin')}</p>
+        </Notice>
       );
     }
     
@@ -881,18 +866,16 @@ const PlayerTicket = () => {
     
     fields.forEach((field: FormField) => {
       if (field.sectionId) {
-        if (!fieldsBySection[field.sectionId]) {
-          fieldsBySection[field.sectionId] = [];
-        }
-        fieldsBySection[field.sectionId].push(field);
+        const sectionFields = fieldsBySection[field.sectionId] ?? (fieldsBySection[field.sectionId] = []);
+        sectionFields.push(field);
       } else {
         fieldsWithoutSection.push(field);
       }
     });
-    
+
     // Sort fields within each section by order
-    Object.keys(fieldsBySection).forEach(sectionId => {
-      fieldsBySection[sectionId].sort((a, b) => a.order - b.order);
+    Object.values(fieldsBySection).forEach(sectionFields => {
+      sectionFields.sort((a, b) => a.order - b.order);
     });
     
     // Sort fields without section by order
@@ -916,12 +899,12 @@ const PlayerTicket = () => {
           
           if (section.showIfValue && triggerFieldValue === section.showIfValue) {
             visibleSections.add(section.id);
-          } else if (section.showIfValues && section.showIfValues.includes(triggerFieldValue)) {
+          } else if (triggerFieldValue !== undefined && section.showIfValues && section.showIfValues.includes(triggerFieldValue)) {
             visibleSections.add(section.id);
           }
         }
       });
-      
+
       // Also check field-level navigation (legacy support and optionSectionMapping)
       fields.forEach((field: FormField) => {
         const fieldValue = formData[field.id];
@@ -964,8 +947,8 @@ const PlayerTicket = () => {
     const visibleSections = getVisibleSections();
 
     // Check if a field should be visible based on conditional logic
-    const shouldShowField = (field: FormField) => {
-      return true; // All fields are shown by default
+    const shouldShowField = (_field: FormField) => {
+      return true;
     };
 
     const renderField = (field: FormField) => {
@@ -1075,7 +1058,8 @@ const PlayerTicket = () => {
                   id={`${field.id}-${option}`}
                   checked={formData[field.id]?.includes(option) || false}
                   onCheckedChange={(checked: boolean) => {
-                    const currentValues = formData[field.id] ? formData[field.id].split(',') : [];
+                    const fieldValue = formData[field.id];
+                    const currentValues = fieldValue ? fieldValue.split(',') : [];
                     if (checked) {
                       const newValues = [...currentValues, option].filter(v => v.trim() !== '');
                       handleFormFieldChange(field.id, newValues.join(','));
@@ -1117,9 +1101,9 @@ const PlayerTicket = () => {
               variant="compact"
               maxFiles={1}
             />
-            {formPendingFiles[field.id]?.length ? (
+            {formPendingFiles[field.id]?.[0] ? (
               <div className="text-sm text-muted-foreground">
-                {t('playerTicket.selectedFile', { name: formPendingFiles[field.id][0].name })}
+                {t('playerTicket.selectedFile', { name: formPendingFiles[field.id]?.[0]?.name })}
               </div>
             ) : null}
           </div>
@@ -1210,7 +1194,7 @@ const PlayerTicket = () => {
             {isSubmitting ? (
               <>
                 <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                {t('playerTicket.submitting')}
+                {t('submitTicket.submitting')}
               </>
             ) : (
               <>
@@ -1229,24 +1213,15 @@ const PlayerTicket = () => {
       <div className="min-h-screen bg-background p-6">
         <div className="max-w-5xl mx-auto">
         {/* Security Disclaimer */}
-        <div className={`${ticketData?.emailAuthEnabled ? 'bg-green-50 dark:bg-green-950 border-green-200 dark:border-green-800' : 'bg-yellow-50 dark:bg-yellow-950 border-yellow-200 dark:border-yellow-800'} border rounded-lg p-4 mb-6`}>
-          <div className="flex items-start gap-3">
-            <div className={`${ticketData?.emailAuthEnabled ? 'text-green-600 dark:text-green-400' : 'text-yellow-600 dark:text-yellow-400'} mt-0.5`}>
-              <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
-                <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clipRule="evenodd" />
-              </svg>
-            </div>
-            <div>
-              <h3 className={`font-medium ${ticketData?.emailAuthEnabled ? 'text-green-800 dark:text-green-300' : 'text-yellow-800 dark:text-yellow-300'}`}>{t('submitTicket.securityNotice')}</h3>
-              <p className={`text-sm mt-1 ${ticketData?.emailAuthEnabled ? 'text-green-700 dark:text-green-400' : 'text-yellow-700 dark:text-yellow-400'}`}>
-                {ticketData?.emailAuthEnabled
-                  ? t('submitTicket.securityNoticeProtected')
-                  : t('submitTicket.securityNoticeDesc')
-                }
-              </p>
-            </div>
-          </div>
-        </div>
+        <Notice
+          variant={ticketData?.emailAuthEnabled ? 'success' : 'warning'}
+          title={t('submitTicket.securityNotice')}
+          className="mb-6"
+        >
+          {ticketData?.emailAuthEnabled
+            ? t('submitTicket.securityNoticeProtected')
+            : t('submitTicket.securityNoticeDesc')}
+        </Notice>
         
         {/* Check if the ticket is unfinished and needs a form */}
         {ticketDetails.status === 'Unfinished' ? (
@@ -1401,15 +1376,15 @@ const PlayerTicket = () => {
                         </div>
                         {message.attachments && message.attachments.length > 0 && (
                           <div className="mt-2 space-y-1">
-                            {message.attachments.map((attachment: string | any, i: number) => {
+                            {message.attachments.map((attachment, i) => {
                               // Extract filename from URL or use a fallback
-                              const fileName = typeof attachment === 'string' 
+                              const fileName = typeof attachment === 'string'
                                 ? attachment.split('/').pop() || `attachment-${i + 1}`
                                 : attachment.fileName || `attachment-${i + 1}`;
-                              
-                              const attachmentUrl = typeof attachment === 'string' 
-                                ? attachment 
-                                : attachment.url || attachment;
+
+                              const attachmentUrl = typeof attachment === 'string'
+                                ? attachment
+                                : attachment.url;
                               
                               return (
                                 <div key={i} className="flex items-center gap-2 text-sm">

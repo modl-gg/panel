@@ -3,6 +3,7 @@ import { useLocation } from 'wouter';
 import PageContainer from '@/components/layout/PageContainer';
 import { Loader2 } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
+import { errorMessageOr } from '@/utils/errors';
 
 const ProvisioningInProgressPage: React.FC = () => {
   const { t } = useTranslation();
@@ -18,81 +19,81 @@ const ProvisioningInProgressPage: React.FC = () => {
   const signInToken = searchParams.get('signInToken');
 
   const checkStatus = useCallback(async () => {
-    if (!serverName) {
+    // The public setup-status endpoint is keyed by the (auto-login) token, not the server name.
+    if (!signInToken) {
       setError(t('pages.provisioning.errorNoServerName'));
       setStatusMessage(t('pages.provisioning.configError'));
       return;
     }
     try {
       const { getApiUrl, getCurrentDomain } = await import('@/lib/api');
-      let apiUrl = `/v1/provisioning/status/${serverName}`;
-      if (signInToken) {
-        apiUrl += `?signInToken=${signInToken}`;
-      }
+      const { normalizeProvisioningStatus } = await import('@/lib/backend-enums');
+      const apiUrl = `/v1/public/registration/setup-status?token=${encodeURIComponent(signInToken)}`;
       const response = await fetch(getApiUrl(apiUrl), {
         credentials: 'include',
         headers: { 'X-Server-Domain': getCurrentDomain() }
       });
-      
+
       if (!response.ok) {
         let errorData;
         try {
           errorData = await response.json();
         } catch (e) {
           // If response is not JSON
-          errorData = { error: `Server returned an error: ${response.statusText || response.status}` };
+          errorData = { message: `Server returned an error: ${response.statusText || response.status}` };
         }
         // For 5xx errors from server (like provisioning failed), display that error.
         // For network or other client-side issues, retry or show generic error.
-        if (response.status >= 500 && errorData.error) {
-            throw new Error(errorData.error); // Error from server's provisioning status
+        const serverMessage = errorData.message || errorData.error;
+        if (response.status >= 500 && serverMessage) {
+            throw new Error(serverMessage); // Error from server's provisioning status
         }
-        throw new Error(errorData.error || `Failed to check status. HTTP error: ${response.status}`);
+        throw new Error(serverMessage || `Failed to check status. HTTP error: ${response.status}`);
       }
-      
+
       const data = await response.json();
 
+      // SetupStatusResponse exposes the proto provisioningStatus enum; normalize it.
+      const provisioningStatus = normalizeProvisioningStatus(data.provisioningStatus);
+
       // Use the message from the server directly, as it now includes auto-login status
-      setStatusMessage(data.message || t('pages.provisioning.statusFallback', { serverName, status: data.status }));      if (data.status === 'completed') {
+      setStatusMessage(data.message || t('pages.provisioning.statusFallback', { serverName, status: provisioningStatus }));
+      if (provisioningStatus === 'COMPLETED') {
         // Provisioning is complete - always redirect to auth page for login
         setStatusMessage((data.message || '') + ' ' + t('pages.provisioning.redirectingToLogin'));
         setTimeout(() => {
           window.location.href = '/panel/auth?message=provisioning_complete_login_required';
         }, 3000);
-      } else if (data.status === 'in-progress') {
-        setError(null);
-        setRetryCount(0);
-        setTimeout(checkStatus, 3000);
-      } else if (data.status === 'failed') {
+      } else if (provisioningStatus === 'FAILED') {
         setError(data.message || t('pages.provisioning.errorProvisioningFailed'));
         // No automatic retry for failed status, user can click "Try Again"
       } else {
-        // Handle other statuses or unexpected responses
+        // PENDING / IN_PROGRESS / unexpected: keep polling.
         setError(null);
         setRetryCount(0);
-        setTimeout(checkStatus, 5000);
+        setTimeout(checkStatus, 3000);
       }
-    } catch (err: any) {
+    } catch (err) {
       console.error('Error checking provisioning status:', err);
       if (retryCount < maxRetries) {
         setStatusMessage(t('pages.provisioning.retrying', { current: retryCount + 1, max: maxRetries }));
         setRetryCount(prev => prev + 1);
         setTimeout(checkStatus, 5000 * (retryCount + 1)); // Exponential backoff for retries
       } else {
-        setError(err.message || t('pages.provisioning.errorUnexpected'));
+        setError(errorMessageOr(err, t('pages.provisioning.errorUnexpected')));
         setStatusMessage(t('pages.provisioning.setupFailed'));
       }
     }
   }, [navigate, retryCount, serverName, signInToken]);
 
   useEffect(() => {
-    if (serverName) {
+    if (signInToken) {
       checkStatus();
     } else {
       setError(t('pages.provisioning.errorCriticalNoServer'));
       setStatusMessage(t('pages.provisioning.cannotProceed'));
     }
-  }, [serverName, checkStatus]);
+  }, [signInToken, checkStatus]);
 
   return (
     <PageContainer title={t('pages.provisioning.pageTitle')}>

@@ -7,6 +7,8 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import { KeyRound, Loader2, Mail, Fingerprint } from 'lucide-react';
 import { useAuth } from '@/hooks/use-auth';
 import { usePublicSettings } from '@/hooks/use-public-settings';
+import { type PublicKeyCredentialRequestOptionsJSON } from '@simplewebauthn/browser';
+import { type MaybePublicKeyWrapped } from '@/utils/webauthn';
 
 import { Button } from "@modl-gg/shared-web/components/ui/button";
 import { Input } from "@modl-gg/shared-web/components/ui/input";
@@ -33,6 +35,11 @@ const loginSchema = z.object({
 
 type LoginFormValues = z.infer<typeof loginSchema>;
 
+type PasskeyChallenge = {
+  challengeId: string;
+  options: MaybePublicKeyWrapped<PublicKeyCredentialRequestOptionsJSON>;
+};
+
 const AuthPage = () => {
   const [, setLocation] = useLocation();
   const { toast } = useToast();
@@ -41,7 +48,7 @@ const AuthPage = () => {
   const [loginStep, setLoginStep] = useState<'email' | 'verification'>('email');
   const [verifyMethod, setVerifyMethod] = useState<'code' | 'passkey'>('code');
   const [passkeyAvailable, setPasskeyAvailable] = useState(false);
-  const [passkeyChallenge, setPasskeyChallenge] = useState<{ challengeId: string; options: any } | null>(null);
+  const [passkeyChallenge, setPasskeyChallenge] = useState<PasskeyChallenge | null>(null);
   const [passkeyLoading, setPasskeyLoading] = useState(false);
   const serverDisplayName = publicSettings?.serverDisplayName || 'modl';
 
@@ -56,6 +63,7 @@ const AuthPage = () => {
 
   const { login, user, requestEmailVerification, checkPasskeyOptions, loginWithPasskey, loginWithDiscoverablePasskey } = useAuth();
   const [discoverableLoading, setDiscoverableLoading] = useState(false);
+  const [resendLoading, setResendLoading] = useState(false);
 
   useEffect(() => {
     if (user) {
@@ -113,7 +121,7 @@ const AuthPage = () => {
         requestEmailVerification(values.email),
       ]);
 
-      if (emailResult !== undefined) {
+      if (emailResult) {
         if (passkeyResult.hasPasskeys && passkeyResult.challengeId && passkeyResult.options) {
           setPasskeyAvailable(true);
           setPasskeyChallenge({ challengeId: passkeyResult.challengeId, options: passkeyResult.options });
@@ -141,11 +149,22 @@ const AuthPage = () => {
         setLocation('/panel');
       } else {
         loginForm.setValue('code', '');
-        const codeInput = document.querySelector('input[name="code"]') as HTMLInputElement;
-        if (codeInput) {
-          codeInput.focus();
-        }
+        loginForm.setError('code', { message: t('auth.invalidCode') });
+        requestAnimationFrame(() => loginForm.setFocus('code'));
       }
+    }
+  };
+
+  const handleResendCode = async () => {
+    setResendLoading(true);
+    try {
+      const sent = await requestEmailVerification(loginForm.getValues().email);
+      if (sent) {
+        loginForm.clearErrors('code');
+        loginForm.setValue('code', '');
+      }
+    } finally {
+      setResendLoading(false);
     }
   };
 
@@ -305,7 +324,7 @@ const AuthPage = () => {
                             )}
                           />
 
-                          <Button type="submit" className="w-full mt-6" disabled={isSubmitting}>
+                          <Button type="submit" className="w-full mt-6" disabled={isSubmitting || resendLoading}>
                             {isSubmitting ? (
                               <>
                                 <Loader2 className="mr-2 h-4 w-4 animate-spin" />
@@ -313,6 +332,24 @@ const AuthPage = () => {
                               </>
                             ) : (
                               t('auth.verifyLogin')
+                            )}
+                          </Button>
+
+                          <Button
+                            type="button"
+                            variant="ghost"
+                            size="sm"
+                            className="w-full"
+                            onClick={handleResendCode}
+                            disabled={isSubmitting || resendLoading}
+                          >
+                            {resendLoading ? (
+                              <>
+                                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                                {t('auth.sending')}
+                              </>
+                            ) : (
+                              t('auth.resendCode')
                             )}
                           </Button>
                         </>

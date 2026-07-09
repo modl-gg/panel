@@ -1,9 +1,9 @@
 import { useState, useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
-import { useLocation } from 'wouter';
 import { z } from 'zod';
-import { useForm } from 'react-hook-form';
+import { useForm, type FieldPath } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
+import type { JsonValue } from '@bufbuild/protobuf';
 import { SearchIcon, ShieldCheck, ShieldX, Send, File, Image, Video, FileText, X } from 'lucide-react';
 import { formatDate } from '../utils/date-utils';
 import { apiFetch, getAvatarUrl } from '@/lib/api';
@@ -36,37 +36,37 @@ import { StatusBanner } from "@modl-gg/shared-web/components/ui/status-banner";
 import { useToast } from '@modl-gg/shared-web/hooks/use-toast';
 import { Separator } from '@modl-gg/shared-web/components/ui/separator';
 import { Badge } from '@modl-gg/shared-web/components/ui/badge';
-import { useCreateAppeal } from '@/hooks/use-data';
-import { formatAppealStatusLabel, isTerminalAppealStatus, normalizeAppealStatus } from '@/lib/ticket-enums';
+import { appealAuthTokenKey, setCookie, useCreateAppeal, useRequestAppealVerification, useVerifyAppealCode, withAppealAuthToken } from '@/hooks/use-data';
+import { deriveAppealStatus, formatAppealStatusLabel, isTerminalAppealStatus, normalizeAppealStatus } from '@/lib/ticket-enums';
+import type { AppealFormField, AppealFormSettings } from '@/types/forms';
 
-interface AppealFormField {
-  id: string;
-  type: 'text' | 'textarea' | 'dropdown' | 'multiple_choice' | 'checkbox' | 'file_upload' | 'checkboxes';
-  label: string;
-  description?: string;
-  required: boolean;
-  options?: string[];
-  order: number;
-  sectionId?: string;
-  goToSection?: string;
-  optionSectionMapping?: Record<string, string>;
-}
+// proto int64 timestamp fields serialize to JSON as epoch-millis strings (e.g. "1700000000000").
+// new Date("1700000000000") yields Invalid Date, so coerce to a Number before formatting.
+const formatEpochMillis = (value: string | number | undefined | null): string => {
+  if (value === undefined || value === null || value === '') {
+    return 'Unknown';
+  }
+  const millis = typeof value === 'number' ? value : Number(value);
+  if (!Number.isFinite(millis)) {
+    // Fall back to string parsing for ISO/date strings.
+    return formatDate(String(value));
+  }
+  return formatDate(new Date(millis).toISOString());
+};
 
-interface AppealFormSection {
-  id: string;
-  title: string;
-  description?: string;
-  order: number;
-  showIfFieldId?: string;
-  showIfValue?: string;
-  showIfValues?: string[];
-  hideByDefault?: boolean;
-}
-
-interface AppealFormSettings {
-  fields: AppealFormField[];
-  sections: AppealFormSection[];
-}
+// Convert a proto int64 epoch-millis string (or number/ISO string) to an ISO string that
+// formatDate / new Date can parse. Returns undefined when no usable timestamp is present.
+const epochMillisToISO = (value: string | number | undefined | null): string | undefined => {
+  if (value === undefined || value === null || value === '') {
+    return undefined;
+  }
+  const millis = typeof value === 'number' ? value : Number(value);
+  if (Number.isFinite(millis)) {
+    return new Date(millis).toISOString();
+  }
+  // Already an ISO/date string.
+  return String(value);
+};
 
 // Format date to MM/dd/yy HH:mm in browser's timezone
 
@@ -90,6 +90,14 @@ interface BanInfo {
   isAppealable?: boolean; // Whether this punishment type can be appealed
 }
 
+interface AppealAttachment {
+  id?: string;
+  url: string;
+  fileName?: string;
+  fileType: string;
+  fileSize?: number;
+}
+
 // Interface for appeal messages
 interface AppealMessage {
   id: string;
@@ -98,13 +106,7 @@ interface AppealMessage {
   content: string;
   timestamp: string;
   isStaffNote?: boolean;
-  attachments?: Array<{
-    id?: string;
-    url: string;
-    fileName?: string;
-    fileType?: string;
-    fileSize?: number;
-  } | string>; // Support both attachment objects and URL strings for backward compatibility
+  attachments?: Array<AppealAttachment | string>; // Support both attachment objects and URL strings for backward compatibility
 }
 
 // Interface for appeal information
@@ -113,12 +115,40 @@ interface AppealInfo {
   banId: string;
   submittedOn: string;
   status: string;
+  locked: boolean;
   lastUpdate?: string;
   messages: AppealMessage[];
 }
 
+interface UploadedAppealFile {
+  url: string;
+  fileName?: string;
+  fileType?: string;
+  fileSize?: number;
+}
+
+interface AppealFieldFile {
+  id: string;
+  url: string;
+  key: string;
+  fileName: string;
+  fileType: string;
+  fileSize: number;
+}
+
+interface RawAppealReply {
+  id?: string;
+  staff?: boolean;
+  name: string;
+  sender: string;
+  content: string;
+  created?: string | number;
+  timestamp: string;
+  type?: string;
+  attachments?: Array<AppealAttachment | string>;
+}
+
 const AppealsPage = () => {
-  const [, setLocation] = useLocation();
   const { t } = useTranslation();
   const { toast } = useToast();
   const [banInfo, setBanInfo] = useState<BanInfo | null>(null);
@@ -127,15 +157,21 @@ const AppealsPage = () => {
   const [isLoadingPunishment, setIsLoadingPunishment] = useState(false);
   const [punishmentError, setPunishmentError] = useState<string | null>(null);
   const [newReply, setNewReply] = useState("");
-  const [attachments, setAttachments] = useState<Array<{id: string, url: string, key: string, fileName: string, fileType: string, fileSize: number, uploadedAt: string, uploadedBy: string}>>([]);
+  const [verificationNeeded, setVerificationNeeded] = useState(false);
+  const [verificationEmailHint, setVerificationEmailHint] = useState('');
+  const [verificationCode, setVerificationCode] = useState('');
+  const [verificationCodeSent, setVerificationCodeSent] = useState(false);
+  const [, setAttachments] = useState<Array<{id: string, url: string, key: string, fileName: string, fileType: string, fileSize: number, uploadedAt: string, uploadedBy: string}>>([]);
   const [replyAttachments, setReplyAttachments] = useState<Array<{id: string, url: string, key: string, fileName: string, fileType: string, fileSize: number, uploadedAt: string, uploadedBy: string}>>([]);
-  const [forceRerender, setForceRerender] = useState(0); // Force re-render for section visibility
+  const [, setForceRerender] = useState(0); // Force re-render for section visibility
 
   // Appeal form configuration will come from the punishment-specific data
   const [appealFormSettings, setAppealFormSettings] = useState<AppealFormSettings | undefined>(undefined);
 
   // API mutations
   const createAppealMutation = useCreateAppeal();
+  const requestVerificationMutation = useRequestAppealVerification();
+  const verifyCodeMutation = useVerifyAppealCode();
 
   // Helper function to get file icon
   const getFileIcon = (type: string) => {
@@ -162,8 +198,8 @@ const AppealsPage = () => {
         email: appealForm.getValues('email') || "",
         // Add default values for dynamic fields
         ...Object.fromEntries(
-          (Array.isArray(appealFormSettings?.fields) ? appealFormSettings.fields : []).map(field => {
-            let defaultValue;
+          (Array.isArray(appealFormSettings?.fields) ? appealFormSettings.fields : []).map((field): [string, boolean | string[] | string] => {
+            let defaultValue: boolean | string[] | string;
             switch (field.type) {
               case 'checkbox':
                 defaultValue = false;
@@ -201,7 +237,7 @@ const AppealsPage = () => {
       });
     }
 
-    const schemaFields: Record<string, any> = {
+    const schemaFields: Record<string, z.ZodTypeAny> = {
       banId: z.string().min(6, { message: "Ban ID must be at least 6 characters" }),
       email: z.string().email({ message: "Please enter a valid email address" }),
     };
@@ -298,6 +334,10 @@ const AppealsPage = () => {
     const normalizedBanId = values.banId.toUpperCase().replace(/\s/g, '');
     setIsLoadingPunishment(true);
     setPunishmentError(null);
+    setVerificationNeeded(false);
+    setVerificationCodeSent(false);
+    setVerificationCode('');
+    setVerificationEmailHint('');
 
     try {
       // Fetch punishment information from public API
@@ -325,10 +365,10 @@ const AppealsPage = () => {
       const banInfo: BanInfo = {
         id: punishment.id,
         reason: 'Punishment details are not available publicly', // Reason is no longer provided by public API
-        date: formatDate(punishment.issued),
+        date: formatEpochMillis(punishment.issued),
         staffMember: 'Staff', // Public API doesn't expose staff member names
         status: punishment.active ? 'Active' : 'Expired',
-        expiresIn: punishment.expires ? formatDate(punishment.expires) : 'Permanent', // Use the expires field from API
+        expiresIn: punishment.expires ? formatEpochMillis(punishment.expires) : 'Permanent', // Use the expires field from API
         type: punishment.type,
         playerUuid: punishment.playerUuid, // Use the actual UUID from the API response
         isAppealable: punishment.appealable, // Use the appealable field from public API
@@ -371,20 +411,21 @@ const AppealsPage = () => {
           id: punishment.existingAppeal.id,
           banId: punishment.id,
           submittedOn: punishment.existingAppeal.submittedDate,
-          status: punishment.existingAppeal.appealWorkflowStatus || punishment.existingAppeal.status,
+          status: deriveAppealStatus(punishment.existingAppeal.appealWorkflowStatus, punishment.existingAppeal.status),
+          locked: Boolean(punishment.existingAppeal.locked),
           lastUpdate: punishment.existingAppeal.submittedDate,
           messages: []
         };
         setAppealInfo(basicAppealInfo);
         setShowAppealForm(false);
-        
+
         // Fetch full appeal details including messages
         await fetchAppealDetails(punishment.existingAppeal.id);
-        
+
         // Show toast for existing appeal
         toast({
           title: t('appeals.appealAlreadyExists'),
-          description: t('appeals.appealAlreadyExistsDesc', { status: punishment.existingAppeal.status }),
+          description: t('appeals.appealAlreadyExistsDesc', { status: formatAppealStatusLabel(basicAppealInfo.status) }),
           variant: "default"
         });
       } else {        
@@ -407,9 +448,7 @@ const AppealsPage = () => {
           setShowAppealForm(false);
           setAppealInfo(null);
         } else {
-          // Show appeal form if no existing appeal and punishment is active and appealable
-          const canAppeal = banInfo.status === 'Active' && banInfo.isAppealable !== false;
-          setShowAppealForm(canAppeal);
+          setShowAppealForm(true);
           setAppealInfo(null);
         }
       }
@@ -450,7 +489,7 @@ const AppealsPage = () => {
       }
       
       // Collect all attachments from file upload fields
-      const allAttachments: any[] = [];
+      const allAttachments: JsonValue[] = [];
       
       // Convert form data to structured message content
       Object.entries(values).forEach(([key, value]) => {
@@ -466,7 +505,7 @@ const AppealsPage = () => {
           const files = Array.isArray(value) ? value : (value && typeof value === 'string' ? [value] : []);
           if (files.length > 0) {
             // Add files to attachments array for actual file uploads
-            files.forEach((file: any) => {
+            files.forEach((file: string | UploadedAppealFile) => {
               if (typeof file === 'object' && file.url) {
                 allAttachments.push({
                   url: file.url,
@@ -485,7 +524,7 @@ const AppealsPage = () => {
             
             // Show uploaded file names in the content (not as separate attachments list)
             if (files.length > 0) {
-              const fileNames = files.map((file: any) => {
+              const fileNames = files.map((file: string | UploadedAppealFile) => {
                 if (typeof file === 'object' && file.fileName) {
                   return `• ${file.fileName}`;
                 } else if (typeof file === 'string') {
@@ -519,23 +558,25 @@ const AppealsPage = () => {
         }
       });
 
+      const fieldValues: Record<string, JsonValue> = values;
+
       // Extract main reason field (look for common reason field names)
       const reasonFieldNames = ['reason', 'appeal_reason', 'why_appeal', 'explanation'];
-      const reasonField = appealFormSettings?.fields?.find(field => 
-        reasonFieldNames.includes(field.id.toLowerCase()) || 
+      const reasonField = appealFormSettings?.fields?.find(field =>
+        reasonFieldNames.includes(field.id.toLowerCase()) ||
         field.label.toLowerCase().includes('reason') ||
         field.label.toLowerCase().includes('why')
       );
-      const mainReason = reasonField ? values[reasonField.id] : '';
-      
+      const mainReason = reasonField ? fieldValues[reasonField.id] : '';
+
       // Extract evidence field
       const evidenceFieldNames = ['evidence', 'proof', 'screenshots', 'links'];
-      const evidenceField = appealFormSettings?.fields?.find(field => 
+      const evidenceField = appealFormSettings?.fields?.find(field =>
         evidenceFieldNames.includes(field.id.toLowerCase()) ||
         field.label.toLowerCase().includes('evidence') ||
         field.label.toLowerCase().includes('proof')
       );
-      const evidence = evidenceField ? values[evidenceField.id] : '';
+      const evidence = evidenceField ? fieldValues[evidenceField.id] : '';
       
       // All other form data goes to additionalData
       const additionalData = Object.fromEntries(
@@ -557,7 +598,7 @@ const AppealsPage = () => {
       // Create appeal data matching server expectations
       const appealData = {
         punishmentId: values.banId,
-        playerUuid: banInfo.playerUuid,
+        playerUuid: banInfo.playerUuid ?? '',
         email: values.email,
         reason: mainReason,
         evidence: evidence,
@@ -591,26 +632,38 @@ const AppealsPage = () => {
   // Fetch full appeal details when an existing appeal is found
   const fetchAppealDetails = async (appealId: string) => {
     try {
-      const response = await apiFetch(`/v1/public/appeals/${appealId}`);
+      const response = await apiFetch(withAppealAuthToken(`/v1/public/appeals/${appealId}`, appealId));
+      if (response.status === 403) {
+        const body = await response.json().catch(() => ({}));
+        if (body.requiresVerification) {
+          setVerificationNeeded(true);
+          setVerificationEmailHint(body.emailHint || '');
+          return;
+        }
+        throw new Error('Failed to fetch appeal details');
+      }
       if (!response.ok) {
         throw new Error('Failed to fetch appeal details');
       }
       const appealData = await response.json();
-      
+      setVerificationNeeded(false);
+
       // Transform the appeal data to match our interface
       const fullAppealInfo: AppealInfo = {
         id: appealData._id || appealData.id,
         banId: appealData.data?.punishmentId || banInfo?.id || '',
         submittedOn: appealData.created || appealData.submittedDate,
-        status: appealData.appealWorkflowStatus || appealData.status,
+        status: deriveAppealStatus(appealData.appealWorkflowStatus, appealData.status),
+        locked: Boolean(appealData.locked),
         lastUpdate: appealData.updatedAt || appealData.created,
-        messages: (appealData.replies || []).map((reply: any) => ({
-          id: reply._id || reply.id || `msg-${Date.now()}-${Math.random()}`,
-          sender: reply.type === 'player' || reply.senderType === 'user' ? 'player' : 
-                  reply.type === 'staff' || reply.senderType === 'staff' ? 'staff' : 'system',
+        messages: (appealData.messages || []).map((reply: RawAppealReply) => ({
+          id: reply.id || `msg-${Date.now()}-${Math.random()}`,
+          // proto TicketReply exposes staff-ness via the `staff` boolean, not a senderType/type string.
+          sender: reply.staff ? 'staff' : 'player',
           senderName: reply.name || reply.sender,
           content: reply.content,
-          timestamp: reply.created || reply.timestamp,
+          // `created` is a proto int64 -> epoch-millis string; coerce so formatDate works.
+          timestamp: epochMillisToISO(reply.created) || reply.timestamp,
           isStaffNote: reply.type === 'staff-note',
           attachments: reply.attachments || []
         }))
@@ -623,12 +676,58 @@ const AppealsPage = () => {
     }
   };
 
+  const handleRequestVerificationCode = async () => {
+    if (!appealInfo) return;
+    try {
+      const result = await requestVerificationMutation.mutateAsync(appealInfo.id);
+      setVerificationEmailHint(result.emailHint || verificationEmailHint);
+      setVerificationCodeSent(true);
+      toast({
+        title: t('playerTicket.codeSent'),
+        description: t('playerTicket.codeSentDesc'),
+      });
+    } catch (error) {
+      toast({
+        title: t('playerTicket.codeFailed'),
+        description: (error instanceof Error ? error.message : undefined) || t('playerTicket.tryAgain'),
+        variant: "destructive"
+      });
+    }
+  };
+
+  const handleVerifyAppealCode = async () => {
+    if (!appealInfo || verificationCode.length !== 6) return;
+    try {
+      const result = await verifyCodeMutation.mutateAsync({
+        appealId: appealInfo.id,
+        code: verificationCode
+      });
+      if (result.token) {
+        setCookie(appealAuthTokenKey(appealInfo.id), result.token, 7);
+        setVerificationNeeded(false);
+        setVerificationCodeSent(false);
+        setVerificationCode('');
+        toast({
+          title: t('playerTicket.verified'),
+          description: t('playerTicket.verifiedDesc'),
+        });
+        await fetchAppealDetails(appealInfo.id);
+      }
+    } catch (error) {
+      toast({
+        title: t('playerTicket.verificationFailed'),
+        description: (error instanceof Error ? error.message : undefined) || t('playerTicket.invalidCode'),
+        variant: "destructive"
+      });
+    }
+  };
+
   // Handle sending a reply to an existing appeal
   const handleSendReply = async () => {
     if (!newReply.trim() || !appealInfo) return;
 
     try {
-      const response = await apiFetch(`/v1/public/appeals/${appealInfo.id}/replies`, {
+      const response = await apiFetch(withAppealAuthToken(`/v1/public/appeals/${appealInfo.id}/replies`, appealInfo.id), {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -643,7 +742,13 @@ const AppealsPage = () => {
       });
 
       if (!response.ok) {
-        throw new Error('Failed to send reply');
+        const errorBody = await response.json().catch(() => null);
+        if (response.status === 409) {
+          await fetchAppealDetails(appealInfo.id);
+        }
+        const backendMessage = typeof errorBody?.message === 'string' ? errorBody.message :
+          typeof errorBody?.error === 'string' ? errorBody.error : undefined;
+        throw new Error(backendMessage || t('appeals.replyFailed'));
       }
 
       // Refresh appeal details
@@ -660,7 +765,7 @@ const AppealsPage = () => {
       console.error('Error sending reply:', error);
       toast({
         title: t('appeals.error'),
-        description: t('appeals.replyFailed'),
+        description: (error instanceof Error && error.message) || t('appeals.replyFailed'),
         variant: "destructive"
       });
     }
@@ -668,6 +773,7 @@ const AppealsPage = () => {
 
   const normalizedAppealStatus = normalizeAppealStatus(appealInfo?.status);
   const appealStatusLabel = formatAppealStatusLabel(appealInfo?.status);
+  const appealAcceptsReplies = !!appealInfo && !appealInfo.locked && !isTerminalAppealStatus(appealInfo.status);
 
   // Render dynamic form field
   const renderFormField = (field: AppealFormField) => {
@@ -677,7 +783,7 @@ const AppealsPage = () => {
           <FormField
             key={field.id}
             control={appealForm.control}
-            name={field.id as any}
+            name={field.id as FieldPath<DynamicFormValues>}
             render={({ field: formField }) => (
               <FormItem>
                 <FormLabel>{field.label}</FormLabel>
@@ -698,7 +804,7 @@ const AppealsPage = () => {
           <FormField
             key={field.id}
             control={appealForm.control}
-            name={field.id as any}
+            name={field.id as FieldPath<DynamicFormValues>}
             render={({ field: formField }) => (
               <FormItem>
                 <FormLabel>{field.label}</FormLabel>
@@ -723,7 +829,7 @@ const AppealsPage = () => {
           <FormField
             key={field.id}
             control={appealForm.control}
-            name={field.id as any}
+            name={field.id as FieldPath<DynamicFormValues>}
             render={({ field: formField }) => (
               <FormItem className="flex flex-row items-start space-x-3 space-y-0 rounded-md border p-4">
                 <FormControl>
@@ -749,7 +855,7 @@ const AppealsPage = () => {
           <FormField
             key={field.id}
             control={appealForm.control}
-            name={field.id as any}
+            name={field.id as FieldPath<DynamicFormValues>}
             render={({ field: formField }) => (
               <FormItem>
                 <FormLabel>{field.label}</FormLabel>
@@ -795,7 +901,7 @@ const AppealsPage = () => {
           <FormField
             key={field.id}
             control={appealForm.control}
-            name={field.id as any}
+            name={field.id as FieldPath<DynamicFormValues>}
             render={({ field: formField }) => (
               <FormItem className="space-y-3">
                 <FormLabel>{field.label}</FormLabel>
@@ -842,7 +948,7 @@ const AppealsPage = () => {
           <FormField
             key={field.id}
             control={appealForm.control}
-            name={field.id as any}
+            name={field.id as FieldPath<DynamicFormValues>}
             render={() => (
               <FormItem>
                 <div className="mb-4">
@@ -855,7 +961,7 @@ const AppealsPage = () => {
                   <FormField
                     key={option}
                     control={appealForm.control}
-                    name={field.id as any}
+                    name={field.id as FieldPath<DynamicFormValues>}
                     render={({ field: formField }) => {
                       return (
                         <FormItem
@@ -894,7 +1000,7 @@ const AppealsPage = () => {
           <FormField
             key={field.id}
             control={appealForm.control}
-            name={field.id as any}
+            name={field.id as FieldPath<DynamicFormValues>}
             render={({ field: formField }) => {
               const currentFiles = Array.isArray(formField.value) ? formField.value : formField.value ? [formField.value] : [];
               
@@ -912,8 +1018,8 @@ const AppealsPage = () => {
                 formField.onChange(updatedFiles);
               };
               
-              const handleRemoveFile = (fileToRemove: any) => {
-                const updatedFiles = currentFiles.filter((file: any) => file.id !== fileToRemove.id);
+              const handleRemoveFile = (fileToRemove: AppealFieldFile) => {
+                const updatedFiles = currentFiles.filter((file: AppealFieldFile) => file.id !== fileToRemove.id);
                 formField.onChange(updatedFiles);
               };
               
@@ -937,7 +1043,7 @@ const AppealsPage = () => {
                       {currentFiles.length > 0 && (
                         <div className="mt-2 space-y-1">
                           <div className="text-sm font-medium text-muted-foreground">{t('appeals.uploadedFiles')}</div>
-                          {currentFiles.map((file: any) => (
+                          {currentFiles.map((file: AppealFieldFile) => (
                             <div key={file.id} className="flex items-center justify-between p-2 bg-muted/50 rounded border">
                               <div className="flex items-center gap-2">
                                 {getFileIcon(file.fileType)}
@@ -972,7 +1078,7 @@ const AppealsPage = () => {
   };
 
   // Avatar component for messages (copied from player-ticket)
-  const MessageAvatar = ({ message, creatorUuid }: { message: AppealMessage, creatorUuid?: string }) => {
+  const MessageAvatar = ({ message }: { message: AppealMessage }) => {
     const [avatarError, setAvatarError] = useState(false);
     const [avatarLoading, setAvatarLoading] = useState(true);
 
@@ -1197,7 +1303,59 @@ const AppealsPage = () => {
                     {t('appeals.appealApprovedDesc')}
                   </StatusBanner>
                 )}
-                
+
+                {normalizedAppealStatus === 'closed' && (
+                  <StatusBanner
+                    variant="info"
+                    title={t('appeals.appealClosed')}
+                    className="mt-4"
+                  >
+                    {t('appeals.appealClosedDesc')}
+                  </StatusBanner>
+                )}
+
+                {verificationNeeded && (
+                  <Card className="mt-6">
+                    <CardHeader>
+                      <CardTitle>{t('playerTicket.verificationRequired')}</CardTitle>
+                      <CardDescription>
+                        {t('appeals.verificationRequiredDesc')}
+                        {verificationEmailHint && (
+                          <> {t('playerTicket.codeSentTo', { email: verificationEmailHint })}</>
+                        )}
+                      </CardDescription>
+                    </CardHeader>
+                    <CardContent className="space-y-4">
+                      {!verificationCodeSent ? (
+                        <Button onClick={handleRequestVerificationCode} disabled={requestVerificationMutation.isPending} className="w-full">
+                          {requestVerificationMutation.isPending ? t('playerTicket.sending') : t('playerTicket.sendVerificationCode')}
+                        </Button>
+                      ) : (
+                        <>
+                          <div className="space-y-2">
+                            <Label htmlFor="appealVerificationCode">{t('playerTicket.enterCode', { email: verificationEmailHint })}</Label>
+                            <Input
+                              id="appealVerificationCode"
+                              type="text"
+                              placeholder="000000"
+                              value={verificationCode}
+                              onChange={(e) => setVerificationCode(e.target.value.replace(/\D/g, '').slice(0, 6))}
+                              maxLength={6}
+                              className="text-center text-lg tracking-widest"
+                            />
+                          </div>
+                          <Button onClick={handleVerifyAppealCode} disabled={verifyCodeMutation.isPending || verificationCode.length !== 6} className="w-full">
+                            {verifyCodeMutation.isPending ? t('playerTicket.verifying') : t('playerTicket.verifyCode')}
+                          </Button>
+                          <Button variant="ghost" size="sm" onClick={handleRequestVerificationCode} disabled={requestVerificationMutation.isPending} className="w-full">
+                            {t('playerTicket.resendCode')}
+                          </Button>
+                        </>
+                      )}
+                    </CardContent>
+                  </Card>
+                )}
+
                 {/* Messages Section */}
                 {appealInfo.messages && appealInfo.messages.length > 0 && (
                   <div className="mt-6">
@@ -1236,7 +1394,7 @@ const AppealsPage = () => {
                                     {/* Display message attachments */}
                                     {message.attachments && message.attachments.length > 0 && (
                                       <div className="flex flex-wrap gap-2 mt-2">
-                                        {message.attachments.map((attachment: any, idx: number) => {
+                                        {message.attachments.map((attachment, idx: number) => {
                                           // Handle both attachment objects and URL strings
                                           const attachmentData = typeof attachment === 'string' ? 
                                             { url: attachment, fileName: attachment.split('/').pop() || 'file', fileType: 'application/octet-stream' } : 
@@ -1264,8 +1422,18 @@ const AppealsPage = () => {
                       </div>
                     </div>
                     
+                    {appealInfo.locked && !isTerminalAppealStatus(appealInfo.status) && (
+                      <StatusBanner
+                        variant="info"
+                        title={t('appeals.repliesLocked')}
+                        className="mt-4"
+                      >
+                        {t('appeals.repliesLockedDesc')}
+                      </StatusBanner>
+                    )}
+
                     {/* Reply input */}
-                    {!isTerminalAppealStatus(appealInfo.status) && (
+                    {appealAcceptsReplies && (
                       <Card className="mt-4 shadow-card">
                         <CardHeader>
                           <CardTitle className="text-lg">{t('appeals.replyToAppeal')}</CardTitle>

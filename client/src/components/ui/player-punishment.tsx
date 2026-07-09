@@ -6,6 +6,55 @@ import { Badge } from '@modl-gg/shared-web/components/ui/badge';
 import { Input } from '@modl-gg/shared-web/components/ui/input';
 import { useToast } from '@modl-gg/shared-web/hooks/use-toast';
 import MediaUpload from '@/components/MediaUpload';
+import { usePunishmentPreview } from '@/hooks/data/punishments';
+import { REASON_REQUIRED_PUNISHMENT_TYPES } from '@/utils/manual-punishment';
+
+type DurationUnit = 'seconds' | 'minutes' | 'hours' | 'days' | 'weeks' | 'months';
+
+interface PunishmentDurationConfig {
+  value?: number;
+  unit?: string;
+  type?: string;
+}
+
+interface PunishmentSeverityDurations {
+  first?: PunishmentDurationConfig;
+  medium?: PunishmentDurationConfig;
+  habitual?: PunishmentDurationConfig;
+}
+
+interface PunishmentTypeConfig {
+  id?: number | string;
+  name: string;
+  category?: string;
+  customizable?: boolean;
+  ordinal?: number;
+  singleSeverityPunishment?: boolean;
+  singleSeverityDurations?: PunishmentSeverityDurations;
+  durations?: {
+    low?: PunishmentSeverityDurations;
+    regular?: PunishmentSeverityDurations;
+    severe?: PunishmentSeverityDurations;
+  };
+  permanentUntilSkinChange?: boolean;
+  permanentUntilUsernameChange?: boolean;
+  canBeAltBlocking?: boolean;
+  canBeStatWiping?: boolean;
+}
+
+interface PunishmentTypesByCategory {
+  Administrative: PunishmentTypeConfig[];
+  Social: PunishmentTypeConfig[];
+  Gameplay: PunishmentTypeConfig[];
+}
+
+interface PunishmentSearchResult {
+  id: string;
+  playerName: string;
+  status?: string;
+  type?: string;
+  typeOrdinal?: number;
+}
 
 export interface PlayerPunishmentData {
   selectedPunishmentCategory?: string;
@@ -13,7 +62,7 @@ export interface PlayerPunishmentData {
   selectedOffenseLevel?: 'first' | 'medium' | 'habitual';
   duration?: {
     value: number;
-    unit: 'minutes' | 'hours' | 'days' | 'weeks' | 'months';
+    unit: DurationUnit;
   };
   isPermanent?: boolean;
   reason?: string;
@@ -35,11 +84,7 @@ interface PlayerPunishmentProps {
   data: PlayerPunishmentData;
   onChange: (data: PlayerPunishmentData) => void;
   onApply: (data: PlayerPunishmentData) => Promise<void>;
-  punishmentTypesByCategory?: {
-    Administrative: any[];
-    Social: any[];
-    Gameplay: any[];
-  };
+  punishmentTypesByCategory?: PunishmentTypesByCategory;
   isLoading?: boolean;
   compact?: boolean;
   availableTickets?: Array<{id: string; subject: string; type: string; status: string; locked?: boolean}>;
@@ -47,12 +92,12 @@ interface PlayerPunishmentProps {
 
 // Constants
 const ADMINISTRATIVE_PUNISHMENTS = ['Kick', 'Manual Mute', 'Manual Ban', 'Security Ban', 'Linked Ban', 'Blacklist'];
-const SEVERITY_OPTIONS = ['Lenient', 'Regular', 'Aggravated'];
+const SEVERITY_OPTIONS = ['Lenient', 'Regular', 'Aggravated'] as const;
 const OFFENSE_LEVELS = [
   { id: 'first', labelKey: 'punishment.offenseFirst' },
   { id: 'medium', labelKey: 'punishment.offenseMedium' },
   { id: 'habitual', labelKey: 'punishment.offenseHabitual' }
-];
+] as const;
 const DURATION_UNITS = [
   { value: 'seconds', labelKey: 'punishment.seconds' },
   { value: 'minutes', labelKey: 'punishment.minutes' },
@@ -62,7 +107,7 @@ const DURATION_UNITS = [
   { value: 'months', labelKey: 'punishment.months' }
 ];
 
-const DEFAULT_PUNISHMENT_TYPES = {
+const DEFAULT_PUNISHMENT_TYPES: PunishmentTypesByCategory = {
   Administrative: [
     { id: 0, name: 'Kick', category: 'Administrative', customizable: false, ordinal: 0 },
     { id: 1, name: 'Manual Mute', category: 'Administrative', customizable: false, ordinal: 1 },
@@ -91,7 +136,7 @@ const PlayerPunishment: React.FC<PlayerPunishmentProps> = ({
   const { toast } = useToast();
   const [isApplying, setIsApplying] = useState(false);
   const [linkedBanSearch, setLinkedBanSearch] = useState('');
-  const [linkedBanSearchResults, setLinkedBanSearchResults] = useState<any[]>([]);
+  const [linkedBanSearchResults, setLinkedBanSearchResults] = useState<PunishmentSearchResult[]>([]);
 
   const updateData = (updates: Partial<PlayerPunishmentData>) => {
     onChange({ ...data, ...updates });
@@ -107,6 +152,20 @@ const PlayerPunishment: React.FC<PlayerPunishmentProps> = ({
     ];
     
     return allTypes.find(type => type.name === data.selectedPunishmentCategory);
+  };
+
+  const currentPunishmentType = getCurrentPunishmentType();
+  const { data: punishmentPreview } = usePunishmentPreview(playerId, currentPunishmentType?.ordinal);
+
+  const getSelectedSeverityPreview = () => {
+    if (!punishmentPreview) return null;
+    if (currentPunishmentType?.singleSeverityPunishment) {
+      return punishmentPreview.singleSeverity ?? null;
+    }
+    if (data.selectedSeverity === 'Lenient') return punishmentPreview.lenient ?? null;
+    if (data.selectedSeverity === 'Regular') return punishmentPreview.regular ?? null;
+    if (data.selectedSeverity === 'Aggravated') return punishmentPreview.aggravated ?? null;
+    return null;
   };
 
   const getPunishmentPreview = () => {
@@ -128,6 +187,7 @@ const PlayerPunishment: React.FC<PlayerPunishmentProps> = ({
     let actionType = '';
     let durationValue: number | undefined;
     let durationUnit: string | undefined;
+    let durationText: string | undefined;
     let isPermanentPunishment = false;
     
     // Handle administrative punishments
@@ -153,8 +213,15 @@ const PlayerPunishment: React.FC<PlayerPunishmentProps> = ({
       actionType = 'blacklist';
       isPermanentPunishment = true;
     } else {
-      // For configured punishment types, get duration from the configuration
-      if (punishmentType.singleSeverityPunishment && punishmentType.singleSeverityDurations && data.selectedOffenseLevel) {
+      const severityPreview = getSelectedSeverityPreview();
+      if (severityPreview) {
+        actionType = severityPreview.punishmentType || 'ban';
+        if (severityPreview.permanent) {
+          isPermanentPunishment = true;
+        } else {
+          durationText = severityPreview.durationFormatted;
+        }
+      } else if (punishmentType.singleSeverityPunishment && punishmentType.singleSeverityDurations && data.selectedOffenseLevel) {
         const durationConfig = punishmentType.singleSeverityDurations[data.selectedOffenseLevel];
         if (durationConfig) {
           actionType = durationConfig.type?.includes('ban') ? 'ban' : 'mute';
@@ -168,10 +235,10 @@ const PlayerPunishment: React.FC<PlayerPunishmentProps> = ({
       } else if (punishmentType.durations && data.selectedSeverity) {
         const severityMap = { 'lenient': 'low', 'regular': 'regular', 'aggravated': 'severe' };
         const mappedSeverity = severityMap[data.selectedSeverity.toLowerCase() as keyof typeof severityMap] || 'regular';
-        
+
         const offenseLevel = data.selectedOffenseLevel || 'first';
         const durationConfig = punishmentType.durations[mappedSeverity as keyof typeof punishmentType.durations]?.[offenseLevel];
-        
+
         if (durationConfig) {
           actionType = durationConfig.type?.includes('ban') ? 'ban' : 'mute';
           if (durationConfig.type?.includes('permanent')) {
@@ -182,25 +249,20 @@ const PlayerPunishment: React.FC<PlayerPunishmentProps> = ({
           }
         }
       }
-      
-      // Default fallback
-      if (!actionType) {
-        actionType = 'ban';
-      }
     }
-    
-    // Add duration and action type
+
+    if (!durationText && durationValue && durationUnit) {
+      durationText = `${durationValue} ${durationUnit}`;
+    }
+
     if (isPermanentPunishment) {
       preview += ` - Permanent ${actionType}`;
-    } else if (durationValue && durationUnit) {
-      preview += ` - ${durationValue} ${durationUnit} ${actionType}`;
-    } else if (actionType === 'kick') {
-      // Kicks don't have duration
-      preview += ` - ${actionType}`;
+    } else if (durationText) {
+      preview += ` - ${durationText} ${actionType}`;
     } else if (actionType) {
       preview += ` - ${actionType}`;
     }
-    
+
     return preview;
   };
 
@@ -235,7 +297,7 @@ const PlayerPunishment: React.FC<PlayerPunishmentProps> = ({
       });
     } catch (error) {
       toast({
-        title: t('common.error'),
+        title: t('toast.error'),
         description: t('punishment.applyFailed'),
         variant: "destructive",
       });
@@ -244,7 +306,7 @@ const PlayerPunishment: React.FC<PlayerPunishmentProps> = ({
     }
   };
 
-  const handleCategorySelect = (type: any) => {
+  const handleCategorySelect = (type: PunishmentTypeConfig) => {
     // Validate kick for offline players
     if (type.name === 'Kick' && playerStatus !== 'Online') {
       toast({
@@ -255,7 +317,7 @@ const PlayerPunishment: React.FC<PlayerPunishmentProps> = ({
       return;
     }
 
-    const newData = {
+    const newData: PlayerPunishmentData = {
       ...data,
       selectedPunishmentCategory: type.name,
       selectedSeverity: undefined,
@@ -274,14 +336,16 @@ const PlayerPunishment: React.FC<PlayerPunishmentProps> = ({
 
   // Function to search for active punishments by ID or player name
   const searchLinkedBan = async (query: string) => {
-    if (!query.trim()) {
+    // Backend requires q to be at least 2 characters (@Size(min=2)); avoid firing
+    // a request that would 400 for empty/single-character queries.
+    if (query.trim().length < 2) {
       setLinkedBanSearchResults([]);
       return;
     }
 
     try {
       const { getApiUrl, getCurrentDomain } = await import('@/lib/api');
-      const response = await fetch(getApiUrl(`/v1/panel/punishments/search?q=${encodeURIComponent(query)}&activeOnly=true`), {
+      const response = await fetch(getApiUrl(`/v1/panel/players/punishments/search?q=${encodeURIComponent(query)}&activeOnly=true`), {
         credentials: 'include',
         headers: { 'X-Server-Domain': getCurrentDomain() }
       });
@@ -292,13 +356,29 @@ const PlayerPunishment: React.FC<PlayerPunishmentProps> = ({
     }
   };
 
-  const selectLinkedBan = (punishment: any) => {
+  const selectLinkedBan = (punishment: PunishmentSearchResult) => {
     updateData({ banToLink: punishment.id });
     setLinkedBanSearch(`${punishment.id} - ${punishment.playerName}`);
     setLinkedBanSearchResults([]);
   };
 
-  const renderCategoryGrid = (types: any[], title: string) => (
+  // The search API serializes PunishmentSearchResult with `typeOrdinal` (an int),
+  // not a human-readable `type`. Resolve the ordinal to a punishment-type name
+  // using the tenant's configured types so the result row shows a real label.
+  const resolvePunishmentTypeName = (result: PunishmentSearchResult): string => {
+    if (result?.type) return result.type; // future-proof if server ever sends a name
+    const ordinal = result?.typeOrdinal;
+    if (ordinal === undefined || ordinal === null) return '';
+    const allTypes = [
+      ...(punishmentTypesByCategory.Administrative || []),
+      ...(punishmentTypesByCategory.Social || []),
+      ...(punishmentTypesByCategory.Gameplay || []),
+    ];
+    const match = allTypes.find((type) => type.ordinal === ordinal || type.id === ordinal);
+    return match?.name ?? String(ordinal);
+  };
+
+  const renderCategoryGrid = (types: PunishmentTypeConfig[], title: string) => (
     <div className="space-y-1">
       <label className="text-xs font-medium text-muted-foreground">{title}</label>
       <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-2">
@@ -343,7 +423,7 @@ const PlayerPunishment: React.FC<PlayerPunishmentProps> = ({
               key={severity}
               variant={data.selectedSeverity === severity ? "default" : "outline"}
               size="sm"
-              onClick={() => updateData({ selectedSeverity: severity as any })}
+              onClick={() => updateData({ selectedSeverity: severity })}
               className="min-w-[100px] flex-1"
             >
               {severity}
@@ -375,7 +455,7 @@ const PlayerPunishment: React.FC<PlayerPunishmentProps> = ({
               key={level.id}
               variant={data.selectedOffenseLevel === level.id ? "default" : "outline"}
               size="sm"
-              onClick={() => updateData({ selectedOffenseLevel: level.id as any })}
+              onClick={() => updateData({ selectedOffenseLevel: level.id })}
               className="min-w-[100px] flex-1"
             >
               {t(level.labelKey)}
@@ -441,7 +521,7 @@ const PlayerPunishment: React.FC<PlayerPunishmentProps> = ({
                 duration: { 
                   ...data.duration,
                   value: data.duration?.value || 1,
-                  unit: e.target.value as any
+                  unit: e.target.value as DurationUnit
                 }
               })}
             >
@@ -526,7 +606,7 @@ const PlayerPunishment: React.FC<PlayerPunishmentProps> = ({
                     >
                       <div className="text-sm font-medium">{punishment.id}</div>
                       <div className="text-xs text-muted-foreground">
-                        {punishment.playerName} - {punishment.type} - {punishment.status}
+                        {punishment.playerName} - {resolvePunishmentTypeName(punishment)} - {punishment.status}
                       </div>
                     </div>
                   ))}
@@ -645,7 +725,7 @@ const PlayerPunishment: React.FC<PlayerPunishmentProps> = ({
     );
   };
 
-  const reasonRequiredPunishments = ['Kick', 'Manual Mute', 'Manual Ban'];
+  const reasonRequiredPunishments = REASON_REQUIRED_PUNISHMENT_TYPES;
 
   const renderTextFields = () => {
     const punishmentType = getCurrentPunishmentType();
@@ -870,7 +950,7 @@ const PlayerPunishment: React.FC<PlayerPunishmentProps> = ({
       </Button>
       <p className="text-xs text-muted-foreground text-center">
         The expiration timer for punishments issued on offline players will not begin until the player successfully attempts to login (unimpeded by a previous ban).
-        To force start a punishment, modify it's duration and the timer for the modified duration will begin immediately.
+        To force start a punishment, modify its duration and the timer for the modified duration will begin immediately.
       </p>
     </div>
   );
