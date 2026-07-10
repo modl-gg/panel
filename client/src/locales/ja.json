@@ -796,6 +796,7 @@
       "replayRetentionEnabledDesc": "設定された保持期間を過ぎた保存済みリプレイを自動的に削除します。",
       "replayRetentionDays": "保持期間 (日)",
       "replayRetentionDaysDesc": "この日数より古い保存済みリプレイは削除の対象となります。",
+      "replayRetentionExemptionNote": "未解決のチケットや不服申し立てに添付されたリプレイは、保持期間を過ぎても削除されません。",
       "replayRetentionDisabledDesc": "自動リプレイ削除は無効になっています。保存されたリプレイは手動で削除されるまで保持されます。",
       "replayRetentionActive": "{{days}} 日後にリプレイを削除中",
       "replayRetentionOff": "自動削除は無効です",

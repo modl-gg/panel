@@ -796,6 +796,7 @@
       "replayRetentionEnabledDesc": "Gespeicherte Replays nach der konfigurierten Aufbewahrungszeit automatisch löschen.",
       "replayRetentionDays": "Aufbewahrungszeitraum (Tage)",
       "replayRetentionDaysDesc": "Gespeicherte Replays, die älter als diese Anzahl von Tagen sind, können bereinigt werden.",
+      "replayRetentionExemptionNote": "An offene Tickets oder Berufungen angehängte Replays werden nie gelöscht, auch nicht nach Ablauf der Aufbewahrungszeit.",
       "replayRetentionDisabledDesc": "Automatische Replay-Bereinigung ist deaktiviert. Gespeicherte Replays bleiben erhalten, bis sie manuell gelöscht werden.",
       "replayRetentionActive": "Replays werden nach {{days}} Tagen gelöscht",
       "replayRetentionOff": "Automatische Bereinigung deaktiviert",

@@ -796,6 +796,7 @@
       "replayRetentionEnabledDesc": "Supprimer automatiquement les replays stockés après la période de rétention configurée.",
       "replayRetentionDays": "Période de rétention (jours)",
       "replayRetentionDaysDesc": "Les replays stockés plus anciens que ce nombre de jours peuvent être nettoyés.",
+      "replayRetentionExemptionNote": "Les replays associés à des tickets ou appels ouverts ne sont jamais supprimés, même après la période de rétention.",
       "replayRetentionDisabledDesc": "Le nettoyage automatique des replays est désactivé. Les replays stockés seront conservés jusqu'à leur suppression manuelle.",
       "replayRetentionActive": "Suppression des replays après {{days}} jours",
       "replayRetentionOff": "Nettoyage automatique désactivé",

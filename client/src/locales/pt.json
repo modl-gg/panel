@@ -796,6 +796,7 @@
       "replayRetentionEnabledDesc": "Excluir automaticamente os replays armazenados após o período de retenção configurado.",
       "replayRetentionDays": "Período de retenção (dias)",
       "replayRetentionDaysDesc": "Replays armazenados mais antigos que este número de dias serão qualificados para limpeza.",
+      "replayRetentionExemptionNote": "Os replays anexados a tickets ou apelações abertos nunca são excluídos, mesmo após o período de retenção.",
       "replayRetentionDisabledDesc": "A limpeza automática de replays está desativada. Os replays armazenados serão retidos até serem excluídos manualmente.",
       "replayRetentionActive": "Excluindo replays após {{days}} dias",
       "replayRetentionOff": "Limpeza automática desativada",

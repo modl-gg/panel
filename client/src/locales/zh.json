@@ -796,6 +796,7 @@
       "replayRetentionEnabledDesc": "在配置的保留期过后自动删除存储的回放。",
       "replayRetentionDays": "保留期（天）",
       "replayRetentionDaysDesc": "超过此天数的存储回放将符合清理条件。",
+      "replayRetentionExemptionNote": "附加到未解决工单或申诉的回放永远不会被删除，即使超过保留期。",
       "replayRetentionDisabledDesc": "已禁用自动回放清理。存储的回放将被保留，直到手动删除。",
       "replayRetentionActive": "将在 {{days}} 天后删除回放",
       "replayRetentionOff": "自动清理已禁用",

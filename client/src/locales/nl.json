@@ -796,6 +796,7 @@
       "replayRetentionEnabledDesc": "Verwijder opgeslagen replays automatisch na de ingestelde bewaartermijn.",
       "replayRetentionDays": "Bewaartermijn (dagen)",
       "replayRetentionDaysDesc": "Opgeslagen replays ouder dan dit aantal dagen komen in aanmerking voor opruiming.",
+      "replayRetentionExemptionNote": "Replays die aan open tickets of beroepen zijn gekoppeld, worden nooit verwijderd, zelfs niet na de bewaartermijn.",
       "replayRetentionDisabledDesc": "Automatische replay-opruiming is uitgeschakeld. Opgeslagen replays blijven bewaard totdat ze handmatig worden verwijderd.",
       "replayRetentionActive": "Replays worden na {{days}} dagen verwijderd",
       "replayRetentionOff": "Automatische opruiming uitgeschakeld",

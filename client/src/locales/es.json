@@ -796,6 +796,7 @@
       "replayRetentionEnabledDesc": "Eliminar automáticamente las repeticiones almacenadas después del periodo de retención configurado.",
       "replayRetentionDays": "Periodo de retención (días)",
       "replayRetentionDaysDesc": "Las repeticiones almacenadas con más de esta cantidad de días podrán limpiarse.",
+      "replayRetentionExemptionNote": "Las repeticiones adjuntas a tickets o apelaciones abiertos nunca se eliminan, incluso después del periodo de retención.",
       "replayRetentionDisabledDesc": "La limpieza automática de repeticiones está deshabilitada. Las repeticiones almacenadas se conservarán hasta que se eliminen manualmente.",
       "replayRetentionActive": "Eliminando repeticiones después de {{days}} días",
       "replayRetentionOff": "Limpieza automática deshabilitada",

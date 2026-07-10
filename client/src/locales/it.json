@@ -796,6 +796,7 @@
       "replayRetentionEnabledDesc": "Elimina automaticamente i replay archiviati dopo il periodo di conservazione configurato.",
       "replayRetentionDays": "Periodo di conservazione (giorni)",
       "replayRetentionDaysDesc": "I replay archiviati più vecchi di questo numero di giorni sono soggetti a pulizia.",
+      "replayRetentionExemptionNote": "I replay allegati a ticket o appelli aperti non vengono mai eliminati, anche dopo il periodo di conservazione.",
       "replayRetentionDisabledDesc": "La pulizia automatica dei replay è disabilitata. I replay archiviati verranno conservati fino all'eliminazione manuale.",
       "replayRetentionActive": "Eliminazione dei replay dopo {{days}} giorni",
       "replayRetentionOff": "Pulizia automatica disabilitata",

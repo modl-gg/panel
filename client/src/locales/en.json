@@ -796,6 +796,7 @@
       "replayRetentionEnabledDesc": "Automatically delete stored replays after the configured retention period.",
       "replayRetentionDays": "Retention period (days)",
       "replayRetentionDaysDesc": "Stored replays older than this many days are eligible for cleanup.",
+      "replayRetentionExemptionNote": "Replays attached to open tickets or appeals are never deleted, even after the retention period.",
       "replayRetentionDisabledDesc": "Automatic replay cleanup is disabled. Stored replays will be retained until manually deleted.",
       "replayRetentionActive": "Deleting replays after {{days}} days",
       "replayRetentionOff": "Automatic cleanup disabled",

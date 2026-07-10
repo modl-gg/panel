@@ -36,6 +36,18 @@ const formatDateParts = (date: Date, includeTime: boolean): string => {
   return `${datePart} ${hh}:${min}`;
 };
 
+const ISO_DATE_PATTERN = /^(\d{4})-(\d{2})-(\d{2})$/;
+
+export const formatChartDateLabel = (label: string | number): string => {
+  const text = String(label);
+  const match = ISO_DATE_PATTERN.exec(text);
+  if (!match) {
+    return text;
+  }
+  const date = new Date(Number(match[1]), Number(match[2]) - 1, Number(match[3]));
+  return formatDateParts(date, false);
+};
+
 export const formatDate = (dateString: string): string => {
   try {
     if (!dateString || dateString === 'Invalid Date') {
