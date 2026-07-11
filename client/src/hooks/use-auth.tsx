@@ -2,7 +2,7 @@ import { createContext, type ReactNode, useCallback, useContext, useEffect, useM
 import { useLocation } from "wouter";
 import { useToast } from "@modl-gg/shared-web/hooks/use-toast";
 import { getApiUrl, getCurrentDomain } from "@/lib/api";
-import { setDateLocale, setDateFormat } from "@/utils/date-utils";
+import { DEFAULT_DATE_FORMAT, setDateLocale, setDateFormat } from "@/utils/date-utils";
 import { startAuthentication, type PublicKeyCredentialRequestOptionsJSON } from "@simplewebauthn/browser";
 import { isWebAuthnCancellation, unwrapPublicKeyOptions, type MaybePublicKeyWrapped } from "@/utils/webauthn";
 import i18n from "@/lib/i18n";
@@ -70,7 +70,7 @@ function mapUserFromMeResponse(userData: MeResponse): User {
     role: userData.role,
     minecraftUsername: userData.minecraftUsername,
     language: userData.language || undefined,
-    dateFormat: userData.dateFormat || 'MM/DD/YYYY',
+    dateFormat: userData.dateFormat || DEFAULT_DATE_FORMAT,
   };
 }
 
@@ -114,7 +114,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     const lang = user?.language || 'en';
-    const dateFormat = user?.dateFormat || 'MM/DD/YYYY';
+    const dateFormat = user?.dateFormat || DEFAULT_DATE_FORMAT;
     setDateLocale(lang);
     setDateFormat(dateFormat);
   }, [user?.language, user?.dateFormat]);
