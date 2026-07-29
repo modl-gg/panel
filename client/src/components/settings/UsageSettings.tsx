@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
-import { HardDrive, Search, Trash2, Download, FolderOpen, Calendar, AlertCircle, Settings, CreditCard, Brain, Play } from 'lucide-react';
+import { HardDrive, Search, Trash2, Download, FolderOpen, Calendar, AlertCircle, Settings, CreditCard, Brain, Play, Info } from 'lucide-react';
 import { getApiUrl, getCurrentDomain, apiFetch } from '@/lib/api';
 import { Button } from '@modl-gg/shared-web/components/ui/button';
 import { Input } from '@modl-gg/shared-web/components/ui/input';
@@ -888,6 +888,15 @@ const fetchStorageData = async () => {
                       : t('settings.usage.replayRetentionDisabledDesc')}
                   </p>
                 </div>
+
+                {replayRetentionEnabled && (
+                  <div className="flex items-start gap-2 rounded-lg border border-border bg-surface-1 p-3">
+                    <Info className="h-4 w-4 shrink-0 text-muted-foreground mt-0.5" />
+                    <p className="text-xs text-muted-foreground">
+                      {t('settings.usage.replayRetentionExemptionNote')}
+                    </p>
+                  </div>
+                )}
 
                 <div className="flex items-center justify-between gap-3">
                   <Badge variant="outline">

@@ -56,24 +56,40 @@ const DomainSettings: React.FC = () => {
   const loadDomainConfig = async () => {
     try {
       const response = await apiFetch('/v1/panel/settings/domain');
-      if (response.ok) {
-        const data = await response.json();
-        if (data.customDomain) {
-          setCustomDomain(data.customDomain);
-          setDomainStatus(data.status);
-        }
-        setAccessingFromCustomDomain(data.accessingFromCustomDomain || false);
-        setModlSubdomainUrl(data.modlSubdomainUrl || '');
-        setCanManageCustomDomain(Boolean(data.canManageCustomDomain));
+      if (!response.ok) {
+        toast({
+          title: t('toast.error'),
+          description: t('settings.domain.loadFailed'),
+          variant: "destructive",
+        });
+        return;
       }
+      const data = await response.json();
+      if (data.customDomain) {
+        setCustomDomain(data.customDomain);
+        setDomainStatus(data.status);
+      }
+      setAccessingFromCustomDomain(data.accessingFromCustomDomain || false);
+      setModlSubdomainUrl(data.modlSubdomainUrl || '');
+      setCanManageCustomDomain(Boolean(data.canManageCustomDomain));
     } catch (error) {
-      // Domain configuration may not exist yet
+      toast({
+        title: t('toast.error'),
+        description: t('settings.domain.loadFailed'),
+        variant: "destructive",
+      });
     }
   };
 
   const validateDomain = (domain: string): boolean => {
-    const domainRegex = /^[a-zA-Z0-9][a-zA-Z0-9-]{0,61}[a-zA-Z0-9](?:\.[a-zA-Z0-9][a-zA-Z0-9-]{0,61}[a-zA-Z0-9])*$/;
-    return domainRegex.test(domain) && domain.length <= 253;
+    const normalized = domain.trim();
+    if (normalized.length === 0 || normalized.length > 253) {
+      return false;
+    }
+    if (!normalized.includes('.')) {
+      return false;
+    }
+    return !/\s/.test(normalized);
   };
 
   const handleDomainSubmit = async () => {
@@ -99,15 +115,6 @@ const DomainSettings: React.FC = () => {
       toast({
         title: t('settings.domain.invalidDomain'),
         description: t('settings.domain.invalidDomainDesc'),
-        variant: "destructive",
-      });
-      return;
-    }
-
-    if (domainStatus?.domain && domainStatus.domain.toLowerCase() === customDomain.trim().toLowerCase()) {
-      toast({
-        title: t('settings.domain.alreadyConfigured'),
-        description: t('settings.domain.alreadyConfiguredDesc'),
         variant: "destructive",
       });
       return;

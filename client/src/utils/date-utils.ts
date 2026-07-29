@@ -1,4 +1,8 @@
-let _dateFormat = 'MM/DD/YYYY';
+export const PRETTY_DATE_FORMAT = 'MMM D, YYYY';
+export const DEFAULT_DATE_FORMAT = PRETTY_DATE_FORMAT;
+
+let _dateFormat = DEFAULT_DATE_FORMAT;
+let _dateLocale = 'en';
 
 export const setDateFormat = (fmt: string) => {
   _dateFormat = fmt;
@@ -6,12 +10,55 @@ export const setDateFormat = (fmt: string) => {
 
 export const getDateFormat = () => _dateFormat;
 
-// Keep setDateLocale as a no-op for backwards compat (called from use-auth)
-export const setDateLocale = (_lang: string) => {};
+export const setDateLocale = (lang: string) => {
+  _dateLocale = lang || 'en';
+};
+
+type PrettyVariant = 'date' | 'time';
+
+const prettyFormatterCache = new Map<string, Intl.DateTimeFormat>();
+
+const prettyFormatterOptions = (variant: PrettyVariant): Intl.DateTimeFormatOptions => {
+  if (variant === 'date') {
+    return { month: 'short', day: 'numeric', year: 'numeric' };
+  }
+  const timeOptions: Intl.DateTimeFormatOptions = { hour: 'numeric', minute: '2-digit' };
+  return _dateLocale.startsWith('en') ? { ...timeOptions, hour12: true } : timeOptions;
+};
+
+const getPrettyFormatter = (variant: PrettyVariant): Intl.DateTimeFormat => {
+  const key = `${_dateLocale}:${variant}`;
+  const cached = prettyFormatterCache.get(key);
+  if (cached) {
+    return cached;
+  }
+  let formatter: Intl.DateTimeFormat;
+  try {
+    formatter = new Intl.DateTimeFormat(_dateLocale, prettyFormatterOptions(variant));
+  } catch {
+    formatter = new Intl.DateTimeFormat('en', prettyFormatterOptions(variant));
+  }
+  prettyFormatterCache.set(key, formatter);
+  return formatter;
+};
+
+export const formatPrettyDate = (date: Date): string => getPrettyFormatter('date').format(date);
+
+export const formatPrettyDateTime = (date: Date): string => {
+  const time = getPrettyFormatter('time')
+    .formatToParts(date)
+    .map((part) => (part.type === 'dayPeriod' ? part.value.toLowerCase() : part.value))
+    .join('');
+  return `${formatPrettyDate(date)} - ${time}`;
+};
 
 const pad = (n: number): string => n.toString().padStart(2, '0');
 
 const formatDateParts = (date: Date, includeTime: boolean): string => {
+  if (_dateFormat === PRETTY_DATE_FORMAT) {
+    return includeTime ? formatPrettyDateTime(date) : formatPrettyDate(date);
+  }
+
   const mm = pad(date.getMonth() + 1);
   const dd = pad(date.getDate());
   const yyyy = date.getFullYear().toString();
@@ -34,6 +81,18 @@ const formatDateParts = (date: Date, includeTime: boolean): string => {
   const hh = pad(date.getHours());
   const min = pad(date.getMinutes());
   return `${datePart} ${hh}:${min}`;
+};
+
+const ISO_DATE_PATTERN = /^(\d{4})-(\d{2})-(\d{2})$/;
+
+export const formatChartDateLabel = (label: string | number): string => {
+  const text = String(label);
+  const match = ISO_DATE_PATTERN.exec(text);
+  if (!match) {
+    return text;
+  }
+  const date = new Date(Number(match[1]), Number(match[2]) - 1, Number(match[3]));
+  return formatDateParts(date, false);
 };
 
 export const formatDate = (dateString: string): string => {

@@ -2,7 +2,7 @@ import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react'
 import { useTranslation } from 'react-i18next';
 import { Scale, Shield, Globe, Tag, Plus, X, Trash2, MessageCircle, Save, CheckCircle, User as UserIcon, CreditCard, BookOpen, Settings as SettingsIcon, ChevronDown, ChevronRight, Layers, GripVertical, Edit3, Users, Bot, FileText, Home, Bell, Crown, Database, type LucideIcon } from 'lucide-react';
 import { getApiUrl, getCurrentDomain, apiFetch, apiUpload } from '@/lib/api';
-import { setDateLocale, setDateFormat as setDateFormatUtil } from '@/utils/date-utils';
+import { DEFAULT_DATE_FORMAT, setDateLocale, setDateFormat as setDateFormatUtil } from '@/utils/date-utils';
 import i18n from '@/lib/i18n';
 import { Button } from '@modl-gg/shared-web/components/ui/button';
 import { Card, CardContent } from '@modl-gg/shared-web/components/ui/card';
@@ -659,7 +659,7 @@ const Settings = () => {
   // Refs to capture latest profile values for auto-save
   const profileUsernameRef = useRef('');
   const languageRef = useRef('en');
-  const dateFormatRef = useRef('MM/DD/YYYY');
+  const dateFormatRef = useRef(DEFAULT_DATE_FORMAT);
   const usernameDirtyRef = useRef(false);
   const languageDirtyRef = useRef(false);
   const dateFormatDirtyRef = useRef(false);
@@ -803,7 +803,7 @@ const Settings = () => {
   const [apiKeyCopied, setApiKeyCopied] = useState(false);    // Profile settings state
   const [profileUsernameState, setProfileUsernameState] = useState('');
   const [languageState, setLanguageState] = useState('en');
-  const [dateFormatState, setDateFormatState] = useState('MM/DD/YYYY');
+  const [dateFormatState, setDateFormatState] = useState(DEFAULT_DATE_FORMAT);
   
   // AI Moderation settings state
   const [aiModerationSettings, setAiModerationSettings] = useState<AIModerationSettings>({
@@ -932,11 +932,11 @@ const Settings = () => {
     if (user) {
       justLoadedFromServerRef.current = true; // Prevent auto-save during initial load
       setProfileUsernameState(user.username || '');
-      setDateFormatState(user.dateFormat || 'MM/DD/YYYY');
+      setDateFormatState(user.dateFormat || DEFAULT_DATE_FORMAT);
 
       // Initialize the refs with the current values
       profileUsernameRef.current = user.username || '';
-      dateFormatRef.current = user.dateFormat || 'MM/DD/YYYY';
+      dateFormatRef.current = user.dateFormat || DEFAULT_DATE_FORMAT;
 
       usernameDirtyRef.current = false;
       languageDirtyRef.current = false;

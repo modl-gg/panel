@@ -32,7 +32,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, Dialog
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@modl-gg/shared-web/components/ui/alert-dialog';
 import { Textarea } from '@modl-gg/shared-web/components/ui/textarea';
 import { subDays } from 'date-fns';
-import { formatDateOnly } from '@/utils/date-utils';
+import { formatChartDateLabel, formatDateOnly } from '@/utils/date-utils';
 import { useLogs } from '@/hooks/use-data';
 import { useQuery } from '@tanstack/react-query';
 import PageContainer from '@/components/layout/PageContainer';
@@ -294,14 +294,15 @@ interface CustomTooltipProps {
   label?: string | number;
   formatValue?: (value: number | string, name?: string) => string;
   formatName?: (name: string) => string;
+  formatLabel?: (label: string | number) => string;
 }
 
 // Custom themed tooltip component for charts
-const CustomTooltip = ({ active, payload, label, formatValue, formatName }: CustomTooltipProps) => {
+const CustomTooltip = ({ active, payload, label, formatValue, formatName, formatLabel }: CustomTooltipProps) => {
   if (active && payload && payload.length) {
     return (
       <div className="bg-background border border-border rounded-lg p-3 shadow-lg z-50 pointer-events-none">
-        {label && <p className="text-sm font-medium mb-2">{label}</p>}
+        {label && <p className="text-sm font-medium mb-2">{formatLabel ? formatLabel(label) : label}</p>}
         {payload.map((entry, index) => (
           <div key={entry?.dataKey ?? entry?.name ?? index} className="flex items-center gap-2 text-sm">
             <div 
@@ -813,9 +814,9 @@ const StaffDetailModal = ({ staff, isOpen, onClose, initialPeriod = '30d' }: {
                   <ResponsiveContainer width="100%" height={300}>
                     <AreaChart data={staffActivityData}>
                       <CartesianGrid strokeDasharray="3 3" className="opacity-30" />
-                      <XAxis dataKey="date" className="text-muted-foreground" fontSize={12} />
+                      <XAxis dataKey="date" className="text-muted-foreground" fontSize={12} tickFormatter={formatChartDateLabel} />
                       <YAxis className="text-muted-foreground" fontSize={12} />
-                      <Tooltip content={<CustomTooltip />} />
+                      <Tooltip content={<CustomTooltip formatLabel={formatChartDateLabel} />} />
                       <Area type="monotone" dataKey="punishments" stackId="1" stroke="#ef4444" fill="#ef4444" dot={false} activeDot={false} />
                       <Area type="monotone" dataKey="tickets" stackId="1" stroke="#3b82f6" fill="#3b82f6" dot={false} activeDot={false} />
                       <Area type="monotone" dataKey="evidence" stackId="1" stroke="#10b981" fill="#10b981" dot={false} activeDot={false} />
@@ -1275,9 +1276,9 @@ const TicketAnalyticsSection = ({ analyticsPeriod }: { analyticsPeriod: string }
             <ResponsiveContainer width="100%" height={300}>
               <LineChart data={ticketAnalytics.dailyTickets}>
                 <CartesianGrid strokeDasharray="3 3" className="opacity-30" />
-                <XAxis dataKey="date" className="text-muted-foreground" fontSize={12} />
+                <XAxis dataKey="date" className="text-muted-foreground" fontSize={12} tickFormatter={formatChartDateLabel} />
                 <YAxis className="text-muted-foreground" fontSize={12} />
-                <Tooltip content={<CustomTooltip />} />
+                <Tooltip content={<CustomTooltip formatLabel={formatChartDateLabel} />} />
                 <Line
                   type="monotone"
                   dataKey="count"
@@ -1804,16 +1805,7 @@ const AuditLog = () => {
       });
     }
 
-    // Convert to array and sort by date
-    return Array.from(dateMap.values()).sort((a, b) => {
-      // Handle different date formats (e.g., "Jan 15" vs "2024-01-15")
-      const dateA = new Date(a.date);
-      const dateB = new Date(b.date);
-      if (!isNaN(dateA.getTime()) && !isNaN(dateB.getTime())) {
-        return dateA.getTime() - dateB.getTime();
-      }
-      return a.date.localeCompare(b.date);
-    });
+    return Array.from(dateMap.values()).sort((a, b) => a.date.localeCompare(b.date));
   }, [ticketUpdatedAt, punishmentUpdatedAt, playerActivityUpdatedAt]);
 
   const maxLoginsByCountry = useMemo(() => {
@@ -1827,7 +1819,7 @@ const AuditLog = () => {
   }, [playerActivityUpdatedAt]);
 
   // Memoize a single CustomTooltip element used across many charts.
-  const customTooltipEl = useMemo(() => <CustomTooltip />, []);
+  const customTooltipEl = useMemo(() => <CustomTooltip formatLabel={formatChartDateLabel} />, []);
 
   return (
     <PageContainer>
@@ -1918,10 +1910,11 @@ const AuditLog = () => {
               <ResponsiveContainer width="100%" height={300}>
                 <LineChart data={combinedMetricsData}>
                   <CartesianGrid strokeDasharray="3 3" className="opacity-30" />
-                  <XAxis dataKey="date" className="text-muted-foreground" fontSize={12} />
+                  <XAxis dataKey="date" className="text-muted-foreground" fontSize={12} tickFormatter={formatChartDateLabel} />
                   <YAxis className="text-muted-foreground" fontSize={12} />
                   <Tooltip
                     content={<CustomTooltip
+                      formatLabel={formatChartDateLabel}
                       formatName={(name: string) => {
                         switch (name) {
                           case 'tickets': return t('audit.legendNewTickets');
@@ -2032,9 +2025,9 @@ const AuditLog = () => {
                           <ResponsiveContainer width="100%" height={250}>
                             <LineChart data={punishmentAnalytics.dailyPunishments}>
                               <CartesianGrid strokeDasharray="3 3" className="opacity-30" />
-                              <XAxis dataKey="date" className="text-muted-foreground" fontSize={12} />
+                              <XAxis dataKey="date" className="text-muted-foreground" fontSize={12} tickFormatter={formatChartDateLabel} />
                               <YAxis className="text-muted-foreground" fontSize={12} />
-                              <Tooltip content={<CustomTooltip formatName={(name) => name === "count" ? "Count" : name} />} />
+                              <Tooltip content={<CustomTooltip formatLabel={formatChartDateLabel} formatName={(name) => name === "count" ? "Count" : name} />} />
                               <Line type="monotone" dataKey="count" stroke="#ef4444" strokeWidth={2} dot={{r:0}} activeDot={false} />
                             </LineChart>
                           </ResponsiveContainer>
@@ -2188,9 +2181,9 @@ const AuditLog = () => {
                             <ResponsiveContainer width="100%" height={250}>
                               <AreaChart data={playerActivity.newPlayersTrend}>
                                 <CartesianGrid strokeDasharray="3 3" className="opacity-30" />
-                                <XAxis dataKey="date" className="text-muted-foreground" fontSize={12} />
+                                <XAxis dataKey="date" className="text-muted-foreground" fontSize={12} tickFormatter={formatChartDateLabel} />
                                 <YAxis className="text-muted-foreground" fontSize={12} />
-                                <Tooltip content={<CustomTooltip formatName={(name) => name === "count" ? "New Players" : name} />} />
+                                <Tooltip content={<CustomTooltip formatLabel={formatChartDateLabel} formatName={(name) => name === "count" ? "New Players" : name} />} />
                                 <Area type="monotone" dataKey="count" stroke="#10b981" fill="#10b981" fillOpacity={0.3} dot={false} activeDot={false} name="New Players" />
                               </AreaChart>
                             </ResponsiveContainer>
@@ -2199,7 +2192,7 @@ const AuditLog = () => {
                           <ResponsiveContainer width="100%" height={250}>
                             <AreaChart data={playerActivity.loginTrend}>
                               <CartesianGrid strokeDasharray="3 3" className="opacity-30" />
-                              <XAxis dataKey="date" className="text-muted-foreground" fontSize={12} />
+                              <XAxis dataKey="date" className="text-muted-foreground" fontSize={12} tickFormatter={formatChartDateLabel} />
                               <YAxis className="text-muted-foreground" fontSize={12} />
                               <Tooltip content={customTooltipEl} />
                               <Area type="monotone" dataKey="logins" stroke="#10b981" fill="#10b981" fillOpacity={0.3} dot={false} activeDot={false} name="Logins" />

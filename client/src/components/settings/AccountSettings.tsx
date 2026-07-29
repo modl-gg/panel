@@ -20,6 +20,7 @@ import { useAuth } from '@/hooks/use-auth';
 import { useTranslation } from 'react-i18next';
 import { apiFetch } from '@/lib/api';
 import { SUPPORTED_LANGUAGES } from '@/lib/languages';
+import { PRETTY_DATE_FORMAT, formatPrettyDateTime } from '@/utils/date-utils';
 
 interface AccountSettingsProps {
   profileUsername: string;
@@ -418,6 +419,7 @@ const AccountSettings = ({
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
+                  <SelectItem value={PRETTY_DATE_FORMAT}>{formatPrettyDateTime(new Date(2026, 0, 15, 12, 0))}</SelectItem>
                   <SelectItem value="MM/DD/YYYY">MM/DD/YYYY HH:mm</SelectItem>
                   <SelectItem value="DD/MM/YYYY">DD/MM/YYYY HH:mm</SelectItem>
                   <SelectItem value="YYYY-MM-DD">YYYY-MM-DD HH:mm</SelectItem>
