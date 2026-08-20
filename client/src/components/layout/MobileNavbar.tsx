@@ -7,20 +7,12 @@ import {
   AlertCircle,
 } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
-import { useIsFetching } from '@tanstack/react-query';
 import { usePermissions, PERMISSIONS } from '@/hooks/use-permissions';
-import { useAuth } from '@/hooks/use-auth';
 
 const MobileNavbar = () => {
   const { t } = useTranslation();
   const [location, navigate] = useLocation();
-  const { hasPermission } = usePermissions();
-  const { user } = useAuth();
-
-  // Mirror Sidebar's loading-flash guard so permission-gated items don't appear
-  // before the user's permissions have loaded.
-  const fetchingCount = useIsFetching({ queryKey: ['userPermissions', user?.role] });
-  const permissionsLoading = fetchingCount > 0;
+  const { hasPermission, isPermissionsLoading } = usePermissions();
 
   const isActive = (path: string) => {
     return location === path
@@ -65,7 +57,7 @@ const MobileNavbar = () => {
   // Filter nav items based on permissions, mirroring Sidebar's gating
   const navItems = allNavItems.filter(item => {
     if (!item.permission) return true;
-    if (permissionsLoading) return false;
+    if (isPermissionsLoading) return false;
     return hasPermission(item.permission);
   });
 

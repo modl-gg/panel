@@ -313,6 +313,10 @@ export function invalidateSubscribedRealtimeTargets(queryClient: InvalidateQueri
   invalidateRealtimeTargets(queryClient, getSubscribedRealtimeInvalidationTargets(topics));
 }
 
+export function resyncCacheAfterConnectionLoss(queryClient: InvalidateQueries): void {
+  void queryClient.invalidateQueries();
+}
+
 function buildEnvelope(payload: RealtimeEnvelope['payload']): RealtimeEnvelope {
   return create(RealtimeEnvelopeSchema, {
     protocolVersion: REALTIME_PROTOCOL_VERSION,
@@ -464,7 +468,7 @@ export function useRealtimeInvalidation(): void {
           reconnectAttempt = 0;
           subscribedTopics = envelope.payload.value.acceptedTopics.filter((topic) => PANEL_TOPIC_SET.has(topic));
           if (connectedOnce) {
-            invalidateSubscribedRealtimeTargets(queryClient, subscribedTopics);
+            resyncCacheAfterConnectionLoss(queryClient);
           }
           connectedOnce = true;
           break;

@@ -1,5 +1,6 @@
 import { fromJson, toJson, type DescMessage, type MessageShape } from '@bufbuild/protobuf';
 import { apiFetch } from '@/lib/api';
+import { ApiHttpError } from '@/lib/http-error';
 import { errorMessageOr } from '@/utils/errors';
 
 type RequestMethod = 'GET' | 'POST' | 'PUT' | 'PATCH' | 'DELETE';
@@ -15,13 +16,9 @@ interface ProtoFetchInit {
 // field never throws in production.
 const READ_OPTS = { ignoreUnknownFields: true } as const;
 
-export class ProtoHttpError extends Error {
-  constructor(
-    readonly status: number,
-    readonly statusText: string,
-    readonly bodyText: string,
-  ) {
-    super(`${status}: ${bodyText || statusText}`);
+export class ProtoHttpError extends ApiHttpError {
+  constructor(status: number, statusText: string, bodyText: string) {
+    super(status, statusText, bodyText);
     this.name = 'ProtoHttpError';
   }
 }

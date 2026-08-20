@@ -1,5 +1,6 @@
 import { QueryClient, type QueryFunction } from "@tanstack/react-query";
 import { getApiUrl } from "./api";
+import { ApiHttpError, isRetryableHttpError } from "./http-error";
 
 function resolveCredentials(url: string, credentials?: RequestCredentials): RequestCredentials {
   if (credentials) {
@@ -12,8 +13,7 @@ function resolveCredentials(url: string, credentials?: RequestCredentials): Requ
 
 async function throwIfResNotOk(res: Response) {
   if (!res.ok) {
-    const text = (await res.text()) || res.statusText;
-    throw new Error(`${res.status}: ${text}`);
+    throw new ApiHttpError(res.status, res.statusText, await res.text());
   }
 }
 
@@ -65,18 +65,9 @@ export const queryClient = new QueryClient({
       refetchInterval: false,
       refetchOnWindowFocus: false,
       refetchOnReconnect: true,
+      retryOnMount: false,
       staleTime: 30_000,
-      retry: (failureCount, error) => {
-        if (failureCount >= 1) return false;
-        if (error instanceof Error) {
-          const statusMatch = error.message.match(/^(\d{3}):/);
-          const statusCode = statusMatch?.[1];
-          if (statusCode) {
-            return parseInt(statusCode, 10) >= 500;
-          }
-        }
-        return true;
-      },
+      retry: (failureCount, error) => failureCount < 1 && isRetryableHttpError(error),
     },
     mutations: {
       retry: false,

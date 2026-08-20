@@ -1,12 +1,11 @@
 import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Scale, Shield, Globe, Tag, Plus, X, Trash2, MessageCircle, Save, CheckCircle, User as UserIcon, CreditCard, BookOpen, Settings as SettingsIcon, ChevronDown, ChevronRight, Layers, GripVertical, Edit3, Users, Bot, FileText, Home, Bell, Crown, Database, type LucideIcon } from 'lucide-react';
+import { Scale, Plus, X, Trash2, MessageCircle, Save, CheckCircle, BookOpen, Settings as SettingsIcon, ChevronDown, ChevronRight, Layers, GripVertical, Edit3, Users, FileText, Crown } from 'lucide-react';
 import { getApiUrl, getCurrentDomain, apiFetch, apiUpload } from '@/lib/api';
 import { DEFAULT_DATE_FORMAT, setDateLocale, setDateFormat as setDateFormatUtil } from '@/utils/date-utils';
 import i18n from '@/lib/i18n';
 import { Button } from '@modl-gg/shared-web/components/ui/button';
 import { Card, CardContent } from '@modl-gg/shared-web/components/ui/card';
-import { Skeleton } from '@modl-gg/shared-web/components/ui/skeleton';
 import { useSidebar } from '@/hooks/use-sidebar';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@modl-gg/shared-web/components/ui/tabs';
 import { Switch } from '@modl-gg/shared-web/components/ui/switch';
@@ -16,7 +15,7 @@ import { Badge } from '@modl-gg/shared-web/components/ui/badge';
 import { Checkbox } from '@modl-gg/shared-web/components/ui/checkbox';
 import { useToast } from '@modl-gg/shared-web/hooks/use-toast';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@modl-gg/shared-web/components/ui/select';
-import { useSettings, useBillingStatus, usePunishmentTypes, useTicketFormSettings, useQuickResponses, useStatusThresholds, useTicketLabelSettings } from '@/hooks/use-data';
+import { useSettings, usePunishmentTypes, useTicketFormSettings, useQuickResponses, useStatusThresholds, useTicketLabelSettings, useServerPremium } from '@/hooks/use-data';
 import PageContainer from '@/components/layout/PageContainer'
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@modl-gg/shared-web/components/ui/dialog";
 import { queryClient } from '@/lib/queryClient';
@@ -32,21 +31,18 @@ import HomepageCardSettings from '@/components/settings/HomepageCardSettings';
 import AccountSettings from '@/components/settings/AccountSettings';
 import GeneralSettings from '@/components/settings/GeneralSettings';
 import PunishmentSettings from '@/components/settings/PunishmentSettings';
-import TicketSettings from '@/components/settings/TicketSettings';
-import type { AIModerationSettings, AIPunishmentConfig } from '@/components/settings/TicketSettings';
+import TicketSettings, { isTicketSettingsSection } from '@/components/settings/TicketSettings';
+import TicketAiModerationSettings from '@/components/settings/TicketAiModerationSettings';
+import type { AIModerationSettings, AIPunishmentConfig } from '@/components/settings/TicketAiModerationSettings';
 import type { PunishmentType as ProtoPunishmentType } from '@modl-gg/proto/modl/v1/settings_pb.ts';
 import { DndProvider, useDrag, useDrop } from 'react-dnd';
 import { HTML5Backend } from 'react-dnd-html5-backend';
 import { type QuickResponsesConfiguration, type QuickResponseCategory, type QuickResponseAction, defaultQuickResponsesConfig } from '@/types/quickResponses';
 import {
-  formatSubscriptionStatusLabel,
-  hasPremiumAccess,
-  normalizeSubscriptionStatus,
-} from '@/lib/backend-enums';
-import {
-  canManageCustomDomainSettings,
-  hasPremiumSettingsAccess,
-  isSettingsBillingPending,
+  accessibleSubCategories,
+  isSubCategoryPremiumLocked,
+  resolveSubCategoryId,
+  type SettingsSubCategoryAccess,
 } from '@/lib/settings-access';
 import type {
   AppealFormField,
@@ -443,97 +439,20 @@ const AppealFormFieldDropZone = ({ sectionId, moveFieldBetweenSections }: Appeal
   );
 };
 
-interface SettingsSubCategoryAccess {
-  isSuperAdmin: boolean;
-  canViewAdminSettings: boolean;
-}
-
-interface SettingsSubCategoryDefinition {
-  id: string;
-  titleKey: string;
-  icon: LucideIcon;
-  canAccess?: (access: SettingsSubCategoryAccess) => boolean;
-}
-
-const superAdminOnly = (access: SettingsSubCategoryAccess) => access.isSuperAdmin;
-const adminSettingsOnly = (access: SettingsSubCategoryAccess) => access.canViewAdminSettings;
-
-const SETTINGS_SUB_CATEGORIES: Record<string, SettingsSubCategoryDefinition[]> = {
-  general: [
-    { id: 'billing', titleKey: 'settings.page.billing', icon: CreditCard, canAccess: superAdminOnly },
-    { id: 'usage', titleKey: 'settings.page.usage', icon: Globe },
-    { id: 'server-config', titleKey: 'settings.page.serverConfig', icon: SettingsIcon, canAccess: superAdminOnly },
-    { id: 'domain', titleKey: 'settings.page.domain', icon: Globe },
-    { id: 'webhooks', titleKey: 'settings.page.webhooks', icon: MessageCircle },
-    { id: 'migration', titleKey: 'settings.page.migrationTool', icon: Database, canAccess: superAdminOnly },
-  ],
-  punishment: [
-    { id: 'thresholds', titleKey: 'settings.page.thresholds', icon: Layers },
-    { id: 'types', titleKey: 'settings.page.types', icon: Scale },
-  ],
-  tickets: [
-    { id: 'quick-responses', titleKey: 'settings.page.quickResponses', icon: MessageCircle, canAccess: adminSettingsOnly },
-    { id: 'label-management', titleKey: 'settings.page.labelManagement', icon: Tag, canAccess: adminSettingsOnly },
-    { id: 'ticket-forms', titleKey: 'settings.page.ticketForms', icon: Layers, canAccess: adminSettingsOnly },
-    { id: 'ai-moderation', titleKey: 'settings.page.aiModeration', icon: Bot, canAccess: adminSettingsOnly },
-  ],
-  staff: [
-    { id: 'staff-management', titleKey: 'settings.page.staffManagement', icon: UserIcon },
-    { id: 'roles-permissions', titleKey: 'settings.page.rolesPermissions', icon: Shield },
-  ],
-  knowledgebase: [
-    { id: 'knowledgebase-articles', titleKey: 'settings.page.knowledgebase', icon: BookOpen },
-    { id: 'homepage-cards', titleKey: 'settings.page.homepageCards', icon: Home },
-  ],
-};
-
-const accessibleSubCategories = (categoryId: string, access: SettingsSubCategoryAccess): SettingsSubCategoryDefinition[] =>
-  (SETTINGS_SUB_CATEGORIES[categoryId] ?? []).filter((sub) => !sub.canAccess || sub.canAccess(access));
-
-const resolveSubCategoryId = (
-  categoryId: string,
-  requested: string | null,
-  access: SettingsSubCategoryAccess
-): string | null => {
-  const subs = accessibleSubCategories(categoryId, access);
-  if (requested && subs.some((sub) => sub.id === requested)) {
-    return requested;
-  }
-  return subs[0]?.id ?? null;
-};
-
 const Settings = () => {
   const { t } = useTranslation();
   useSidebar();
   const { user } = useAuth();
   const { data: publicSettings } = usePublicSettings();
-  const { canAccessSettingsTab, hasPermission } = usePermissions();
+  const { canAccessSettingsTab, hasPermission, isSuperAdmin } = usePermissions();
   const canViewAdminSettings = hasPermission(PERMISSIONS.ADMIN_SETTINGS_VIEW);
-  const canAccessGeneralSettings = canAccessSettingsTab('general');
-  const isSuperAdmin = user?.role === 'Super Admin';
   const subCategoryAccess = useMemo<SettingsSubCategoryAccess>(
-    () => ({ isSuperAdmin, canViewAdminSettings }),
-    [isSuperAdmin, canViewAdminSettings]
+    () => ({ isSuperAdmin, hasPermission }),
+    [isSuperAdmin, hasPermission]
   );
   const [expandedCategory, setExpandedCategory] = useState<string | null>(null);
   const [expandedSubCategory, setExpandedSubCategory] = useState<string | null>(null);
-  const {
-    data: billingStatus,
-    isLoading: isBillingStatusLoading,
-    isFetching: isFetchingBillingStatus,
-  } = useBillingStatus();
-  const isBillingAccessPending = isSettingsBillingPending(
-    billingStatus,
-    isBillingStatusLoading || isFetchingBillingStatus
-  );
-
-  const isPremiumUser = () => {
-    return hasPremiumSettingsAccess(billingStatus);
-  };
-
-  const canManageCustomDomainFeature = () => {
-    return canManageCustomDomainSettings(billingStatus);
-  };
+  const isPremium = useServerPremium();
 
   // Update URL when category changes
   const updateURL = (category: string | null, subCategory?: string | null) => {
@@ -558,7 +477,7 @@ const Settings = () => {
     const urlSubCategory = urlParams.get('sub') || urlParams.get('section');
 
     // Handle legacy session_id parameter
-    if (urlParams.has('session_id') && user?.role === 'Super Admin') {
+    if (urlParams.has('session_id') && isSuperAdmin) {
       setExpandedCategory('general');
       setExpandedSubCategory('billing');
       updateURL('general', 'billing');
@@ -585,7 +504,7 @@ const Settings = () => {
         }
       }
     }
-  }, [user, canAccessSettingsTab, subCategoryAccess]);
+  }, [user, isSuperAdmin, canAccessSettingsTab, subCategoryAccess]);
 
   // Handle sub-category selection - only one can be selected at a time
   const handleSubCategorySelect = (category: string, subCategory: string) => {
@@ -823,62 +742,6 @@ const Settings = () => {
   const { data: ticketLabelSettingsData, isLoading: isLoadingTicketLabels } = useTicketLabelSettings();
   const [currentEmail, setCurrentEmail] = useState('');
 
-  // Helper functions for enhanced summaries
-  const getBillingSummary = () => {
-    if (!billingStatus) return "Loading billing info...";
-
-    const plan = hasPremiumAccess({
-      plan: billingStatus.plan,
-      subscriptionStatus: billingStatus.subscriptionStatus,
-      currentPeriodEnd: billingStatus.currentPeriodEnd,
-    })
-      ? "Premium"
-      : "Free";
-    const status = normalizeSubscriptionStatus(billingStatus.subscriptionStatus);
-    const nextBilling = billingStatus.currentPeriodEnd ? new Date(billingStatus.currentPeriodEnd).toLocaleDateString() : null;
-
-    const statusBadge = formatSubscriptionStatusLabel(status);
-
-    return nextBilling ? `${plan} Plan - ${statusBadge} - Next: ${nextBilling}` : `${plan} Plan - ${statusBadge}`;
-  };
-
-  const getServerConfigSummary = () => {
-    const parts = [];
-    parts.push(serverDisplayName || 'Untitled Server');
-    
-    const iconStatus = (homepageIconUrl && panelIconUrl) ? "Icons ✓" : 
-                      (homepageIconUrl || panelIconUrl) ? "Icons ◐" : "Icons ✗";
-    parts.push(iconStatus);
-    
-    const apiStatus = apiKey ? "API Key ✓" : "API Key ✗";
-    parts.push(apiStatus);
-    
-    return parts.join(" • ");
-  };
-
-  const getDomainSummary = () => {
-    // We'll need to add domain status fetching here
-    // For now, show a basic summary
-    return "Configure custom domain";
-  };
-
-  const getWebhookSummary = () => {
-    const settings = settingsData?.settings;
-    const webhookSettings = settings && 'webhookSettings' in settings ? settings.webhookSettings : undefined;
-    if (!webhookSettings) return "Loading webhook settings...";
-    
-    if (!webhookSettings.enabled) {
-      return "Disabled";
-    }
-    
-    if (!webhookSettings.discordWebhookUrl) {
-      return "Enabled but not configured";
-    }
-    
-    const notificationCount = Object.values(webhookSettings.notifications || {}).filter(Boolean).length;
-    return `Enabled • ${notificationCount} notification types active`;
-  };
-
   const [savingWebhookSettings, setSavingWebhookSettings] = useState(false);
 
   const handleWebhookSave = async (webhookSettings: WebhookSettingsData) => {
@@ -963,10 +826,10 @@ const Settings = () => {
 
   // Load API key on component mount (only for users with appropriate permissions)
   useEffect(() => {
-    if (user && canAccessGeneralSettings) {
+    if (user && isSuperAdmin) {
       loadApiKey();
     }
-  }, [user, canAccessGeneralSettings]);
+  }, [user, isSuperAdmin]);
 
   // File upload functions
   const uploadIcon = async (file: File, iconType: 'homepage' | 'panel'): Promise<string | null> => {
@@ -2738,11 +2601,15 @@ const Settings = () => {
 
   // Settings categories configuration
   const toSubCategories = (categoryId: string) =>
-    accessibleSubCategories(categoryId, subCategoryAccess).map(({ id, titleKey, icon }) => ({
-      id,
-      title: t(titleKey),
-      icon,
+    accessibleSubCategories(categoryId, subCategoryAccess).map((sub) => ({
+      ...sub,
+      title: t(sub.titleKey),
     }));
+
+  const activeSubCategory = expandedCategory
+    ? accessibleSubCategories(expandedCategory, subCategoryAccess).find((sub) => sub.id === expandedSubCategory)
+    : undefined;
+  const ActiveSubCategoryIcon = activeSubCategory?.icon;
 
   const settingsCategories = [
     {
@@ -2816,33 +2683,6 @@ const Settings = () => {
           </div>
         </div>
 
-        {isBillingAccessPending ? (
-          <>
-            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-5">
-              {Array.from({ length: 5 }).map((_, index) => (
-                <Card key={index} className="rounded-card shadow-card">
-                  <CardContent className="p-5">
-                    <div className="flex flex-col items-center text-center space-y-3">
-                      <Skeleton className="h-14 w-14 rounded-card" />
-                      <Skeleton className="h-4 w-24" />
-                      <Skeleton className="h-8 w-full" />
-                      <Skeleton className="h-8 w-full" />
-                    </div>
-                  </CardContent>
-                </Card>
-              ))}
-            </div>
-
-            <Card className="rounded-card shadow-card">
-              <CardContent className="p-8 space-y-4">
-                <Skeleton className="h-6 w-48" />
-                <Skeleton className="h-24 w-full" />
-                <Skeleton className="h-24 w-full" />
-              </CardContent>
-            </Card>
-          </>
-        ) : (
-          <>
         {/* Category Cards Grid */}
         <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-5">
           {settingsCategories.map((category) => {
@@ -2877,9 +2717,7 @@ const Settings = () => {
                         {category.subCategories.map((sub) => {
                           const SubIcon = sub.icon;
                           const isSubSelected = isSelected && expandedSubCategory === sub.id;
-                          const isLocked =
-                            (sub.id === 'ai-moderation' && !isPremiumUser()) ||
-                            (sub.id === 'domain' && !canManageCustomDomainFeature());
+                          const isLocked = isSubCategoryPremiumLocked(sub, isPremium);
                           return (
                             <div
                               key={sub.id}
@@ -2940,12 +2778,8 @@ const Settings = () => {
             {expandedCategory === 'general' && expandedSubCategory && (
               <div className="space-y-4">
                 <h3 className="text-lg font-medium flex items-center gap-2">
-                  {expandedSubCategory === 'usage' && <><Globe className="h-5 w-5" />{t('settings.page.usage')}</>}
-                  {expandedSubCategory === 'server-config' && <><SettingsIcon className="h-5 w-5" />{t('settings.page.serverConfig')}</>}
-                  {expandedSubCategory === 'billing' && <><CreditCard className="h-5 w-5" />{t('settings.page.billing')}</>}
-                  {expandedSubCategory === 'domain' && <><Globe className="h-5 w-5" />{t('settings.page.domain')}</>}
-                  {expandedSubCategory === 'webhooks' && <><Bell className="h-5 w-5" />{t('settings.page.webhooks')}</>}
-                  {expandedSubCategory === 'migration' && <><Database className="h-5 w-5" />{t('settings.page.migrationTool')}</>}
+                  {ActiveSubCategoryIcon && <ActiveSubCategoryIcon className="h-5 w-5" />}
+                  {activeSubCategory && t(activeSubCategory.titleKey)}
                 </h3>
                 <GeneralSettings
                 serverDisplayName={serverDisplayName}
@@ -2971,11 +2805,7 @@ const Settings = () => {
                 revealApiKey={revealApiKey}
                 copyApiKey={copyApiKey}
                 maskApiKey={maskApiKey}
-                getBillingSummary={getBillingSummary}
-                getServerConfigSummary={getServerConfigSummary}
-                getDomainSummary={getDomainSummary}
                 webhookSettings={settingsData?.settings && 'webhookSettings' in settingsData.settings ? (settingsData.settings.webhookSettings ?? undefined) as unknown as WebhookSettingsData | undefined : undefined}
-                getWebhookSummary={getWebhookSummary}
                 handleWebhookSave={handleWebhookSave}
                 savingWebhookSettings={savingWebhookSettings}
                 visibleSection={expandedSubCategory}
@@ -3011,149 +2841,46 @@ const Settings = () => {
 
             {/* Tickets Settings - Show selected sub-categories */}
             {expandedCategory === 'tickets' && expandedSubCategory && (
-                <div className="space-y-6">
-                  {expandedSubCategory === 'quick-responses' && (
-                    <div>
-                      <h3 className="text-lg font-medium mb-4 flex items-center gap-2">
-                        <MessageCircle className="h-5 w-5" />
-                        {t('settings.page.quickResponses')}
-                      </h3>
-                      <TicketSettings
-                        quickResponsesState={quickResponsesState}
-                        setQuickResponsesState={setQuickResponsesState}
-                        labels={labels}
-                        setLabels={setLabelsState}
-                        bugReportTags={bugReportTags}
-                        setBugReportTags={setBugReportTagsState}
-                        playerReportTags={playerReportTags}
-                        setPlayerReportTags={setPlayerReportTagsState}
-                        appealTags={appealTags}
-                        setAppealTags={setAppealTagsState}
-                        newBugTag={newBugTag}
-                        setNewBugTag={setNewBugTag}
-                        newPlayerTag={newPlayerTag}
-                        setNewPlayerTag={setNewPlayerTag}
-                        newAppealTag={newAppealTag}
-                        setNewAppealTag={setNewAppealTag}
-                        ticketForms={ticketForms}
-                        setTicketForms={setTicketFormsState}
-                        selectedTicketFormType={selectedTicketFormType}
-                        setSelectedTicketFormType={setSelectedTicketFormType}
-                        aiModerationSettings={aiModerationSettings}
-                        setAiModerationSettings={setAiModerationSettings}
-                        punishmentTypesState={ticketSettingsPunishmentTypes}
-                        moveFieldBetweenSections={moveFieldBetweenSections}
-                        visibleSection="quick-responses"
-                      />
-                    </div>
-                  )}
-                  {expandedSubCategory === 'label-management' && (
-                    <div>
-                      <h3 className="text-lg font-medium mb-4 flex items-center gap-2">
-                        <Tag className="h-5 w-5" />
-                        {t('settings.page.labelManagement')}
-                      </h3>
-                      <TicketSettings
-                        quickResponsesState={quickResponsesState}
-                        setQuickResponsesState={setQuickResponsesState}
-                        labels={labels}
-                        setLabels={setLabelsState}
-                        bugReportTags={bugReportTags}
-                        setBugReportTags={setBugReportTagsState}
-                        playerReportTags={playerReportTags}
-                        setPlayerReportTags={setPlayerReportTagsState}
-                        appealTags={appealTags}
-                        setAppealTags={setAppealTagsState}
-                        newBugTag={newBugTag}
-                        setNewBugTag={setNewBugTag}
-                        newPlayerTag={newPlayerTag}
-                        setNewPlayerTag={setNewPlayerTag}
-                        newAppealTag={newAppealTag}
-                        setNewAppealTag={setNewAppealTag}
-                        ticketForms={ticketForms}
-                        setTicketForms={setTicketFormsState}
-                        selectedTicketFormType={selectedTicketFormType}
-                        setSelectedTicketFormType={setSelectedTicketFormType}
-                        aiModerationSettings={aiModerationSettings}
-                        setAiModerationSettings={setAiModerationSettings}
-                        punishmentTypesState={ticketSettingsPunishmentTypes}
-                        moveFieldBetweenSections={moveFieldBetweenSections}
-                        visibleSection="label-management"
-                      />
-                    </div>
-                  )}
-                  {expandedSubCategory === 'ticket-forms' && (
-                    <div>
-                      <h3 className="text-lg font-medium mb-4 flex items-center gap-2">
-                        <Layers className="h-5 w-5" />
-                        {t('settings.page.ticketForms')}
-                      </h3>
-                      <TicketSettings
-                        quickResponsesState={quickResponsesState}
-                        setQuickResponsesState={setQuickResponsesState}
-                        labels={labels}
-                        setLabels={setLabelsState}
-                        bugReportTags={bugReportTags}
-                        setBugReportTags={setBugReportTagsState}
-                        playerReportTags={playerReportTags}
-                        setPlayerReportTags={setPlayerReportTagsState}
-                        appealTags={appealTags}
-                        setAppealTags={setAppealTagsState}
-                        newBugTag={newBugTag}
-                        setNewBugTag={setNewBugTag}
-                        newPlayerTag={newPlayerTag}
-                        setNewPlayerTag={setNewPlayerTag}
-                        newAppealTag={newAppealTag}
-                        setNewAppealTag={setNewAppealTag}
-                        ticketForms={ticketForms}
-                        setTicketForms={setTicketFormsState}
-                        selectedTicketFormType={selectedTicketFormType}
-                        setSelectedTicketFormType={setSelectedTicketFormType}
-                        aiModerationSettings={aiModerationSettings}
-                        setAiModerationSettings={setAiModerationSettings}
-                        punishmentTypesState={ticketSettingsPunishmentTypes}
-                        moveFieldBetweenSections={moveFieldBetweenSections}
-                        visibleSection="ticket-forms"
-                      />
-                    </div>
-                  )}
-                  {expandedSubCategory === 'ai-moderation' && (
-                    <div>
-                      <h3 className="text-lg font-medium mb-4 flex items-center gap-2">
-                        <Bot className="h-5 w-5" />
-                        {t('settings.page.aiModeration')}
-                      </h3>
-                      <TicketSettings
-                        quickResponsesState={quickResponsesState}
-                        setQuickResponsesState={setQuickResponsesState}
-                        labels={labels}
-                        setLabels={setLabelsState}
-                        bugReportTags={bugReportTags}
-                        setBugReportTags={setBugReportTagsState}
-                        playerReportTags={playerReportTags}
-                        setPlayerReportTags={setPlayerReportTagsState}
-                        appealTags={appealTags}
-                        setAppealTags={setAppealTagsState}
-                        newBugTag={newBugTag}
-                        setNewBugTag={setNewBugTag}
-                        newPlayerTag={newPlayerTag}
-                        setNewPlayerTag={setNewPlayerTag}
-                        newAppealTag={newAppealTag}
-                        setNewAppealTag={setNewAppealTag}
-                        ticketForms={ticketForms}
-                        setTicketForms={setTicketFormsState}
-                        selectedTicketFormType={selectedTicketFormType}
-                        setSelectedTicketFormType={setSelectedTicketFormType}
-                        aiModerationSettings={aiModerationSettings}
-                        setAiModerationSettings={setAiModerationSettings}
-                        punishmentTypesState={ticketSettingsPunishmentTypes}
-                        moveFieldBetweenSections={moveFieldBetweenSections}
-                        visibleSection="ai-moderation"
-                      />
-                    </div>
-                  )}
-                </div>
-              )}
+              <div className="space-y-6">
+                <h3 className="text-lg font-medium mb-4 flex items-center gap-2">
+                  {ActiveSubCategoryIcon && <ActiveSubCategoryIcon className="h-5 w-5" />}
+                  {activeSubCategory && t(activeSubCategory.titleKey)}
+                </h3>
+                {expandedSubCategory === 'ai-moderation' ? (
+                  <TicketAiModerationSettings
+                    aiModerationSettings={aiModerationSettings}
+                    setAiModerationSettings={setAiModerationSettings}
+                    punishmentTypes={ticketSettingsPunishmentTypes}
+                  />
+                ) : isTicketSettingsSection(expandedSubCategory) ? (
+                  <TicketSettings
+                    quickResponsesState={quickResponsesState}
+                    setQuickResponsesState={setQuickResponsesState}
+                    labels={labels}
+                    setLabels={setLabelsState}
+                    bugReportTags={bugReportTags}
+                    setBugReportTags={setBugReportTagsState}
+                    playerReportTags={playerReportTags}
+                    setPlayerReportTags={setPlayerReportTagsState}
+                    appealTags={appealTags}
+                    setAppealTags={setAppealTagsState}
+                    newBugTag={newBugTag}
+                    setNewBugTag={setNewBugTag}
+                    newPlayerTag={newPlayerTag}
+                    setNewPlayerTag={setNewPlayerTag}
+                    newAppealTag={newAppealTag}
+                    setNewAppealTag={setNewAppealTag}
+                    ticketForms={ticketForms}
+                    setTicketForms={setTicketFormsState}
+                    selectedTicketFormType={selectedTicketFormType}
+                    setSelectedTicketFormType={setSelectedTicketFormType}
+                    punishmentTypesState={ticketSettingsPunishmentTypes}
+                    moveFieldBetweenSections={moveFieldBetweenSections}
+                    visibleSection={expandedSubCategory}
+                  />
+                ) : null}
+              </div>
+            )}
 
           </CardContent>
         </Card>
@@ -3172,8 +2899,6 @@ const Settings = () => {
           <>
             {expandedSubCategory === 'knowledgebase-articles' && <KnowledgebaseSettings />}
             {expandedSubCategory === 'homepage-cards' && <HomepageCardSettings />}
-          </>
-        )}
           </>
         )}
 

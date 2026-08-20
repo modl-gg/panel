@@ -1,3 +1,5 @@
+import { ApiHttpError } from './http-error';
+
 function normalizeBaseUrl(baseUrl: string): string {
   return baseUrl.endsWith('/') ? baseUrl.slice(0, -1) : baseUrl;
 }
@@ -70,7 +72,7 @@ async function handleRateLimitIfNeeded(response: Response): Promise<void> {
   if (response.status === 429) {
     const { handleRateLimitResponse } = await import('../utils/rate-limit-handler');
     await handleRateLimitResponse(response);
-    throw new Error('Rate limit exceeded');
+    throw new ApiHttpError(response.status, response.statusText, 'Rate limit exceeded');
   }
 }
 

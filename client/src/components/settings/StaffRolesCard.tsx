@@ -45,98 +45,6 @@ const PERMISSION_CATEGORIES = {
   staff: 'staff'
 };
 
-const DEFAULT_PERMISSIONS: Permission[] = [
-  // Admin permissions
-  { id: 'admin.settings.view', name: 'View Settings', description: 'View all system settings (includes all sub-permissions)', category: 'admin', parentId: null },
-  { id: 'admin.settings.view.punishments', name: 'View Punishments Config', description: 'View punishment type configuration', category: 'admin', parentId: 'admin.settings.view' },
-  { id: 'admin.settings.view.content', name: 'View Content', description: 'View homepage cards, knowledgebase, media', category: 'admin', parentId: 'admin.settings.view' },
-  { id: 'admin.settings.view.domain', name: 'View Domain', description: 'View custom domain configuration', category: 'admin', parentId: 'admin.settings.view' },
-  { id: 'admin.settings.view.billing', name: 'View Billing', description: 'View billing, subscription, and payment info', category: 'admin', parentId: 'admin.settings.view' },
-  { id: 'admin.settings.view.migration', name: 'View Migration', description: 'View import/export data configuration', category: 'admin', parentId: 'admin.settings.view' },
-  { id: 'admin.settings.view.storage', name: 'View Storage', description: 'View storage configuration', category: 'admin', parentId: 'admin.settings.view' },
-  { id: 'admin.settings.modify', name: 'Modify Settings', description: 'Full control over system settings (includes all sub-permissions)', category: 'admin', parentId: null },
-  { id: 'admin.settings.modify.punishments', name: 'Modify Punishments Config', description: 'Create/edit/delete punishment types', category: 'admin', parentId: 'admin.settings.modify' },
-  { id: 'admin.settings.modify.content', name: 'Modify Content', description: 'Edit homepage cards, knowledgebase, media', category: 'admin', parentId: 'admin.settings.modify' },
-  { id: 'admin.settings.modify.domain', name: 'Modify Domain', description: 'Change custom domain configuration', category: 'admin', parentId: 'admin.settings.modify' },
-  { id: 'admin.settings.modify.billing', name: 'Modify Billing', description: 'Update subscription and payment methods', category: 'admin', parentId: 'admin.settings.modify' },
-  { id: 'admin.settings.modify.migration', name: 'Modify Migration', description: 'Import/export data between platforms', category: 'admin', parentId: 'admin.settings.modify' },
-  { id: 'admin.settings.modify.storage', name: 'Modify Storage', description: 'Configure storage backends and limits', category: 'admin', parentId: 'admin.settings.modify' },
-  { id: 'admin.staff.manage', name: 'Manage Staff', description: 'Full staff management (includes all sub-permissions)', category: 'admin', parentId: null },
-  { id: 'admin.staff.manage.members', name: 'Manage Members', description: 'Invite, remove, and reassign staff', category: 'admin', parentId: 'admin.staff.manage' },
-  { id: 'admin.staff.manage.roles', name: 'Manage Roles', description: 'Create/edit/delete roles and permissions', category: 'admin', parentId: 'admin.staff.manage' },
-  { id: 'admin.audit.view', name: 'View Audit', description: 'Full audit access (includes all sub-permissions)', category: 'admin', parentId: null },
-  { id: 'admin.audit.view.dashboard', name: 'View Dashboard', description: 'View dashboard statistics', category: 'admin', parentId: 'admin.audit.view' },
-  { id: 'admin.audit.view.analytics', name: 'View Analytics', description: 'View player and ticket analytics', category: 'admin', parentId: 'admin.audit.view' },
-  { id: 'admin.audit.view.logs', name: 'View Logs', description: 'View audit trail of staff actions', category: 'admin', parentId: 'admin.audit.view' },
-
-  // Punishment permissions
-  { id: 'punishment.view', name: 'View Punishments', description: 'View player profiles, punishments, and linked accounts', category: 'punishment', parentId: null },
-  { id: 'punishment.modify', name: 'Modify Punishments', description: 'Full control over existing punishments (includes all sub-permissions)', category: 'punishment', parentId: null },
-  { id: 'punishment.modify.pardon', name: 'Pardon Punishments', description: 'Pardon punishments and clear associated points', category: 'punishment', parentId: 'punishment.modify' },
-  { id: 'punishment.modify.duration', name: 'Modify Duration', description: 'Change punishment duration', category: 'punishment', parentId: 'punishment.modify' },
-  { id: 'punishment.modify.note', name: 'Add Notes', description: 'Add staff notes to punishments', category: 'punishment', parentId: 'punishment.modify' },
-  { id: 'punishment.modify.evidence', name: 'Manage Evidence', description: 'Add and view evidence on punishments', category: 'punishment', parentId: 'punishment.modify' },
-  { id: 'punishment.modify.options', name: 'Toggle Options', description: 'Toggle alt-blocking and stat-wipe options', category: 'punishment', parentId: 'punishment.modify' },
-
-  // Ticket permissions
-  { id: 'ticket.view.all', name: 'View All Tickets', description: 'View all tickets (includes all sub-permissions)', category: 'ticket', parentId: null },
-  { id: 'ticket.view.all.notes', name: 'View Staff Notes', description: 'View internal staff notes on tickets', category: 'ticket', parentId: 'ticket.view.all' },
-  { id: 'ticket.reply.all', name: 'Reply to All Tickets', description: 'Reply to all ticket types (includes all sub-permissions)', category: 'ticket', parentId: null },
-  { id: 'ticket.reply.all.notes', name: 'Add Staff Notes', description: 'Add staff-only internal notes', category: 'ticket', parentId: 'ticket.reply.all' },
-  { id: 'ticket.close.all', name: 'Close/Reopen All Tickets', description: 'Close and reopen all ticket types (includes all sub-permissions)', category: 'ticket', parentId: null },
-  { id: 'ticket.close.all.lock', name: 'Lock Tickets', description: 'Lock tickets to prevent further replies', category: 'ticket', parentId: 'ticket.close.all' },
-  { id: 'ticket.manage', name: 'Manage Tickets', description: 'Advanced ticket management (includes all sub-permissions)', category: 'ticket', parentId: null },
-  { id: 'ticket.manage.tags', name: 'Manage Tags', description: 'Add and remove tags from tickets', category: 'ticket', parentId: 'ticket.manage' },
-  { id: 'ticket.manage.hide', name: 'Hide Tickets', description: 'Hide tickets from public view', category: 'ticket', parentId: 'ticket.manage' },
-  { id: 'ticket.manage.subscribe', name: 'Manage Subscriptions', description: 'Manage ticket notification subscriptions', category: 'ticket', parentId: 'ticket.manage' },
-  { id: 'ticket.delete.all', name: 'Delete Tickets', description: 'Delete tickets from the system', category: 'ticket', parentId: null },
-
-  // Staff tool permissions
-  { id: 'staff.chat.toggle', name: 'Toggle Chat', description: 'Toggle server chat on/off', category: 'staff', parentId: null },
-  { id: 'staff.chat.clear', name: 'Clear Chat', description: 'Clear server chat', category: 'staff', parentId: null },
-  { id: 'staff.chat.slow', name: 'Slow Chat', description: 'Set slow mode on server chat', category: 'staff', parentId: null },
-  { id: 'staff.maintenance', name: 'Maintenance Mode', description: 'Toggle server maintenance mode', category: 'staff', parentId: null },
-  { id: 'staff.modactions', name: 'Moderation Actions', description: 'Staff mode, vanish, freeze, and target players', category: 'staff', parentId: null },
-  { id: 'staff.intercept', name: 'Intercept Chat', description: 'Intercept and view all network chat', category: 'staff', parentId: null },
-  { id: 'staff.chatlogs', name: 'Chat Logs', description: 'View player chat history', category: 'staff', parentId: null },
-  { id: 'staff.commandlogs', name: 'Command Logs', description: 'View player command history', category: 'staff', parentId: null },
-];
-
-const DEFAULT_ROLES: StaffRole[] = [
-  {
-    id: 'super-admin',
-    name: 'Super Admin',
-    description: 'Full access to all features and settings',
-    permissions: ['admin.settings.view', 'admin.settings.modify', 'admin.staff.manage', 'admin.audit.view', 'ticket.view.all', 'ticket.reply.all', 'ticket.close.all', 'ticket.delete.all'],
-    isDefault: true,
-    order: 0,
-  },
-  {
-    id: 'admin',
-    name: 'Admin',
-    description: 'Administrative access with some restrictions',
-    permissions: ['admin.settings.view', 'admin.staff.manage', 'admin.audit.view', 'ticket.view.all', 'ticket.reply.all', 'ticket.close.all'],
-    isDefault: true,
-    order: 1,
-  },
-  {
-    id: 'moderator',
-    name: 'Moderator',
-    description: 'Moderation permissions for punishments and tickets',
-    permissions: ['ticket.view.all', 'ticket.reply.all', 'ticket.close.all'],
-    isDefault: true,
-    order: 2,
-  },
-  {
-    id: 'helper',
-    name: 'Helper',
-    description: 'Basic support permissions',
-    permissions: ['ticket.view.all', 'ticket.reply.all'],
-    isDefault: true,
-    order: 3,
-  },
-];
-
 // Get role order from the role object (lower order = higher authority)
 const getRoleOrder = (role: StaffRole): number => {
   return role.order ?? 999; // Default to high number if order is not set
@@ -346,9 +254,7 @@ export default function StaffRolesCard() {
   const createRoleMutation = useCreateRole();
   const updateRoleMutation = useUpdateRole();
   const deleteRoleMutation = useDeleteRole();
-  const { hasPermission: userHasPermission } = useUserPermissions();
-
-  const isSuperAdmin = currentUser?.role === 'Super Admin';
+  const { hasPermission: userHasPermission, isSuperAdmin } = useUserPermissions();
 
   // Check if the current user can grant a specific permission
   const canGrantPermission = (permissionId: string): boolean => {
@@ -357,25 +263,21 @@ export default function StaffRolesCard() {
   };
 
   const roles = rolesData?.roles || [];
-  const permissions = permissionsData?.permissions || [];
-  const permissionCatalog = permissions.length > 0 ? permissions : DEFAULT_PERMISSIONS;
-  
-  // If no roles are loaded from the database, use default roles as fallback
-  const effectiveRoles = roles.length > 0 ? roles : DEFAULT_ROLES;
-  
+  const permissionCatalog = permissionsData?.permissions || [];
+
   // Create role order map from roles data (copying StaffManagementPanel approach)
   const roleOrderMap = new Map<string, number>();
-  if (effectiveRoles) {
-    effectiveRoles.forEach((role: StaffRole) => {
+  if (roles) {
+    roles.forEach((role: StaffRole) => {
       roleOrderMap.set(role.name, role.order ?? 999);
     });
   }
   
   // Update local roles when server data changes
   useEffect(() => {
-    if (effectiveRoles.length > 0) {
+    if (roles.length > 0) {
       // Sort roles by order (lower order = higher authority)
-      const sortedRoles = [...effectiveRoles].sort((a, b) => {
+      const sortedRoles = [...roles].sort((a, b) => {
         const aOrder = a.order ?? 999;
         const bOrder = b.order ?? 999;
         return aOrder - bOrder;
@@ -383,7 +285,7 @@ export default function StaffRolesCard() {
       setLocalRoles(sortedRoles);
       setOriginalRoles(sortedRoles);
     }
-  }, [effectiveRoles]);
+  }, [roles]);
 
   // Guard placed AFTER all hook declarations so the hook count never changes
   // between renders (Rules of Hooks).

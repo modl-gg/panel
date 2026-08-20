@@ -17,6 +17,7 @@ import { useToast } from '@modl-gg/shared-web/hooks/use-toast';
 import { formatFileSize } from '@/utils/file-utils';
 import { errorMessageOr } from '@/utils/errors';
 import { useReplayRetentionSettings, useUpdateReplayRetentionSettings } from '@/hooks/use-data';
+import { usePermissions } from '@/hooks/use-permissions';
 import { Notice } from '@/components/ui/notice';
 
 const DEFAULT_REPLAY_RETENTION_DAYS = 10;
@@ -63,7 +64,7 @@ interface StorageUsage {
     overageUsed: number;
     overageUsedFormatted: string;
     overageCost: number;
-    isPaid: boolean;
+    usageBillingEnabled?: boolean;
     canUpload: boolean;
     usagePercentage: number;
     baseUsagePercentage: number;
@@ -115,6 +116,7 @@ const clampPercent = (n: number) =>
 const UsageSettings = () => {
   const { toast } = useToast();
   const { t } = useTranslation();
+  const { isSuperAdmin, isPermissionsLoading } = usePermissions();
   const [storageUsage, setStorageUsage] = useState<StorageUsage | null>(null);
   const [storageSettings, setStorageSettings] = useState<StorageSettings | null>(null);
   const [files, setFiles] = useState<StorageFile[]>([]);
@@ -139,9 +141,10 @@ const UsageSettings = () => {
   const DEFAULT_AI_LIMIT = 1000;
 
   useEffect(() => {
+    if (isPermissionsLoading) return;
     fetchStorageData();
     fetchStorageSettings();
-  }, []);
+  }, [isSuperAdmin, isPermissionsLoading]);
 
   useEffect(() => {
     if (!replayRetentionSettings?.data) {
@@ -163,7 +166,7 @@ const fetchStorageData = async () => {
 
       const [usageResponse, billingUsageResponse] = await Promise.all([
         fetch(getApiUrl('/v1/panel/storage/quota'), requestOptions),
-        fetch(getApiUrl('/v1/panel/billing/usage'), requestOptions)
+        isSuperAdmin ? fetch(getApiUrl('/v1/panel/billing/usage'), requestOptions) : null
       ]);
 
       if (!usageResponse.ok) {
@@ -171,7 +174,7 @@ const fetchStorageData = async () => {
       }
 
       const usageData = await usageResponse.json();
-      const billingUsageData = billingUsageResponse.ok ? await billingUsageResponse.json() : null;
+      const billingUsageData = billingUsageResponse?.ok ? await billingUsageResponse.json() : null;
       
       // Detect response format: 
       // - Old format: { usedBytes, maxBytes, usedPercentage, usedFormatted, maxFormatted } (values in bytes)
@@ -233,7 +236,7 @@ const fetchStorageData = async () => {
           overageUsed: 0,
           overageUsedFormatted: '0 Bytes',
           overageCost: usageData.cdn?.overageCost ?? 0,
-          isPaid: billingUsageData?.usageBillingEnabled ?? usageData.usageBillingEnabled ?? false,
+          usageBillingEnabled: isSuperAdmin ? Boolean(billingUsageData?.usageBillingEnabled) : undefined,
           canUpload: cdnPercentage < 100,
           usagePercentage: clampPercent(cdnPercentage),
           baseUsagePercentage: clampPercent(cdnPercentage)
@@ -606,7 +609,7 @@ const fetchStorageData = async () => {
   return (
     <div className="space-y-6">
       {/* Overage Warning */}
-      {storageUsage?.quota?.isPaid && storageUsage?.quota?.overageUsed > 0 && (
+      {storageUsage?.quota?.usageBillingEnabled && storageUsage?.quota?.overageUsed > 0 && (
         <div className="bg-amber-50 dark:bg-amber-900/10 border border-amber-200 dark:border-amber-800 rounded-lg p-4">
           <div className="flex items-start gap-3">
             <AlertCircle className="h-5 w-5 text-amber-600 dark:text-amber-400 mt-0.5 flex-shrink-0" />
@@ -624,7 +627,7 @@ const fetchStorageData = async () => {
       )}
       
       {/* Free User Limit Warning */}
-      {!storageUsage?.quota?.isPaid && (storageUsage?.quota?.baseUsagePercentage ?? 0) >= 80 && (
+      {storageUsage?.quota?.usageBillingEnabled === false && (storageUsage?.quota?.baseUsagePercentage ?? 0) >= 80 && (
         <Notice variant="info" title={t('settings.usage.storageLimitWarning')}>
           <p>
             {t('settings.usage.storageLimitWarningDesc', { percentage: storageUsage?.quota?.baseUsagePercentage, limit: storageUsage?.quota?.baseLimitFormatted })}
@@ -645,7 +648,7 @@ const fetchStorageData = async () => {
                   <HardDrive className="h-5 w-5 mr-2" />
                   {t('settings.usage.storageUsage')}
                 </div>
-                {storageUsage.quota?.isPaid && (
+                {storageUsage.quota?.usageBillingEnabled && (
                   <Button
                     variant="outline"
                     size="sm"
@@ -675,7 +678,7 @@ const fetchStorageData = async () => {
                       </div>
                     </div>
                     
-                    {storageUsage.quota.isPaid && (
+                    {storageUsage.quota.usageBillingEnabled && (
                       <div className="space-y-2">
                         <div className="flex justify-between text-sm">
                           <span>{t('settings.usage.baseStorage')}:</span>
@@ -813,7 +816,7 @@ const fetchStorageData = async () => {
           </Card>
 
           {/* Storage Overage Billing Card */}
-          {storageUsage.quota?.isPaid && storageUsage.quota.overageUsed > 0 && (
+          {storageUsage.quota?.usageBillingEnabled && storageUsage.quota.overageUsed > 0 && (
             <Card className="rounded-card shadow-card-inner bg-surface-2">
               <CardHeader>
                 <CardTitle className="flex items-center">
