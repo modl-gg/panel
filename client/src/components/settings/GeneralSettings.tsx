@@ -1,6 +1,6 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
-import { CreditCard, SettingsIcon, Globe, Key, Upload, Eye, EyeOff, Check, Copy, RefreshCw, Trash2, Plus, ChevronDown, ChevronRight, HardDrive, MessageCircle, Database, Info } from 'lucide-react';
+import { SettingsIcon, Globe, Key, Upload, Eye, EyeOff, Check, Copy, RefreshCw, Trash2, Plus, Info } from 'lucide-react';
 import { Button } from '@modl-gg/shared-web/components/ui/button';
 import { Input } from '@modl-gg/shared-web/components/ui/input';
 import { Label } from '@modl-gg/shared-web/components/ui/label';
@@ -8,10 +8,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Tooltip, TooltipContent, TooltipTrigger } from '@modl-gg/shared-web/components/ui/tooltip';
 import { Separator } from '@modl-gg/shared-web/components/ui/separator';
 import { SUPPORTED_LANGUAGES } from '@/lib/languages';
-import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@modl-gg/shared-web/components/ui/collapsible';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@modl-gg/shared-web/components/ui/alert-dialog';
-import { useAuth } from '@/hooks/use-auth';
-import { usePermissions } from '@/hooks/use-permissions';
+import { PERMISSIONS, usePermissions } from '@/hooks/use-permissions';
 import BillingSettings from './BillingSettings';
 import DomainSettings from './DomainSettings';
 import UsageSettings from './UsageSettings';
@@ -51,20 +49,12 @@ interface GeneralSettingsProps {
   copyApiKey: () => void;
   maskApiKey: (key: string) => string;
 
-  // Billing and Usage Data
-  getBillingSummary: () => string;
-  getServerConfigSummary: () => string;
-  getDomainSummary: () => string;
-
   // Webhook Settings
   webhookSettings?: WebhookSettingsData;
-  getWebhookSummary: () => string;
   handleWebhookSave: (settings: WebhookSettingsData) => Promise<void>;
   savingWebhookSettings?: boolean;
 
-  // Optional prop to show only a specific section
-  // 'billing' | 'usage' | 'server-config' | 'domain' | 'webhooks' | 'migration' | undefined (show all)
-  visibleSection?: string;
+  visibleSection: string;
 }
 
 const GeneralSettings = ({
@@ -91,36 +81,19 @@ const GeneralSettings = ({
   revealApiKey,
   copyApiKey,
   maskApiKey,
-  getBillingSummary,
-  getServerConfigSummary,
-  getDomainSummary,
   webhookSettings,
-  getWebhookSummary,
   handleWebhookSave,
   savingWebhookSettings,
   visibleSection
 }: GeneralSettingsProps) => {
-  const { user } = useAuth();
-  const { hasPermission } = usePermissions();
+  const { hasPermission, isSuperAdmin } = usePermissions();
   const { t } = useTranslation();
-
-  // When visibleSection is set, show content directly without collapsibles
-  const showDirectContent = !!visibleSection;
-
-  // Collapsible state (only used when showing all sections)
-  const [isBillingExpanded, setIsBillingExpanded] = useState(false);
-  const [isUsageExpanded, setIsUsageExpanded] = useState(false);
-  const [isServerConfigExpanded, setIsServerConfigExpanded] = useState(false);
-  const [isDomainExpanded, setIsDomainExpanded] = useState(false);
-  const [isWebhookExpanded, setIsWebhookExpanded] = useState(false);
-  const [isMigrationExpanded, setIsMigrationExpanded] = useState(false);
 
   useEffect(() => {
     const urlParams = new URLSearchParams(window.location.search);
     const sessionId = urlParams.get('session_id');
 
     if (sessionId) {
-      setIsBillingExpanded(true);
       toast({
         title: t('settings.general.paymentSuccessful'),
         description: t('settings.general.subscriptionActivated'),
@@ -379,171 +352,34 @@ const GeneralSettings = ({
     </div>
   );
 
-  // When showing a specific section directly (without collapsible)
-  if (showDirectContent) {
-    return (
-      <div className="p-2">
-        {visibleSection === 'billing' && hasPermission('admin.settings.modify') && (
-          <BillingSettings />
-        )}
-
-        {visibleSection === 'usage' && (
-          <UsageSettings />
-        )}
-
-        {visibleSection === 'server-config' && serverConfigContent}
-
-        {visibleSection === 'domain' && hasPermission('admin.settings.view.domain') && (
-          <DomainSettings />
-        )}
-
-        {visibleSection === 'webhooks' && hasPermission('admin.settings.view') && (
-          <WebhookSettings
-            webhookSettings={webhookSettings}
-            onSave={handleWebhookSave}
-            isLoading={savingWebhookSettings}
-            panelIconUrl={panelIconUrl}
-          />
-        )}
-
-        {visibleSection === 'migration' && user?.role === 'Super Admin' && (
-          <MigrationTool />
-        )}
-      </div>
-    );
-  }
-
-  // When showing all sections with collapsibles
   return (
-    <div className="space-y-6 p-6">
-      <div className="space-y-6">
-        {/* Billing Settings */}
-        {hasPermission('admin.settings.modify') && (
-          <Collapsible open={isBillingExpanded} onOpenChange={setIsBillingExpanded}>
-            <CollapsibleTrigger className="flex items-center justify-between w-full p-5 bg-surface-2 rounded-card hover:bg-surface-3 transition-colors">
-              <div className="flex items-center">
-                <CreditCard className="h-4 w-4 mr-2" />
-                <h4 className="text-base font-medium">{t('settings.general.billingSubscription')}</h4>
-              </div>
-              <div className="flex items-center space-x-2">
-                {!isBillingExpanded && (
-                  <span className="text-sm text-muted-foreground">{getBillingSummary()}</span>
-                )}
-                {isBillingExpanded ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
-              </div>
-            </CollapsibleTrigger>
-            <CollapsibleContent className="pt-4">
-              <BillingSettings />
-            </CollapsibleContent>
-          </Collapsible>
-        )}
+    <div className="p-2">
+      {visibleSection === 'billing' && isSuperAdmin && (
+        <BillingSettings />
+      )}
 
-        {/* Usage Section */}
-        <Collapsible open={isUsageExpanded} onOpenChange={setIsUsageExpanded}>
-          <CollapsibleTrigger className="flex items-center justify-between w-full p-5 bg-surface-2 rounded-card hover:bg-surface-3 transition-colors">
-            <div className="flex items-center">
-              <HardDrive className="h-4 w-4 mr-2" />
-              <h4 className="text-base font-medium">{t('settings.general.usage')}</h4>
-            </div>
-            <div className="flex items-center space-x-2">
-              {!isUsageExpanded && (
-                <span className="text-sm text-muted-foreground">{t('settings.general.storageFileManagement')}</span>
-              )}
-              {isUsageExpanded ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
-            </div>
-          </CollapsibleTrigger>
-          <CollapsibleContent className="pt-4">
-            <UsageSettings />
-          </CollapsibleContent>
-        </Collapsible>
+      {visibleSection === 'usage' && (
+        <UsageSettings />
+      )}
 
-        {/* Server Configuration */}
-        <Collapsible open={isServerConfigExpanded} onOpenChange={setIsServerConfigExpanded}>
-          <CollapsibleTrigger className="flex items-center justify-between w-full p-5 bg-surface-2 rounded-card hover:bg-surface-3 transition-colors">
-            <div className="flex items-center">
-              <SettingsIcon className="h-4 w-4 mr-2" />
-              <h4 className="text-base font-medium">{t('settings.general.serverConfiguration')}</h4>
-            </div>
-            <div className="flex items-center space-x-2">
-              {!isServerConfigExpanded && (
-                <span className="text-sm text-muted-foreground">{getServerConfigSummary()}</span>
-              )}
-              {isServerConfigExpanded ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
-            </div>
-          </CollapsibleTrigger>
-          <CollapsibleContent className="pt-4">
-            {serverConfigContent}
-          </CollapsibleContent>
-        </Collapsible>
+      {visibleSection === 'server-config' && isSuperAdmin && serverConfigContent}
 
-        {/* Custom Domain Settings */}
-        {hasPermission('admin.settings.view.domain') && (
-          <Collapsible open={isDomainExpanded} onOpenChange={setIsDomainExpanded}>
-            <CollapsibleTrigger className="flex items-center justify-between w-full p-5 bg-surface-2 rounded-card hover:bg-surface-3 transition-colors">
-              <div className="flex items-center">
-                <Globe className="h-4 w-4 mr-2" />
-                <h4 className="text-base font-medium">{t('settings.general.customDomain')}</h4>
-              </div>
-              <div className="flex items-center space-x-2">
-                {!isDomainExpanded && (
-                  <span className="text-sm text-muted-foreground">{getDomainSummary()}</span>
-                )}
-                {isDomainExpanded ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
-              </div>
-            </CollapsibleTrigger>
-            <CollapsibleContent className="pt-4">
-              <DomainSettings />
-            </CollapsibleContent>
-          </Collapsible>
-        )}
+      {visibleSection === 'domain' && hasPermission(PERMISSIONS.ADMIN_SETTINGS_VIEW_DOMAIN) && (
+        <DomainSettings />
+      )}
 
-        {/* Discord Webhook Settings */}
-        {hasPermission('admin.settings.view') && (
-          <Collapsible open={isWebhookExpanded} onOpenChange={setIsWebhookExpanded}>
-            <CollapsibleTrigger className="flex items-center justify-between w-full p-5 bg-surface-2 rounded-card hover:bg-surface-3 transition-colors">
-              <div className="flex items-center">
-                <MessageCircle className="h-4 w-4 mr-2" />
-                <h4 className="text-base font-medium">{t('settings.general.discordWebhooks')}</h4>
-              </div>
-              <div className="flex items-center space-x-2">
-                {!isWebhookExpanded && (
-                  <span className="text-sm text-muted-foreground">{getWebhookSummary()}</span>
-                )}
-                {isWebhookExpanded ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
-              </div>
-            </CollapsibleTrigger>
-            <CollapsibleContent className="pt-4">
-              <WebhookSettings
-                webhookSettings={webhookSettings}
-                onSave={handleWebhookSave}
-                isLoading={savingWebhookSettings}
-                panelIconUrl={panelIconUrl}
-              />
-            </CollapsibleContent>
-          </Collapsible>
-        )}
+      {visibleSection === 'webhooks' && hasPermission(PERMISSIONS.ADMIN_SETTINGS_VIEW) && (
+        <WebhookSettings
+          webhookSettings={webhookSettings}
+          onSave={handleWebhookSave}
+          isLoading={savingWebhookSettings}
+          panelIconUrl={panelIconUrl}
+        />
+      )}
 
-        {/* Migration Tool - Super Admin Only */}
-        {user && user.role === "Super Admin" && (
-          <Collapsible open={isMigrationExpanded} onOpenChange={setIsMigrationExpanded}>
-            <CollapsibleTrigger className="flex items-center justify-between w-full p-5 bg-surface-2 rounded-card hover:bg-surface-3 transition-colors">
-              <div className="flex items-center">
-                <Database className="h-4 w-4 mr-2" />
-                <h4 className="text-base font-medium">{t('settings.migration.title')}</h4>
-              </div>
-              <div className="flex items-center space-x-2">
-                {!isMigrationExpanded && (
-                  <span className="text-sm text-muted-foreground">{t('settings.migration.summary')}</span>
-                )}
-                {isMigrationExpanded ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
-              </div>
-            </CollapsibleTrigger>
-            <CollapsibleContent className="pt-4">
-              <MigrationTool />
-            </CollapsibleContent>
-          </Collapsible>
-        )}
-      </div>
+      {visibleSection === 'migration' && isSuperAdmin && (
+        <MigrationTool />
+      )}
     </div>
   );
 };

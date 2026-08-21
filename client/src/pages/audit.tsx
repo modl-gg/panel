@@ -38,12 +38,11 @@ import { useQuery } from '@tanstack/react-query';
 import PageContainer from '@/components/layout/PageContainer';
 import { useToast } from '@modl-gg/shared-web/hooks/use-toast';
 import { PermissionWrapper } from '@/components/PermissionWrapper';
-import { PERMISSIONS } from '@/hooks/use-permissions';
+import { PERMISSIONS, usePermissions } from '@/hooks/use-permissions';
 import { StatusBanner } from '@modl-gg/shared-web/components/ui/status-banner';
 import { cn } from '@modl-gg/shared-web/lib/utils';
 import { openExternalUrl } from '@/lib/utils';
 import { usePlayerWindow } from '@/contexts/PlayerWindowContext';
-import { useAuth } from '@/hooks/use-auth';
 import { Checkbox } from '@modl-gg/shared-web/components/ui/checkbox';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell, LineChart, Line, Area, AreaChart } from 'recharts';
 import type { PieLabelRenderProps } from 'recharts';
@@ -603,6 +602,7 @@ const StaffDetailModal = ({ staff, isOpen, onClose, initialPeriod = '30d' }: {
   const { toast } = useToast();
   const { t } = useTranslation();
   const { openPlayerWindow } = usePlayerWindow();
+  const { isSuperAdmin } = usePermissions();
 
   // Sync selectedPeriod with initialPeriod when modal opens
   useEffect(() => {
@@ -965,7 +965,7 @@ const StaffDetailModal = ({ staff, isOpen, onClose, initialPeriod = '30d' }: {
                                 <Badge variant={statusInfo.variant} className={`text-xs ${statusInfo.color}`}>
                                   {statusInfo.status}
                                 </Badge>
-                                {statusInfo.isActive && (
+                                {statusInfo.isActive && isSuperAdmin && (
                                   <Button
                                     variant="outline"
                                     size="icon"
@@ -1323,7 +1323,7 @@ const TicketAnalyticsSection = ({ analyticsPeriod }: { analyticsPeriod: string }
 // Punishments List Card component
 const ActivePunishmentsCard = () => {
   const { t } = useTranslation();
-  const { user } = useAuth();
+  const { isSuperAdmin } = usePermissions();
   const [statusFilter, setStatusFilter] = useState<string>('active');
   const [staffFilter, setStaffFilter] = useState<string>('all');
   const [typeFilter, setTypeFilter] = useState<string>('all');
@@ -1513,7 +1513,7 @@ const ActivePunishmentsCard = () => {
               </SelectContent>
             </Select>
 
-            {user?.role === 'Super Admin' && (
+            {isSuperAdmin && (
               <BulkPunishmentActionsModal
                 activePunishments={activePunishments}
                 onSuccess={() => refetch()}

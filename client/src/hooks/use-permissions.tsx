@@ -3,63 +3,14 @@ import { useQuery } from '@tanstack/react-query';
 import { useAuth } from './use-auth';
 import { buildRoleHierarchy, canModifyRole, canRemoveUser } from '@/utils/role-hierarchy';
 import { apiFetch } from '@/lib/api';
+import { PERMISSIONS, SUPER_ADMIN_EXCLUSIVE_PERMISSION } from '@/lib/permissions';
 
-export const PERMISSIONS = {
-  ADMIN_SETTINGS_VIEW: 'admin.settings.view',
-  ADMIN_SETTINGS_VIEW_PUNISHMENTS: 'admin.settings.view.punishments',
-  ADMIN_SETTINGS_VIEW_CONTENT: 'admin.settings.view.content',
-  ADMIN_SETTINGS_VIEW_DOMAIN: 'admin.settings.view.domain',
-  ADMIN_SETTINGS_VIEW_BILLING: 'admin.settings.view.billing',
-  ADMIN_SETTINGS_VIEW_MIGRATION: 'admin.settings.view.migration',
-  ADMIN_SETTINGS_VIEW_STORAGE: 'admin.settings.view.storage',
-  ADMIN_SETTINGS_MODIFY: 'admin.settings.modify',
-  ADMIN_SETTINGS_MODIFY_PUNISHMENTS: 'admin.settings.modify.punishments',
-  ADMIN_SETTINGS_MODIFY_CONTENT: 'admin.settings.modify.content',
-  ADMIN_SETTINGS_MODIFY_DOMAIN: 'admin.settings.modify.domain',
-  ADMIN_SETTINGS_MODIFY_BILLING: 'admin.settings.modify.billing',
-  ADMIN_SETTINGS_MODIFY_MIGRATION: 'admin.settings.modify.migration',
-  ADMIN_SETTINGS_MODIFY_STORAGE: 'admin.settings.modify.storage',
-  ADMIN_STAFF_MANAGE: 'admin.staff.manage',
-  ADMIN_STAFF_MANAGE_MEMBERS: 'admin.staff.manage.members',
-  ADMIN_STAFF_MANAGE_ROLES: 'admin.staff.manage.roles',
-  ADMIN_AUDIT_VIEW: 'admin.audit.view',
-  ADMIN_AUDIT_VIEW_DASHBOARD: 'admin.audit.view.dashboard',
-  ADMIN_AUDIT_VIEW_ANALYTICS: 'admin.audit.view.analytics',
-  ADMIN_AUDIT_VIEW_LOGS: 'admin.audit.view.logs',
-
-  PUNISHMENT_MODIFY: 'punishment.modify',
-  PUNISHMENT_MODIFY_PARDON: 'punishment.modify.pardon',
-  PUNISHMENT_MODIFY_DURATION: 'punishment.modify.duration',
-  PUNISHMENT_MODIFY_NOTE: 'punishment.modify.note',
-  PUNISHMENT_MODIFY_EVIDENCE: 'punishment.modify.evidence',
-  PUNISHMENT_MODIFY_OPTIONS: 'punishment.modify.options',
-
-  STAFF_CHAT_TOGGLE: 'staff.chat.toggle',
-  STAFF_CHAT_CLEAR: 'staff.chat.clear',
-  STAFF_CHAT_SLOW: 'staff.chat.slow',
-  STAFF_MAINTENANCE: 'staff.maintenance',
-  STAFF_MODACTIONS: 'staff.modactions',
-  STAFF_INTERCEPT: 'staff.intercept',
-  STAFF_CHATLOGS: 'staff.chatlogs',
-  STAFF_COMMANDLOGS: 'staff.commandlogs',
-
-  TICKET_VIEW_ALL: 'ticket.view.all',
-  TICKET_VIEW_ALL_NOTES: 'ticket.view.all.notes',
-  TICKET_REPLY_ALL: 'ticket.reply.all',
-  TICKET_REPLY_ALL_NOTES: 'ticket.reply.all.notes',
-  TICKET_CLOSE_ALL: 'ticket.close.all',
-  TICKET_CLOSE_ALL_LOCK: 'ticket.close.all.lock',
-  TICKET_MANAGE: 'ticket.manage',
-  TICKET_MANAGE_TAGS: 'ticket.manage.tags',
-  TICKET_MANAGE_HIDE: 'ticket.manage.hide',
-  TICKET_MANAGE_SUBSCRIBE: 'ticket.manage.subscribe',
-  TICKET_DELETE_ALL: 'ticket.delete.all',
-} as const;
+export { PERMISSIONS };
 
 // Each tab lists ALL permissions that grant access (matched with hasAnyPermission)
 export const SETTINGS_PERMISSIONS = {
   account: [],
-  general: [PERMISSIONS.ADMIN_SETTINGS_VIEW, PERMISSIONS.ADMIN_SETTINGS_VIEW_BILLING, PERMISSIONS.ADMIN_SETTINGS_VIEW_DOMAIN, PERMISSIONS.ADMIN_SETTINGS_VIEW_STORAGE, PERMISSIONS.ADMIN_SETTINGS_VIEW_MIGRATION],
+  general: [PERMISSIONS.ADMIN_SETTINGS_VIEW, PERMISSIONS.ADMIN_SETTINGS_VIEW_DOMAIN, PERMISSIONS.ADMIN_SETTINGS_VIEW_STORAGE, PERMISSIONS.ADMIN_SETTINGS_VIEW_MIGRATION],
   punishment: [PERMISSIONS.ADMIN_SETTINGS_VIEW, PERMISSIONS.ADMIN_SETTINGS_VIEW_PUNISHMENTS],
   tags: [],
   staff: [PERMISSIONS.ADMIN_STAFF_MANAGE],
@@ -69,10 +20,12 @@ export const SETTINGS_PERMISSIONS = {
 
 export type SettingsTab = keyof typeof SETTINGS_PERMISSIONS;
 
+export const SUPER_ADMIN_ROLE = 'Super Admin';
+
 export function usePermissions() {
   const { user } = useAuth();
-  
-  const { data: serverPermissions } = useQuery({
+
+  const { data: serverPermissions, isPending: isPermissionsQueryPending } = useQuery({
     queryKey: ['userPermissions', user?.role],
     queryFn: async () => {
       if (!user?.role) return [];
@@ -93,56 +46,21 @@ export function usePermissions() {
     retry: false,
   });
 
-  const userPermissions = useMemo(() => {
-    if (!user || !user.role) return [];
+  const isPermissionsLoading = Boolean(user?.role) && isPermissionsQueryPending;
 
-    if (serverPermissions && Array.isArray(serverPermissions)) {
-      return serverPermissions;
-    }
-    
-    // Server is the authority; on failure, grant no permissions for security
-    if (serverPermissions === null) {
-      return [];
-    }
+  const userPermissions = useMemo<string[]>(
+    () => (Array.isArray(serverPermissions) ? serverPermissions : []),
+    [serverPermissions]
+  );
 
-    // Query still loading - use default role permissions until first fetch completes
-    const defaultPermissions: Record<string, string[]> = {
-      'Super Admin': [
-        PERMISSIONS.ADMIN_SETTINGS_VIEW,
-        PERMISSIONS.ADMIN_SETTINGS_MODIFY,
-        PERMISSIONS.ADMIN_STAFF_MANAGE,
-        PERMISSIONS.ADMIN_AUDIT_VIEW,
-        PERMISSIONS.TICKET_VIEW_ALL,
-        PERMISSIONS.TICKET_REPLY_ALL,
-        PERMISSIONS.TICKET_CLOSE_ALL,
-        PERMISSIONS.TICKET_DELETE_ALL,
-      ],
-      'Admin': [
-        PERMISSIONS.ADMIN_SETTINGS_VIEW,
-        PERMISSIONS.ADMIN_STAFF_MANAGE,
-        PERMISSIONS.ADMIN_AUDIT_VIEW,
-        PERMISSIONS.TICKET_VIEW_ALL,
-        PERMISSIONS.TICKET_REPLY_ALL,
-        PERMISSIONS.TICKET_CLOSE_ALL,
-      ],
-      'Moderator': [
-        PERMISSIONS.TICKET_VIEW_ALL,
-        PERMISSIONS.TICKET_REPLY_ALL,
-        PERMISSIONS.TICKET_CLOSE_ALL,
-      ],
-      'Helper': [
-        PERMISSIONS.TICKET_VIEW_ALL,
-        PERMISSIONS.TICKET_REPLY_ALL,
-      ],
-    };
+  const grantedPermissions = useMemo(() => new Set(userPermissions), [userPermissions]);
 
-    return defaultPermissions[user.role] || [];
-  }, [user, serverPermissions]);
+  const isSuperAdmin = grantedPermissions.has(SUPER_ADMIN_EXCLUSIVE_PERMISSION);
 
   const hasPermission = useCallback((permission: string): boolean => {
     if (!user) return false;
-    return userPermissions.some(p => p === permission || permission.startsWith(p + '.'));
-  }, [user, userPermissions]);
+    return grantedPermissions.has(permission);
+  }, [user, grantedPermissions]);
 
   const hasAllPermissions = useCallback((permissions: string[]): boolean => {
     if (!user) return false;
@@ -196,7 +114,7 @@ export function usePermissions() {
   const canModifyUserRole = (targetUserRole: string, newRole?: string, _targetUserId?: string): boolean => {
     if (!user) return false;
     if (!newRole) {
-      if (user.role === 'Super Admin' && targetUserRole !== 'Super Admin') {
+      if (isSuperAdmin && targetUserRole !== SUPER_ADMIN_ROLE) {
         return true;
       }
       const currentRoleInfo = roleHierarchy.get(user.role);
@@ -214,12 +132,14 @@ export function usePermissions() {
 
   const canAssignStaffMinecraftPlayer = (_targetUserRole: string, targetUserId: string): boolean => {
     if (!user) return false;
-    if (user.role === 'Super Admin') return true;
+    if (isSuperAdmin) return true;
     return user.id === targetUserId;
   };
 
   return {
     userPermissions,
+    isPermissionsLoading,
+    isSuperAdmin,
     hasPermission,
     hasAllPermissions,
     hasAnyPermission,

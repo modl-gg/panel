@@ -24,9 +24,7 @@ import serverLogo from "../../assets/server-logo.png";
 import { usePublicSettings } from "@/hooks/use-public-settings";
 import { usePunishmentLookup } from "@/hooks/use-player-lookup";
 import { usePermissions, PERMISSIONS } from "@/hooks/use-permissions";
-import { useAuth } from "@/hooks/use-auth";
 import { usePlayerSearch } from "@/hooks/use-data";
-import { useIsFetching } from '@tanstack/react-query';
 import { queryClient } from "@/lib/queryClient";
 import { protoFetch } from "@/lib/proto-fetch";
 import { toNum } from "@/lib/proto-ui";
@@ -61,11 +59,7 @@ const Sidebar = () => {
   const { openPlayerWindow: openPlayerWindowFromContext } = usePlayerWindow();
   const [location, navigate] = useLocation();
   const { data: publicSettings } = usePublicSettings();
-  const { hasPermission } = usePermissions();
-  const { user } = useAuth();
-
-  const fetchingCount = useIsFetching({ queryKey: ['userPermissions', user?.role] });
-  const permissionsLoading = fetchingCount > 0;
+  const { hasPermission, isPermissionsLoading } = usePermissions();
   const [isLookupOpen, setIsLookupOpen] = useState(false);
   const [isLookupClosing, setIsLookupClosing] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
@@ -355,7 +349,7 @@ const Sidebar = () => {
   // Don't show permission-based items while permissions are loading to prevent flash
   const navItems = allNavItems.filter(item => {
     if (!item.permission) return true; // Always show items without permission requirements
-    if (permissionsLoading) return false; // Hide permission-based items while loading
+    if (isPermissionsLoading) return false; // Hide permission-based items while loading
     return hasPermission(item.permission);
   });
 
