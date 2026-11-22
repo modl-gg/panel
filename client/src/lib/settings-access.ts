@@ -3,6 +3,7 @@ import {
   Bot,
   CreditCard,
   Database,
+  Download,
   Globe,
   Home,
   Layers,
@@ -41,6 +42,7 @@ export const SETTINGS_SUB_CATEGORIES: Record<string, SettingsSubCategoryDefiniti
     { id: 'domain', titleKey: 'settings.page.domain', icon: Globe, canAccess: requiring(PERMISSIONS.ADMIN_SETTINGS_VIEW_DOMAIN) },
     { id: 'webhooks', titleKey: 'settings.page.webhooks', icon: MessageCircle, canAccess: adminSettingsOnly },
     { id: 'migration', titleKey: 'settings.page.migrationTool', icon: Database, canAccess: superAdminOnly },
+    { id: 'data-export', titleKey: 'settings.page.dataExport', icon: Download, canAccess: superAdminOnly },
   ],
   punishment: [
     { id: 'thresholds', titleKey: 'settings.page.thresholds', icon: Layers },

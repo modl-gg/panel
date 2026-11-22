@@ -400,6 +400,58 @@
       "deleteArticleTitle": "Supprimer l'article",
       "deleteArticleConfirm": "Êtes-vous sûr de vouloir supprimer '{{title}}' ? Cette action est irréversible."
     },
+    "dataExport": {
+      "title": "Exporter vos données",
+      "description": "Téléchargez toutes les données de ce serveur dans une seule archive, puis importez-la dans l'assistant de configuration d'une installation modl auto-hébergée pour migrer. Seul le super administrateur peut le faire.",
+      "button": "Exporter mes données",
+      "includedTitle": "Inclus",
+      "included": {
+        "players": "Joueurs avec sanctions, notes, preuves, pseudos et adresses IP",
+        "tickets": "Tickets et appels avec réponses et notes internes",
+        "staff": "Comptes du staff, rôles et permissions",
+        "settings": "Paramètres, types de sanction, formulaires, réponses rapides, étiquettes, webhooks, base de connaissances et cartes d'accueil",
+        "logs": "Journaux d'audit, de chat et de commandes",
+        "files": "Fichiers envoyés, icônes et replays"
+      },
+      "excludedTitle": "Non inclus",
+      "excluded": {
+        "credentials": "Clés API, sessions, codes de connexion et passkeys (à recréer après la migration)",
+        "invitations": "Invitations du staff en attente",
+        "billing": "Offre, facturation et utilisation",
+        "domain": "Configuration du domaine personnalisé",
+        "replayLite": "Enregistrements Replay Lite",
+        "operations": "Historique des imports et données internes du service"
+      },
+      "sensitive": "L'archive contient des données personnelles, comme des adresses IP et e-mail, ainsi que des URL de webhook. Conservez-la en lieu sûr et ne partagez pas le lien.",
+      "queued": "En attente de démarrage...",
+      "phase": {
+        "PREPARING": "Préparation de votre export...",
+        "DATABASE": "Export de la base de données...",
+        "STORAGE": "Export des fichiers...",
+        "FINALIZING": "Finalisation de votre archive..."
+      },
+      "emailWhenDone": "Vous pouvez quitter cette page. Le super administrateur recevra un e-mail une fois l'export terminé.",
+      "ready": "Votre export est prêt. Le lien de téléchargement a été envoyé par e-mail au super administrateur.",
+      "expiresAt": "Le lien expire le {{date}}.",
+      "size": "Taille de l'archive : {{size}}",
+      "expired": "Votre dernier export a expiré le {{date}} et a été supprimé.",
+      "failed": "Le dernier export a échoué.",
+      "failure": {
+        "SERVER_UNAVAILABLE": "Les données du serveur sont inaccessibles. Veuillez contacter le support modl.",
+        "SUPER_ADMIN_CHANGED": "Le super administrateur a changé. L'export a été annulé et son lien ne fonctionne plus.",
+        "TOO_LARGE": "Vos données sont trop volumineuses pour un export automatique. Veuillez contacter le support modl.",
+        "DELIVERY_FAILED": "L'e-mail contenant le lien de téléchargement n'a pas pu être remis.",
+        "INTERRUPTED": "L'export a été interrompu trop de fois. Veuillez réessayer.",
+        "INTERNAL_ERROR": "Une erreur est survenue lors de la création de l'export. Veuillez réessayer."
+      },
+      "unavailable": "L'export des données est actuellement indisponible. Réessayez plus tard ou contactez le support modl.",
+      "nextAllowed": "Vous pourrez lancer un autre export le {{date}}.",
+      "requestFailed": "L'export n'a pas pu être lancé. Veuillez réessayer plus tard.",
+      "loadFailed": "L'état de l'export n'a pas pu être chargé.",
+      "confirmTitle": "Exporter toutes les données du serveur ?",
+      "confirmDescription": "Nous créerons l'archive en arrière-plan et enverrons un lien de téléchargement au super administrateur. Le lien de tout export précédent cessera de fonctionner.",
+      "limits": "Délai entre deux exports : {{hours}} h. Validité du lien : {{days}} j."
+    },
     "migration": {
       "title": "Migration de données",
       "summary": "Importer des données depuis des systèmes externes",
@@ -907,6 +959,7 @@
       "domain": "Domaine personnalisé",
       "webhooks": "Webhooks",
       "migrationTool": "Outil de migration",
+      "dataExport": "Export des données",
       "punishments": "Sanctions",
       "punishmentsDesc": "Configurer les catégories de sanctions, les durées et les seuils de points",
       "thresholds": "Seuils",

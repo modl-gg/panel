@@ -400,6 +400,58 @@
       "deleteArticleTitle": "Delete Article",
       "deleteArticleConfirm": "Are you sure you want to delete '{{title}}'? This action cannot be undone."
     },
+    "dataExport": {
+      "title": "Export Your Data",
+      "description": "Download everything from this server in one archive, then upload it in the setup wizard of a self-hosted modl installation to migrate. Only the super admin can do this.",
+      "button": "Export my data",
+      "includedTitle": "Included",
+      "included": {
+        "players": "Players with punishments, notes, evidence, usernames, and IP addresses",
+        "tickets": "Tickets and appeals with replies and internal notes",
+        "staff": "Staff accounts, roles, and permissions",
+        "settings": "Settings, punishment types, forms, quick responses, labels, webhooks, knowledgebase, and homepage cards",
+        "logs": "Audit, chat, and command logs",
+        "files": "Uploaded files, icons, and replays"
+      },
+      "excludedTitle": "Not included",
+      "excluded": {
+        "credentials": "API keys, sessions, login codes, and passkeys (create new ones after migrating)",
+        "invitations": "Pending staff invitations",
+        "billing": "Plan, billing, and usage",
+        "domain": "Custom domain configuration",
+        "replayLite": "Replay Lite recordings",
+        "operations": "Import history and internal service records"
+      },
+      "sensitive": "The archive contains personal data such as IP addresses and email addresses, as well as webhook URLs. Store it securely and do not share the link.",
+      "queued": "Waiting to start...",
+      "phase": {
+        "PREPARING": "Preparing your export...",
+        "DATABASE": "Exporting database records...",
+        "STORAGE": "Exporting files...",
+        "FINALIZING": "Finishing your archive..."
+      },
+      "emailWhenDone": "You can leave this page. We will email the super admin when it is done.",
+      "ready": "Your export is ready. The download link was emailed to the super admin.",
+      "expiresAt": "The link expires on {{date}}.",
+      "size": "Archive size: {{size}}",
+      "expired": "Your last export expired on {{date}} and was deleted.",
+      "failed": "The last export failed.",
+      "failure": {
+        "SERVER_UNAVAILABLE": "The server's data could not be accessed. Please contact modl support.",
+        "SUPER_ADMIN_CHANGED": "The super admin changed, so the export was cancelled and its link no longer works.",
+        "TOO_LARGE": "Your data is too large for an automatic export. Please contact modl support.",
+        "DELIVERY_FAILED": "The email with the download link could not be delivered.",
+        "INTERRUPTED": "The export was interrupted too many times. Please try again.",
+        "INTERNAL_ERROR": "Something went wrong while building the export. Please try again."
+      },
+      "unavailable": "Data export is currently unavailable. Please try again later or contact modl support.",
+      "nextAllowed": "You can start another export on {{date}}.",
+      "requestFailed": "The export could not be started. Please try again later.",
+      "loadFailed": "The export status could not be loaded.",
+      "confirmTitle": "Export all server data?",
+      "confirmDescription": "We will build the archive in the background and email a download link to the super admin. The link from any previous export will stop working.",
+      "limits": "Cooldown between exports: {{hours}} h. Link validity: {{days}} d."
+    },
     "migration": {
       "title": "Data Migration",
       "summary": "Import data from external systems",
@@ -907,6 +959,7 @@
       "domain": "Custom Domain",
       "webhooks": "Webhooks",
       "migrationTool": "Migration Tool",
+      "dataExport": "Data Export",
       "punishments": "Punishments",
       "punishmentsDesc": "Configure punishment categories, durations, and point thresholds",
       "thresholds": "Thresholds",

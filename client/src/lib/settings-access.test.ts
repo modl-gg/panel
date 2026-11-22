@@ -67,6 +67,7 @@ test('super admin only sub-categories are hidden from other staff', () => {
     'domain',
     'webhooks',
     'migration',
+    'data-export',
   ]);
   assert.deepEqual(ids('general', SETTINGS_ADMIN), ['usage', 'domain', 'webhooks']);
 });

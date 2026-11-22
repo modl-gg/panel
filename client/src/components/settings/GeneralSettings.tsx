@@ -16,6 +16,7 @@ import UsageSettings from './UsageSettings';
 import WebhookSettings from './WebhookSettings';
 import type { WebhookSettings as WebhookSettingsData } from './WebhookSettings';
 import MigrationTool from './MigrationTool';
+import DataExportSettings from './DataExportSettings';
 import { queryClient } from '@/lib/queryClient';
 import { toast } from '@modl-gg/shared-web/hooks/use-toast';
 
@@ -379,6 +380,10 @@ const GeneralSettings = ({
 
       {visibleSection === 'migration' && isSuperAdmin && (
         <MigrationTool />
+      )}
+
+      {visibleSection === 'data-export' && isSuperAdmin && (
+        <DataExportSettings />
       )}
     </div>
   );

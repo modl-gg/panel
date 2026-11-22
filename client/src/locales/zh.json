@@ -400,6 +400,58 @@
       "deleteArticleTitle": "删除文章",
       "deleteArticleConfirm": "您确定要删除“{{title}}”吗？此操作无法撤销。"
     },
+    "dataExport": {
+      "title": "导出您的数据",
+      "description": "将此服务器的所有数据下载为一个归档文件，然后在自托管 modl 的设置向导中上传以完成迁移。仅超级管理员可以执行此操作。",
+      "button": "导出我的数据",
+      "includedTitle": "包含内容",
+      "included": {
+        "players": "玩家及其处罚、备注、证据、用户名和 IP 地址",
+        "tickets": "工单和申诉，包括回复和内部备注",
+        "staff": "员工账户、角色和权限",
+        "settings": "设置、处罚类型、表单、快捷回复、标签、Webhook、知识库和首页卡片",
+        "logs": "审计、聊天和命令日志",
+        "files": "上传的文件、图标和回放"
+      },
+      "excludedTitle": "不包含内容",
+      "excluded": {
+        "credentials": "API 密钥、会话、登录验证码和通行密钥（迁移后请重新创建）",
+        "invitations": "待处理的员工邀请",
+        "billing": "套餐、账单和用量",
+        "domain": "自定义域名配置",
+        "replayLite": "Replay Lite 录像",
+        "operations": "导入历史和服务内部记录"
+      },
+      "sensitive": "归档包含 IP 地址和邮箱地址等个人数据以及 Webhook URL。请妥善保管，切勿分享链接。",
+      "queued": "正在等待开始...",
+      "phase": {
+        "PREPARING": "正在准备导出...",
+        "DATABASE": "正在导出数据库记录...",
+        "STORAGE": "正在导出文件...",
+        "FINALIZING": "正在完成归档..."
+      },
+      "emailWhenDone": "您可以离开此页面。完成后我们会向超级管理员发送邮件。",
+      "ready": "导出已就绪。下载链接已通过邮件发送给超级管理员。",
+      "expiresAt": "链接将于 {{date}} 过期。",
+      "size": "归档大小：{{size}}",
+      "expired": "上次导出已于 {{date}} 过期并被删除。",
+      "failed": "上次导出失败。",
+      "failure": {
+        "SERVER_UNAVAILABLE": "无法访问服务器数据。请联系 modl 支持团队。",
+        "SUPER_ADMIN_CHANGED": "超级管理员已变更，因此导出已取消，其链接已失效。",
+        "TOO_LARGE": "您的数据过大，无法自动导出。请联系 modl 支持团队。",
+        "DELIVERY_FAILED": "无法送达包含下载链接的邮件。",
+        "INTERRUPTED": "导出被中断次数过多。请重试。",
+        "INTERNAL_ERROR": "创建导出时出错。请重试。"
+      },
+      "unavailable": "数据导出当前不可用。请稍后重试或联系 modl 支持团队。",
+      "nextAllowed": "您可以在 {{date}} 开始下一次导出。",
+      "requestFailed": "无法开始导出。请稍后重试。",
+      "loadFailed": "无法加载导出状态。",
+      "confirmTitle": "导出所有服务器数据？",
+      "confirmDescription": "我们将在后台创建归档，并通过邮件向超级管理员发送下载链接。此前导出的链接将失效。",
+      "limits": "导出间隔：{{hours}} 小时。链接有效期：{{days}} 天。"
+    },
     "migration": {
       "title": "数据迁移",
       "summary": "从外部系统导入数据",
@@ -907,6 +959,7 @@
       "domain": "自定义域名",
       "webhooks": "Webhook",
       "migrationTool": "迁移工具",
+      "dataExport": "数据导出",
       "punishments": "惩罚",
       "punishmentsDesc": "配置惩罚分类、时长和分数阈值",
       "thresholds": "阈值",

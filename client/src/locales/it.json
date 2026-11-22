@@ -400,6 +400,58 @@
       "deleteArticleTitle": "Elimina articolo",
       "deleteArticleConfirm": "Sei sicuro di voler eliminare '{{title}}'? Questa azione non può essere annullata."
     },
+    "dataExport": {
+      "title": "Esporta i tuoi dati",
+      "description": "Scarica tutto il contenuto di questo server in un unico archivio, poi caricalo nella configurazione guidata di un'installazione modl self-hosted per migrare. Solo il super amministratore può farlo.",
+      "button": "Esporta i miei dati",
+      "includedTitle": "Incluso",
+      "included": {
+        "players": "Giocatori con sanzioni, note, prove, nomi utente e indirizzi IP",
+        "tickets": "Ticket e ricorsi con risposte e note interne",
+        "staff": "Account dello staff, ruoli e permessi",
+        "settings": "Impostazioni, tipi di sanzione, moduli, risposte rapide, etichette, webhook, knowledge base e schede della home",
+        "logs": "Registri di audit, chat e comandi",
+        "files": "File caricati, icone e replay"
+      },
+      "excludedTitle": "Non incluso",
+      "excluded": {
+        "credentials": "Chiavi API, sessioni, codici di accesso e passkey (creane di nuovi dopo la migrazione)",
+        "invitations": "Inviti dello staff in sospeso",
+        "billing": "Piano, fatturazione e utilizzo",
+        "domain": "Configurazione del dominio personalizzato",
+        "replayLite": "Registrazioni Replay Lite",
+        "operations": "Cronologia delle importazioni e dati interni del servizio"
+      },
+      "sensitive": "L'archivio contiene dati personali, come indirizzi IP ed email, e URL dei webhook. Conservalo in modo sicuro e non condividere il link.",
+      "queued": "In attesa di iniziare...",
+      "phase": {
+        "PREPARING": "Preparazione dell'esportazione...",
+        "DATABASE": "Esportazione dei record del database...",
+        "STORAGE": "Esportazione dei file...",
+        "FINALIZING": "Completamento dell'archivio..."
+      },
+      "emailWhenDone": "Puoi lasciare questa pagina. Invieremo un'email al super amministratore al termine.",
+      "ready": "L'esportazione è pronta. Il link per il download è stato inviato via email al super amministratore.",
+      "expiresAt": "Il link scade il {{date}}.",
+      "size": "Dimensione dell'archivio: {{size}}",
+      "expired": "L'ultima esportazione è scaduta il {{date}} ed è stata eliminata.",
+      "failed": "L'ultima esportazione non è riuscita.",
+      "failure": {
+        "SERVER_UNAVAILABLE": "Impossibile accedere ai dati del server. Contatta il supporto modl.",
+        "SUPER_ADMIN_CHANGED": "Il super amministratore è cambiato, quindi l'esportazione è stata annullata e il link non funziona più.",
+        "TOO_LARGE": "I tuoi dati sono troppo grandi per un'esportazione automatica. Contatta il supporto modl.",
+        "DELIVERY_FAILED": "Impossibile recapitare l'email con il link per il download.",
+        "INTERRUPTED": "L'esportazione è stata interrotta troppe volte. Riprova.",
+        "INTERNAL_ERROR": "Si è verificato un errore durante la creazione dell'esportazione. Riprova."
+      },
+      "unavailable": "L'esportazione dei dati non è al momento disponibile. Riprova più tardi o contatta il supporto modl.",
+      "nextAllowed": "Potrai avviare un'altra esportazione il {{date}}.",
+      "requestFailed": "Impossibile avviare l'esportazione. Riprova più tardi.",
+      "loadFailed": "Impossibile caricare lo stato dell'esportazione.",
+      "confirmTitle": "Esportare tutti i dati del server?",
+      "confirmDescription": "Creeremo l'archivio in background e invieremo un link per il download al super amministratore. Il link di qualsiasi esportazione precedente smetterà di funzionare.",
+      "limits": "Attesa tra le esportazioni: {{hours}} h. Validità del link: {{days}} g."
+    },
     "migration": {
       "title": "Migrazione dati",
       "summary": "Importa dati da sistemi esterni",
@@ -907,6 +959,7 @@
       "domain": "Dominio personalizzato",
       "webhooks": "Webhook",
       "migrationTool": "Strumento di migrazione",
+      "dataExport": "Esportazione dati",
       "punishments": "Punizioni",
       "punishmentsDesc": "Configura le categorie di punizione, le durate e le soglie di punti",
       "thresholds": "Soglie",

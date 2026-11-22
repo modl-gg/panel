@@ -400,6 +400,58 @@
       "deleteArticleTitle": "Artikel verwijderen",
       "deleteArticleConfirm": "Weet je zeker dat je '{{title}}' wilt verwijderen? Deze actie kan niet ongedaan worden gemaakt."
     },
+    "dataExport": {
+      "title": "Je gegevens exporteren",
+      "description": "Download alles van deze server in één archief en upload het daarna in de installatiewizard van een zelf gehoste modl-installatie om te migreren. Alleen de superbeheerder kan dit doen.",
+      "button": "Mijn gegevens exporteren",
+      "includedTitle": "Inbegrepen",
+      "included": {
+        "players": "Spelers met straffen, notities, bewijs, gebruikersnamen en IP-adressen",
+        "tickets": "Tickets en beroepen met reacties en interne notities",
+        "staff": "Staffaccounts, rollen en rechten",
+        "settings": "Instellingen, straftypes, formulieren, snelle antwoorden, labels, webhooks, kennisbank en homepagekaarten",
+        "logs": "Audit-, chat- en commandologs",
+        "files": "Geüploade bestanden, pictogrammen en replays"
+      },
+      "excludedTitle": "Niet inbegrepen",
+      "excluded": {
+        "credentials": "API-sleutels, sessies, inlogcodes en passkeys (maak nieuwe aan na de migratie)",
+        "invitations": "Openstaande staffuitnodigingen",
+        "billing": "Abonnement, facturering en gebruik",
+        "domain": "Configuratie van het eigen domein",
+        "replayLite": "Replay Lite-opnames",
+        "operations": "Importgeschiedenis en interne servicegegevens"
+      },
+      "sensitive": "Het archief bevat persoonsgegevens, zoals IP- en e-mailadressen, en webhook-URL's. Bewaar het veilig en deel de link niet.",
+      "queued": "Wachten om te beginnen...",
+      "phase": {
+        "PREPARING": "Je export wordt voorbereid...",
+        "DATABASE": "Databaserecords worden geëxporteerd...",
+        "STORAGE": "Bestanden worden geëxporteerd...",
+        "FINALIZING": "Je archief wordt afgerond..."
+      },
+      "emailWhenDone": "Je kunt deze pagina verlaten. We mailen de superbeheerder zodra het klaar is.",
+      "ready": "Je export is klaar. De downloadlink is naar de superbeheerder gemaild.",
+      "expiresAt": "De link verloopt op {{date}}.",
+      "size": "Archiefgrootte: {{size}}",
+      "expired": "Je laatste export is op {{date}} verlopen en verwijderd.",
+      "failed": "De laatste export is mislukt.",
+      "failure": {
+        "SERVER_UNAVAILABLE": "De servergegevens waren niet toegankelijk. Neem contact op met modl-support.",
+        "SUPER_ADMIN_CHANGED": "De superbeheerder is gewijzigd, dus de export is geannuleerd en de link werkt niet meer.",
+        "TOO_LARGE": "Je gegevens zijn te groot voor een automatische export. Neem contact op met modl-support.",
+        "DELIVERY_FAILED": "De e-mail met de downloadlink kon niet worden afgeleverd.",
+        "INTERRUPTED": "De export is te vaak onderbroken. Probeer het opnieuw.",
+        "INTERNAL_ERROR": "Er ging iets mis bij het maken van de export. Probeer het opnieuw."
+      },
+      "unavailable": "Gegevensexport is momenteel niet beschikbaar. Probeer het later opnieuw of neem contact op met modl-support.",
+      "nextAllowed": "Je kunt op {{date}} een nieuwe export starten.",
+      "requestFailed": "De export kon niet worden gestart. Probeer het later opnieuw.",
+      "loadFailed": "De exportstatus kon niet worden geladen.",
+      "confirmTitle": "Alle servergegevens exporteren?",
+      "confirmDescription": "We maken het archief op de achtergrond en mailen een downloadlink naar de superbeheerder. De link van een eerdere export werkt daarna niet meer.",
+      "limits": "Wachttijd tussen exports: {{hours}} u. Geldigheid van de link: {{days}} d."
+    },
     "migration": {
       "title": "Datamigratie",
       "summary": "Gegevens importeren van externe systemen",
@@ -907,6 +959,7 @@
       "domain": "Aangepast domein",
       "webhooks": "Webhooks",
       "migrationTool": "Migratietool",
+      "dataExport": "Gegevensexport",
       "punishments": "Straffen",
       "punishmentsDesc": "Strafcategorieën, looptijden en puntdrempels configureren",
       "thresholds": "Drempelwaarden",
